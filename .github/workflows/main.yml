@@ -95,7 +95,7 @@ jobs:
         with:
           key: ${{ matrix.cache_pod_key }}
           path: ${{ matrix.cache_pod_path }}
-          restore-keys: ${{ matrix.cache_pod_key }}-${{ hashFiles('Engine/' + matrix.cache_pod_restore_keys_hash_file) }}
+          restore-keys: ${{ matrix.cache_pod_key }}-${{ hashFiles('Engine/ios/Podfile.lock', 'Engine/macos/Podfile.lock') }}
       
       # Setup JDK for Android
       - name: Setup JDK 17 (Android)
