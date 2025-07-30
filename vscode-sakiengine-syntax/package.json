@@ -1,0 +1,43 @@
+{
+    "name": "sakiengine-syntax",
+    "displayName": "SakiEngine Syntax",
+    "description": "Syntax highlighting for SakiEngine script files",
+    "version": "0.1.6",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "saki-config",
+                "aliases": ["Saki Config", "skc"],
+                "extensions": [".skc"],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "saki-config",
+                "scopeName": "source.saki-config",
+                "path": "./syntaxes/saki-config.tmLanguage.json"
+            }
+        ],
+        "colors": [
+            {
+                "id": "sakiEngine.configKey",
+                "description": "Color for configuration keys",
+                "defaults": {
+                    "dark": "#569CD6",
+                    "light": "#0000FF"
+                }
+            }
+        ],
+        "colorPresentations": {
+            "scope": "source.saki-config",
+            "colorFormats": [ "hex" ]
+        }
+    }
+}

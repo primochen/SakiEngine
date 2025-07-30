@@ -1,0 +1,11 @@
+screen main_menu
+add sky
+text "SakiEngine" font "SourceHanSansCN-Bold.ttf" color #ffffff size 200 right 0.03 top 0.3
+hbox
+right 0.03
+bottom 0.1
+spacing 20 
+textbutton "新游戏" action "start_game" 
+textbutton "继续游戏" action "start_game"  
+textbutton "退出游戏" action "quit_game" 
+endhbox

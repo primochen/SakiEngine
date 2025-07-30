@@ -1,0 +1,14 @@
+    1→这是我打算通过Flutter，实现类似Renpy引擎的语法的视觉小说引擎项目：SakiEngine。
+    2→项目结构：
+    3→Engine文件夹下存放所有Flutter代码。
+    4→Game文件夹下存放单个实例的脚本和资源。
+    5→脚本存放在GameScript下。
+    6→资源存放在Assets下。
+    7→脚本目前包含以下四种格式：
+    8→.skn文件 存放角色定义
+    9→.skp文件 存放锚点定义
+   10→.skr文件 存放标签定义
+   11→.sks文件 存放菜单定义
+   12→项目环境：Flutter 3.29.3
+   14→项目配套的脚本解析插件：vscode-sakiengine-syntax/
+   16→flutter项目本体放在Engine文件夹下，但是所有脚本和资源在外部文件夹，但是编译和运行测试是在项目根目录放一个sh文件，用于将脚本和资源挂载进flutter项目assets然后启动运行。
