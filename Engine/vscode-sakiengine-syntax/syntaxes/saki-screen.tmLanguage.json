@@ -1,0 +1,82 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "SakiScreen",
+    "scopeName": "source.sks",
+    "patterns": [
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#blocks"
+        },
+        {
+            "include": "#layout_properties"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#properties"
+        },
+        {
+            "include": "#colors"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.sks",
+                    "match": "\\b(screen|add|text|textbutton)\\b"
+                }
+            ]
+        },
+        "blocks": {
+            "patterns": [
+                {
+                    "name": "keyword.control.block.sks",
+                    "match": "\\b(hbox|endhbox)\\b"
+                }
+            ]
+        },
+        "layout_properties": {
+            "patterns": [
+                {
+                    "name": "variable.parameter.layout.sks",
+                    "match": "\\b(right|top|bottom|spacing)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.sks",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.sks",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "properties": {
+            "patterns": [
+                {
+                    "name": "entity.name.tag.sks",
+                    "match": "\\b(font|color|size|action)\\b"
+                }
+            ]
+        },
+        "colors": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.hex.sks",
+                    "match": "#[0-9a-fA-F]{6}"
+                }
+            ]
+        }
+    }
+} 
