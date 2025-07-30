@@ -45,7 +45,7 @@ jobs:
             cache_pod_key: macos-pods
             cache_pod_path: Engine/macos/Pods
             artifact_name: release-macOS
-            artifact_path: Engine/build/macos/Build/Products/Release/*.zip
+            artifact_path: Engine/build/macos/Build/Products/Release/*.dmg
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     runs-on: ${{ matrix.os }}
@@ -63,7 +63,9 @@ jobs:
       - name: Get app version
         id: get_version
         run: |
-          echo "version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2)" >> $GITHUB_OUTPUT
+          version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Detected version: $version"
       
       # Setup Android keystore (for Android)
       - name: Setup Android keystore
@@ -140,18 +142,18 @@ jobs:
           mv ios/iphoneos/*.app Payload
           zip -9 SakiEngine-${{ steps.get_version.outputs.version }}-iOS-arm64.ipa -r Payload
       
-      # Build macOS .zip
+      # Build macOS .dmg
       - name: Build macOS
         if: matrix.target == 'macOS'
         run: |
           chmod +x build.sh
           ./build.sh macos
-          cd Engine
-          # 瘦身处理
-          chmod +x thin-macos.sh
-          ./thin-macos.sh build/macos/Build/Products/Release/SakiEngine.app
-          cd build/macos/Build/Products/Release
-          zip -r SakiEngine-${{ steps.get_version.outputs.version }}-macOS-arm64.zip SakiEngine.app
+          cd Engine/build/macos/Build/Products/Release
+          
+          # 创建DMG
+          mkdir -p dmg-contents
+          cp -R SakiEngine.app dmg-contents/
+          hdiutil create -srcfolder dmg-contents -volname "SakiEngine" -format UDZO SakiEngine-${{ steps.get_version.outputs.version }}-macOS-arm64.dmg
       
       # Build Windows .zip
       - name: Build Windows
@@ -250,7 +252,7 @@ jobs:
             - 提交: ${{ github.sha }}
             - 分支: ${{ github.ref_name }}
           allowUpdates: true
-          artifacts: /tmp/artifacts/release-Android/*.apk,/tmp/artifacts/release-iOS/*.ipa,/tmp/artifacts/release-macOS/*.zip,/tmp/artifacts/release-Windows/*.zip,/tmp/artifacts/release-Linux-amd64/*.zip
+          artifacts: /tmp/artifacts/release-Android/*.apk,/tmp/artifacts/release-iOS/*.ipa,/tmp/artifacts/release-macOS/*.dmg,/tmp/artifacts/release-Windows/*.zip,/tmp/artifacts/release-Linux-amd64/*.zip
           artifactErrorsFailBuild: true
           replacesArtifacts: true
 
