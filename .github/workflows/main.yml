@@ -71,8 +71,8 @@ jobs:
       - name: Setup Android keystore
         if: matrix.target == 'Android'
         run: |
-          echo "${{ secrets.ENCODED_KEYSTORE }}" | base64 -di > android/app/upload-keystore.jks
-          echo "${{ secrets.KEY_PROPERTIES }}" > android/key.properties
+          echo "${{ secrets.ENCODED_KEYSTORE }}" | base64 -di > Engine/android/app/upload-keystore.jks
+          echo "${{ secrets.KEY_PROPERTIES }}" > Engine/android/key.properties
       
       # Setup Flutter
       - name: Setup Flutter
@@ -82,6 +82,12 @@ jobs:
           channel: 'stable'
           cache: true
       
+      # Copy game assets to engine
+      - name: Copy Game Assets
+        run: |
+          mkdir -p Engine/assets
+          cp -r Game/TestGame/Assets/* Engine/assets/
+      
       # Cache CocoaPods (for iOS/macOS)
       - name: Cache Pod
         if: matrix.cache_pod_key != null
@@ -89,7 +95,7 @@ jobs:
         with:
           key: ${{ matrix.cache_pod_key }}
           path: ${{ matrix.cache_pod_path }}
-          restore-keys: ${{ matrix.cache_pod_key }}-${{ hashFiles(matrix.cache_pod_restore_keys_hash_file) }}
+          restore-keys: ${{ matrix.cache_pod_key }}-${{ hashFiles('Engine/' + matrix.cache_pod_restore_keys_hash_file) }}
       
       # Setup JDK for Android
       - name: Setup JDK 17 (Android)
@@ -120,7 +126,7 @@ jobs:
       # Xcode build for iOS/macOS
       - name: Build Xcode (iOS/macOS)
         if: matrix.os == 'macos-latest'
-        run: xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release
+        run: xcodebuild -resolvePackageDependencies -workspace Engine/ios/Runner.xcworkspace -scheme Runner -configuration Release
       
       # Flutter Pub Get
       - name: Flutter Pub Get
