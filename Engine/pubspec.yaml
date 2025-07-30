@@ -84,10 +84,7 @@ flutter:
     - assets/Assets/gui/
     - assets/Assets/fonts/
     - assets/Assets/sound/
-    # 只需要声明顶层目录即可，子目录会自动被包含。
-    # 并且，着色器目录绝对不能在这里声明。
     - assets/GameScript/
-    - assets/Assets/
 
   shaders:
     # 着色器必须在这里单独声明

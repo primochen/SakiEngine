@@ -82,12 +82,6 @@ jobs:
           channel: 'stable'
           cache: true
       
-      # Copy game assets to engine
-      - name: Copy Game Assets
-        run: |
-          mkdir -p Engine/assets
-          cp -r Game/TestGame/Assets/* Engine/assets/
-      
       # Cache CocoaPods (for iOS/macOS)
       - name: Cache Pod
         if: matrix.cache_pod_key != null
@@ -118,9 +112,9 @@ jobs:
           7z x mdk-sdk-android.7z -oEngine/android/app/src/main/jniLibs/arm64-v8a -y
           
           # 构建 APK
-          cd Engine
-          flutter build apk --release --target-platform android-arm64
-          cd build/app/outputs/apk/release
+          chmod +x build.sh
+          ./build.sh android
+          cd Engine/build/app/outputs/apk/release
           mv app-release.apk sakiengine-${{ steps.get_version.outputs.version }}-Android-arm64.apk
       
       # Xcode build for iOS/macOS
@@ -139,11 +133,9 @@ jobs:
       - name: Build iOS
         if: matrix.target == 'iOS'
         run: |
+          chmod +x build.sh
+          ./build.sh ios
           cd Engine
-          cd ios
-          pod update
-          cd ..
-          flutter build ios --release --no-codesign
           sh thin-payload.sh build/ios/iphoneos/*.app
           cd build
           mkdir -p Payload
@@ -154,33 +146,34 @@ jobs:
       - name: Build macOS
         if: matrix.target == 'macOS'
         run: |
-          cd Engine
-          flutter build macos --release
-          cd build/macos/Build/Products/Release
+          chmod +x build.sh
+          ./build.sh macos
+          cd Engine/build/macos/Build/Products/Release
           zip -r sakiengine_${{ steps.get_version.outputs.version }}_macOS.zip SakiEngine.app
       
       # Build Windows .zip
       - name: Build Windows
         if: matrix.target == 'Windows'
-        shell: pwsh
         run: |
-          cd Engine
-          flutter build windows --release
+          # Use Git Bash to run the build script
+          & "C:\Program Files\Git\bin\bash.exe" build.sh windows
+          
+          # Continue with PowerShell for zipping
           $arch = "${{ matrix.arch }}"
           $version = "${{ steps.get_version.outputs.version }}"
           
           if ($arch -eq "arm64") {
-            $DestDir = "build\windows\sakiengine_${version}_Windows_arm64"
-            $SrcDir = "build\windows\arm64\runner\Release"
+            $DestDir = "Engine\build\windows\sakiengine_${version}_Windows_arm64"
+            $SrcDir = "Engine\build\windows\arm64\runner\Release"
           } else {
-            $DestDir = "build\windows\sakiengine_${version}_Windows_x64"
-            $SrcDir = "build\windows\x64\runner\Release"
+            $DestDir = "Engine\build\windows\sakiengine_${version}_Windows_x64"
+            $SrcDir = "Engine\build\windows\x64\runner\Release"
           }
           
           New-Item -Path $DestDir -ItemType Directory -Force
           Copy-Item -Path "$SrcDir\*" -Destination $DestDir -Recurse -Force
-          Copy-Item -Path "windows\*.dll" -Destination $DestDir -Force
-          Compress-Archive -Path $DestDir -DestinationPath "build\windows\sakiengine_${version}_Windows_x64.zip" -Force
+          Copy-Item -Path "Engine\windows\*.dll" -Destination $DestDir -Force
+          Compress-Archive -Path $DestDir -DestinationPath "Engine\build\windows\sakiengine_${version}_Windows_x64.zip" -Force
       
       # Build Linux .zip
       - name: Build Linux
@@ -189,11 +182,10 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y mpv libmpv-dev pkg-config clang cmake libgtk-3-dev ninja-build libasound2-dev libass-dev zip
           
-          cd Engine
-          flutter config --enable-linux-desktop
-          flutter build linux --release
+          chmod +x build.sh
+          ./build.sh linux
           
-          cd build/linux/x64/release
+          cd Engine/build/linux/x64/release
           zip -r sakiengine_${{ steps.get_version.outputs.version }}_Linux.zip bundle
       
       # Upload Artifacts
