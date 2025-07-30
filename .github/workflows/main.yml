@@ -23,31 +23,29 @@ jobs:
           - target: Android
             os: ubuntu-latest
             artifact_name: release-Android
-            artifact_path: build/app/outputs/apk/release/*.apk
+            artifact_path: Engine/build/app/outputs/apk/release/*.apk
           - target: Windows
             os: windows-latest
             artifact_name: release-Windows
-            artifact_path: build/windows/*.zip
+            artifact_path: Engine/build/windows/*.zip
             arch: x64
           - target: Linux
             os: ubuntu-latest
             arch: amd64
             artifact_name: release-Linux-amd64
-            artifact_path: build/linux/x64/release/*.zip
+            artifact_path: Engine/build/linux/x64/release/*.zip
           - target: iOS
             os: macos-latest
             cache_pod_key: ios-pods
-            cache_pod_path: ios/Pods
-            cache_pod_restore_keys_hash_file: ios/Podfile.lock
+            cache_pod_path: Engine/ios/Pods
             artifact_name: release-iOS
-            artifact_path: build/**/*.ipa
+            artifact_path: Engine/build/**/*.ipa
           - target: macOS
             os: macos-latest
             cache_pod_key: macos-pods
-            cache_pod_path: macos/Pods
-            cache_pod_restore_keys_hash_file: macos/Podfile.lock
+            cache_pod_path: Engine/macos/Pods
             artifact_name: release-macOS
-            artifact_path: build/macos/Build/Products/Release/*.zip
+            artifact_path: Engine/build/macos/Build/Products/Release/*.zip
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     runs-on: ${{ matrix.os }}
