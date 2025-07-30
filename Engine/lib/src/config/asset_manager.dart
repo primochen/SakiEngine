@@ -62,6 +62,7 @@ class AssetManager {
   Future<String?> _findAssetInBundle(String name) async {
     await _loadManifest();
     if (_assetManifest == null) {
+      print("AssetManifest is null - cannot find assets");
       return null;
     }
 
@@ -73,11 +74,25 @@ class AssetManager {
         final fileName = key.split('/').last;
         if (fileName.toLowerCase() == '$name$ext'.toLowerCase()) {
           _imageCache[name] = key;
+          print("Found asset in bundle: $name -> $key");
           return key;
         }
       }
     }
 
+    // Try partial matching for more flexible asset finding
+    for (final key in _assetManifest!.keys) {
+      final fileName = key.split('/').last;
+      final nameWithoutExt = fileName.split('.').first;
+      if (nameWithoutExt.toLowerCase() == name.toLowerCase()) {
+        _imageCache[name] = key;
+        print("Found asset in bundle (partial match): $name -> $key");
+        return key;
+      }
+    }
+
+    print("Asset not found in bundle: $name");
+    print("Available assets: ${_assetManifest!.keys.take(10).join(', ')}...");
     return null;
   }
 

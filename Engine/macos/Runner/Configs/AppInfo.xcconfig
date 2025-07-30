@@ -11,4 +11,4 @@ PRODUCT_NAME = SakiEngine
 PRODUCT_BUNDLE_IDENTIFIER = com.aimessoft.sakiengine
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 AimesSoft. All rights reserved.

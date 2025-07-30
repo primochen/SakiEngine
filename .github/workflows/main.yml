@@ -113,7 +113,7 @@ jobs:
           chmod +x build.sh
           ./build.sh android
           cd Engine/build/app/outputs/apk/release
-          mv app-release.apk sakiengine-${{ steps.get_version.outputs.version }}-Android-arm64.apk
+          mv app-release.apk SakiEngine-${{ steps.get_version.outputs.version }}-Android-arm64.apk
       
       # Xcode build for iOS/macOS
       - name: Build Xcode (iOS/macOS)
@@ -138,7 +138,7 @@ jobs:
           cd build
           mkdir -p Payload
           mv ios/iphoneos/*.app Payload
-          zip -9 sakiengine_${{ steps.get_version.outputs.version }}_iOS_arm64.ipa -r Payload
+          zip -9 SakiEngine-${{ steps.get_version.outputs.version }}-iOS-arm64.ipa -r Payload
       
       # Build macOS .zip
       - name: Build macOS
@@ -146,8 +146,12 @@ jobs:
         run: |
           chmod +x build.sh
           ./build.sh macos
-          cd Engine/build/macos/Build/Products/Release
-          zip -r sakiengine_${{ steps.get_version.outputs.version }}_macOS.zip SakiEngine.app
+          cd Engine
+          # 瘦身处理
+          chmod +x thin-macos.sh
+          ./thin-macos.sh build/macos/Build/Products/Release/SakiEngine.app
+          cd build/macos/Build/Products/Release
+          zip -r SakiEngine-${{ steps.get_version.outputs.version }}-macOS-arm64.zip SakiEngine.app
       
       # Build Windows .zip
       - name: Build Windows
@@ -161,17 +165,19 @@ jobs:
           $version = "${{ steps.get_version.outputs.version }}"
           
           if ($arch -eq "arm64") {
-            $DestDir = "Engine\build\windows\sakiengine_${version}_Windows_arm64"
+            $DestDir = "Engine\build\windows\SakiEngine-${version}-Windows-arm64"
             $SrcDir = "Engine\build\windows\arm64\runner\Release"
+            $ZipName = "SakiEngine-${version}-Windows-arm64.zip"
           } else {
-            $DestDir = "Engine\build\windows\sakiengine_${version}_Windows_x64"
+            $DestDir = "Engine\build\windows\SakiEngine-${version}-Windows-x64"
             $SrcDir = "Engine\build\windows\x64\runner\Release"
+            $ZipName = "SakiEngine-${version}-Windows-x64.zip"
           }
           
           New-Item -Path $DestDir -ItemType Directory -Force
           Copy-Item -Path "$SrcDir\*" -Destination $DestDir -Recurse -Force
           Copy-Item -Path "Engine\windows\*.dll" -Destination $DestDir -Force
-          Compress-Archive -Path $DestDir -DestinationPath "Engine\build\windows\sakiengine_${version}_Windows_x64.zip" -Force
+          Compress-Archive -Path $DestDir -DestinationPath "Engine\build\windows\$ZipName" -Force
       
       # Build Linux .zip
       - name: Build Linux
@@ -184,7 +190,7 @@ jobs:
           ./build.sh linux
           
           cd Engine/build/linux/x64/release
-          zip -r sakiengine_${{ steps.get_version.outputs.version }}_Linux.zip bundle
+          zip -r SakiEngine-${{ steps.get_version.outputs.version }}-Linux-amd64.zip bundle
       
       # Upload Artifacts
       - name: Upload Artifacts
