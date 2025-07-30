@@ -29,12 +29,10 @@ PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml"
 TEMP_PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml.temp"
 
 # --- 准备资源 ---
-echo -e "${YELLOW}正在清理旧的资源链接...${NC}"
-# 删除 Engine/assets 目录下所有现有的符号链接或文件
-if [ -d "$ENGINE_DIR/assets" ]; then
-  # 为了安全，我们只删除内容，不删除assets目录本身
-  find "$ENGINE_DIR/assets" -mindepth 1 -delete
-fi
+echo -e "${YELLOW}正在准备资源目录...${NC}"
+# 清理旧的游戏资源目录，但保留引擎自带的资源（如 shaders）
+rm -rf "$ENGINE_DIR/assets/Assets"
+rm -rf "$ENGINE_DIR/assets/GameScript"
 # 确保顶级 assets 目录存在
 mkdir -p "$ENGINE_DIR/assets"
 
