@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
+import 'package:sakiengine/src/widgets/debug_log_panel.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -11,12 +12,11 @@ class _HoverButton extends StatefulWidget {
   final SakiEngineConfig config;
 
   const _HoverButton({
-    Key? key,
     required this.text,
     required this.onPressed,
     required this.scale,
     required this.config,
-  }) : super(key: key);
+  });
 
   @override
   State<_HoverButton> createState() => _HoverButtonState();
@@ -141,6 +141,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
           ),
           
+          // 调试按钮 - 左下角
+          Positioned(
+            bottom: screenSize.height * 0.05,
+            left: screenSize.width * 0.02,
+            child: _buildDebugButton(context, scale, config),
+          ),
+          
           // 按钮 - 右下角
           Positioned(
             bottom: screenSize.height * 0.05,
@@ -199,6 +206,57 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       onPressed: onPressed,
       scale: scale,
       config: config,
+    );
+  }
+
+  Widget _buildDebugButton(
+    BuildContext context,
+    double scale,
+    SakiEngineConfig config,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const DebugLogPanel(),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.all(12 * scale),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.orange.withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.bug_report,
+                color: Colors.orange,
+                size: 20 * scale,
+              ),
+              SizedBox(width: 8 * scale),
+              Text(
+                'DEBUG',
+                style: TextStyle(
+                  fontSize: 14 * scale,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

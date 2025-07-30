@@ -67,26 +67,51 @@ class AssetManager {
     }
 
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    
+    // 从查询名称中提取文件名，例如 "backgrounds/sky" -> "sky"
+    final targetFileName = name.split('/').last;
+    
+    // 提取路径部分，例如 "backgrounds/sky" -> "backgrounds"
+    final pathParts = name.split('/');
+    final targetPath = pathParts.length > 1 ? pathParts.sublist(0, pathParts.length - 1).join('/') : '';
 
-    // Prioritize direct match
+    print("Searching for asset: name='$name', fileName='$targetFileName', path='$targetPath'");
+
+    // 1. 精确匹配：路径和文件名都要匹配
     for (final key in _assetManifest!.keys) {
-      for (final ext in imageExtensions) {
-        final fileName = key.split('/').last;
-        if (fileName.toLowerCase() == '$name$ext'.toLowerCase()) {
+      final keyParts = key.split('/');
+      final keyFileName = keyParts.last;
+      final keyFileNameWithoutExt = keyFileName.split('.').first;
+      
+      // 检查文件名是否匹配
+      if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
+        // 如果查询有路径要求，检查路径是否匹配
+        if (targetPath.isNotEmpty) {
+          final keyPath = key.toLowerCase();
+          if (keyPath.contains('/${targetPath.toLowerCase()}/') || 
+              keyPath.contains('${targetPath.toLowerCase()}/')) {
+            _imageCache[name] = key;
+            print("Found asset in bundle (path + name match): $name -> $key");
+            return key;
+          }
+        } else {
+          // 没有路径要求，直接匹配文件名
           _imageCache[name] = key;
-          print("Found asset in bundle: $name -> $key");
+          print("Found asset in bundle (name match): $name -> $key");
           return key;
         }
       }
     }
 
-    // Try partial matching for more flexible asset finding
+    // 2. 宽松匹配：只匹配文件名，忽略路径
     for (final key in _assetManifest!.keys) {
-      final fileName = key.split('/').last;
-      final nameWithoutExt = fileName.split('.').first;
-      if (nameWithoutExt.toLowerCase() == name.toLowerCase()) {
+      final keyParts = key.split('/');
+      final keyFileName = keyParts.last;
+      final keyFileNameWithoutExt = keyFileName.split('.').first;
+      
+      if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
         _imageCache[name] = key;
-        print("Found asset in bundle (partial match): $name -> $key");
+        print("Found asset in bundle (fallback name match): $name -> $key");
         return key;
       }
     }

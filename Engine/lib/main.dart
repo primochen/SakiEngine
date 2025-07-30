@@ -1,12 +1,28 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
+import 'package:sakiengine/src/utils/debug_logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SakiEngineConfig().loadConfig();
-  runApp(SakiEngineApp());
+  
+  // 设置调试日志收集器
+  setupDebugLogger();
+  
+  // 在Zone中运行应用，捕获所有print输出
+  runZoned(() async {
+    await SakiEngineConfig().loadConfig();
+    runApp(SakiEngineApp());
+  }, zoneSpecification: ZoneSpecification(
+    print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
+      // 记录到我们的日志系统
+      DebugLogger().addLog(line);
+      // 保持正常的控制台输出
+      parent.print(zone, line);
+    },
+  ));
 }
 
 class SakiEngineApp extends StatefulWidget {
@@ -17,15 +33,6 @@ class SakiEngineApp extends StatefulWidget {
 }
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
-  void _startNewGame() {
-    // 启动新游戏的初始化逻辑
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => GamePlayScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

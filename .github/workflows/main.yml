@@ -62,6 +62,7 @@ jobs:
       # Get app version
       - name: Get app version
         id: get_version
+        shell: bash
         run: |
           version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           echo "version=$version" >> $GITHUB_OUTPUT
