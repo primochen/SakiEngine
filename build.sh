@@ -39,9 +39,8 @@ fi
 mkdir -p "$ENGINE_DIR/assets"
 
 echo -e "${YELLOW}正在拷贝游戏资源和脚本...${NC}"
-# 为 Game/TestGame/Assets 创建符号链接
-cp -r "$GAME_DIR/Assets"/* "$ENGINE_DIR/assets/"
-# 为 Game/TestGame/GameScript 创建符号链接
+# 将 Assets 和 GameScript 目录完整地拷贝到 Engine/assets/ 下
+cp -r "$GAME_DIR/Assets" "$ENGINE_DIR/assets/"
 cp -r "$GAME_DIR/GameScript" "$ENGINE_DIR/assets/"
 echo -e "${GREEN}资源准备完成。${NC}"
 
