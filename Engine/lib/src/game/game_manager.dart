@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/skr_parser/skr_ast.dart';
 import 'package:sakiengine/src/skr_parser/skr_parser.dart';
 
@@ -20,11 +21,9 @@ class GameManager {
   Map<String, PoseConfig> _poseConfigs = {};
   VoidCallback? onReturn;
   
-  // 用于热重载时保存状态
   GameStateSnapshot? _savedSnapshot;
   
-  // 对话历史记录（最多保存100条）
-  final List<DialogueHistoryEntry> _dialogueHistory = [];
+  List<DialogueHistoryEntry> _dialogueHistory = [];
   static const int maxHistoryEntries = 100;
 
   GameManager({this.onReturn});
@@ -44,6 +43,7 @@ class GameManager {
     _script = SkrParser().parse(scriptContent);
     _buildLabelIndexMap();
     _currentState = GameState.initial();
+    _dialogueHistory = [];
     _executeScript();
   }
 
@@ -95,8 +95,8 @@ class GameManager {
         final newCharacters = Map.of(_currentState.characters);
 
         newCharacters[node.character] = currentCharacterState.copyWith(
-          pose: node.pose, // Script overrides pose image
-          expression: node.expression, // Script overrides expression image
+          pose: node.pose,
+          expression: node.expression,
         );
         _currentState =
             _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: true);
@@ -135,23 +135,21 @@ class GameManager {
           );
           _currentState = _currentState.copyWith(characters: newCharacters);
         }
-
-        // 先更新对话状态
+        
         _currentState = _currentState.copyWith(
           dialogue: node.dialogue,
           speaker: characterConfig?.name,
           poseConfigs: _poseConfigs,
           currentNode: null,
           clearDialogueAndSpeaker: false,
-          forceNullSpeaker: node.character == null, // 如果没有角色，强制清空speaker
+          forceNullSpeaker: node.character == null,
         );
 
-        // 然后添加到历史记录（此时状态已完整）
         _addToDialogueHistory(
           speaker: characterConfig?.name,
           dialogue: node.dialogue,
           timestamp: DateTime.now(),
-          currentNodeIndex: _scriptIndex - 1, // 传入当前节点的正确索引
+          currentNodeIndex: _scriptIndex - 1,
         );
 
         _gameStateController.add(_currentState);
@@ -176,16 +174,14 @@ class GameManager {
     _isProcessing = false;
   }
 
-  // 保存当前游戏状态快照
   GameStateSnapshot saveStateSnapshot() {
     return GameStateSnapshot(
       scriptIndex: _scriptIndex,
       currentState: _currentState,
-      labelIndexMap: Map.from(_labelIndexMap),
+      dialogueHistory: List.from(_dialogueHistory),
     );
   }
 
-  // 从快照恢复游戏状态
   Future<void> restoreFromSnapshot(String scriptName, GameStateSnapshot snapshot, {bool shouldReExecute = true}) async {
     await _loadConfigs();
     final scriptContent =
@@ -193,57 +189,47 @@ class GameManager {
     _script = SkrParser().parse(scriptContent);
     _buildLabelIndexMap();
     
-    // 恢复状态
     _scriptIndex = snapshot.scriptIndex;
     _currentState = snapshot.currentState.copyWith(poseConfigs: _poseConfigs);
+    _dialogueHistory = List.from(snapshot.dialogueHistory);
     
     if (shouldReExecute) {
-      // 重新执行当前节点以显示正确的对话（用于热重载）
-      _isProcessing = false;  // 确保可以执行
+      _isProcessing = false;
       _executeScript();
     } else {
-      // 直接显示恢复的状态（用于回档）
-      _isProcessing = false;  // 重置处理状态，准备下次继续游戏
+      _isProcessing = false;
       _gameStateController.add(_currentState);
     }
   }
 
-  // 热重载：保存当前状态，重新加载脚本，然后恢复并重新执行
   Future<void> hotReload(String scriptName) async {
-    // 如果历史记录不为空，移除最后一个条目，因为它将被重新添加
     if (_dialogueHistory.isNotEmpty) {
       _dialogueHistory.removeLast();
     }
     
-    // 保存当前状态
     _savedSnapshot = saveStateSnapshot();
     
-    // 重新加载脚本和配置
     await _loadConfigs();
     final scriptContent =
         await AssetManager().loadString('assets/GameScript/labels/$scriptName.skr');
     _script = SkrParser().parse(scriptContent);
     _buildLabelIndexMap();
     
-    // 恢复状态并重新执行当前节点
     if (_savedSnapshot != null) {
-      // 重新执行当前节点以应用新内容
       _scriptIndex = _savedSnapshot!.scriptIndex;
+      _dialogueHistory = List.from(_savedSnapshot!.dialogueHistory);
       
-      // 重要：回退一步，这样下次执行时会重新处理当前节点
       if (_scriptIndex > 0) {
         _scriptIndex--;
       }
       
-      // 恢复基础状态但清除对话内容，这样会重新显示
       _currentState = _savedSnapshot!.currentState.copyWith(
         poseConfigs: _poseConfigs,
         clearDialogueAndSpeaker: true,
         forceNullCurrentNode: true,
       );
       
-      // 重新执行脚本以显示新内容
-      _isProcessing = false; // 确保可以执行
+      _isProcessing = false;
       _executeScript();
     }
   }
@@ -252,18 +238,17 @@ class GameManager {
     onReturn?.call();
   }
 
-  // 添加对话到历史记录
   void _addToDialogueHistory({
     String? speaker,
     required String dialogue,
     required DateTime timestamp,
     required int currentNodeIndex,
   }) {
-    // 保存当前状态快照用于跳转
+    // 为历史条目创建快照时，不包含历史记录本身，以避免循环引用。
     final snapshot = GameStateSnapshot(
-      scriptIndex: _scriptIndex, // 保存执行完当前节点后的scriptIndex，下次继续时从下一个节点开始
+      scriptIndex: _scriptIndex,
       currentState: _currentState,
-      labelIndexMap: Map.from(_labelIndexMap),
+      dialogueHistory: const [], 
     );
     
     _dialogueHistory.add(DialogueHistoryEntry(
@@ -274,27 +259,21 @@ class GameManager {
       stateSnapshot: snapshot,
     ));
     
-    // 保持历史记录在最大限制内
     if (_dialogueHistory.length > maxHistoryEntries) {
       _dialogueHistory.removeAt(0);
     }
   }
 
-  // 获取对话历史记录
   List<DialogueHistoryEntry> getDialogueHistory() {
     return List.unmodifiable(_dialogueHistory);
   }
 
-  // 从对话历史记录跳转到指定位置（回档功能）
   Future<void> jumpToHistoryEntry(DialogueHistoryEntry entry, String scriptName) async {
-    // 回档：清除该点之后的所有历史记录
     final targetIndex = _dialogueHistory.indexOf(entry);
     if (targetIndex != -1) {
-      // 保留到目标点为止的历史记录，清除之后的所有记录
       _dialogueHistory.removeRange(targetIndex + 1, _dialogueHistory.length);
     }
     
-    // 回档时不重新执行脚本，避免重复添加历史记录
     await restoreFromSnapshot(scriptName, entry.stateSnapshot, shouldReExecute: false);
   }
 
@@ -324,6 +303,22 @@ class GameState {
     return GameState();
   }
 
+  factory GameState.fromJson(Map<String, dynamic> json) {
+    var characterMap = <String, CharacterState>{};
+    if (json['characters'] != null) {
+      (json['characters'] as Map<String, dynamic>).forEach((key, value) {
+        characterMap[key] = CharacterState.fromJson(value);
+      });
+    }
+    
+    return GameState(
+      background: json['background'],
+      characters: characterMap,
+      dialogue: json['dialogue'],
+      speaker: json['speaker'],
+    );
+  }
+
   GameState copyWith({
     String? background,
     Map<String, CharacterState>? characters,
@@ -339,7 +334,9 @@ class GameState {
       background: background ?? this.background,
       characters: characters ?? this.characters,
       dialogue: clearDialogueAndSpeaker ? null : (dialogue ?? this.dialogue),
-      speaker: forceNullSpeaker ? null : (clearDialogueAndSpeaker ? null : (speaker ?? this.speaker)),
+      speaker: forceNullSpeaker
+          ? null
+          : (clearDialogueAndSpeaker ? null : (speaker ?? this.speaker)),
       poseConfigs: poseConfigs ?? this.poseConfigs,
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
     );
@@ -352,7 +349,17 @@ class CharacterState {
   final String? expression;
   final String? positionId;
 
-  CharacterState({required this.resourceId, this.pose, this.expression, this.positionId});
+  CharacterState(
+      {required this.resourceId, this.pose, this.expression, this.positionId});
+  
+  factory CharacterState.fromJson(Map<String, dynamic> json) {
+    return CharacterState(
+      resourceId: json['resourceId'],
+      pose: json['pose'],
+      expression: json['expression'],
+      positionId: json['positionId'],
+    );
+  }
 
   CharacterState copyWith({String? pose, String? expression, String? positionId}) {
     return CharacterState(
@@ -367,13 +374,23 @@ class CharacterState {
 class GameStateSnapshot {
   final int scriptIndex;
   final GameState currentState;
-  final Map<String, int> labelIndexMap;
+  final List<DialogueHistoryEntry> dialogueHistory;
 
   GameStateSnapshot({
     required this.scriptIndex,
     required this.currentState,
-    required this.labelIndexMap,
+    this.dialogueHistory = const [],
   });
+
+  factory GameStateSnapshot.fromJson(Map<String, dynamic> json) {
+    return GameStateSnapshot(
+      scriptIndex: json['scriptIndex'],
+      currentState: GameState.fromJson(json['currentState']),
+      dialogueHistory: (json['dialogueHistory'] as List<dynamic>?)
+          ?.map((e) => DialogueHistoryEntry.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
+    );
+  }
 }
 
 class DialogueHistoryEntry {
@@ -390,4 +407,14 @@ class DialogueHistoryEntry {
     required this.scriptIndex,
     required this.stateSnapshot,
   });
-} 
+
+  factory DialogueHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return DialogueHistoryEntry(
+      speaker: json['speaker'],
+      dialogue: json['dialogue'],
+      timestamp: DateTime.parse(json['timestamp']),
+      scriptIndex: json['scriptIndex'],
+      stateSnapshot: GameStateSnapshot.fromJson(json['stateSnapshot']),
+    );
+  }
+}

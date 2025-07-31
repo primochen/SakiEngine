@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/widgets/common/close_button.dart';
 
 class ReviewOverlay extends StatefulWidget {
   final List<DialogueHistoryEntry> dialogueHistory;
@@ -125,7 +126,10 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
                         ),
                       ),
                       const Spacer(),
-                      _buildCloseButton(scale, config),
+                      CommonCloseButton(
+                        scale: scale,
+                        onClose: widget.onClose,
+                      ),
                     ],
                   ),
                 ),
@@ -262,7 +266,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
           // 说话人和序号
           Row(
             children: [
-              if (entry.speaker != null) ...[
+              if (entry.speaker != null && entry.speaker!.isNotEmpty) ...[
                 Text(
                   entry.speaker!,
                   style: config.reviewTitleTextStyle.copyWith(
@@ -339,33 +343,6 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
               decorationColor: config.themeColors.primary.withValues(alpha: 0.5),
               fontWeight: FontWeight.normal,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCloseButton(double scale, SakiEngineConfig config) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onClose,
-        borderRadius: BorderRadius.circular(20 * scale),
-        child: Container(
-          width: 36 * scale,
-          height: 36 * scale,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: config.themeColors.primary.withValues(alpha: 0.1),
-            border: Border.all(
-              color: config.themeColors.primary.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Icon(
-            Icons.close,
-            color: config.themeColors.primary.withValues(alpha: 0.8),
-            size: 20 * scale,
           ),
         ),
       ),

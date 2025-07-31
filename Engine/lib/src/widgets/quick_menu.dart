@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 
 class QuickMenu extends StatefulWidget {
+  final VoidCallback onSave;
+  final VoidCallback onLoad;
   final VoidCallback onReview;
   final VoidCallback onBack;
 
   const QuickMenu({
     super.key,
+    required this.onSave,
+    required this.onLoad,
     required this.onReview,
     required this.onBack,
   });
@@ -48,6 +52,26 @@ class _QuickMenuState extends State<QuickMenu> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _QuickMenuButton(
+              text: '存档',
+              icon: Icons.save_alt_outlined,
+              onPressed: widget.onSave,
+              scaleFactor: scaleFactor,
+              config: config,
+              isAnyButtonHovered: _isAnyButtonHovered,
+              onHover: (hovering) => setState(() => _isAnyButtonHovered = hovering),
+            ),
+            _buildDivider(scaleFactor, config),
+            _QuickMenuButton(
+              text: '读档',
+              icon: Icons.folder_open_outlined,
+              onPressed: widget.onLoad,
+              scaleFactor: scaleFactor,
+              config: config,
+              isAnyButtonHovered: _isAnyButtonHovered,
+              onHover: (hovering) => setState(() => _isAnyButtonHovered = hovering),
+            ),
+            _buildDivider(scaleFactor, config),
+            _QuickMenuButton(
               text: '回顾',
               icon: Icons.auto_stories_outlined,
               onPressed: widget.onReview,
@@ -56,11 +80,7 @@ class _QuickMenuState extends State<QuickMenu> {
               isAnyButtonHovered: _isAnyButtonHovered,
               onHover: (hovering) => setState(() => _isAnyButtonHovered = hovering),
             ),
-            Container(
-              height: 1,
-              margin: EdgeInsets.symmetric(horizontal: 8 * scaleFactor),
-              color: config.themeColors.primary.withValues(alpha: 0.2),
-            ),
+            _buildDivider(scaleFactor, config),
             _QuickMenuButton(
               text: '返回',
               icon: Icons.arrow_back_rounded,
@@ -73,6 +93,14 @@ class _QuickMenuState extends State<QuickMenu> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDivider(double scaleFactor, SakiEngineConfig config) {
+    return Container(
+      height: 1,
+      margin: EdgeInsets.symmetric(horizontal: 8 * scaleFactor),
+      color: config.themeColors.primary.withValues(alpha: 0.2),
     );
   }
 }

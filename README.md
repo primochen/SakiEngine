@@ -66,7 +66,7 @@ flutter doctor  # 检查环境
 
 2. 克隆项目
 ```bash
-git clone https://github.com/yourusername/SakiEngine.git
+git clone https://github.com/MCDFsteve/SakiEngine.git
 cd SakiEngine
 ```
 

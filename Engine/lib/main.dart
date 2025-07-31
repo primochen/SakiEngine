@@ -4,17 +4,18 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
+import 'package:sakiengine/src/screens/save_load_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
   // 设置调试日志收集器
   setupDebugLogger();
   
   // 在Zone中运行应用，捕获所有print输出
   runZoned(() async {
+    // 将 ensureInitialized 移动到 runZoned 内部
+    WidgetsFlutterBinding.ensureInitialized();
     await SakiEngineConfig().loadConfig();
-    runApp(SakiEngineApp());
+    runApp(const SakiEngineApp());
   }, zoneSpecification: ZoneSpecification(
     print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
       // 记录到我们的日志系统
@@ -25,14 +26,9 @@ void main() async {
   ));
 }
 
-class SakiEngineApp extends StatefulWidget {
+class SakiEngineApp extends StatelessWidget {
   const SakiEngineApp({super.key});
 
-  @override
-  State<SakiEngineApp> createState() => _SakiEngineAppState();
-}
-
-class _SakiEngineAppState extends State<SakiEngineApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -41,20 +37,26 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
         primarySwatch: Colors.blue,
         fontFamily: 'SourceHanSansCN-Bold',
       ),
-      home: MainMenuScreen(
-        onNewGame: () {
-          // 从主菜单启动新游戏，并销毁主菜单
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => GamePlayScreen(),
-            ),
-            (Route<dynamic> route) => false, // 移除所有之前的路由
+      home: Builder(
+        builder: (context) {
+          return MainMenuScreen(
+            onNewGame: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const GamePlayScreen(),
+                ),
+                (Route<dynamic> route) => false,
+              );
+            },
+            onLoadGame: () {
+               // This callback might seem redundant now with MainMenuScreen's internal state,
+               // but we'll leave it for potential future use where the app might want to
+               // trigger the load screen from an external event.
+               // A better approach is what's implemented in MainMenuScreen itself.
+            },
           );
-        },
-        onLoadGame: () {
-          // TODO: 实现读取进度功能
-        },
+        }
       ),
     );
   }
-} 
+}

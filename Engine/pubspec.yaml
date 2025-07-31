@@ -43,6 +43,8 @@ dependencies:
   shared_preferences: ^2.5.3
   provider: ^6.1.4
   path: ^1.9.1
+  path_provider: ^2.1.5
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -71,19 +73,27 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/GameScript/
+    - assets/GameScript/GameScript/
+    - assets/GameScript/GameScript/labels/
+    - assets/GameScript/GameScript/configs/
     - assets/GameScript/labels/
     - assets/GameScript/screens/
     - assets/GameScript/configs/
     - assets/Assets/
-    - assets/Assets/music/
     - assets/Assets/images/
     - assets/Assets/images/backgrounds/
-    - assets/Assets/images/items/
     - assets/Assets/images/characters/
-    - assets/Assets/voice/
-    - assets/Assets/gui/
     - assets/Assets/fonts/
-    - assets/Assets/sound/
+    - assets/Assets/Assets/
+    - assets/Assets/Assets/music/
+    - assets/Assets/Assets/images/
+    - assets/Assets/Assets/images/backgrounds/
+    - assets/Assets/Assets/images/items/
+    - assets/Assets/Assets/images/characters/
+    - assets/Assets/Assets/voice/
+    - assets/Assets/Assets/gui/
+    - assets/Assets/Assets/fonts/
+    - assets/Assets/Assets/sound/
 
   shaders:
     # 着色器必须在这里单独声明

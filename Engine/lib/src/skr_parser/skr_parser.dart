@@ -63,41 +63,62 @@ class SkrParser {
           nodes.add(HideNode(parts[1]));
           break;
         default:
-          // Handles all dialogue variants: "...", yk "...", yk sad "...", yk pose1 sad "..."
-          final quoteMatch = RegExp(r'"([^"]*)"').firstMatch(trimmedLine);
-          if (quoteMatch == null) continue; // Not a dialogue line, skip.
-          
-          final dialogue = quoteMatch.group(1)!;
-          final partsBeforeQuote = trimmedLine.substring(0, quoteMatch.start).trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
-
-          if (partsBeforeQuote.isEmpty) {
-              // Narration: "dialogue"
-              nodes.add(SayNode(dialogue: dialogue));
-          } else {
-              // Character dialogue
-              final speaker = partsBeforeQuote[0];
-              String? pose;
-              String? expression;
-              
-              if (partsBeforeQuote.length > 1) {
-                  final attrs = partsBeforeQuote.sublist(1);
-                  attrs.forEach((attr) {
-                    // Check config to see if it's a pose or expression
-                    // This is a placeholder for actual config lookup
-                    if(attr.contains('pose')) { 
-                      pose = attr;
-                    } else {
-                      expression = attr;
-                    }
-                  });
-              }
-              
-              nodes.add(SayNode(character: speaker, dialogue: dialogue, pose: pose, expression: expression));
+          final sayNode = _parseSay(trimmedLine);
+          if (sayNode != null) {
+            nodes.add(sayNode);
           }
           break;
       }
       i++;
     }
     return ScriptNode(nodes);
+  }
+
+  SayNode? _parseSay(String line) {
+    // Improved regex to capture character, attributes and dialogue
+    // 1: Optional character and attributes part
+    // 2: Dialogue part
+    final sayRegex = RegExp(r'^(.*?)\s*"([^"]*)"$');
+    final match = sayRegex.firstMatch(line);
+
+    if (match == null) {
+      // Simple narration check for lines that are just "dialogue"
+      final simpleNarrationRegex = RegExp(r'^"([^"]*)"$');
+      final simpleMatch = simpleNarrationRegex.firstMatch(line);
+      if (simpleMatch != null) {
+        return SayNode(dialogue: simpleMatch.group(1)!);
+      }
+      return null;
+    }
+    
+    final dialogue = match.group(2)!;
+    final beforeQuote = match.group(1)!.trim();
+
+    if (beforeQuote.isEmpty) {
+      // Narration: "dialogue"
+      return SayNode(dialogue: dialogue);
+    }
+    
+    final parts = beforeQuote.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    if (parts.isEmpty) return null; // Should not happen with this regex, but for safety
+
+    final character = parts[0];
+    String? pose;
+    String? expression;
+    
+    // This logic is a placeholder. You'll need a robust way to distinguish
+    // poses from expressions, likely by checking against loaded pose/expression configs.
+    if (parts.length > 1) {
+        final attrs = parts.sublist(1);
+        // A simple heuristic: if it contains 'pose', it's a pose.
+        // This is not robust. A better way would be to check against a list of valid poses.
+        pose = attrs.firstWhere((attr) => attr.contains('pose'), orElse: () => '');
+        expression = attrs.firstWhere((attr) => !attr.contains('pose'), orElse: () => '');
+
+        if(pose.isEmpty) pose = null;
+        if(expression.isEmpty) expression = null;
+    }
+    
+    return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression);
   }
 } 

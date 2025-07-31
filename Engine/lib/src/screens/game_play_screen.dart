@@ -5,8 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
-import 'package:sakiengine/src/config/saki_engine_config.dart'; // 添加这个导入
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
+import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/skr_parser/skr_ast.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
 import 'package:sakiengine/src/widgets/dialogue_box.dart';
@@ -14,10 +15,12 @@ import 'package:sakiengine/src/widgets/global_hot_reload_button.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
-import 'package:sakiengine/src/widgets/confirm_dialog.dart'; // 添加导入
+import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
 class GamePlayScreen extends StatefulWidget {
-  const GamePlayScreen({super.key});
+  final SaveSlot? saveSlotToLoad;
+
+  const GamePlayScreen({super.key, this.saveSlotToLoad});
 
   @override
   State<GamePlayScreen> createState() => _GamePlayScreenState();
@@ -25,63 +28,54 @@ class GamePlayScreen extends StatefulWidget {
 
 class _GamePlayScreenState extends State<GamePlayScreen> {
   late final GameManager _gameManager;
-  final String _currentScript = 'start';
+  String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
+  bool _showSaveOverlay = false;
+  bool _showLoadOverlay = false;
 
-  // QuickMenu 的返回按钮处理
+  @override
+  void initState() {
+    super.initState();
+    _gameManager = GameManager(
+      onReturn: _returnToMainMenu,
+    );
+
+    if (widget.saveSlotToLoad != null) {
+      _currentScript = widget.saveSlotToLoad!.currentScript;
+      _gameManager.restoreFromSnapshot(
+          _currentScript, widget.saveSlotToLoad!.snapshot, shouldReExecute: false);
+    } else {
+      _gameManager.startGame(_currentScript);
+    }
+  }
+
+  void _returnToMainMenu() {
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => MainMenuScreen(
+            onNewGame: () => Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const GamePlayScreen()),
+            ),
+            onLoadGame: () => setState(() => _showLoadOverlay = true),
+          ),
+        ),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   void _handleQuickMenuBack() {
-    // 显示确认对话框
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
           title: '确认返回',
           content: '是否要返回主菜单？',
-          onConfirm: () {
-            // 销毁当前页面并跳转到主菜单
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => MainMenuScreen(
-                  onNewGame: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => GamePlayScreen()),
-                  ),
-                  onLoadGame: () {
-                    // TODO: 实现读取进度功能
-                  },
-                ),
-              ),
-              (Route<dynamic> route) => false, // 移除所有之前的路由
-            );
-          },
+          onConfirm: _returnToMainMenu,
         );
       },
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _gameManager = GameManager(
-      onReturn: () {
-        if (mounted) {
-          // 销毁当前页面并返回主菜单
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => MainMenuScreen(
-                onNewGame: () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => GamePlayScreen()),
-                ),
-                onLoadGame: () {
-                  // TODO: 实现读取进度功能
-                },
-              ),
-            ),
-            (Route<dynamic> route) => false, // 移除所有之前的路由
-          );
-        }
-      },
-    );
-    _gameManager.startGame('start');
   }
 
   @override
@@ -94,23 +88,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     await _gameManager.hotReload(_currentScript);
   }
 
-  void _showReviewScreen() {
-    setState(() {
-      _showReviewOverlay = true;
-    });
-  }
-
-  void _hideReviewScreen() {
-    setState(() {
-      _showReviewOverlay = false;
-    });
-  }
-
   Future<void> _jumpToHistoryEntry(DialogueHistoryEntry entry) async {
-    // 首先关闭回顾界面
-    _hideReviewScreen();
-    
-    // 然后跳转到指定位置
+    setState(() => _showReviewOverlay = false);
     await _gameManager.jumpToHistoryEntry(entry, _currentScript);
   }
 
@@ -130,7 +109,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 onTap: gameState.currentNode is MenuNode ? null : () => _gameManager.next(),
                 child: Stack(
                   children: [
-                    // Background
                     if (gameState.background != null)
                       FutureBuilder<String?>(
                         future: AssetManager().findAsset('backgrounds/${gameState.background!.replaceAll(' ', '-')}')
@@ -148,17 +126,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         }
                       ),
 
-                    // Characters
                     ..._buildCharacters(context, gameState.characters, gameState.poseConfigs),
 
-                    // Dialogue
                     if (gameState.dialogue != null)
                       DialogueBox(
                         speaker: gameState.speaker,
                         dialogue: gameState.dialogue!,
                       ),
 
-                    // Menu
                     if (gameState.currentNode is MenuNode)
                       ChoiceMenu(
                         menuNode: gameState.currentNode as MenuNode,
@@ -170,21 +145,33 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 ),
               ),
               
-              // Global Hot Reload Button
               GlobalHotReloadButton(onReload: _handleHotReload),
 
-              // Quick Menu
               QuickMenu(
-                onReview: () => _showReviewScreen(),
-                onBack: _handleQuickMenuBack, // 使用新的返回处理方法
+                onSave: () => setState(() => _showSaveOverlay = true),
+                onLoad: () => setState(() => _showLoadOverlay = true),
+                onReview: () => setState(() => _showReviewOverlay = true),
+                onBack: _handleQuickMenuBack,
               ),
 
-              // Review Overlay
               if (_showReviewOverlay)
                 ReviewOverlay(
                   dialogueHistory: _gameManager.getDialogueHistory(),
-                  onClose: _hideReviewScreen,
+                  onClose: () => setState(() => _showReviewOverlay = false),
                   onJumpToEntry: _jumpToHistoryEntry,
+                ),
+              
+              if (_showSaveOverlay)
+                SaveLoadScreen(
+                  mode: SaveLoadMode.save,
+                  gameManager: _gameManager,
+                  onClose: () => setState(() => _showSaveOverlay = false),
+                ),
+              
+              if (_showLoadOverlay)
+                SaveLoadScreen(
+                  mode: SaveLoadMode.load,
+                  onClose: () => setState(() => _showLoadOverlay = false),
                 ),
             ],
           );
@@ -197,17 +184,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     return characters.entries.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
-      // Use the character's positionId to get pose config, or a default one if not specified.
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
       final layers = <Widget>[];
 
-      // Layer 1: Pose Image (default to 'pose1' if not specified)
       final poseImage = characterState.pose ?? 'pose1';
       final poseAssetName = 'characters/${characterState.resourceId}-$poseImage';
       layers.add(_CharacterLayer(key: ValueKey('$characterId-pose'), assetName: poseAssetName));
 
-      // Layer 2: Expression Image (default to 'happy' if not specified)
       final expressionImage = characterState.expression ?? 'happy';
       final expressionAssetName = 'characters/${characterState.resourceId}-$expressionImage';
       layers.add(_CharacterLayer(key: ValueKey('$characterId-expression'), assetName: expressionAssetName));
@@ -215,7 +199,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       final characterStack = Stack(children: layers);
       
       Widget finalWidget = characterStack;
-      // Apply scaling based on poseConfig
       if (poseConfig.scale > 0) {
         finalWidget = SizedBox(
           height: MediaQuery.of(context).size.height * poseConfig.scale,
@@ -333,14 +316,10 @@ class _CharacterLayerState extends State<_CharacterLayer>
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        // We use a LayoutBuilder to get the final constraints from the parent,
-        // which allows us to calculate the correct size for our CustomPaint
-        // while maintaining the image's aspect ratio.
         return LayoutBuilder(
           builder: (context, constraints) {
             final imageSize = Size(_currentImage!.width.toDouble(), _currentImage!.height.toDouble());
             
-            // Fallback for unbounded height, though it shouldn't happen in our case.
             if (!constraints.hasBoundedHeight) {
               return CustomPaint(
                 size: imageSize,
@@ -389,11 +368,6 @@ class _DissolvePainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
-    //
-    // 调试输出，观察动画进度和纹理变化
-    //
-    // print("DissolvePainter painting: progress=${progress.toStringAsFixed(2)}, from=${imageFrom.hashCode}, to=${imageTo.hashCode}");
-    
     try {
       final shader = program.fragmentShader();
       shader
@@ -423,4 +397,4 @@ class _DissolvePainter extends CustomPainter {
         imageFrom != oldDelegate.imageFrom ||
         imageTo != oldDelegate.imageTo;
   }
-} 
+}

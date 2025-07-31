@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
+import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/widgets/debug_log_panel.dart';
 
 class _HoverButton extends StatefulWidget {
@@ -81,6 +82,8 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
+  bool _showLoadOverlay = false;
+
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
@@ -94,7 +97,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 背景图片
           FutureBuilder<String?>(
             future: AssetManager().findAsset('backgrounds/${config.mainMenuBackground}'),
             builder: (context, snapshot) {
@@ -104,11 +106,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   fit: BoxFit.cover,
                 );
               }
-              return Container(color: Colors.black); // 加载失败时的默认背景
+              return Container(color: Colors.black);
             },
           ),
           
-          // 标题 - 右上角
           Positioned(
             top: screenSize.height * config.mainMenuTitleTop,
             right: screenSize.width * config.mainMenuTitleRight,
@@ -130,7 +131,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
           ),
           
-          // 深色矩形条块
           Positioned(
             bottom: screenSize.height * 0.04,
             right: screenSize.width * 0.01,
@@ -141,14 +141,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
           ),
           
-          // 调试按钮 - 左下角
           Positioned(
             bottom: screenSize.height * 0.05,
             left: screenSize.width * 0.02,
             child: _buildDebugButton(context, scale, config),
           ),
           
-          // 按钮 - 右下角
           Positioned(
             bottom: screenSize.height * 0.05,
             right: screenSize.width * 0.01,
@@ -158,15 +156,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 _buildMenuButton(
                   context, 
                   '新游戏', 
-                  () {
-                    // 实际启动新游戏的逻辑
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => GamePlayScreen(),
-                      ),
-                      (Route<dynamic> route) => false,
-                    );
-                  }, 
+                  widget.onNewGame,
                   scale,
                   config,
                 ),
@@ -174,7 +164,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 _buildMenuButton(
                   context, 
                   '继续游戏', 
-                  widget.onLoadGame, 
+                  () => setState(() => _showLoadOverlay = true), 
                   scale,
                   config,
                 ),
@@ -189,6 +179,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ],
             ),
           ),
+
+          if (_showLoadOverlay)
+            SaveLoadScreen(
+              mode: SaveLoadMode.load,
+              onClose: () => setState(() => _showLoadOverlay = false),
+            ),
         ],
       ),
     );
