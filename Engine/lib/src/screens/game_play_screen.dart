@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hotkey_system/hotkey_system.dart';
@@ -45,7 +47,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
 
     // 注册系统级热键 Shift+R
-    _setupHotkey();
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
+      _setupHotkey();
+    }
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -93,8 +97,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   @override
   void dispose() {
     // 取消注册系统热键
-    if (_reloadHotKey != null) {
-      hotKeySystem.unregister(_reloadHotKey!);
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
+      if (_reloadHotKey != null) {
+        hotKeySystem.unregister(_reloadHotKey!);
+      }
     }
     _gameManager.dispose();
     super.dispose();
