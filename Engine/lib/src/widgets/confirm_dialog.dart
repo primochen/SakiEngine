@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/scaling_manager.dart';
 
 class ConfirmDialog extends StatelessWidget {
   final String title;
@@ -18,10 +19,8 @@ class ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
-    final mediaQuery = MediaQuery.of(context);
-    final scale = mediaQuery.size.width / config.logicalWidth;
-    final screenWidth = mediaQuery.size.width;
-    final screenHeight = mediaQuery.size.height;
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
 
     return Material(
       type: MaterialType.transparency,
@@ -31,58 +30,55 @@ class ConfirmDialog extends StatelessWidget {
           width: double.infinity,
           height: double.infinity,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                config.themeColors.primaryDark.withValues(alpha: 0.2),
-                config.themeColors.primaryDark.withValues(alpha: 0.2),
-              ],
-            ),
+            color: config.themeColors.primaryDark.withOpacity(0.2),
           ),
           child: GestureDetector(
             onTap: () {}, // 防止点击内容区域时关闭
             child: Center(
               child: Container(
-                width: screenWidth * 0.3,
-                height: screenHeight * 0.3,
+                width: 480 * uiScale,
+                constraints: const BoxConstraints(
+                  //minHeight: 200,
+                ),
                 decoration: BoxDecoration(
-                  color: config.themeColors.background.withValues(alpha: 0.95),
+                  color: config.themeColors.background.withOpacity(0.95),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 20 * scale,
-                      offset: Offset(0, 8 * scale),
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20 * uiScale,
+                      offset: Offset(0, 8 * uiScale),
                     ),
                   ],
                 ),
-                padding: EdgeInsets.all(24 * scale),
+                padding: EdgeInsets.all(24 * uiScale),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       title,
                       textAlign: TextAlign.left,
                       style: config.dialogueTextStyle.copyWith(
-                        fontSize: config.dialogueTextStyle.fontSize! * 1.2,
+                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 1.2,
                         fontWeight: FontWeight.bold,
                         color: config.themeColors.primary,
                       ),
                     ),
-                    SizedBox(height: 16 * scale),
-                    Expanded(
+                    SizedBox(height: 16 * uiScale),
+                    Flexible(
                       child: SingleChildScrollView(
                         child: Text(
                           content,
                           textAlign: TextAlign.left,
                           style: config.dialogueTextStyle.copyWith(
+                            fontSize: config.dialogueTextStyle.fontSize! * textScale,
                             color: config.themeColors.onSurface,
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 24 * scale),
+                    SizedBox(height: 24 * uiScale),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
@@ -94,11 +90,12 @@ class ConfirmDialog extends StatelessWidget {
                             Navigator.of(context).pop();
                             onCancel?.call();
                           },
-                          scale,
+                          uiScale,
+                          textScale,
                           config,
                           isNegative: true,
                         ),
-                        SizedBox(width: 16 * scale),
+                        SizedBox(width: 16 * uiScale),
                         _buildButton(
                           context, 
                           '确定', 
@@ -107,7 +104,8 @@ class ConfirmDialog extends StatelessWidget {
                             Navigator.of(context).pop();
                             onConfirm();
                           },
-                          scale,
+                          uiScale,
+                          textScale,
                           config,
                         ),
                       ],
@@ -127,7 +125,8 @@ class ConfirmDialog extends StatelessWidget {
     String text, 
     IconData icon,
     VoidCallback onPressed, 
-    double scale,
+    double uiScale,
+    double textScale,
     SakiEngineConfig config,
     {bool isNegative = false}
   ) {
@@ -137,17 +136,17 @@ class ConfirmDialog extends StatelessWidget {
         onTap: onPressed,
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: 16 * scale,
-            vertical: 8 * scale,
+            horizontal: 16 * uiScale,
+            vertical: 8 * uiScale,
           ),
           decoration: BoxDecoration(
             color: isNegative 
-              ? config.themeColors.background.withValues(alpha: 0.6)
-              : config.themeColors.primary.withValues(alpha: 0.1),
+              ? config.themeColors.background.withOpacity(0.6)
+              : config.themeColors.primary.withOpacity(0.1),
             border: Border.all(
               color: isNegative 
-                ? config.themeColors.onSurfaceVariant.withValues(alpha: 0.3)
-                : config.themeColors.primary.withValues(alpha: 0.5),
+                ? config.themeColors.onSurfaceVariant.withOpacity(0.3)
+                : config.themeColors.primary.withOpacity(0.5),
               width: 1,
             ),
           ),
@@ -159,12 +158,13 @@ class ConfirmDialog extends StatelessWidget {
                 color: isNegative 
                   ? config.themeColors.onSurfaceVariant 
                   : config.themeColors.primary,
-                size: config.dialogueTextStyle.fontSize! * scale * 1.2,
+                size: config.dialogueTextStyle.fontSize! * textScale * 1.2,
               ),
-              SizedBox(width: 8 * scale),
+              SizedBox(width: 8 * uiScale),
               Text(
                 text,
                 style: config.dialogueTextStyle.copyWith(
+                  fontSize: config.dialogueTextStyle.fontSize! * textScale,
                   color: isNegative 
                     ? config.themeColors.onSurfaceVariant 
                     : config.themeColors.primary,

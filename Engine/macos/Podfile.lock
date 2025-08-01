@@ -1,5 +1,9 @@
 PODS:
   - FlutterMacOS (1.0.0)
+  - HotKey (0.2.1)
+  - hotkey_system (0.0.1):
+    - FlutterMacOS
+    - HotKey
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -13,14 +17,21 @@ PODS:
 
 DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - hotkey_system (from `Flutter/ephemeral/.symlinks/plugins/hotkey_system/macos`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
 
+SPEC REPOS:
+  trunk:
+    - HotKey
+
 EXTERNAL SOURCES:
   FlutterMacOS:
     :path: Flutter/ephemeral
+  hotkey_system:
+    :path: Flutter/ephemeral/.symlinks/plugins/hotkey_system/macos
   path_provider_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
   screen_retriever_macos:
@@ -32,6 +43,8 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  HotKey: 400beb7caa29054ea8d864c96f5ba7e5b4852277
+  hotkey_system: 92e6a2c3f35865fcae26965aa7700bf1e52e86ce
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7

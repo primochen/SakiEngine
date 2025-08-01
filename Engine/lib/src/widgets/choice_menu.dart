@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/skr_parser/skr_ast.dart';
+import 'package:sakiengine/src/utils/scaling_manager.dart';
 
 class ChoiceMenu extends StatelessWidget {
   final MenuNode menuNode;
@@ -16,11 +17,8 @@ class ChoiceMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
+    final scale = context.scaleFor(ComponentType.menu);
     final config = SakiEngineConfig();
-    final scaleX = screenSize.width / config.logicalWidth;
-    final scaleY = screenSize.height / config.logicalHeight;
-    final scale = scaleX < scaleY ? scaleX : scaleY;
 
     return Center(
       child: Column(
@@ -82,10 +80,10 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
             color: _isHovered 
               ? HSLColor.fromColor(widget.config.themeColors.background)
                   .withLightness((HSLColor.fromColor(widget.config.themeColors.background).lightness - 0.1).clamp(0.0, 1.0))
-                  .toColor().withValues(alpha: 0.9)
-              : widget.config.themeColors.background.withValues(alpha: 0.9),
+                  .toColor().withOpacity(0.9)
+              : widget.config.themeColors.background.withOpacity(0.9),
             border: Border.all(
-              color: widget.config.themeColors.primary.withValues(alpha: 0.5),
+              color: widget.config.themeColors.primary.withOpacity(0.5),
               width: 1,
             ),
           ),
@@ -102,4 +100,4 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
       ),
     );
   }
-} 
+}

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
+import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 
 class ReviewOverlay extends StatefulWidget {
   final List<DialogueHistoryEntry> dialogueHistory;
@@ -42,134 +44,39 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
     final config = SakiEngineConfig();
-    final scaleX = screenSize.width / config.logicalWidth;
-    final scaleY = screenSize.height / config.logicalHeight;
-    final scale = scaleX < scaleY ? scaleX : scaleY;
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
 
-    return Shortcuts(
-      shortcuts: <LogicalKeySet, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.escape): const _CloseIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          _CloseIntent: _CloseAction(widget.onClose),
-        },
-        child: Focus(
-          autofocus: true,
-          child: GestureDetector(
-            onTap: widget.onClose, // 点击背景关闭
-            child: _buildContent(scale, config, screenSize),
+    return OverlayScaffold(
+      title: '回忆录',
+      onClose: widget.onClose,
+      content: Container(
+        padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),
+        child: widget.dialogueHistory.isEmpty
+            ? _buildEmptyState(uiScale, textScale, config)
+            : _buildDialogueList(uiScale, textScale, config),
+      ),
+      footer: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 12 * uiScale),
+        decoration: BoxDecoration(
+          color: config.themeColors.primary.withValues(alpha: 0.05),
+          border: Border(
+            top: BorderSide(
+              color: config.themeColors.primary.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildContent(double scale, SakiEngineConfig config, Size screenSize) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            config.themeColors.primaryDark.withValues(alpha: 0.5),
-            config.themeColors.primaryDark.withValues(alpha: 0.5),
-          ],
-        ),
-      ),
-      child: GestureDetector(
-        onTap: () {}, // 防止点击内容区域时也关闭
         child: Center(
-          child: Container(
-            width: screenSize.width * 0.85,
-            height: screenSize.height * 0.8,
-            decoration: BoxDecoration(
-              color: config.themeColors.background.withValues(alpha: 0.95),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 20 * scale,
-                  offset: Offset(0, 8 * scale),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // 标题栏
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 32 * scale,
-                    vertical: 20 * scale,
-                  ),
-                  decoration: BoxDecoration(
-                    color: config.themeColors.primary.withValues(alpha: 0.1),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: config.themeColors.primary.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        '回忆录',
-                        style: config.reviewTitleTextStyle.copyWith(
-                          fontSize: config.reviewTitleTextStyle.fontSize! * scale * _titleSizeRatio,
-                          color: config.themeColors.primary,
-                          letterSpacing: 2.0,
-                        ),
-                      ),
-                      const Spacer(),
-                      CommonCloseButton(
-                        scale: scale,
-                        onClose: widget.onClose,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // 对话历史列表
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 32 * scale, vertical: 16 * scale),
-                    child: widget.dialogueHistory.isEmpty
-                        ? _buildEmptyState(scale, config)
-                        : _buildDialogueList(scale, config),
-                  ),
-                ),
-                
-                // 底部装饰
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 12 * scale),
-                  decoration: BoxDecoration(
-                    color: config.themeColors.primary.withValues(alpha: 0.05),
-                    border: Border(
-                      top: BorderSide(
-                        color: config.themeColors.primary.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${widget.dialogueHistory.length} 段回忆',
-                      style: config.reviewTitleTextStyle.copyWith(
-                        fontSize: config.reviewTitleTextStyle.fontSize! * scale * _bottomTextSizeRatio,
-                        color: config.themeColors.primary.withValues(alpha: 0.7),
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          child: Text(
+            '${widget.dialogueHistory.length} 段回忆',
+            style: config.reviewTitleTextStyle.copyWith(
+              fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _bottomTextSizeRatio,
+              color: config.themeColors.primary.withValues(alpha: 0.7),
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.normal,
             ),
           ),
         ),
@@ -177,14 +84,14 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     );
   }
 
-  Widget _buildEmptyState(double scale, SakiEngineConfig config) {
+  Widget _buildEmptyState(double uiScale, double textScale, SakiEngineConfig config) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80 * scale,
-            height: 80 * scale,
+            width: 80 * uiScale,
+            height: 80 * uiScale,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: config.themeColors.primary.withValues(alpha: 0.1),
@@ -195,24 +102,24 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
             ),
             child: Icon(
               Icons.auto_stories_outlined,
-              size: 36 * scale,
+              size: 36 * uiScale,
               color: config.themeColors.primary.withValues(alpha: 0.6),
             ),
           ),
-          SizedBox(height: 24 * scale),
+          SizedBox(height: 24 * uiScale),
           Text(
             '回忆的书页还是空白的',
             style: config.reviewTitleTextStyle.copyWith(
-              fontSize: config.reviewTitleTextStyle.fontSize! * scale * _emptyMainTextSizeRatio,
+              fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _emptyMainTextSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.7),
               fontStyle: FontStyle.italic,
             ),
           ),
-          SizedBox(height: 8 * scale),
+          SizedBox(height: 8 * uiScale),
           Text(
             '开始对话来创造美好的回忆吧',
             style: config.reviewTitleTextStyle.copyWith(
-              fontSize: config.reviewTitleTextStyle.fontSize! * scale * _emptySubTextSizeRatio,
+              fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _emptySubTextSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.5),
               fontWeight: FontWeight.normal,
             ),
@@ -222,19 +129,19 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     );
   }
 
-  Widget _buildDialogueList(double scale, SakiEngineConfig config) {
+  Widget _buildDialogueList(double uiScale, double textScale, SakiEngineConfig config) {
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: false,
-      thickness: 6 * scale,
-      radius: Radius.circular(3 * scale),
+      thickness: 6 * uiScale,
+      radius: Radius.circular(3 * uiScale),
       child: ListView.builder(
         controller: _scrollController,
         padding: EdgeInsets.zero,
         itemCount: widget.dialogueHistory.length,
         itemBuilder: (context, index) {
           final entry = widget.dialogueHistory[index];
-          return _buildDialogueEntry(entry, index, scale, config);
+          return _buildDialogueEntry(entry, index, uiScale, textScale, config);
         },
       ),
     );
@@ -243,14 +150,15 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
   Widget _buildDialogueEntry(
     DialogueHistoryEntry entry,
     int index,
-    double scale,
+    double uiScale,
+    double textScale,
     SakiEngineConfig config,
   ) {
     return Container(
-      margin: EdgeInsets.only(bottom: 2 * scale),
+      margin: EdgeInsets.only(bottom: 2 * uiScale),
       padding: EdgeInsets.symmetric(
-        horizontal: 20 * scale,
-        vertical: 12 * scale,
+        horizontal: 20 * uiScale,
+        vertical: 12 * uiScale,
       ),
       decoration: BoxDecoration(
         border: Border(
@@ -270,18 +178,18 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
                 Text(
                   entry.speaker!,
                   style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * scale * _speakerSizeRatio,
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _speakerSizeRatio,
                     fontWeight: FontWeight.w500,
                     color: config.themeColors.primary,
                     letterSpacing: 0.5,
                   ),
                 ),
-                SizedBox(width: 12 * scale),
+                SizedBox(width: 12 * uiScale),
               ],
               Text(
                 '${index + 1}',
                 style: config.reviewTitleTextStyle.copyWith(
-                  fontSize: config.reviewTitleTextStyle.fontSize! * scale * _indexSizeRatio,
+                  fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _indexSizeRatio,
                   color: config.themeColors.primary.withValues(alpha: 0.5),
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.normal,
@@ -290,12 +198,12 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
               const Spacer(),
               // 跳转按钮
               if (widget.onJumpToEntry != null)
-                _buildJumpButton(entry, scale, config),
-              SizedBox(width: 12 * scale),
+                _buildJumpButton(entry, uiScale, textScale, config),
+              SizedBox(width: 12 * uiScale),
               Text(
                 _formatTimestamp(entry.timestamp),
                 style: config.reviewTitleTextStyle.copyWith(
-                  fontSize: config.reviewTitleTextStyle.fontSize! * scale * _timestampSizeRatio,
+                  fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _timestampSizeRatio,
                   color: config.themeColors.primary.withValues(alpha: 0.4),
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.normal,
@@ -303,15 +211,15 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
               ),
             ],
           ),
-          SizedBox(height: 6 * scale),
+          SizedBox(height: 6 * uiScale),
           
           // 对话内容
           Container(
-            padding: EdgeInsets.only(left: entry.speaker != null ? 0 : 16 * scale),
+            padding: EdgeInsets.only(left: entry.speaker != null ? 0 : 16 * uiScale),
             child: Text(
               entry.dialogue,
               style: config.reviewTitleTextStyle.copyWith(
-                fontSize: config.reviewTitleTextStyle.fontSize! * scale * _dialogueSizeRatio,
+                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _dialogueSizeRatio,
                 color: config.themeColors.onSurface,
                 height: 1.6,
                 letterSpacing: 0.3,
@@ -324,20 +232,20 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     );
   }
 
-  Widget _buildJumpButton(DialogueHistoryEntry entry, double scale, SakiEngineConfig config) {
+  Widget _buildJumpButton(DialogueHistoryEntry entry, double uiScale, double textScale, SakiEngineConfig config) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
           widget.onJumpToEntry?.call(entry);
         },
-        borderRadius: BorderRadius.circular(12 * scale),
+        borderRadius: BorderRadius.circular(12 * uiScale),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 4 * scale),
+          padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
           child: Text(
             '跳转',
             style: config.reviewTitleTextStyle.copyWith(
-              fontSize: config.reviewTitleTextStyle.fontSize! * scale * _jumpButtonSizeRatio,
+              fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _jumpButtonSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.7),
               decoration: TextDecoration.underline,
               decorationColor: config.themeColors.primary.withValues(alpha: 0.5),

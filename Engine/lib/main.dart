@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hotkey_system/hotkey_system.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
-import 'package:sakiengine/src/screens/save_load_screen.dart';
 
 void main() async {
   // 设置调试日志收集器
@@ -14,6 +14,10 @@ void main() async {
   runZoned(() async {
     // 将 ensureInitialized 移动到 runZoned 内部
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // 初始化系统热键，清理之前的注册（用于热重载）
+    await hotKeySystem.unregisterAll();
+    
     await SakiEngineConfig().loadConfig();
     runApp(const SakiEngineApp());
   }, zoneSpecification: ZoneSpecification(
@@ -33,6 +37,7 @@ class SakiEngineApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SakiEngine',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'SourceHanSansCN-Bold',

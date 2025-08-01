@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
-import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
+import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/debug_log_panel.dart';
 
 class _HoverButton extends StatefulWidget {
@@ -43,10 +43,10 @@ class _HoverButtonState extends State<_HoverButton> {
             color: _isHovered 
               ? HSLColor.fromColor(widget.config.themeColors.background)
                   .withLightness((HSLColor.fromColor(widget.config.themeColors.background).lightness - 0.1).clamp(0.0, 1.0))
-                  .toColor().withValues(alpha: 0.9)
-              : widget.config.themeColors.background.withValues(alpha: 0.9),
+                  .toColor().withOpacity(0.9)
+              : widget.config.themeColors.background.withOpacity(0.9),
             border: Border.all(
-              color: widget.config.themeColors.primary.withValues(alpha: 0.5),
+              color: widget.config.themeColors.primary.withOpacity(0.5),
               width: 1,
             ),
           ),
@@ -87,11 +87,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
-    final mediaQuery = MediaQuery.of(context);
-    final screenSize = mediaQuery.size;
-    final scaleX = screenSize.width / config.logicalWidth;
-    final scaleY = screenSize.height / config.logicalHeight;
-    final scale = scaleX < scaleY ? scaleX : scaleY;
+    final screenSize = MediaQuery.of(context).size;
+    final menuScale = context.scaleFor(ComponentType.menu);
+    final textScale = context.scaleFor(ComponentType.text);
 
     return Scaffold(
       body: Stack(
@@ -117,7 +115,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               'SakiEngine',
               style: TextStyle(
                 fontFamily: 'SourceHanSansCN-Bold',
-                fontSize: config.mainMenuTitleSize * scale,
+                fontSize: config.mainMenuTitleSize * textScale,
                 color: config.themeColors.background,
                 letterSpacing: 4,
                 shadows: [
@@ -144,7 +142,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           Positioned(
             bottom: screenSize.height * 0.05,
             left: screenSize.width * 0.02,
-            child: _buildDebugButton(context, scale, config),
+            child: _buildDebugButton(context, menuScale, config),
           ),
           
           Positioned(
@@ -157,23 +155,23 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   context, 
                   '新游戏', 
                   widget.onNewGame,
-                  scale,
+                  menuScale,
                   config,
                 ),
-                SizedBox(width: 20 * scale),
+                SizedBox(width: 20 * menuScale),
                 _buildMenuButton(
                   context, 
                   '继续游戏', 
                   () => setState(() => _showLoadOverlay = true), 
-                  scale,
+                  menuScale,
                   config,
                 ),
-                SizedBox(width: 20 * scale),
+                SizedBox(width: 20 * menuScale),
                 _buildMenuButton(
                   context, 
                   '退出游戏', 
                   () => exit(0), 
-                  scale,
+                  menuScale,
                   config,
                 ),
               ],

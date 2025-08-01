@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/scaling_manager.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
@@ -60,12 +61,11 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final config = SakiEngineConfig();
-    final scaleX = screenSize.width / config.logicalWidth;
-    final scaleY = screenSize.height / config.logicalHeight;
-    final scale = scaleX < scaleY ? scaleX : scaleY;
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
 
     final dialogueStyle = config.dialogueTextStyle.copyWith(
-      fontSize: config.dialogueTextStyle.fontSize! * scale * 0.9,
+      fontSize: config.dialogueTextStyle.fontSize! * textScale,
       color: config.themeColors.onSurface,
       height: 1.6,
       letterSpacing: 0.3,
@@ -81,19 +81,19 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
           child: Container(
             width: screenSize.width * 0.85,
             height: screenSize.height * 0.25,
-            margin: EdgeInsets.all(16.0 * scale),
+            margin: EdgeInsets.all(16.0 * uiScale),
             decoration: BoxDecoration(
-              color: config.themeColors.background.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(8 * scale),
+              color: config.themeColors.background.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(8 * uiScale),
               border: Border.all(
-                color: config.themeColors.primary.withValues(alpha: _isHovered ? 0.4 : 0.2),
+                color: config.themeColors.primary.withOpacity(_isHovered ? 0.4 : 0.2),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 12 * scale,
-                  offset: Offset(0, 4 * scale),
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 12 * uiScale,
+                  offset: Offset(0, 4 * uiScale),
                 ),
               ],
             ),
@@ -105,14 +105,14 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(
-                    horizontal: 16 * scale,
-                    vertical: 12 * scale,
+                    horizontal: 16 * uiScale,
+                    vertical: 12 * uiScale,
                   ),
                   decoration: BoxDecoration(
-                    color: config.themeColors.primary.withValues(alpha: 0.05),
+                    color: config.themeColors.primary.withOpacity(0.05),
                     border: Border(
                       bottom: BorderSide(
-                        color: config.themeColors.primary.withValues(alpha: 0.2),
+                        color: config.themeColors.primary.withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -120,7 +120,7 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
                   child: Text(
                     widget.speaker ?? '', // 如果 speaker 为 null，则显示空字符串
                     style: config.speakerTextStyle.copyWith(
-                      fontSize: config.speakerTextStyle.fontSize! * scale * 0.9,
+                      fontSize: config.speakerTextStyle.fontSize! * textScale,
                       color: config.themeColors.primary,
                       letterSpacing: 0.5,
                     ),
@@ -133,19 +133,21 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
                     builder: (context, constraints) {
                       // 检查文本是否溢出
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        setState(() {
-                          _isDialogueComplete = !_isTextOverflowing(
-                            context, 
-                            widget.dialogue, 
-                            dialogueStyle, 
-                            constraints.maxWidth - 32 * scale
-                          );
-                        });
+                        if (mounted) {
+                          setState(() {
+                            _isDialogueComplete = !_isTextOverflowing(
+                              context, 
+                              widget.dialogue, 
+                              dialogueStyle, 
+                              constraints.maxWidth - 32 * uiScale
+                            );
+                          });
+                        }
                       });
 
                       return SingleChildScrollView(
                         child: Padding(
-                          padding: EdgeInsets.all(16.0 * scale),
+                          padding: EdgeInsets.all(16.0 * uiScale),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
@@ -160,7 +162,7 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
                                        WidgetSpan(
                                          alignment: PlaceholderAlignment.middle,
                                          child: Padding(
-                                           padding: EdgeInsets.only(left:scale),
+                                           padding: EdgeInsets.only(left: uiScale),
                                            child: AnimatedBuilder(
                                              animation: _blinkAnimation,
                                              builder: (context, child) {
@@ -168,7 +170,7 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
                                                  opacity: _blinkAnimation.value,
                                                  child: Icon(
                                                    Icons.keyboard_arrow_right_rounded,
-                                                   color: config.themeColors.primary.withValues(alpha: 0.7),
+                                                   color: config.themeColors.primary.withOpacity(0.7),
                                                    size: dialogueStyle.fontSize! * 2,
                                                  ),
                                                );
@@ -193,4 +195,4 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
       ),
     );
   }
-} 
+}

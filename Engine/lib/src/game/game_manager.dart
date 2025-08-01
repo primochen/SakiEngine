@@ -191,7 +191,9 @@ class GameManager {
     
     _scriptIndex = snapshot.scriptIndex;
     _currentState = snapshot.currentState.copyWith(poseConfigs: _poseConfigs);
-    _dialogueHistory = List.from(snapshot.dialogueHistory);
+    if (snapshot.dialogueHistory.isNotEmpty) {
+      _dialogueHistory = List.from(snapshot.dialogueHistory);
+    }
     
     if (shouldReExecute) {
       _isProcessing = false;

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/game/screenshot_generator.dart';
 
 class SaveLoadManager {
   Future<String> getSavesDirectory() async {
@@ -27,12 +28,28 @@ class SaveLoadManager {
       }
     }
 
+    // 先删除旧截图，然后生成新截图
+    await ScreenshotGenerator.deleteScreenshot(slotId, directory);
+    
+    String? screenshotPath;
+    try {
+      screenshotPath = await ScreenshotGenerator.generateScreenshot(
+        currentState,
+        currentState.poseConfigs,
+        directory,
+        slotId,
+      );
+    } catch (e) {
+      print('生成截图失败: $e');
+    }
+
     final saveSlot = SaveSlot(
       id: slotId,
       saveTime: DateTime.now(),
       currentScript: currentScript,
       dialoguePreview: dialoguePreview,
       snapshot: snapshot,
+      screenshotPath: screenshotPath,
     );
 
     await file.writeAsString(jsonEncode(saveSlot.toJson()));
@@ -77,6 +94,9 @@ class SaveLoadManager {
     if (await file.exists()) {
       await file.delete();
     }
+    
+    // 同时删除截图文件
+    await ScreenshotGenerator.deleteScreenshot(slotId, directory);
   }
 }
 
@@ -86,6 +106,7 @@ class SaveSlot {
   final String currentScript;
   final String dialoguePreview;
   final GameStateSnapshot snapshot;
+  final String? screenshotPath;
 
   SaveSlot({
     required this.id,
@@ -93,6 +114,7 @@ class SaveSlot {
     required this.currentScript,
     required this.dialoguePreview,
     required this.snapshot,
+    this.screenshotPath,
   });
 
   factory SaveSlot.fromJson(Map<String, dynamic> json) {
@@ -102,6 +124,7 @@ class SaveSlot {
       currentScript: json['currentScript'],
       dialoguePreview: json['dialoguePreview'],
       snapshot: GameStateSnapshot.fromJson(json['snapshot']),
+      screenshotPath: json['screenshotPath'],
     );
   }
 
@@ -112,6 +135,7 @@ class SaveSlot {
       'currentScript': currentScript,
       'dialoguePreview': dialoguePreview,
       'snapshot': snapshot.toJson(),
+      'screenshotPath': screenshotPath,
     };
   }
 }

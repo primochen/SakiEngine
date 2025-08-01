@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hotkey_system/hotkey_system.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
@@ -11,11 +12,12 @@ import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/skr_parser/skr_ast.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
 import 'package:sakiengine/src/widgets/dialogue_box.dart';
-import 'package:sakiengine/src/widgets/global_hot_reload_button.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
+import 'package:sakiengine/src/utils/scaling_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -28,10 +30,12 @@ class GamePlayScreen extends StatefulWidget {
 
 class _GamePlayScreenState extends State<GamePlayScreen> {
   late final GameManager _gameManager;
+  final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
   bool _showLoadOverlay = false;
+  HotKey? _reloadHotKey;
 
   @override
   void initState() {
@@ -40,10 +44,18 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       onReturn: _returnToMainMenu,
     );
 
+    // 注册系统级热键 Shift+R
+    _setupHotkey();
+
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
       _gameManager.restoreFromSnapshot(
           _currentScript, widget.saveSlotToLoad!.snapshot, shouldReExecute: false);
+      
+      // 延迟显示读档成功通知，确保UI已经构建完成
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showNotificationMessage('读档成功');
+      });
     } else {
       _gameManager.startGame(_currentScript);
     }
@@ -80,17 +92,44 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   @override
   void dispose() {
+    // 取消注册系统热键
+    if (_reloadHotKey != null) {
+      hotKeySystem.unregister(_reloadHotKey!);
+    }
     _gameManager.dispose();
     super.dispose();
   }
 
+  // 设置系统级热键
+  Future<void> _setupHotkey() async {
+    _reloadHotKey = HotKey(
+      KeyCode.keyR,
+      modifiers: [KeyModifier.shift],
+      scope: HotKeyScope.system, // 系统级热键，即使失去焦点也可以使用
+    );
+    
+    await hotKeySystem.register(
+      _reloadHotKey!,
+      keyDownHandler: (hotKey) {
+        _handleHotReload();
+      },
+    );
+  }
+
+  // 显示通知消息
+  void _showNotificationMessage(String message) {
+    _notificationOverlayKey.currentState?.show(message);
+  }
+
   Future<void> _handleHotReload() async {
     await _gameManager.hotReload(_currentScript);
+    _showNotificationMessage('重载完成');
   }
 
   Future<void> _jumpToHistoryEntry(DialogueHistoryEntry entry) async {
     setState(() => _showReviewOverlay = false);
     await _gameManager.jumpToHistoryEntry(entry, _currentScript);
+    _showNotificationMessage('跳转成功');
   }
 
   @override
@@ -145,8 +184,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 ),
               ),
               
-              GlobalHotReloadButton(onReload: _handleHotReload),
-
               QuickMenu(
                 onSave: () => setState(() => _showSaveOverlay = true),
                 onLoad: () => setState(() => _showLoadOverlay = true),
@@ -173,6 +210,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   mode: SaveLoadMode.load,
                   onClose: () => setState(() => _showLoadOverlay = false),
                 ),
+              // 通知覆盖层
+              NotificationOverlay(
+                key: _notificationOverlayKey,
+                scale: context.scaleFor(ComponentType.ui),
+              ),
             ],
           );
         },
