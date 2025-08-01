@@ -85,6 +85,7 @@ jobs:
       
       # Prepare resources and pubspec.yaml
       - name: Prepare Build Environment
+        shell: bash
         run: |
           ENGINE_DIR="$GITHUB_WORKSPACE/Engine"
           GAME_DIR="$GITHUB_WORKSPACE/Game/TestGame"
@@ -127,12 +128,6 @@ jobs:
               echo "Error: '  assets:' section not found in pubspec.yaml."
               exit 1
           fi
-
-      # Flutter Pub Get
-      - name: Flutter Pub Get
-        run: |
-          cd Engine
-          flutter pub get
 
       # Cache CocoaPods (for iOS/macOS)
       - name: Cache Pod
@@ -225,10 +220,11 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y mpv libmpv-dev pkg-config clang cmake libgtk-3-dev ninja-build libasound2-dev libass-dev zip libkeybinder-3.0-dev
           
-          chmod +x build.sh
-          ./build.sh linux
+          cd Engine
+          flutter pub get
+          flutter build linux --release
           
-          cd Engine/build/linux/x64/release
+          cd build/linux/x64/release
           zip -r SakiEngine-${{ steps.get_version.outputs.version }}-Linux-amd64.zip bundle
       
       # Upload Artifacts
