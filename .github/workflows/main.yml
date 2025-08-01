@@ -83,11 +83,55 @@ jobs:
           channel: 'stable'
           cache: true
       
+      # Prepare resources and pubspec.yaml
+      - name: Prepare Build Environment
+        run: |
+          ENGINE_DIR="$GITHUB_WORKSPACE/Engine"
+          GAME_DIR="$GITHUB_WORKSPACE/Game/TestGame"
+          PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml"
+          TEMP_PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml.temp"
+
+          echo "Preparing resource directories..."
+          rm -rf "$ENGINE_DIR/assets/Assets"
+          rm -rf "$ENGINE_DIR/assets/GameScript"
+          mkdir -p "$ENGINE_DIR/assets"
+
+          echo "Copying game assets and scripts..."
+          cp -r "$GAME_DIR/Assets" "$ENGINE_DIR/assets/"
+          cp -r "$GAME_DIR/GameScript" "$ENGINE_DIR/assets/"
+
+          echo "Dynamically updating pubspec.yaml..."
+          assets_start_line=$(grep -n -E "^\s\sassets:" "$PUBSPEC_PATH" | head -1 | cut -d: -f1)
+          if [ -n "$assets_start_line" ]; then
+              head -n "$((assets_start_line - 1))" "$PUBSPEC_PATH" > "$TEMP_PUBSPEC_PATH"
+              echo "  assets:" >> "$TEMP_PUBSPEC_PATH"
+              find -L "$ENGINE_DIR/assets" -mindepth 1 -type d -not -path "$ENGINE_DIR/assets/shaders" | while read -r dir; do
+                  relative_path=$(echo "$dir" | sed "s|$ENGINE_DIR/||")
+                  echo "    - $relative_path/" >> "$TEMP_PUBSPEC_PATH"
+              done
+              
+              assets_block_end_line=$((assets_start_line))
+              while true; do
+                  next_line_num=$((assets_block_end_line + 1))
+                  line_content=$(sed "${next_line_num}q;d" "$PUBSPEC_PATH")
+                  if [[ ! $line_content == *"    - assets/"* ]] || [[ -z "$line_content" ]]; then
+                      break
+                  fi
+                  assets_block_end_line=$((assets_block_end_line + 1))
+              done
+              
+              tail -n "+$((assets_block_end_line + 1))" "$PUBSPEC_PATH" >> "$TEMP_PUBSPEC_PATH"
+              mv "$TEMP_PUBSPEC_PATH" "$PUBSPEC_PATH"
+              echo "pubspec.yaml updated successfully."
+          else
+              echo "Error: '  assets:' section not found in pubspec.yaml."
+              exit 1
+          fi
+
       # Flutter Pub Get
       - name: Flutter Pub Get
         run: |
           cd Engine
-          git config --global core.longpaths true
           flutter pub get
 
       # Cache CocoaPods (for iOS/macOS)
@@ -112,14 +156,6 @@ jobs:
       - name: Build Android
         if: matrix.target == 'Android'
         run: |
-          # 下载并安装 mdk-sdk
-          mkdir -p Engine/android/app/src/main/jniLibs/arm64-v8a
-          curl -L -o mdk-sdk-android.7z https://sourceforge.net/projects/mdk-sdk/files/nightly/mdk-sdk-android.7z/download
-          sudo apt-get update
-          sudo apt-get install -y p7zip-full
-          7z x mdk-sdk-android.7z -oEngine/android/app/src/main/jniLibs/arm64-v8a -y
-          
-          # 构建 APK
           chmod +x build.sh
           ./build.sh android
           cd Engine/build/app/outputs/apk/release
@@ -189,10 +225,10 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y mpv libmpv-dev pkg-config clang cmake libgtk-3-dev ninja-build libasound2-dev libass-dev zip libkeybinder-3.0-dev
           
-          cd Engine
-          flutter build linux --release
+          chmod +x build.sh
+          ./build.sh linux
           
-          cd build/linux/x64/release
+          cd Engine/build/linux/x64/release
           zip -r SakiEngine-${{ steps.get_version.outputs.version }}-Linux-amd64.zip bundle
       
       # Upload Artifacts
