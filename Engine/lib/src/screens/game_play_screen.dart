@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hotkey_system/hotkey_system.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
@@ -47,9 +45,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
 
     // 注册系统级热键 Shift+R
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
-      _setupHotkey();
-    }
+    _setupHotkey();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -97,10 +93,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   @override
   void dispose() {
     // 取消注册系统热键
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
-      if (_reloadHotKey != null) {
-        hotKeySystem.unregister(_reloadHotKey!);
-      }
+    if (_reloadHotKey != null) {
+      hotKeyManager.unregister(_reloadHotKey!);
     }
     _gameManager.dispose();
     super.dispose();
@@ -109,17 +103,45 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   // 设置系统级热键
   Future<void> _setupHotkey() async {
     _reloadHotKey = HotKey(
-      KeyCode.keyR,
-      modifiers: [KeyModifier.shift],
-      scope: HotKeyScope.system, // 系统级热键，即使失去焦点也可以使用
+      key: PhysicalKeyboardKey.keyR,
+      modifiers: [HotKeyModifier.shift],
+      scope: HotKeyScope.inapp, // 先使用应用内热键，避免权限问题
     );
     
-    await hotKeySystem.register(
-      _reloadHotKey!,
-      keyDownHandler: (hotKey) {
-        _handleHotReload();
-      },
-    );
+    try {
+      await hotKeyManager.register(
+        _reloadHotKey!,
+        keyDownHandler: (hotKey) {
+          print('热键触发: ${hotKey.toJson()}');
+          if (mounted) {
+            _handleHotReload();
+          }
+        },
+      );
+      print('快捷键 Shift+R 注册成功');
+    } catch (e) {
+      print('快捷键注册失败: $e');
+      // 如果系统级热键失败，尝试应用内热键
+      _reloadHotKey = HotKey(
+        key: PhysicalKeyboardKey.keyR,
+        modifiers: [HotKeyModifier.shift],
+        scope: HotKeyScope.inapp,
+      );
+      try {
+        await hotKeyManager.register(
+          _reloadHotKey!,
+          keyDownHandler: (hotKey) {
+            print('应用内热键触发: ${hotKey.toJson()}');
+            if (mounted) {
+              _handleHotReload();
+            }
+          },
+        );
+        print('应用内快捷键 Shift+R 注册成功');
+      } catch (e2) {
+        print('应用内快捷键注册也失败: $e2');
+      }
+    }
   }
 
   // 显示通知消息
@@ -140,90 +162,84 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: StreamBuilder<GameState>(
-        stream: _gameManager.gameStateStream,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final gameState = snapshot.data!;
-          return Stack(
-            children: [
-              GestureDetector(
-                onTap: gameState.currentNode is MenuNode ? null : () => _gameManager.next(),
-                child: Stack(
-                  children: [
-                    if (gameState.background != null)
-                      FutureBuilder<String?>(
-                        future: AssetManager().findAsset('backgrounds/${gameState.background!.replaceAll(' ', '-')}')
-    ,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData && snapshot.data != null) {
-                            return Image.asset(
-                              snapshot.data!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            );
-                          }
-                          return Container(color: Colors.black);
-                        }
-                      ),
-
-                    ..._buildCharacters(context, gameState.characters, gameState.poseConfigs),
-
-                    if (gameState.dialogue != null)
-                      DialogueBox(
-                        speaker: gameState.speaker,
-                        dialogue: gameState.dialogue!,
-                      ),
-
-                    if (gameState.currentNode is MenuNode)
-                      ChoiceMenu(
-                        menuNode: gameState.currentNode as MenuNode,
-                        onChoiceSelected: (String targetLabel) {
-                          _gameManager.jumpToLabel(targetLabel);
-                        },
-                      ),
-                  ],
+    return Focus(
+      autofocus: true,
+      child: Scaffold(
+        body: StreamBuilder<GameState>(
+          stream: _gameManager.gameStateStream,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final gameState = snapshot.data!;
+            return Stack(
+              children: [
+                GestureDetector(
+                  onTap: gameState.currentNode is MenuNode ? null : () => _gameManager.next(),
+                  child: Stack(
+                    children: [
+                      if (gameState.background != null)
+                        FutureBuilder<String?>(
+                          future: AssetManager().findAsset('backgrounds/${gameState.background!.replaceAll(' ', '-')}'),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data != null) {
+                              return Image.asset(
+                                snapshot.data!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                              );
+                            }
+                            return Container(color: Colors.black);
+                          },
+                        ),
+                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs),
+                      if (gameState.dialogue != null)
+                        DialogueBox(
+                          speaker: gameState.speaker,
+                          dialogue: gameState.dialogue!,
+                        ),
+                      if (gameState.currentNode is MenuNode)
+                        ChoiceMenu(
+                          menuNode: gameState.currentNode as MenuNode,
+                          onChoiceSelected: (String targetLabel) {
+                            _gameManager.jumpToLabel(targetLabel);
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              
-              QuickMenu(
-                onSave: () => setState(() => _showSaveOverlay = true),
-                onLoad: () => setState(() => _showLoadOverlay = true),
-                onReview: () => setState(() => _showReviewOverlay = true),
-                onBack: _handleQuickMenuBack,
-              ),
-
-              if (_showReviewOverlay)
-                ReviewOverlay(
-                  dialogueHistory: _gameManager.getDialogueHistory(),
-                  onClose: () => setState(() => _showReviewOverlay = false),
-                  onJumpToEntry: _jumpToHistoryEntry,
+                QuickMenu(
+                  onSave: () => setState(() => _showSaveOverlay = true),
+                  onLoad: () => setState(() => _showLoadOverlay = true),
+                  onReview: () => setState(() => _showReviewOverlay = true),
+                  onBack: _handleQuickMenuBack,
                 ),
-              
-              if (_showSaveOverlay)
-                SaveLoadScreen(
-                  mode: SaveLoadMode.save,
-                  gameManager: _gameManager,
-                  onClose: () => setState(() => _showSaveOverlay = false),
+                if (_showReviewOverlay)
+                  ReviewOverlay(
+                    dialogueHistory: _gameManager.getDialogueHistory(),
+                    onClose: () => setState(() => _showReviewOverlay = false),
+                    onJumpToEntry: _jumpToHistoryEntry,
+                  ),
+                if (_showSaveOverlay)
+                  SaveLoadScreen(
+                    mode: SaveLoadMode.save,
+                    gameManager: _gameManager,
+                    onClose: () => setState(() => _showSaveOverlay = false),
+                  ),
+                if (_showLoadOverlay)
+                  SaveLoadScreen(
+                    mode: SaveLoadMode.load,
+                    onClose: () => setState(() => _showLoadOverlay = false),
+                  ),
+                NotificationOverlay(
+                  key: _notificationOverlayKey,
+                  scale: context.scaleFor(ComponentType.ui),
                 ),
-              
-              if (_showLoadOverlay)
-                SaveLoadScreen(
-                  mode: SaveLoadMode.load,
-                  onClose: () => setState(() => _showLoadOverlay = false),
-                ),
-              // 通知覆盖层
-              NotificationOverlay(
-                key: _notificationOverlayKey,
-                scale: context.scaleFor(ComponentType.ui),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }

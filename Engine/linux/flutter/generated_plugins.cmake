@@ -3,7 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  hotkey_system
+  hotkey_manager_linux
   screen_retriever_linux
   window_manager
 )

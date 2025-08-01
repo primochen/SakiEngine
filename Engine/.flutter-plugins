@@ -1,5 +1,8 @@
 # This is a generated file; do not edit or check into version control.
-hotkey_system=/Users/dfsteve/.pub-cache/hosted/pub.dev/hotkey_system-0.0.9/
+hotkey_manager=/Users/dfsteve/.pub-cache/hosted/pub.dev/hotkey_manager-0.2.3/
+hotkey_manager_linux=/Users/dfsteve/.pub-cache/hosted/pub.dev/hotkey_manager_linux-0.2.0/
+hotkey_manager_macos=/Users/dfsteve/.pub-cache/hosted/pub.dev/hotkey_manager_macos-0.2.0/
+hotkey_manager_windows=/Users/dfsteve/.pub-cache/hosted/pub.dev/hotkey_manager_windows-0.2.0/
 path_provider=/Users/dfsteve/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
 path_provider_android=/Users/dfsteve/.pub-cache/hosted/pub.dev/path_provider_android-2.2.17/
 path_provider_foundation=/Users/dfsteve/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.1/

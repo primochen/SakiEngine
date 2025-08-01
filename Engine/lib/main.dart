@@ -1,8 +1,6 @@
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:hotkey_system/hotkey_system.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
@@ -18,9 +16,7 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     
     // 初始化系统热键，清理之前的注册（用于热重载）
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
-      await hotKeySystem.unregisterAll();
-    }
+    await hotKeyManager.unregisterAll();
     
     await SakiEngineConfig().loadConfig();
     runApp(const SakiEngineApp());
