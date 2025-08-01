@@ -83,6 +83,13 @@ jobs:
           channel: 'stable'
           cache: true
       
+      # Flutter Pub Get
+      - name: Flutter Pub Get
+        run: |
+          cd Engine
+          git config --global core.longpaths true
+          flutter pub get
+
       # Cache CocoaPods (for iOS/macOS)
       - name: Cache Pod
         if: matrix.cache_pod_key != null
@@ -122,13 +129,6 @@ jobs:
       - name: Build Xcode (iOS/macOS)
         if: matrix.os == 'macos-latest'
         run: xcodebuild -resolvePackageDependencies -workspace Engine/ios/Runner.xcworkspace -scheme Runner -configuration Release
-      
-      # Flutter Pub Get
-      - name: Flutter Pub Get
-        run: |
-          cd Engine
-          git config --global core.longpaths true
-          flutter pub get
       
       # Build iOS .ipa
       - name: Build iOS
