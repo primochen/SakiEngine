@@ -80,41 +80,38 @@ jobs:
           cd ..
       
       - name: Build iOS App
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          codesign_flag=""
-          if [ "${{ inputs.enable_codesign }}" != "true" ]; then
-            codesign_flag="--no-codesign"
-          fi
-          flutter build ios --release $codesign_flag
+          echo "🔨 使用build.sh构建iOS应用"
+          chmod +x build.sh  
+          ./build.sh ios
       
-      - name: Thin payload and create IPA
+      - name: Create IPA
         id: build
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          # Check if thin-payload.sh exists and is executable
+          # 检查thin-payload.sh是否存在并执行
           if [ -f "thin-payload.sh" ]; then
+            echo "🔧 执行thin-payload优化"
             chmod +x thin-payload.sh
-            sh thin-payload.sh build/ios/iphoneos/*.app
+            sh thin-payload.sh Engine/build/ios/iphoneos/*.app
           fi
           
-          # Create IPA
-          cd build
+          # 创建IPA
+          cd Engine/build
           mkdir -p Payload
           mv ios/iphoneos/*.app Payload/
           
-          # Generate artifact name
-          version="${{ steps.get_version.outputs.version }}"
+          # 生成构件名称
+          version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           artifact_name="SakiEngine-${version}-iOS-arm64.ipa"
           
           zip -9 "$artifact_name" -r Payload
           
           echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
-          echo "Built: $artifact_name"
+          echo "✅ 构建完成: $artifact_name"
       
       - name: Upload iOS IPA
         uses: actions/upload-artifact@v4
         with:
           name: release-iOS
-          path: ${{ inputs.working_directory }}/build/*.ipa
+          path: Engine/build/*.ipa
           retention-days: 90

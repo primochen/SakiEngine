@@ -27,7 +27,7 @@ on:
 jobs:
   build-windows:
     name: Build Windows App
-    runs-on: windows-latest
+    runs-on: windows-2022
     outputs:
       version: ${{ steps.get_version.outputs.version }}
       artifact_name: ${{ steps.build.outputs.artifact_name }}
@@ -62,64 +62,78 @@ jobs:
           git config --global core.longpaths true
           flutter pub get
       
-      - name: Build Windows App
-        working-directory: ${{ inputs.working_directory }}
+      - name: Pre-build diagnostics
         shell: bash
         run: |
-          echo "🔨 构建Windows应用..."
+          echo "🔍 构建前诊断..."
+          flutter doctor -v
+          flutter pub outdated || true
           
-          # 清理之前的构建
-          if [ -d "build/windows" ]; then
-            echo "清理之前的构建..."
-            rm -rf build/windows
-          fi
+          # 检查路径长度
+          pwd | wc -c
           
-          # 构建Windows应用，如果失败则重试一次
-          if ! flutter build windows --release; then
-            echo "⚠️ 构建失败，清理缓存后重试..."
+          # 清理可能的缓存问题
+          cd Engine
+          flutter clean
+          flutter pub get
+      
+      - name: Build Windows App with retry
+        shell: bash
+        run: |
+          echo "🔨 使用build.sh构建Windows应用"
+          chmod +x build.sh
+          
+          # 第一次尝试
+          if ! ./build.sh windows; then
+            echo "⚠️ 第一次构建失败，清理后重试..."
+            
+            cd Engine
             flutter clean
+            rm -rf build/windows
             flutter pub get
-            flutter build windows --release
+            cd ..
+            
+            # 第二次尝试
+            ./build.sh windows
           fi
       
       - name: Package Windows App
         id: build
-        working-directory: ${{ inputs.working_directory }}
         shell: pwsh
         run: |
           $arch = "${{ inputs.architecture }}"
-          $version = "${{ steps.get_version.outputs.version }}"
+          $version = (Get-Content Engine/pubspec.yaml | Select-String '^version:' | ForEach-Object { ($_ -split ' ')[1] } | ForEach-Object { ($_ -split '\+')[0] })
           
           if ($arch -eq "arm64") {
-            $DestDir = "build\windows\SakiEngine-${version}-Windows-arm64"
-            $SrcDir = "build\windows\arm64\runner\Release"
+            $DestDir = "Engine\build\windows\SakiEngine-${version}-Windows-arm64"
+            $SrcDir = "Engine\build\windows\arm64\runner\Release"
             $ZipName = "SakiEngine-${version}-Windows-arm64.zip"
           } else {
-            $DestDir = "build\windows\SakiEngine-${version}-Windows-x64"
-            $SrcDir = "build\windows\x64\runner\Release"
+            $DestDir = "Engine\build\windows\SakiEngine-${version}-Windows-x64"
+            $SrcDir = "Engine\build\windows\x64\runner\Release"
             $ZipName = "SakiEngine-${version}-Windows-x64.zip"
           }
           
-          # Create destination directory
+          # 创建目标目录
           New-Item -Path $DestDir -ItemType Directory -Force
           
-          # Copy application files
+          # 复制应用程序文件
           Copy-Item -Path "$SrcDir\*" -Destination $DestDir -Recurse -Force
           
-          # Copy any additional DLLs if they exist
-          if (Test-Path "windows\*.dll") {
-            Copy-Item -Path "windows\*.dll" -Destination $DestDir -Force
+          # 复制额外的DLL文件（如果存在）
+          if (Test-Path "Engine\windows\*.dll") {
+            Copy-Item -Path "Engine\windows\*.dll" -Destination $DestDir -Force
           }
           
-          # Create ZIP archive
-          Compress-Archive -Path $DestDir -DestinationPath "build\windows\$ZipName" -Force
+          # 创建ZIP档案
+          Compress-Archive -Path $DestDir -DestinationPath "Engine\build\windows\$ZipName" -Force
           
           echo "artifact_name=$ZipName" >> $env:GITHUB_OUTPUT
-          Write-Output "Built: $ZipName"
+          Write-Output "✅ 构建完成: $ZipName"
       
       - name: Upload Windows App
         uses: actions/upload-artifact@v4
         with:
           name: release-Windows
-          path: ${{ inputs.working_directory }}/build/windows/*.zip
+          path: Engine/build/windows/*.zip
           retention-days: 90

@@ -69,39 +69,41 @@ jobs:
           flutter pub get
       
       - name: Build macOS App
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          flutter build macos --release
+          echo "🔨 使用build.sh构建macOS应用"
+          chmod +x build.sh
+          ./build.sh macos
       
       - name: Create DMG or ZIP
         id: build
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          cd build/macos/Build/Products/Release
-          version="${{ steps.get_version.outputs.version }}"
+          cd Engine/build/macos/Build/Products/Release
+          
+          # 生成构件名称
+          version=$(grep '^version:' ../../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           
           if [ "${{ inputs.create_dmg }}" = "true" ]; then
-            # Create DMG
+            # 创建DMG
             mkdir -p dmg-contents
             cp -R SakiEngine.app dmg-contents/
             artifact_name="SakiEngine-${version}-macOS-arm64.dmg"
             hdiutil create -srcfolder dmg-contents -volname "SakiEngine" -format UDZO "$artifact_name"
-            echo "Created DMG: $artifact_name"
+            echo "✅ 创建DMG: $artifact_name"
           else
-            # Create ZIP
+            # 创建ZIP
             artifact_name="SakiEngine-${version}-macOS-arm64.zip"
             zip -r "$artifact_name" SakiEngine.app
-            echo "Created ZIP: $artifact_name"
+            echo "✅ 创建ZIP: $artifact_name"
           fi
           
           echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
-          echo "Built: $artifact_name"
+          echo "✅ 构建完成: $artifact_name"
       
       - name: Upload macOS App
         uses: actions/upload-artifact@v4
         with:
           name: release-macOS
           path: |
-            ${{ inputs.working_directory }}/build/macos/Build/Products/Release/*.dmg
-            ${{ inputs.working_directory }}/build/macos/Build/Products/Release/*.zip
+            Engine/build/macos/Build/Products/Release/*.dmg
+            Engine/build/macos/Build/Products/Release/*.zip
           retention-days: 90

@@ -81,30 +81,30 @@ jobs:
           flutter pub get
       
       - name: Build Linux App
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          flutter build linux --release
+          echo "🔨 使用build.sh构建Linux应用"
+          chmod +x build.sh
+          ./build.sh linux
       
       - name: Package Linux App
         id: build
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          cd build/linux/x64/release
+          cd Engine/build/linux/x64/release
           
-          # Generate artifact name
-          version="${{ steps.get_version.outputs.version }}"
+          # 生成构件名称
+          version=$(grep '^version:' ../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           arch="${{ inputs.architecture }}"
           artifact_name="SakiEngine-${version}-Linux-${arch}.zip"
           
-          # Create ZIP archive
+          # 创建ZIP档案
           zip -r "$artifact_name" bundle
           
           echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
-          echo "Built: $artifact_name"
+          echo "✅ 构建完成: $artifact_name"
       
       - name: Upload Linux App
         uses: actions/upload-artifact@v4
         with:
           name: release-Linux-${{ inputs.architecture }}
-          path: ${{ inputs.working_directory }}/build/linux/x64/release/*.zip
+          path: Engine/build/linux/x64/release/*.zip
           retention-days: 90

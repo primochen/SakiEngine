@@ -97,34 +97,33 @@ jobs:
           flutter pub get
       
       - name: Download and install mdk-sdk
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          echo "📥 下载并安装 mdk-sdk"
+          mkdir -p Engine/android/app/src/main/jniLibs/arm64-v8a
           curl -L -o mdk-sdk-android.7z https://sourceforge.net/projects/mdk-sdk/files/nightly/mdk-sdk-android.7z/download
           sudo apt-get update
           sudo apt-get install -y p7zip-full
-          7z x mdk-sdk-android.7z -oandroid/app/src/main/jniLibs/arm64-v8a -y
+          7z x mdk-sdk-android.7z -oEngine/android/app/src/main/jniLibs/arm64-v8a -y
       
       - name: Build Android APK
         id: build
-        working-directory: ${{ inputs.working_directory }}
         run: |
-          echo "🔨 构建发布版本APK (已签名)"
-          flutter build apk --release --target-platform ${{ inputs.target_platform }}
-          
-          # 生成构件名称
-          version="${{ steps.get_version.outputs.version }}"
-          artifact_name="SakiEngine-${version}-Android-arm64-release.apk"
+          echo "🔨 使用build.sh构建Android APK"
+          chmod +x build.sh
+          ./build.sh android
           
           # 检查APK是否存在
-          apk_path="build/app/outputs/apk/release/app-release.apk"
+          apk_path="Engine/build/app/outputs/apk/release/app-release.apk"
           if [ ! -f "$apk_path" ]; then
             echo "❌ APK构建失败: $apk_path 不存在"
             exit 1
           fi
           
-          # 重命名APK
-          cd build/app/outputs/apk/release
+          # 生成构件名称并重命名APK
+          version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          artifact_name="SakiEngine-${version}-Android-arm64-release.apk"
+          
+          cd Engine/build/app/outputs/apk/release
           mv app-release.apk "$artifact_name"
           
           echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
@@ -133,18 +132,10 @@ jobs:
           # 显示APK信息
           echo "📱 APK信息:"
           ls -lh "$artifact_name"
-          
-          # 验证APK签名
-          echo "🔐 验证APK签名:"
-          if command -v aapt >/dev/null 2>&1; then
-            aapt dump badging "$artifact_name" | head -3
-          else
-            echo "  ✅ APK已生成，签名验证需要Android SDK工具"
-          fi
       
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: release-Android
-          path: ${{ inputs.working_directory }}/build/app/outputs/apk/release/*.apk
+          path: Engine/build/app/outputs/apk/release/*.apk
           retention-days: 90
