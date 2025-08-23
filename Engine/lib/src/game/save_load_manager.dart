@@ -2,14 +2,50 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert' show utf8;
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/game/screenshot_generator.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 
 class SaveLoadManager {
+  // 获取当前游戏项目名称
+  Future<String> _getCurrentProjectName() async {
+    try {
+      // 优先从环境变量获取游戏路径
+      const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+      if (fromDefine.isNotEmpty) {
+        return p.basename(fromDefine);
+      }
+      
+      final fromEnv = Platform.environment['SAKI_GAME_PATH'];
+      if (fromEnv != null && fromEnv.isNotEmpty) {
+        return p.basename(fromEnv);
+      }
+      
+      // 从assets读取default_game.txt
+      final assetContent = await rootBundle.loadString('assets/default_game.txt');
+      final projectName = assetContent.trim();
+      
+      if (projectName.isEmpty) {
+        throw Exception('Project name is empty in default_game.txt');
+      }
+      
+      return projectName;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting project name: $e');
+      }
+      // 如果无法获取项目名称，使用默认值
+      return 'DefaultProject';
+    }
+  }
+
   Future<String> getSavesDirectory() async {
     final directory = await getApplicationDocumentsDirectory();
-    final savesDir = Directory('${directory.path}/SakiEngine/Saves');
+    final projectName = await _getCurrentProjectName();
+    final savesDir = Directory('${directory.path}/SakiEngine/Saves/$projectName');
     if (!await savesDir.exists()) {
       await savesDir.create(recursive: true);
     }

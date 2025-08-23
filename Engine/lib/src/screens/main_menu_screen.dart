@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
@@ -84,6 +85,26 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
+  String _appTitle = 'SakiEngine';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppTitle();
+  }
+
+  Future<void> _loadAppTitle() async {
+    try {
+      final appName = await ProjectInfoManager().getAppName();
+      if (mounted) {
+        setState(() {
+          _appTitle = appName;
+        });
+      }
+    } catch (e) {
+      // 保持默认标题
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +134,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             top: screenSize.height * config.mainMenuTitleTop,
             right: screenSize.width * config.mainMenuTitleRight,
             child: Text(
-              'SakiEngine',
+              _appTitle,
               style: TextStyle(
                 fontFamily: 'SourceHanSansCN-Bold',
                 fontSize: config.mainMenuTitleSize * textScale,
