@@ -3,12 +3,18 @@ import 'dart:async';
 class DebugLogger {
   static final DebugLogger _instance = DebugLogger._internal();
   factory DebugLogger() => _instance;
+  static DebugLogger get instance => _instance;
   DebugLogger._internal();
 
   final List<String> _logs = [];
   static const int maxLogs = 1000; // 最多保存1000条日志
+  
+  // Stream controller for real-time log updates
+  final StreamController<List<String>> _logStreamController = 
+      StreamController<List<String>>.broadcast();
 
   List<String> get logs => List.unmodifiable(_logs);
+  Stream<List<String>> get logStream => _logStreamController.stream;
 
   void addLog(String message) {
     final timestamp = DateTime.now();
@@ -24,14 +30,26 @@ class DebugLogger {
     if (_logs.length > maxLogs) {
       _logs.removeAt(0);
     }
+    
+    // 通知监听者日志更新
+    _logStreamController.add(List.unmodifiable(_logs));
+  }
+
+  void log(String message) {
+    addLog(message);
   }
 
   void clear() {
     _logs.clear();
+    _logStreamController.add(List.unmodifiable(_logs));
   }
 
   String getAllLogsAsString() {
     return _logs.join('\n');
+  }
+
+  void dispose() {
+    _logStreamController.close();
   }
 }
 

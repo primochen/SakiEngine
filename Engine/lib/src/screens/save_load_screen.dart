@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:ui';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
@@ -60,16 +58,9 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       (s) => s.id == slotId,
       orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
     );
-    final oldScreenshotPath = existingSlot.screenshotPath;
 
     final snapshot = widget.gameManager!.saveStateSnapshot();
-    await _saveLoadManager.saveGame(slotId, 'start', snapshot); 
-
-    if (oldScreenshotPath != null && oldScreenshotPath.isNotEmpty) {
-      final imageProvider = FileImage(File(oldScreenshotPath));
-      await imageProvider.evict();
-      print('清除缓存: $oldScreenshotPath');
-    }
+    await _saveLoadManager.saveGame(slotId, 'start', snapshot);
     
     _notificationOverlayKey.currentState?.show('保存成功');
     
@@ -232,7 +223,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
   @override
   void didUpdateWidget(covariant _SaveSlotCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.saveSlot?.screenshotPath != oldWidget.saveSlot?.screenshotPath ||
+    if (widget.saveSlot?.screenshotData != oldWidget.saveSlot?.screenshotData ||
         widget.saveSlot?.saveTime != oldWidget.saveSlot?.saveTime) {
       if (mounted) {
         setState(() {});
@@ -242,8 +233,8 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
 
   Widget _buildScreenshot() {
     return ScreenshotThumbnail(
-      key: ValueKey('${widget.saveSlot?.screenshotPath}_${widget.saveSlot?.saveTime}'),
-      screenshotPath: widget.saveSlot?.screenshotPath,
+      key: ValueKey('${widget.saveSlot?.id}_${widget.saveSlot?.saveTime}'),
+      screenshotData: widget.saveSlot?.screenshotData,
       borderRadius: 4 * widget.uiScale,
       placeholderColor: widget.config.themeColors.primary.withOpacity(0.1),
       iconColor: widget.config.themeColors.primary.withOpacity(0.3),

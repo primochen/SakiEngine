@@ -1,7 +1,7 @@
 label start
 scene bg school 
 yk pose2 happy"欢迎来到SakiEngine！"
-yk "11111"
+yk "1111"
 menu
 "给她巧克力" after_choice1
 "保持沉默" after_choice2
@@ -23,7 +23,7 @@ yk happy "哼，生气了。"
 return 
 
 label after_choice3
-yk pose1 sad "这是站姿。"
+yk pose1 "这是站姿。"
 yk pose2 "这是思考。"
 yk pose1 happy "这是开心。"
 yk sad "这是不好的表情。"

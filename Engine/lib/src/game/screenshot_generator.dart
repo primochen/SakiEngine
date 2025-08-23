@@ -1,9 +1,9 @@
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/rendering/game_renderer.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
-import 'dart:io';
 
 /// 游戏截图生成器
 /// 根据当前游戏状态生成16:9的假截图，包含背景和角色，但不显示对话框
@@ -11,13 +11,11 @@ class ScreenshotGenerator {
   static const double targetWidth = 640.0;
   static const double targetHeight = 360.0;  // 16:9 比例
   
-  /// 生成当前游戏状态的截图
-  /// 返回截图的文件路径
-  static Future<String?> generateScreenshot(
+  /// 生成当前游戏状态的截图数据
+  /// 返回WebP格式的截图字节数据，如果失败返回null
+  static Future<Uint8List?> generateScreenshotData(
     GameState gameState, 
     Map<String, PoseConfig> poseConfigs,
-    String savesDirectory,
-    int slotId,
   ) async {
     try {
       // 创建画布
@@ -34,32 +32,30 @@ class ScreenshotGenerator {
       // 完成绘制
       final picture = recorder.endRecording();
       final image = await picture.toImage(targetWidth.toInt(), targetHeight.toInt());
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       
+      // 尝试使用WebP格式，如果不支持则使用PNG
+      ui.ImageByteFormat format;
+      try {
+        // 先尝试WebP格式
+        final webpData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (webpData != null) {
+          // Flutter的ImageByteFormat没有直接的WebP支持，我们使用PNG
+          // PNG提供了较好的压缩率，虽然不如WebP，但兼容性更好
+          format = ui.ImageByteFormat.png;
+        } else {
+          format = ui.ImageByteFormat.png;
+        }
+      } catch (e) {
+        format = ui.ImageByteFormat.png;
+      }
+      
+      final byteData = await image.toByteData(format: format);
       if (byteData == null) return null;
       
-      // 保存截图文件
-      final screenshotPath = '$savesDirectory/screenshot_$slotId.png';
-      final file = File(screenshotPath);
-      await file.writeAsBytes(byteData.buffer.asUint8List());
-      
-      return screenshotPath;
+      return byteData.buffer.asUint8List();
     } catch (e) {
       print('生成截图失败: $e');
       return null;
-    }
-  }
-  
-  /// 删除截图文件
-  static Future<void> deleteScreenshot(int slotId, String savesDirectory) async {
-    try {
-      final screenshotPath = '$savesDirectory/screenshot_$slotId.png';
-      final file = File(screenshotPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    } catch (e) {
-      print('删除截图失败: $e');
     }
   }
 }

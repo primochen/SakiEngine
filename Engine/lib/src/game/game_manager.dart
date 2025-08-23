@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
-import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/skr_parser/skr_ast.dart';
 import 'package:sakiengine/src/skr_parser/skr_parser.dart';
 
@@ -25,6 +24,9 @@ class GameManager {
   
   List<DialogueHistoryEntry> _dialogueHistory = [];
   static const int maxHistoryEntries = 100;
+
+  // Getters for accessing configurations
+  Map<String, PoseConfig> get poseConfigs => _poseConfigs;
 
   GameManager({this.onReturn});
 
@@ -305,21 +307,6 @@ class GameState {
     return GameState();
   }
 
-  factory GameState.fromJson(Map<String, dynamic> json) {
-    var characterMap = <String, CharacterState>{};
-    if (json['characters'] != null) {
-      (json['characters'] as Map<String, dynamic>).forEach((key, value) {
-        characterMap[key] = CharacterState.fromJson(value);
-      });
-    }
-    
-    return GameState(
-      background: json['background'],
-      characters: characterMap,
-      dialogue: json['dialogue'],
-      speaker: json['speaker'],
-    );
-  }
 
   GameState copyWith({
     String? background,
@@ -354,14 +341,6 @@ class CharacterState {
   CharacterState(
       {required this.resourceId, this.pose, this.expression, this.positionId});
   
-  factory CharacterState.fromJson(Map<String, dynamic> json) {
-    return CharacterState(
-      resourceId: json['resourceId'],
-      pose: json['pose'],
-      expression: json['expression'],
-      positionId: json['positionId'],
-    );
-  }
 
   CharacterState copyWith({String? pose, String? expression, String? positionId}) {
     return CharacterState(
@@ -384,15 +363,6 @@ class GameStateSnapshot {
     this.dialogueHistory = const [],
   });
 
-  factory GameStateSnapshot.fromJson(Map<String, dynamic> json) {
-    return GameStateSnapshot(
-      scriptIndex: json['scriptIndex'],
-      currentState: GameState.fromJson(json['currentState']),
-      dialogueHistory: (json['dialogueHistory'] as List<dynamic>?)
-          ?.map((e) => DialogueHistoryEntry.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [],
-    );
-  }
 }
 
 class DialogueHistoryEntry {
@@ -410,13 +380,4 @@ class DialogueHistoryEntry {
     required this.stateSnapshot,
   });
 
-  factory DialogueHistoryEntry.fromJson(Map<String, dynamic> json) {
-    return DialogueHistoryEntry(
-      speaker: json['speaker'],
-      dialogue: json['dialogue'],
-      timestamp: DateTime.parse(json['timestamp']),
-      scriptIndex: json['scriptIndex'],
-      stateSnapshot: GameStateSnapshot.fromJson(json['stateSnapshot']),
-    );
-  }
 }

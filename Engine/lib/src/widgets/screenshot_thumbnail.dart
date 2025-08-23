@@ -1,10 +1,10 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 /// 截图缩略图组件
 /// 用于显示存档截图，带有加载状态和错误处理
 class ScreenshotThumbnail extends StatelessWidget {
-  final String? screenshotPath;
+  final Uint8List? screenshotData;
   final double? width;
   final double? height;
   final double borderRadius;
@@ -14,7 +14,7 @@ class ScreenshotThumbnail extends StatelessWidget {
 
   const ScreenshotThumbnail({
     super.key,
-    this.screenshotPath,
+    this.screenshotData,
     this.width,
     this.height,
     this.borderRadius = 4.0,
@@ -27,7 +27,7 @@ class ScreenshotThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: Container(
+      child: SizedBox(
         width: width,
         height: height,
         child: _buildContent(context),
@@ -36,12 +36,12 @@ class ScreenshotThumbnail extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    if (screenshotPath == null || screenshotPath!.isEmpty) {
+    if (screenshotData == null || screenshotData!.isEmpty) {
       return _buildPlaceholder(Icons.image_outlined, '无截图');
     }
 
-    return Image.file(
-      File(screenshotPath!),
+    return Image.memory(
+      screenshotData!,
       fit: BoxFit.cover,
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded) return child;
