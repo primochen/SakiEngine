@@ -66,7 +66,21 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         shell: bash
         run: |
-          flutter build windows --release
+          echo "🔨 构建Windows应用..."
+          
+          # 清理之前的构建
+          if [ -d "build/windows" ]; then
+            echo "清理之前的构建..."
+            rm -rf build/windows
+          fi
+          
+          # 构建Windows应用，如果失败则重试一次
+          if ! flutter build windows --release; then
+            echo "⚠️ 构建失败，清理缓存后重试..."
+            flutter clean
+            flutter pub get
+            flutter build windows --release
+          fi
       
       - name: Package Windows App
         id: build
