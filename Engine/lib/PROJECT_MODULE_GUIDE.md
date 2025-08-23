@@ -122,6 +122,28 @@ ThemeData? createTheme() {
 }
 ```
 
+### 自定义应用标题
+
+```dart
+@override
+Future<String> getAppTitle() async {
+  // 方案1: 使用项目名作为标题
+  return 'My Awesome Game';
+  
+  // 方案2: 基于默认标题添加后缀
+  try {
+    final defaultTitle = await super.getAppTitle();
+    return '$defaultTitle - Special Edition';
+  } catch (e) {
+    return 'My Game';
+  }
+  
+  // 方案3: 动态标题（根据游戏状态变化）
+  // final gameState = await loadGameState();
+  // return gameState.isNewPlayer ? 'Welcome to MyGame' : 'MyGame - Continue';
+}
+```
+
 ### 配置定制
 
 ```dart

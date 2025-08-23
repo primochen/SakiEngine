@@ -3,6 +3,7 @@ import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 
@@ -33,6 +34,15 @@ abstract class GameModule {
 
   /// 项目特定的主题配置
   ThemeData? createTheme() => null;
+
+  /// 获取应用标题
+  Future<String> getAppTitle() async {
+    try {
+      return await ProjectInfoManager().getAppName();
+    } catch (e) {
+      return 'SakiEngine'; // 默认标题
+    }
+  }
 
   /// 模块初始化（可选）
   Future<void> initialize() async {}
@@ -77,6 +87,15 @@ class DefaultGameModule implements GameModule {
 
   @override
   ThemeData? createTheme() => null;
+
+  @override
+  Future<String> getAppTitle() async {
+    try {
+      return await ProjectInfoManager().getAppName();
+    } catch (e) {
+      return 'SakiEngine'; // 默认标题
+    }
+  }
 
   @override
   Future<void> initialize() async {

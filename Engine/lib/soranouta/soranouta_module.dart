@@ -51,6 +51,17 @@ class SoranoutaModule extends DefaultGameModule {
   bool get enableDebugFeatures => true; // SoraNoUta 启用调试功能
 
   @override
+  Future<String> getAppTitle() async {
+    // SoraNoUta 项目的自定义应用标题
+    try {
+      final defaultTitle = await super.getAppTitle();
+      return '$defaultTitle - SoraNoUta';
+    } catch (e) {
+      return 'SoraNoUta - SakiEngine';
+    }
+  }
+
+  @override
   Future<void> initialize() async {
     if (kDebugMode) {
       print('[SoraNoutaModule] 🎯 SoraNoUta 项目模块初始化完成 - 使用圆角矩形按钮！');

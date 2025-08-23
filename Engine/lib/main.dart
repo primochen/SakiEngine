@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
-import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
@@ -48,25 +47,6 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
   String _appTitle = 'SakiEngine';
 
   @override
-  void initState() {
-    super.initState();
-    _loadAppTitle();
-  }
-
-  Future<void> _loadAppTitle() async {
-    try {
-      final appName = await ProjectInfoManager().getAppName();
-      if (mounted) {
-        setState(() {
-          _appTitle = appName;
-        });
-      }
-    } catch (e) {
-      // 保持默认标题
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return FutureBuilder(
       future: moduleLoader.getCurrentModule(),
@@ -85,32 +65,39 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
         }
 
         final gameModule = snapshot.data!;
-        final customTheme = gameModule.createTheme();
 
-        return MaterialApp(
-          title: _appTitle,
-          debugShowCheckedModeBanner: false,
-          theme: customTheme ?? ThemeData(
-            primarySwatch: Colors.blue,
-            fontFamily: 'SourceHanSansCN-Bold',
-          ),
-          home: Builder(
-            builder: (innerContext) {
-              return gameModule.createMainMenuScreen(
-                onNewGame: () {
-                  Navigator.of(innerContext).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => gameModule.createGamePlayScreen(),
-                    ),
-                    (Route<dynamic> route) => false,
+        return FutureBuilder<String>(
+          future: gameModule.getAppTitle(),
+          builder: (context, titleSnapshot) {
+            final appTitle = titleSnapshot.data ?? 'SakiEngine';
+            final customTheme = gameModule.createTheme();
+
+            return MaterialApp(
+              title: appTitle,
+              debugShowCheckedModeBanner: false,
+              theme: customTheme ?? ThemeData(
+                primarySwatch: Colors.blue,
+                fontFamily: 'SourceHanSansCN-Bold',
+              ),
+              home: Builder(
+                builder: (innerContext) {
+                  return gameModule.createMainMenuScreen(
+                    onNewGame: () {
+                      Navigator.of(innerContext).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => gameModule.createGamePlayScreen(),
+                        ),
+                        (Route<dynamic> route) => false,
+                      );
+                    },
+                    onLoadGame: () {
+                      // 加载游戏的逻辑由MainMenuScreen内部处理
+                    },
                   );
-                },
-                onLoadGame: () {
-                  // 加载游戏的逻辑由MainMenuScreen内部处理
-                },
-              );
-            }
-          ),
+                }
+              ),
+            );
+          },
         );
       },
     );

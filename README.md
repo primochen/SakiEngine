@@ -25,6 +25,7 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 - **自适应窗口**：游戏窗口可以自由拉伸，画面智能适配
 - **低性能占用**：轻量级引擎，确保流畅的游戏体验
 - **强大的UI系统**：丰富的界面控件和交互支持
+- **模块化系统**：支持项目特定的自定义模块，实现个性化定制
 - **真正的跨平台**：支持多个主流平台
   - Windows
   - Linux
@@ -43,6 +44,8 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 - [x] 回滚系统
 - [x] 选择分支系统
 - [x] 存档和读档系统
+- [x] 项目模块化系统
+- [x] 自动项目创建工具
 - [ ] 音乐、音效和语音系统
 - [ ] 场景切换效果
 - [ ] 转场动画
@@ -123,16 +126,71 @@ Windows 用户需要使用以下方式之一来运行 shell 脚本：
 ```
 SakiEngine/
 ├── run.sh              # 统一启动脚本（跨平台）
-├── build.sh             # 构建脚本（GitHub Action）
-├── default_game.txt     # 默认游戏配置文件
-├── scripts/             # 工具脚本目录
-│   ├── select_game.sh   # 游戏项目选择器
-│   ├── run_legacy_macos.sh # 传统macOS启动脚本
-│   └── ...              # 其他工具脚本
-├── Engine/              # Flutter引擎主目录
-└── Game/                # 游戏项目目录
-    ├── TestGame/        # 示例游戏项目
-    └── YourGame/        # 您的游戏项目
+├── build.sh            # 构建脚本（GitHub Action）
+├── default_game.txt    # 默认游戏配置文件
+├── scripts/            # 工具脚本目录
+│   ├── select_game.sh       # 游戏项目选择器
+│   ├── create_new_project.sh # 新项目创建工具
+│   ├── run_legacy_macos.sh  # 传统macOS启动脚本
+│   └── ...                  # 其他工具脚本
+├── Engine/             # Flutter引擎主目录
+│   ├── lib/           # 引擎源码
+│   │   ├── src/       # 引擎核心代码
+│   │   ├── projectname/ # 项目特定模块（自动创建）
+│   │   └── main.dart  # 主入口
+│   ├── tool/          # 开发工具
+│   │   └── generate_modules.dart # 模块自动生成器
+│   └── pubspec.yaml   # 依赖配置
+└── Game/              # 游戏项目目录
+    ├── SakiEngine/    # 默认示例游戏
+    ├── SoraNoUta/     # 另一个示例项目
+    └── YourGame/      # 您的游戏项目（创建工具生成）
+```
+
+### 新项目创建
+
+SakiEngine 提供了便捷的项目创建工具，可以快速搭建新的视觉小说项目：
+
+#### 创建新项目
+
+```bash
+./scripts/create_new_project.sh
+```
+
+**创建工具会自动：**
+- 创建完整的项目目录结构
+- 生成基础的配置文件（角色、姿势、系统配置）
+- 创建示例剧情脚本
+- **自动生成项目专用的Flutter模块**
+- 配置主题颜色和Bundle ID
+- 更新模块注册表
+
+#### 项目模块化系统
+
+每个新项目都会自动创建对应的Flutter模块，支持：
+- **自定义主题**：项目特有的颜色、字体、界面风格
+- **自定义界面**：主菜单、游戏界面、存档界面等
+- **项目配置**：特殊的引擎参数和功能开关
+- **智能回退**：未自定义的组件自动使用引擎默认实现
+
+项目模块位置：`Engine/lib/项目名小写/项目名_module.dart`
+
+#### 快速开始新项目
+
+1. **创建项目**
+```bash
+./scripts/create_new_project.sh
+```
+
+2. **选择并运行**
+```bash
+./run.sh  # 选择新创建的项目
+```
+
+3. **自定义项目模块**
+```bash
+# 编辑项目模块文件
+Engine/lib/yourproject/yourproject_module.dart
 ```
 
 ### VSCode 语法高亮插件
@@ -155,9 +213,9 @@ SakiEngine/
 
 ### 脚本语法示例
 
-SakiEngine 的脚本语法简单直观，类似 Renpy，但更加简洁：
+SakiEngine 使用 `.sks` 脚本文件，语法简单直观，类似 Renpy，但更加简洁：
 
-```skr
+```sks
 // 开始标签
 label start
 // 设置背景场景

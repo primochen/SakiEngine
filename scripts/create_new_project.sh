@@ -16,6 +16,7 @@ cd "$(dirname "$0")"
 # 获取项目根目录（scripts目录的上级目录）
 PROJECT_ROOT="$(dirname "$(pwd)")"
 GAME_BASE_DIR="$PROJECT_ROOT/Game"
+ENGINE_LIB_DIR="$PROJECT_ROOT/Engine/lib"
 
 echo -e "${BLUE}=== SakiEngine 新项目创建向导 ===${NC}"
 echo ""
@@ -357,16 +358,107 @@ endmenu
 \`\`\`
 EOF
 
+# 创建项目模块文件夹和文件
+echo -e "${YELLOW}创建项目模块文件夹...${NC}"
+PROJECT_NAME_LOWER=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
+MODULE_DIR="$ENGINE_LIB_DIR/$PROJECT_NAME_LOWER"
+
+# 创建模块目录结构
+mkdir -p "$MODULE_DIR/screens"
+
+# 创建模块主文件
+echo -e "${YELLOW}创建模块主文件...${NC}"
+cat > "$MODULE_DIR/${PROJECT_NAME_LOWER}_module.dart" << EOF
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sakiengine/src/core/game_module.dart';
+import 'package:sakiengine/src/core/module_registry.dart';
+import 'package:sakiengine/src/config/saki_engine_config.dart';
+
+/// $PROJECT_NAME 项目的自定义模块
+class ${PROJECT_NAME}Module extends DefaultGameModule {
+  
+  @override
+  ThemeData? createTheme() {
+    // $PROJECT_NAME 项目的自定义主题
+    return ThemeData(
+      primarySwatch: Colors.blue,
+      fontFamily: 'SourceHanSansCN',
+      colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue).copyWith(
+        secondary: const Color(0xFF${PRIMARY_COLOR}),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF${PRIMARY_COLOR}),
+        elevation: 0,
+      ),
+    );
+  }
+
+  @override
+  SakiEngineConfig? createCustomConfig() {
+    // 可以返回项目特定的配置
+    return null; // 使用默认配置
+  }
+
+  @override
+  bool get enableDebugFeatures => true; // 启用调试功能
+
+  @override
+  Future<String> getAppTitle() async {
+    // 自定义应用标题（可选）
+    try {
+      final defaultTitle = await super.getAppTitle();
+      return defaultTitle; // 使用默认标题，或自定义如: '\$defaultTitle - $PROJECT_NAME'
+    } catch (e) {
+      return '$PROJECT_NAME'; // 项目名作为标题
+    }
+  }
+
+  @override
+  Future<void> initialize() async {
+    if (kDebugMode) {
+      print('[${PROJECT_NAME}Module] 🎯 $PROJECT_NAME 项目模块初始化完成');
+    }
+    // 在这里可以进行项目特定的初始化
+    // 比如加载特殊的资源、设置特殊的配置等
+  }
+}
+
+// 自动注册这个模块
+// 当这个文件被导入时，模块会自动注册
+void _registerModule() {
+  registerProjectModule('$PROJECT_NAME_LOWER', () => ${PROJECT_NAME}Module());
+}
+
+// 使用顶级变量触发注册，避免编译器警告
+final bool _isRegistered = (() {
+  _registerModule();
+  return true;
+})();
+EOF
+
+# 更新模块注册表
+echo -e "${YELLOW}更新模块注册表...${NC}"
+cd "$PROJECT_ROOT/Engine"
+if dart tool/generate_modules.dart; then
+    echo -e "${GREEN}✓ 模块注册表更新成功${NC}"
+else
+    echo -e "${YELLOW}⚠ 模块注册表更新失败，请手动运行: dart tool/generate_modules.dart${NC}"
+fi
+cd - > /dev/null
+
 echo ""
 echo -e "${GREEN}✓ 项目创建完成！${NC}"
 echo ""
 echo -e "${BLUE}项目路径: $PROJECT_DIR${NC}"
+echo -e "${BLUE}模块路径: $MODULE_DIR${NC}"
 echo -e "${YELLOW}请将游戏资源（图片、音频等）放入对应的 Assets 子目录中。${NC}"
 echo ""
 echo -e "${GREEN}下一步操作：${NC}"
 echo -e "${BLUE}1. 运行 ./run.sh 并选择新创建的项目${NC}"
 echo -e "${BLUE}2. 编辑 GameScript/labels/start.sks 开始创作你的故事${NC}"
 echo -e "${BLUE}3. 在 Assets 目录中添加游戏所需的图片和音频资源${NC}"
+echo -e "${BLUE}4. 自定义项目模块: $MODULE_DIR/${PROJECT_NAME_LOWER}_module.dart${NC}"
 echo ""
 
 # 询问是否立即设置为默认项目
