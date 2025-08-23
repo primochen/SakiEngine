@@ -57,23 +57,82 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 - 安装 Flutter SDK（建议使用最新稳定版）
 - 配置相应平台的开发环境（Android Studio、Xcode等）
 
-#### 部署步骤
-1. 安装 Flutter
+#### 快速开始
+
+##### 开发环境启动（推荐）
 ```bash
-# 参考 Flutter 官方网站获取最新安装方法
-flutter doctor  # 检查环境
+# macOS/Linux
+./run.sh
+
+# Windows（使用 Git Bash、WSL 或其他 bash 环境）
+./run.sh
 ```
 
-2. 克隆项目
+**首次运行时会自动：**
+- 检测您的操作系统（macOS/Linux/Windows）
+- 扫描可用的游戏项目
+- 让您选择默认游戏项目
+- 自动配置并启动项目
+
+##### 传统方式（手动步骤）
+1. 选择游戏项目
 ```bash
-git clone https://github.com/MCDFsteve/SakiEngine.git
-cd SakiEngine
+./scripts/select_game.sh
 ```
 
-3. 运行项目（以macOS为例）
+2. 运行对应平台的传统脚本
 ```bash
-# 直接运行根目录下的启动脚本
-./run_macos.sh
+# macOS（传统方式）
+./scripts/run_legacy_macos.sh
+
+# 或使用 Flutter 命令（需要先处理资源）
+cd Engine
+flutter run -d macos --dart-define=SAKI_GAME_PATH="$PWD/../Game/YourGameName"
+```
+
+#### 构建发布版
+
+```bash
+# 构建不同平台（GitHub Action 使用）
+./build.sh macos
+./build.sh linux  
+./build.sh windows
+./build.sh android
+./build.sh ios
+```
+
+**注意：** 构建前请确保已使用 `./run.sh` 或 `./scripts/select_game.sh` 选择了默认游戏项目。
+
+#### Windows 用户注意事项
+
+Windows 用户需要使用以下方式之一来运行 shell 脚本：
+
+1. **Git Bash**（推荐）
+   - 安装 Git for Windows 后自带
+   - 右键选择 "Git Bash Here" 然后运行 `./run.sh`
+
+2. **WSL (Windows Subsystem for Linux)**
+   - 在 Microsoft Store 安装 Ubuntu 或其他 Linux 发行版
+   - 在 WSL 终端中运行脚本
+
+3. **PowerShell + bash**
+   - 如果安装了 Git Bash，可在 PowerShell 中运行：`bash ./run.sh`
+
+#### 项目结构
+
+```
+SakiEngine/
+├── run.sh              # 统一启动脚本（跨平台）
+├── build.sh             # 构建脚本（GitHub Action）
+├── default_game.txt     # 默认游戏配置文件
+├── scripts/             # 工具脚本目录
+│   ├── select_game.sh   # 游戏项目选择器
+│   ├── run_legacy_macos.sh # 传统macOS启动脚本
+│   └── ...              # 其他工具脚本
+├── Engine/              # Flutter引擎主目录
+└── Game/                # 游戏项目目录
+    ├── TestGame/        # 示例游戏项目
+    └── YourGame/        # 您的游戏项目
 ```
 
 ### VSCode 语法高亮插件
