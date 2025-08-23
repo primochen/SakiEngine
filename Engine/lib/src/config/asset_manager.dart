@@ -86,6 +86,49 @@ class AssetManager {
     _assetManifest = json.decode(manifestJson);
   }
 
+  Future<List<String>> listAssets(String directory, String extension) async {
+    final assets = <String>[];
+    
+    if (kDebugMode) {
+      // 开发模式：从文件系统扫描
+      final gamePath = await _getGamePath();
+      if (gamePath.isEmpty) {
+        print("Game path is not set, cannot list assets from file system.");
+        return assets;
+      }
+      
+      final assetPath = directory.startsWith('assets/') ? directory.substring('assets/'.length) : directory;
+      final dirPath = p.join(gamePath, assetPath);
+      final dir = Directory(dirPath);
+      
+      if (await dir.exists()) {
+        await for (final file in dir.list()) {
+          if (file is File && file.path.endsWith(extension)) {
+            final fileName = p.basename(file.path);
+            assets.add(fileName);
+          }
+        }
+      }
+    } else {
+      // 发布模式：从AssetManifest扫描
+      await _loadManifest();
+      if (_assetManifest != null) {
+        for (final assetPath in _assetManifest!.keys) {
+          if (assetPath.startsWith(directory) && assetPath.endsWith(extension)) {
+            final fileName = p.basename(assetPath);
+            assets.add(fileName);
+          }
+        }
+      }
+    }
+    
+    if (kDebugMode) {
+      print("Found ${assets.length} assets in $directory with extension $extension: ${assets.join(', ')}");
+    }
+    
+    return assets;
+  }
+
   Future<String?> findAsset(String name) async {
     if (_imageCache.containsKey(name)) {
       return _imageCache[name];

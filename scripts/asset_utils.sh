@@ -41,34 +41,25 @@ validate_game_dir() {
     fi
 }
 
-# 链接或复制游戏资源（用于开发模式）
+# 复制游戏资源（跨平台兼容）
 link_game_assets() {
     local engine_dir="$1"
     local game_dir="$2"
     local project_root="$3"
-    local use_symlink="$4"  # true/false
+    local use_symlink="$4"  # 忽略此参数，总是使用复制模式
     
-    echo -e "${YELLOW}正在清理旧的资源链接...${NC}"
-    # 删除 Engine/assets 目录下所有现有的符号链接
-    if [ -d "$engine_dir/assets" ]; then
-        find "$engine_dir/assets" -type l -delete
-    fi
-    # 删除空目录
-    find "$engine_dir/assets" -type d -empty -delete 2>/dev/null || true
+    echo -e "${YELLOW}正在清理旧的资源...${NC}"
+    # 删除 Engine/assets 目录下的 Assets 和 GameScript 目录
+    rm -rf "$engine_dir/assets/Assets"
+    rm -rf "$engine_dir/assets/GameScript"
+    
     # 确保顶级 assets 目录存在
     mkdir -p "$engine_dir/assets"
     
-    echo -e "${YELLOW}正在处理游戏资源和脚本...${NC}"
-    if [ "$use_symlink" = "true" ]; then
-        # 开发模式：使用符号链接
-        ln -shf "$game_dir/Assets" "$engine_dir/assets/Assets"
-        ln -shf "$game_dir/GameScript" "$engine_dir/assets/GameScript"
-    else
-        # 构建模式：复制文件
-        rm -rf "$engine_dir/assets/Assets" "$engine_dir/assets/GameScript"
-        cp -r "$game_dir/Assets" "$engine_dir/assets/"
-        cp -r "$game_dir/GameScript" "$engine_dir/assets/"
-    fi
+    echo -e "${YELLOW}正在复制游戏资源和脚本...${NC}"
+    # 总是使用复制模式以确保跨平台兼容性
+    cp -r "$game_dir/Assets" "$engine_dir/assets/"
+    cp -r "$game_dir/GameScript" "$engine_dir/assets/"
     
     # 复制 default_game.txt 到 assets 目录
     echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"

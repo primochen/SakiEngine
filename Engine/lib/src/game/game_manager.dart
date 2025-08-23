@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
-import 'package:sakiengine/src/skr_parser/skr_ast.dart';
-import 'package:sakiengine/src/skr_parser/skr_parser.dart';
+import 'package:sakiengine/src/sks_parser/sks_ast.dart';
+import 'package:sakiengine/src/sks_parser/sks_parser.dart';
 
 class GameManager {
   final _gameStateController = StreamController<GameState>.broadcast();
@@ -15,6 +15,11 @@ class GameManager {
   int _scriptIndex = 0;
   bool _isProcessing = false;
   Map<String, int> _labelIndexMap = {};
+  
+  // 跨文件标签支持
+  Map<String, String> _globalLabelMap = {}; // label -> filename
+  Map<String, ScriptNode> _loadedScripts = {}; // filename -> script
+  String _currentScriptFile = '';
 
   Map<String, CharacterConfig> _characterConfigs = {};
   Map<String, PoseConfig> _poseConfigs = {};
@@ -40,13 +45,66 @@ class GameManager {
 
   Future<void> startGame(String scriptName) async {
     await _loadConfigs();
-    final scriptContent =
-        await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
-    _script = SkrParser().parse(scriptContent);
-    _buildLabelIndexMap();
+    await _buildGlobalLabelMap(); // 构建全局标签映射
+    await _loadScript(scriptName);
     _currentState = GameState.initial();
     _dialogueHistory = [];
     _executeScript();
+  }
+  
+  // 构建全局标签映射，扫描所有脚本文件
+  Future<void> _buildGlobalLabelMap() async {
+    _globalLabelMap = {};
+    _loadedScripts = {};
+    
+    try {
+      // 获取所有 .sks 文件
+      final scriptFiles = await AssetManager().listAssets('assets/GameScript/labels/', '.sks');
+      
+      for (final fileName in scriptFiles) {
+        final fileNameWithoutExt = fileName.replaceAll('.sks', '');
+        try {
+          final scriptContent = await AssetManager().loadString('assets/GameScript/labels/$fileName');
+          final script = SksParser().parse(scriptContent);
+          _loadedScripts[fileNameWithoutExt] = script;
+          
+          // 扫描该文件中的所有标签
+          for (final node in script.children) {
+            if (node is LabelNode) {
+              _globalLabelMap[node.name] = fileNameWithoutExt;
+              if (kDebugMode) {
+                print('[GameManager] 发现标签: ${node.name} 在文件 $fileNameWithoutExt 中');
+              }
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('[GameManager] 加载脚本文件失败: $fileName - $e');
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        print('[GameManager] 全局标签映射构建完成，共 ${_globalLabelMap.length} 个标签');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[GameManager] 构建全局标签映射失败: $e');
+      }
+    }
+  }
+  
+  // 加载指定脚本文件
+  Future<void> _loadScript(String scriptName) async {
+    _currentScriptFile = scriptName;
+    if (_loadedScripts.containsKey(scriptName)) {
+      _script = _loadedScripts[scriptName]!;
+    } else {
+      final scriptContent = await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
+      _script = SksParser().parse(scriptContent);
+      _loadedScripts[scriptName] = _script;
+    }
+    _buildLabelIndexMap();
   }
 
   void _buildLabelIndexMap() {
@@ -59,11 +117,39 @@ class GameManager {
     }
   }
 
-  void jumpToLabel(String label) {
+  Future<void> jumpToLabel(String label) async {
+    // 首先检查当前脚本中是否有该标签
     if (_labelIndexMap.containsKey(label)) {
       _scriptIndex = _labelIndexMap[label]!;
       _currentState = _currentState.copyWith(forceNullCurrentNode: true);
       _executeScript();
+      return;
+    }
+    
+    // 检查全局标签映射
+    if (_globalLabelMap.containsKey(label)) {
+      final targetFile = _globalLabelMap[label]!;
+      if (kDebugMode) {
+        print('[GameManager] 跨文件跳转: $label -> $targetFile');
+      }
+      
+      // 加载目标文件
+      await _loadScript(targetFile);
+      
+      // 跳转到目标标签
+      if (_labelIndexMap.containsKey(label)) {
+        _scriptIndex = _labelIndexMap[label]!;
+        _currentState = _currentState.copyWith(forceNullCurrentNode: true);
+        _executeScript();
+      } else {
+        if (kDebugMode) {
+          print('[GameManager] 警告: 标签 $label 在文件 $targetFile 中未找到');
+        }
+      }
+    } else {
+      if (kDebugMode) {
+        print('[GameManager] 错误: 标签 $label 未找到');
+      }
     }
   }
 
@@ -172,6 +258,12 @@ class GameManager {
         _isProcessing = false;
         return;
       }
+      
+      if (node is JumpNode) {
+        _isProcessing = false;
+        jumpToLabel(node.targetLabel);
+        return;
+      }
     }
     _isProcessing = false;
   }
@@ -188,7 +280,7 @@ class GameManager {
     await _loadConfigs();
     final scriptContent =
         await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
-    _script = SkrParser().parse(scriptContent);
+    _script = SksParser().parse(scriptContent);
     _buildLabelIndexMap();
     
     _scriptIndex = snapshot.scriptIndex;
@@ -216,7 +308,7 @@ class GameManager {
     await _loadConfigs();
     final scriptContent =
         await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
-    _script = SkrParser().parse(scriptContent);
+    _script = SksParser().parse(scriptContent);
     _buildLabelIndexMap();
     
     if (_savedSnapshot != null) {
@@ -292,7 +384,7 @@ class GameState {
   final String? dialogue;
   final String? speaker;
   final Map<String, PoseConfig> poseConfigs;
-  final SkrNode? currentNode;
+  final SksNode? currentNode;
 
   GameState({
     this.background,
@@ -314,7 +406,7 @@ class GameState {
     String? dialogue,
     String? speaker,
     Map<String, PoseConfig>? poseConfigs,
-    SkrNode? currentNode,
+    SksNode? currentNode,
     bool clearDialogueAndSpeaker = false,
     bool forceNullCurrentNode = false,
     bool forceNullSpeaker = false,
