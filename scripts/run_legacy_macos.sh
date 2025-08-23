@@ -15,15 +15,54 @@ cd "$(dirname "$0")"
 # 项目根目录
 PROJECT_ROOT=$(pwd)
 ENGINE_DIR="$PROJECT_ROOT/Engine"
+DEFAULT_GAME_FILE="$PROJECT_ROOT/default_game.txt"
 PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml"
 TEMP_PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml.temp"
 
+# 在debug模式下，检查是否需要选择游戏项目
+if [ ! -f "$DEFAULT_GAME_FILE" ]; then
+    echo -e "${YELLOW}未找到默认游戏配置，启动游戏选择器...${NC}"
+    ./select_game.sh
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}游戏选择失败，退出。${NC}"
+        exit 1
+    fi
+fi
+
+# 读取默认游戏名称
+GAME_NAME=$(cat "$DEFAULT_GAME_FILE" | tr -d '\n')
+if [ -z "$GAME_NAME" ]; then
+    echo -e "${RED}错误: default_game.txt 文件是空的。${NC}"
+    echo -e "${YELLOW}重新启动游戏选择器...${NC}"
+    ./select_game.sh
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}游戏选择失败，退出。${NC}"
+        exit 1
+    fi
+    GAME_NAME=$(cat "$DEFAULT_GAME_FILE" | tr -d '\n')
+fi
+
 # 游戏目录
-GAME_DIR="$PROJECT_ROOT/Game/TestGame"
+GAME_DIR="$PROJECT_ROOT/Game/$GAME_NAME"
+
+# 验证游戏目录是否存在
+if [ ! -d "$GAME_DIR" ]; then
+    echo -e "${RED}错误: 游戏目录 '$GAME_DIR' 不存在。${NC}"
+    echo -e "${YELLOW}重新启动游戏选择器...${NC}"
+    ./select_game.sh
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}游戏选择失败，退出。${NC}"
+        exit 1
+    fi
+    GAME_NAME=$(cat "$DEFAULT_GAME_FILE" | tr -d '\n')
+    GAME_DIR="$PROJECT_ROOT/Game/$GAME_NAME"
+fi
+
+echo -e "${GREEN}使用游戏项目: $GAME_NAME${NC}"
 
 # --- 动态设置应用名称和包名 ---
 echo -e "${YELLOW}正在从 game_config.txt 读取配置...${NC}"
-CONFIG_FILE="$PROJECT_ROOT/Game/TestGame/game_config.txt"
+CONFIG_FILE="$GAME_DIR/game_config.txt"
 
 if [ -f "$CONFIG_FILE" ]; then
     APP_NAME=$(sed -n '1p' "$CONFIG_FILE")
@@ -68,10 +107,14 @@ find "$ENGINE_DIR/assets" -type d -empty -delete
 mkdir -p "$ENGINE_DIR/assets"
 
 echo -e "${YELLOW}正在链接游戏资源和脚本...${NC}"
-# 为 Game/TestGame/Assets 创建符号链接
+# 为选中的游戏项目创建Assets符号链接
 ln -shf "$GAME_DIR/Assets" "$ENGINE_DIR/assets/Assets"
-# 为 Game/TestGame/GameScript 创建符号链接
+# 为选中的游戏项目创建GameScript符号链接
 ln -shf "$GAME_DIR/GameScript" "$ENGINE_DIR/assets/GameScript"
+
+# 复制 default_game.txt 到 assets 目录
+echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"
+cp "$DEFAULT_GAME_FILE" "$ENGINE_DIR/assets/"
 
 echo -e "${GREEN}资源链接完成。${NC}"
 
@@ -87,6 +130,7 @@ if [ -n "$assets_start_line" ]; then
     
     # 3. 写入 assets: 标签和动态生成的列表 (排除 shaders 目录)
     echo "  assets:" >> "$TEMP_PUBSPEC_PATH"
+    echo "    - assets/default_game.txt" >> "$TEMP_PUBSPEC_PATH"
     find -L "$ENGINE_DIR/assets" -mindepth 1 -type d -not -path "$ENGINE_DIR/assets/shaders" | while read -r dir; do
         relative_path=$(echo "$dir" | sed "s|$ENGINE_DIR/||")
         echo "    - $relative_path/" >> "$TEMP_PUBSPEC_PATH"
@@ -125,4 +169,4 @@ flutter clean
 echo -e "${YELLOW}正在获取依赖...${NC}"
 flutter pub get
 # 运行应用，并传入游戏目录的绝对路径
-flutter run -d macos --dart-define=SAKI_GAME_PATH="$PROJECT_ROOT/Game/TestGame" 
+flutter run -d macos --dart-define=SAKI_GAME_PATH="$GAME_DIR" 

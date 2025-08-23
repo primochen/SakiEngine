@@ -24,9 +24,34 @@ cd "$(dirname "$0")"
 # 项目根目录和游戏目录
 PROJECT_ROOT=$(pwd)
 ENGINE_DIR="$PROJECT_ROOT/Engine"
-GAME_DIR="$PROJECT_ROOT/Game/TestGame"
+DEFAULT_GAME_FILE="$PROJECT_ROOT/default_game.txt"
 PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml"
 TEMP_PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml.temp"
+
+# 读取默认游戏名称
+if [ -f "$DEFAULT_GAME_FILE" ]; then
+    GAME_NAME=$(cat "$DEFAULT_GAME_FILE" | tr -d '\n')
+    if [ -z "$GAME_NAME" ]; then
+        echo -e "${RED}错误: default_game.txt 文件是空的。${NC}"
+        echo -e "${YELLOW}请运行 ./scripts/select_game.sh 选择默认游戏项目。${NC}"
+        exit 1
+    fi
+else
+    echo -e "${RED}错误: 未找到 default_game.txt 文件。${NC}"
+    echo -e "${YELLOW}请运行 ./scripts/select_game.sh 选择默认游戏项目。${NC}"
+    exit 1
+fi
+
+GAME_DIR="$PROJECT_ROOT/Game/$GAME_NAME"
+
+# 验证游戏目录是否存在
+if [ ! -d "$GAME_DIR" ]; then
+    echo -e "${RED}错误: 游戏目录 '$GAME_DIR' 不存在。${NC}"
+    echo -e "${YELLOW}请运行 ./scripts/select_game.sh 重新选择游戏项目。${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}使用游戏项目: $GAME_NAME${NC}"
 
 # --- 准备资源 ---
 echo -e "${YELLOW}正在准备资源目录...${NC}"
@@ -40,6 +65,11 @@ echo -e "${YELLOW}正在拷贝游戏资源和脚本...${NC}"
 # 将 Assets 和 GameScript 目录完整地拷贝到 Engine/assets/ 下
 cp -r "$GAME_DIR/Assets" "$ENGINE_DIR/assets/"
 cp -r "$GAME_DIR/GameScript" "$ENGINE_DIR/assets/"
+
+# 复制 default_game.txt 到 assets 目录
+echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"
+cp "$DEFAULT_GAME_FILE" "$ENGINE_DIR/assets/"
+
 echo -e "${GREEN}资源准备完成。${NC}"
 
 
@@ -55,6 +85,7 @@ if [ -n "$assets_start_line" ]; then
     
     # 3. 写入 assets: 标签和动态生成的列表 (排除 shaders 目录)
     echo "  assets:" >> "$TEMP_PUBSPEC_PATH"
+    echo "    - assets/default_game.txt" >> "$TEMP_PUBSPEC_PATH"
     find -L "$ENGINE_DIR/assets" -mindepth 1 -type d -not -path "$ENGINE_DIR/assets/shaders" | while read -r dir; do
         relative_path=$(echo "$dir" | sed "s|$ENGINE_DIR/||")
         echo "    - $relative_path/" >> "$TEMP_PUBSPEC_PATH"

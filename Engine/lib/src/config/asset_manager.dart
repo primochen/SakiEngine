@@ -18,16 +18,55 @@ class AssetManager {
 
   Map<String, dynamic>? _assetManifest;
   final Map<String, String> _imageCache = {};
-  static const String _debugRoot = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+  
+  // 获取游戏路径，从dart-define或环境变量获取
+  static String get _debugRoot {
+    const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    
+    final fromEnv = Platform.environment['SAKI_GAME_PATH'];
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    
+    return '';
+  }
+
+  // 获取游戏路径，优先使用环境变量，如果没有则从assets读取default_game.txt
+  static Future<String> _getGamePath() async {
+    // 如果环境变量已设置，直接使用
+    if (_debugRoot.isNotEmpty) {
+      return _debugRoot;
+    }
+    
+    try {
+      // 从assets读取default_game.txt
+      final assetContent = await rootBundle.loadString('assets/default_game.txt');
+      final defaultGame = assetContent.trim();
+      
+      if (defaultGame.isEmpty) {
+        throw Exception('default_game.txt is empty');
+      }
+      
+      final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
+      if (kDebugMode) {
+        print("Using game from assets: $defaultGame");
+        print("Game path resolved to: $gamePath");
+      }
+      
+      return gamePath;
+    } catch (e) {
+      throw Exception('Failed to load default_game.txt from assets: $e');
+    }
+  }
 
 
   Future<String> loadString(String path) async {
     if (kDebugMode) {
-      if (_debugRoot.isEmpty) {
-        throw Exception('SAKI_GAME_PATH is not defined. Please run with --dart-define=SAKI_GAME_PATH=/path/to/your/Game/TestGame');
+      final gamePath = await _getGamePath();
+      if (gamePath.isEmpty) {
+        throw Exception('Game path is not defined. Please set SAKI_GAME_PATH environment variable or create default_game.txt');
       }
       final assetPath = path.startsWith('assets/') ? path.substring('assets/'.length) : path;
-      final fileSystemPath = p.normalize(p.join(_debugRoot, assetPath));
+      final fileSystemPath = p.normalize(p.join(gamePath, assetPath));
       
       try {
         print("Attempting to load from file system: $fileSystemPath");
@@ -122,20 +161,21 @@ class AssetManager {
   }
 
   Future<String?> _findAssetInFileSystem(String name) async {
-    if (_debugRoot.isEmpty) {
-      print("SAKI_GAME_PATH is not set, cannot find assets in file system.");
+    final gamePath = await _getGamePath();
+    if (gamePath.isEmpty) {
+      print("Game path is not set, cannot find assets in file system.");
       return null;
     }
 
     // 从资源名中提取文件名用于搜索，例如 "backgrounds/bg-school" -> "bg-school"
     final fileNameToSearch = name.split('/').last;
 
-    final searchBase = p.join(_debugRoot, 'Assets', 'images');
+    final searchBase = p.join(gamePath, 'Assets', 'images');
     final searchPaths = [
       p.join(searchBase, 'backgrounds'),
       p.join(searchBase, 'characters'),
       p.join(searchBase, 'items'),
-      p.join(_debugRoot, 'Assets', 'gui'),
+      p.join(gamePath, 'Assets', 'gui'),
     ];
 
     for (final dirPath in searchPaths) {
@@ -145,7 +185,7 @@ class AssetManager {
           if (file is File) {
             final fileNameWithoutExt = p.basenameWithoutExtension(file.path);
             if (fileNameWithoutExt.toLowerCase() == fileNameToSearch.toLowerCase()) {
-              final relativePath = p.relative(file.path, from: _debugRoot);
+              final relativePath = p.relative(file.path, from: gamePath);
               // 在发布模式下，Flutter 需要 'assets/' 前缀
               final assetPath = p.join('assets', relativePath).replaceAll('\\', '/');
               _imageCache[name] = assetPath; // 使用原始名称作为缓存的键
