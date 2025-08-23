@@ -25,6 +25,9 @@ class GameManager {
   List<DialogueHistoryEntry> _dialogueHistory = [];
   static const int maxHistoryEntries = 100;
 
+  // Getters for accessing configurations
+  Map<String, PoseConfig> get poseConfigs => _poseConfigs;
+
   GameManager({this.onReturn});
 
   Future<void> _loadConfigs() async {

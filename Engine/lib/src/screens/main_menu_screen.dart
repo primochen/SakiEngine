@@ -4,7 +4,7 @@ import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
-import 'package:sakiengine/src/widgets/debug_log_panel.dart';
+import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -83,6 +83,7 @@ class MainMenuScreen extends StatefulWidget {
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _showLoadOverlay = false;
+  bool _showDebugPanel = false;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +184,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               mode: SaveLoadMode.load,
               onClose: () => setState(() => _showLoadOverlay = false),
             ),
+
+          if (_showDebugPanel)
+            DebugPanelDialog(
+              onClose: () => setState(() => _showDebugPanel = false),
+            ),
         ],
       ),
     );
@@ -212,38 +218,38 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const DebugLogPanel(),
-          );
+          setState(() => _showDebugPanel = true);
         },
+        onHover: (hovering) => setState(() {}),
         child: Container(
-          padding: EdgeInsets.all(12 * scale),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16 * scale,
+            vertical: 12 * scale,
+          ),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(8),
+            color: config.themeColors.background.withOpacity(0.85),
             border: Border.all(
-              color: Colors.orange.withOpacity(0.5),
-              width: 1,
+              color: config.themeColors.primary.withOpacity(0.6),
+              width: 1.5,
             ),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.bug_report,
-                color: Colors.orange,
-                size: 20 * scale,
+                Icons.settings_applications,
+                color: config.themeColors.primary,
+                size: 18 * scale,
               ),
               SizedBox(width: 8 * scale),
               Text(
-                'DEBUG',
+                '调试界面',
                 style: TextStyle(
+                  fontFamily: 'SourceHanSansCN-Bold',
                   fontSize: 14 * scale,
-                  color: Colors.orange,
-                  fontWeight: FontWeight.bold,
+                  color: config.themeColors.primary,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: 1,
                 ),
               ),

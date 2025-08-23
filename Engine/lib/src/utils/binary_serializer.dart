@@ -20,7 +20,7 @@ class BinarySerializer {
     buffer.addAll(_writeInt64(saveSlot.saveTime.millisecondsSinceEpoch));
     buffer.addAll(_writeString(saveSlot.currentScript));
     buffer.addAll(_writeString(saveSlot.dialoguePreview));
-    buffer.addAll(_writeNullableString(saveSlot.screenshotPath));
+    buffer.addAll(_writeNullableBytes(saveSlot.screenshotData));
     
     // 写入游戏状态快照
     buffer.addAll(_serializeGameStateSnapshot(saveSlot.snapshot));
@@ -48,7 +48,7 @@ class BinarySerializer {
     final saveTime = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
     final currentScript = reader.readString();
     final dialoguePreview = reader.readString();
-    final screenshotPath = reader.readNullableString();
+    final screenshotData = reader.readNullableBytes();
     
     // 读取游戏状态快照
     final snapshot = _deserializeGameStateSnapshot(reader);
@@ -59,7 +59,7 @@ class BinarySerializer {
       currentScript: currentScript,
       dialoguePreview: dialoguePreview,
       snapshot: snapshot,
-      screenshotPath: screenshotPath,
+      screenshotData: screenshotData,
     );
   }
 
@@ -213,11 +213,25 @@ class BinarySerializer {
     return Uint8List.fromList(buffer);
   }
 
+  static Uint8List _writeNullableBytes(Uint8List? value) {
+    if (value == null) {
+      return _writeInt32(-1);
+    }
+    final buffer = <int>[];
+    buffer.addAll(_writeInt32(value.length));
+    buffer.addAll(value);
+    return Uint8List.fromList(buffer);
+  }
+
   static Uint8List _writeNullableString(String? value) {
     if (value == null) {
       return _writeInt32(-1);
     }
-    return _writeString(value);
+    final bytes = utf8.encode(value);
+    final buffer = <int>[];
+    buffer.addAll(_writeInt32(bytes.length));
+    buffer.addAll(bytes);
+    return Uint8List.fromList(buffer);
   }
 }
 
@@ -267,6 +281,17 @@ class _BinaryReader {
     final bytes = readBytes(length);
     return utf8.decode(bytes);
   }
+
+  Uint8List? readNullableBytes() {
+    final length = readInt32();
+    if (length == -1) {
+      return null;
+    }
+    if (length < 0) {
+      throw FormatException('Invalid bytes length: $length');
+    }
+    return readBytes(length);
+  }
 }
 
 /// SaveSlot类，只支持二进制序列化
@@ -276,7 +301,7 @@ class SaveSlot {
   final String currentScript;
   final String dialoguePreview;
   final GameStateSnapshot snapshot;
-  final String? screenshotPath;
+  final Uint8List? screenshotData; // 内嵌的截图数据
 
   SaveSlot({
     required this.id,
@@ -284,7 +309,7 @@ class SaveSlot {
     required this.currentScript,
     required this.dialoguePreview,
     required this.snapshot,
-    this.screenshotPath,
+    this.screenshotData,
   });
 
   /// 从二进制数据创建SaveSlot

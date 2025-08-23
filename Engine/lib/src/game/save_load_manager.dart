@@ -30,16 +30,12 @@ class SaveLoadManager {
       }
     }
 
-    // 先删除旧截图，然后生成新截图
-    await ScreenshotGenerator.deleteScreenshot(slotId, directory);
-    
-    String? screenshotPath;
+    // 生成截图数据
+    Uint8List? screenshotData;
     try {
-      screenshotPath = await ScreenshotGenerator.generateScreenshot(
+      screenshotData = await ScreenshotGenerator.generateScreenshotData(
         currentState,
         currentState.poseConfigs,
-        directory,
-        slotId,
       );
     } catch (e) {
       print('生成截图失败: $e');
@@ -51,7 +47,7 @@ class SaveLoadManager {
       currentScript: currentScript,
       dialoguePreview: dialoguePreview,
       snapshot: snapshot,
-      screenshotPath: screenshotPath,
+      screenshotData: screenshotData,
     );
 
     final binaryData = saveSlot.toBinary();
@@ -97,9 +93,6 @@ class SaveLoadManager {
     if (await file.exists()) {
       await file.delete();
     }
-    
-    // 同时删除截图文件
-    await ScreenshotGenerator.deleteScreenshot(slotId, directory);
   }
 }
 
