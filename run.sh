@@ -50,30 +50,86 @@ if [ -f "$DEFAULT_GAME_FILE" ]; then
     if [ -n "$current_game" ]; then
         echo -e "${BLUE}当前默认游戏: ${GREEN}$current_game${NC}"
         echo ""
-        echo -e -n "${YELLOW}是否要更改默认游戏? (y/N): ${NC}"
-        read -r change_game
-        if [[ "$change_game" =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}请选择操作:${NC}"
+        echo -e "${BLUE}  1. 继续使用当前游戏${NC}"
+        echo -e "${BLUE}  2. 选择其他游戏${NC}"
+        echo -e "${BLUE}  3. 创建新游戏项目${NC}"
+        echo ""
+        echo -e -n "${YELLOW}请选择 (1-3, 默认为1): ${NC}"
+        read -r action_choice
+        
+        case "$action_choice" in
+            "2")
+                "$SCRIPTS_DIR/select_game.sh"
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}游戏选择失败，退出。${NC}"
+                    exit 1
+                fi
+                ;;
+            "3")
+                "$SCRIPTS_DIR/create_new_project.sh"
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}项目创建失败，退出。${NC}"
+                    exit 1
+                fi
+                ;;
+            *)
+                # 默认继续使用当前游戏
+                ;;
+        esac
+    else
+        echo -e "${YELLOW}default_game.txt 文件为空...${NC}"
+        echo ""
+        echo -e "${YELLOW}请选择操作:${NC}"
+        echo -e "${BLUE}  1. 选择现有游戏项目${NC}"
+        echo -e "${BLUE}  2. 创建新游戏项目${NC}"
+        echo ""
+        echo -e -n "${YELLOW}请选择 (1-2): ${NC}"
+        read -r action_choice
+        
+        case "$action_choice" in
+            "2")
+                "$SCRIPTS_DIR/create_new_project.sh"
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}项目创建失败，退出。${NC}"
+                    exit 1
+                fi
+                ;;
+            *)
+                "$SCRIPTS_DIR/select_game.sh"
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}游戏选择失败，退出。${NC}"
+                    exit 1
+                fi
+                ;;
+        esac
+    fi
+else
+    echo -e "${YELLOW}未找到默认游戏配置...${NC}"
+    echo ""
+    echo -e "${YELLOW}请选择操作:${NC}"
+    echo -e "${BLUE}  1. 选择现有游戏项目${NC}"
+    echo -e "${BLUE}  2. 创建新游戏项目${NC}"
+    echo ""
+    echo -e -n "${YELLOW}请选择 (1-2): ${NC}"
+    read -r action_choice
+    
+    case "$action_choice" in
+        "2")
+            "$SCRIPTS_DIR/create_new_project.sh"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}项目创建失败，退出。${NC}"
+                exit 1
+            fi
+            ;;
+        *)
             "$SCRIPTS_DIR/select_game.sh"
             if [ $? -ne 0 ]; then
                 echo -e "${RED}游戏选择失败，退出。${NC}"
                 exit 1
             fi
-        fi
-    else
-        echo -e "${YELLOW}default_game.txt 文件为空，启动游戏选择器...${NC}"
-        "$SCRIPTS_DIR/select_game.sh"
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}游戏选择失败，退出。${NC}"
-            exit 1
-        fi
-    fi
-else
-    echo -e "${YELLOW}未找到默认游戏配置，启动游戏选择器...${NC}"
-    "$SCRIPTS_DIR/select_game.sh"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}游戏选择失败，退出。${NC}"
-        exit 1
-    fi
+            ;;
+    esac
 fi
 
 # 读取最终的游戏名称
@@ -142,6 +198,21 @@ flutter clean
 
 echo -e "${YELLOW}正在获取依赖...${NC}"
 flutter pub get
+
+echo -e "${YELLOW}🤖 正在更新模块注册表...${NC}"
+# 检查并更新模块注册表
+if [ -f "tool/generate_modules.dart" ]; then
+    echo -e "${BLUE}扫描并注册项目模块...${NC}"
+    dart tool/generate_modules.dart
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ 模块注册表更新完成${NC}"
+    else
+        echo -e "${RED}⚠️ 模块注册表更新失败，继续启动...${NC}"
+    fi
+else
+    echo -e "${YELLOW}未找到模块生成工具，跳过模块更新${NC}"
+fi
+echo ""
 
 # 根据平台启动
 case "$PLATFORM" in

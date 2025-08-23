@@ -506,17 +506,17 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
   Future<void> _openSaveDirectory() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final savesDir = '${directory.path}/SakiEngine';
+      final savesBaseDir = '${directory.path}/SakiEngine/Saves';
       
       if (Platform.isMacOS) {
-        await Process.run('open', [savesDir]);
+        await Process.run('open', [savesBaseDir]);
       } else if (Platform.isWindows) {
-        await Process.run('explorer', [savesDir]);
+        await Process.run('explorer', [savesBaseDir]);
       } else if (Platform.isLinux) {
-        await Process.run('xdg-open', [savesDir]);
+        await Process.run('xdg-open', [savesBaseDir]);
       }
       
-      DebugLogger.instance.log('已打开存档文件夹: $savesDir');
+      DebugLogger.instance.log('已打开存档文件夹: $savesBaseDir');
     } catch (e) {
       DebugLogger.instance.log('[ERROR] 打开存档文件夹失败: $e');
     }
