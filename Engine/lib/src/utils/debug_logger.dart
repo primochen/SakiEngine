@@ -53,26 +53,13 @@ class DebugLogger {
   }
 }
 
-void Function(Zone, ZoneDelegate, Zone, String)? _originalPrint;
-
 void setupDebugLogger() {
-  // 保存原始的print函数
-  _originalPrint ??= Zone.current[#flutter.io.print] as void Function(Zone, ZoneDelegate, Zone, String)?;
-  
-  // 使用Zone.runZoned来捕获所有print输出
-  runZoned(() {}, zoneSpecification: ZoneSpecification(
-    print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
-      // 记录到我们的日志系统
-      DebugLogger().addLog(line);
-      
-      // 调用原始的print函数，保持正常输出
-      if (_originalPrint != null) {
-        _originalPrint!(self, parent, zone, line);
-      } else {
-        parent.print(zone, line);
-      }
-    },
-  ));
-  
+  // 添加初始化日志，表示日志系统已启动
   DebugLogger().addLog("调试日志系统已启动 - 所有print输出都会被自动捕获");
+  
+  // 添加一些测试日志来验证系统工作正常
+  DebugLogger().addLog("测试日志: INFO级别消息");
+  DebugLogger().addLog("测试日志: [WARN] 警告级别消息");
+  DebugLogger().addLog("测试日志: [ERROR] 错误级别消息");
+  DebugLogger().addLog("测试日志: [DEBUG] 调试级别消息");
 }

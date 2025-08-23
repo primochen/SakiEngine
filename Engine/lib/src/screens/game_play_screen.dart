@@ -9,7 +9,7 @@ import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
-import 'package:sakiengine/src/skr_parser/skr_ast.dart';
+import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
 import 'package:sakiengine/src/widgets/dialogue_box.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
