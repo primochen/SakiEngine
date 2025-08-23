@@ -72,6 +72,16 @@ jobs:
           # 检查路径长度
           pwd | wc -c
           
+          # 验证Game目录和default_game.txt
+          echo "📁 检查游戏目录..."
+          ls -la Game/ || echo "Game目录不存在"
+          echo "📄 default_game.txt内容:"
+          cat default_game.txt | xxd
+          echo "🎯 游戏目录路径:"
+          GAME_NAME=$(cat default_game.txt | tr -d '\r\n')
+          echo "Game name: '$GAME_NAME'"
+          ls -la "Game/$GAME_NAME/" || echo "游戏目录不存在"
+          
           # 清理可能的缓存问题
           cd Engine
           flutter clean
