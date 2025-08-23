@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
