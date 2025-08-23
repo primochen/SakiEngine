@@ -30,7 +30,17 @@ TEMP_PUBSPEC_PATH="$ENGINE_DIR/pubspec.yaml.temp"
 
 # 读取默认游戏名称
 if [ -f "$DEFAULT_GAME_FILE" ]; then
-    GAME_NAME=$(cat "$DEFAULT_GAME_FILE" | tr -d '\n')
+    # 检查并修复default_game.txt文件格式
+    line_count=$(wc -l < "$DEFAULT_GAME_FILE")
+    if [ "$line_count" -gt 1 ]; then
+        echo -e "${YELLOW}检测到default_game.txt有多行，正在修复为单行格式...${NC}"
+        # 读取第一行并重写文件
+        first_line=$(head -n 1 "$DEFAULT_GAME_FILE" | tr -d '\n\r' | xargs)
+        echo -n "$first_line" > "$DEFAULT_GAME_FILE"
+        echo -e "${GREEN}已修复default_game.txt为单行格式${NC}"
+    fi
+    
+    GAME_NAME=$(cat "$DEFAULT_GAME_FILE" | tr -d '\n\r' | xargs)
     if [ -z "$GAME_NAME" ]; then
         echo -e "${RED}错误: default_game.txt 文件是空的。${NC}"
         echo -e "${YELLOW}请运行 ./scripts/select_game.sh 选择默认游戏项目。${NC}"
@@ -43,6 +53,10 @@ else
 fi
 
 GAME_DIR="$PROJECT_ROOT/Game/$GAME_NAME"
+
+# 调试输出：显示解析的游戏名称和路径
+echo -e "${YELLOW}解析的游戏名称: '$GAME_NAME'${NC}"
+echo -e "${YELLOW}游戏目录路径: '$GAME_DIR'${NC}"
 
 # 验证游戏目录是否存在
 if [ ! -d "$GAME_DIR" ]; then
