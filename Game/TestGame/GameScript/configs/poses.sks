@@ -1,4 +1,4 @@
-// SakiEngine 姿势定义文件
+//pos// SakiEngine 姿势定义文件
 //
 // --- 参数说明 ---
 // 格式: 姿势名称: scale=<缩放> xcenter=<水平位置> ycenter=<垂直位置> anchor=<锚点>

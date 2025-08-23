@@ -1,0 +1,107 @@
+name: macOS Build
+
+on:
+  workflow_call:
+    inputs:
+      flutter_version:
+        required: false
+        type: string
+        default: '3.29.3'
+      working_directory:
+        required: false
+        type: string
+        default: '.'
+      create_dmg:
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      version:
+        description: "App version from pubspec.yaml"
+        value: ${{ jobs.build-macos.outputs.version }}
+      artifact_name:
+        description: "Generated artifact name"
+        value: ${{ jobs.build-macos.outputs.artifact_name }}
+
+jobs:
+  build-macos:
+    name: Build macOS App
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Get app version
+        id: get_version
+        working-directory: ${{ inputs.working_directory }}
+        shell: bash
+        run: |
+          version=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Detected version: $version"
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.12.0
+        with:
+          flutter-version: ${{ inputs.flutter_version }}
+          channel: 'stable'
+          cache: true
+      
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          key: macos-pods-${{ hashFiles(format('{0}/macos/Podfile.lock', inputs.working_directory)) }}
+          path: ${{ inputs.working_directory }}/macos/Pods
+          restore-keys: |
+            macos-pods-
+      
+      - name: Flutter Pub Get
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          git config --global core.longpaths true
+          flutter pub get
+      
+      - name: Build macOS App
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          flutter build macos --release
+      
+      - name: Create DMG or ZIP
+        id: build
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          cd build/macos/Build/Products/Release
+          version="${{ steps.get_version.outputs.version }}"
+          
+          if [ "${{ inputs.create_dmg }}" = "true" ]; then
+            # Create DMG
+            mkdir -p dmg-contents
+            cp -R SakiEngine.app dmg-contents/
+            artifact_name="SakiEngine-${version}-macOS-arm64.dmg"
+            hdiutil create -srcfolder dmg-contents -volname "SakiEngine" -format UDZO "$artifact_name"
+            echo "Created DMG: $artifact_name"
+          else
+            # Create ZIP
+            artifact_name="SakiEngine-${version}-macOS-arm64.zip"
+            zip -r "$artifact_name" SakiEngine.app
+            echo "Created ZIP: $artifact_name"
+          fi
+          
+          echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
+          echo "Built: $artifact_name"
+      
+      - name: Upload macOS App
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macOS
+          path: |
+            ${{ inputs.working_directory }}/build/macos/Build/Products/Release/*.dmg
+            ${{ inputs.working_directory }}/build/macos/Build/Products/Release/*.zip
+          retention-days: 90

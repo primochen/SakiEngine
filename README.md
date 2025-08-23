@@ -139,10 +139,10 @@ SakiEngine/
 
 项目根目录包含一个专门为 SakiEngine 开发的 VSCode 语法高亮插件 `vscode-sakiengine-syntax`，支持以下文件类型的语法高亮：
 
-- `.skr` - 剧本文件 (Script Files)
-- `.skc` - 配置文件 (Configuration Files)
-- `.skp` - 坐标管理文件 (Position Management Files)
-- `.skn` - 角色定义文件 (Character Definition Files)
+- `.sks` - 剧本文件 (Script Files)
+- `.sks` - 配置文件 (Configuration Files)
+- `.sks` - 坐标管理文件 (Position Management Files)
+- `.sks` - 角色定义文件 (Character Definition Files)
 
 #### 安装方法
 

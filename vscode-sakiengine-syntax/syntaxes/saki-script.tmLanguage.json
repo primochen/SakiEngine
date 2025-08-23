@@ -1,99 +1,282 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "name": "SakiScript",
-    "scopeName": "source.skr",
+    "scopeName": "source.sks",
     "patterns": [
-      {
-        "include": "#comments"
-      },
-      {
-        "include": "#keywords"
-      },
-      {
-        "include": "#strings"
-      },
-      {
-        "include": "#variables"
-      },
-      {
-        "include": "#labels"
-      },
-      {
-         "include": "#characters"
-      },
-      {
-         "include": "#menu_choices"
-      }
+        {
+            "include": "#first-line-identifier"
+        },
+        {
+            "include": "#label-content"
+        },
+        {
+            "include": "#pose-content" 
+        },
+        {
+            "include": "#config-content"
+        },
+        {
+            "include": "#character-content"
+        },
+        {
+            "include": "#comments"
+        }
     ],
     "repository": {
-      "comments": {
-        "patterns": [
-          {
-            "name": "comment.line.double-slash.skr",
-            "match": "//.*$"
-          }
-        ]
-      },
-      "keywords": {
-        "patterns": [
-          {
-            "name": "keyword.control.skr",
-            "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return)\\b"
-          }
-        ]
-      },
-      "strings": {
-        "patterns": [
-          {
-            "name": "string.quoted.double.skr",
-            "begin": "\"",
-            "end": "\"",
+        "first-line-identifier": {
             "patterns": [
-              {
-                "name": "constant.character.escape.skr",
-                "match": "\\\\."
-              }
+                {
+                    "name": "comment.line.first-identifier.sks",
+                    "match": "^\\s*(//\\w+//)(.*)$",
+                    "captures": {
+                        "1": {
+                            "name": "constant.other.identifier.sks"
+                        },
+                        "2": {
+                            "name": "comment.line.description.sks"
+                        }
+                    }
+                }
             ]
-          }
-        ]
-      },
-      "variables": {
-         "patterns": [
-           {
-             "name": "variable.other.skr",
-             "match": "\\$\\w+"
-           }
-         ]
-      },
-      "labels": {
-        "patterns": [
-            {
-                "name": "entity.name.function.label.skr",
-                "match": "^\\s*label\\s+([\\w_]+):"
-            }
-        ]
-      },
-      "characters": {
-          "patterns": [
-              {
-                  "comment": "Match character name directly before a quote (e.g., yk \"...\")",
-                  "name": "entity.name.type.character.skr",
-                  "match": "^\\s*([\\w_]+)(?=\\s*\\\")"
-              },
-              {
-                  "comment": "Match character name followed by one or more words before a quote (e.g., yk pose1 sad \"...\")",
-                  "name": "entity.name.type.character.skr",
-                  "match": "^\\s*([\\w_]+)(?=\\s+[^\\\"\\n]+.*?\\\")"
-              }
-          ]
-      },
-      "menu_choices": {
-          "patterns": [
-              {
-                  "name": "string.quoted.double.menu-choice.skr",
-                  "match": "^\\s*(\".*?\")"
-              }
-          ]
-      }
+        },
+        "label-content": {
+            "patterns": [
+                {
+                    "include": "#keywords"
+                },
+                {
+                    "include": "#strings"
+                },
+                {
+                    "include": "#variables"
+                },
+                {
+                    "include": "#labels"
+                },
+                {
+                    "include": "#characters"
+                },
+                {
+                    "include": "#menu-choices"
+                }
+            ]
+        },
+        "pose-content": {
+            "patterns": [
+                {
+                    "include": "#pose-definitions"
+                },
+                {
+                    "include": "#pose-parameters"
+                },
+                {
+                    "include": "#numeric-values"
+                }
+            ]
+        },
+        "config-content": {
+            "patterns": [
+                {
+                    "include": "#config-keys"
+                },
+                {
+                    "include": "#config-values"
+                },
+                {
+                    "include": "#color-values"
+                },
+                {
+                    "include": "#numeric-values"
+                }
+            ]
+        },
+        "character-content": {
+            "patterns": [
+                {
+                    "include": "#character-definitions"
+                },
+                {
+                    "include": "#strings"
+                }
+            ]
+        },
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.sks",
+                    "match": "//.*$"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.sks",
+                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.sks",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.sks",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "variables": {
+            "patterns": [
+                {
+                    "name": "variable.other.sks",
+                    "match": "\\$\\w+"
+                }
+            ]
+        },
+        "labels": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.label.sks",
+                    "match": "^\\s*label\\s+([\\w_]+)",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.label.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "characters": {
+            "patterns": [
+                {
+                    "name": "entity.name.type.character.sks",
+                    "match": "^\\s*([\\w_]+)(?=\\s*(?:[\\w_]+\\s+)*\")",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.type.character.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "menu-choices": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.menu-choice.sks",
+                    "match": "^\\s*(\".*?\")\\s*([\\w_]+)?",
+                    "captures": {
+                        "1": {
+                            "name": "string.quoted.double.menu-choice.sks"
+                        },
+                        "2": {
+                            "name": "entity.name.function.label.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "pose-definitions": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.pose.sks",
+                    "match": "^\\s*([\\w_]+)\\s*:",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.pose.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "pose-parameters": {
+            "patterns": [
+                {
+                    "name": "variable.parameter.sks",
+                    "match": "\\b(scale|xcenter|ycenter|anchor)(?=\\s*=)",
+                    "captures": {
+                        "1": {
+                            "name": "variable.parameter.sks"
+                        }
+                    }
+                },
+                {
+                    "name": "constant.other.anchor.sks",
+                    "match": "\\b(center|bottomCenter|topCenter|centerLeft|centerRight)\\b"
+                }
+            ]
+        },
+        "config-keys": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.config-key.sks",
+                    "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*:",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.config-key.sks"
+                        }
+                    }
+                },
+                {
+                    "name": "variable.parameter.sks",
+                    "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\\s*=)",
+                    "captures": {
+                        "1": {
+                            "name": "variable.parameter.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "config-values": {
+            "patterns": [
+                {
+                    "name": "string.unquoted.config-value.sks",
+                    "match": "(?<=\\s)([a-zA-Z_][a-zA-Z0-9_\\-]*)\\b"
+                }
+            ]
+        },
+        "character-definitions": {
+            "patterns": [
+                {
+                    "name": "entity.name.type.character-alias.sks",
+                    "match": "^\\s*([\\w_]+)\\s*:",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.type.character-alias.sks"
+                        }
+                    }
+                },
+                {
+                    "name": "keyword.other.at.sks", 
+                    "match": "\\b(at)\\b"
+                }
+            ]
+        },
+        "color-values": {
+            "patterns": [
+                {
+                    "name": "constant.other.color.rgb.sks",
+                    "match": "\\brgb\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*,\\s*\\d+\\s*\\)"
+                },
+                {
+                    "name": "constant.other.color.hex.sks",
+                    "match": "#[0-9a-fA-F]{3,8}"
+                }
+            ]
+        },
+        "numeric-values": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.sks",
+                    "match": "\\b\\d+(?:\\.\\d+)?\\b"
+                }
+            ]
+        }
     }
-  }
+}

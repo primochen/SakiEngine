@@ -1,0 +1,150 @@
+name: Android Build
+
+on:
+  workflow_call:
+    inputs:
+      flutter_version:
+        required: false
+        type: string
+        default: '3.29.3'
+      working_directory:
+        required: false
+        type: string
+        default: '.'
+      target_platform:
+        required: false
+        type: string
+        default: 'android-arm64'
+    outputs:
+      version:
+        description: "App version from pubspec.yaml"
+        value: ${{ jobs.build-android.outputs.version }}
+      artifact_name:
+        description: "Generated artifact name"
+        value: ${{ jobs.build-android.outputs.artifact_name }}
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Get app version
+        id: get_version
+        working-directory: ${{ inputs.working_directory }}
+        shell: bash
+        run: |
+          version=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Detected version: $version"
+      
+      - name: Setup Android keystore
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          KEY_PROPERTIES: ${{ secrets.KEY_PROPERTIES }}
+        run: |
+          # 检查是否配置了签名密钥
+          if [ -z "$ENCODED_KEYSTORE" ] || [ -z "$KEY_PROPERTIES" ]; then
+            echo "❌ 错误: 未配置Android签名密钥"
+            echo "请配置以下GitHub Secrets:"
+            echo "  - ENCODED_KEYSTORE: Base64编码的keystore文件"
+            echo "  - KEY_PROPERTIES: 签名配置文件内容"
+            echo ""
+            echo "参考文档创建签名密钥和配置GitHub Secrets"
+            exit 1
+          fi
+          
+          echo "✅ 配置Android签名密钥"
+          echo "$ENCODED_KEYSTORE" | base64 -di > android/app/upload-keystore.jks
+          echo "$KEY_PROPERTIES" > android/key.properties
+          
+          # 验证keystore文件
+          if [ ! -f "android/app/upload-keystore.jks" ]; then
+            echo "❌ 错误: keystore文件创建失败"
+            exit 1
+          fi
+          
+          echo "🔐 签名密钥配置完成"
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.12.0
+        with:
+          flutter-version: ${{ inputs.flutter_version }}
+          channel: 'stable'
+          cache: true
+      
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: gradle
+      
+      - name: Flutter Pub Get
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          git config --global core.longpaths true
+          flutter pub get
+      
+      - name: Download and install mdk-sdk
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          curl -L -o mdk-sdk-android.7z https://sourceforge.net/projects/mdk-sdk/files/nightly/mdk-sdk-android.7z/download
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+          7z x mdk-sdk-android.7z -oandroid/app/src/main/jniLibs/arm64-v8a -y
+      
+      - name: Build Android APK
+        id: build
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          echo "🔨 构建发布版本APK (已签名)"
+          flutter build apk --release --target-platform ${{ inputs.target_platform }}
+          
+          # 生成构件名称
+          version="${{ steps.get_version.outputs.version }}"
+          artifact_name="SakiEngine-${version}-Android-arm64-release.apk"
+          
+          # 检查APK是否存在
+          apk_path="build/app/outputs/apk/release/app-release.apk"
+          if [ ! -f "$apk_path" ]; then
+            echo "❌ APK构建失败: $apk_path 不存在"
+            exit 1
+          fi
+          
+          # 重命名APK
+          cd build/app/outputs/apk/release
+          mv app-release.apk "$artifact_name"
+          
+          echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
+          echo "✅ 构建完成: $artifact_name"
+          
+          # 显示APK信息
+          echo "📱 APK信息:"
+          ls -lh "$artifact_name"
+          
+          # 验证APK签名
+          echo "🔐 验证APK签名:"
+          if command -v aapt >/dev/null 2>&1; then
+            aapt dump badging "$artifact_name" | head -3
+          else
+            echo "  ✅ APK已生成，签名验证需要Android SDK工具"
+          fi
+      
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-Android
+          path: ${{ inputs.working_directory }}/build/app/outputs/apk/release/*.apk
+          retention-days: 90

@@ -1,0 +1,111 @@
+name: Windows Build
+
+on:
+  workflow_call:
+    inputs:
+      flutter_version:
+        required: false
+        type: string
+        default: '3.29.3'
+      working_directory:
+        required: false
+        type: string
+        default: '.'
+      architecture:
+        required: false
+        type: string
+        default: 'x64'
+        description: 'Target architecture: x64 or arm64'
+    outputs:
+      version:
+        description: "App version from pubspec.yaml"
+        value: ${{ jobs.build-windows.outputs.version }}
+      artifact_name:
+        description: "Generated artifact name"
+        value: ${{ jobs.build-windows.outputs.artifact_name }}
+
+jobs:
+  build-windows:
+    name: Build Windows App
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Get app version
+        id: get_version
+        working-directory: ${{ inputs.working_directory }}
+        shell: bash
+        run: |
+          version=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Detected version: $version"
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.12.0
+        with:
+          flutter-version: ${{ inputs.flutter_version }}
+          channel: 'stable'
+          cache: true
+      
+      - name: Flutter Pub Get
+        working-directory: ${{ inputs.working_directory }}
+        shell: bash
+        run: |
+          git config --global core.longpaths true
+          flutter pub get
+      
+      - name: Build Windows App
+        working-directory: ${{ inputs.working_directory }}
+        shell: bash
+        run: |
+          flutter build windows --release
+      
+      - name: Package Windows App
+        id: build
+        working-directory: ${{ inputs.working_directory }}
+        shell: pwsh
+        run: |
+          $arch = "${{ inputs.architecture }}"
+          $version = "${{ steps.get_version.outputs.version }}"
+          
+          if ($arch -eq "arm64") {
+            $DestDir = "build\windows\SakiEngine-${version}-Windows-arm64"
+            $SrcDir = "build\windows\arm64\runner\Release"
+            $ZipName = "SakiEngine-${version}-Windows-arm64.zip"
+          } else {
+            $DestDir = "build\windows\SakiEngine-${version}-Windows-x64"
+            $SrcDir = "build\windows\x64\runner\Release"
+            $ZipName = "SakiEngine-${version}-Windows-x64.zip"
+          }
+          
+          # Create destination directory
+          New-Item -Path $DestDir -ItemType Directory -Force
+          
+          # Copy application files
+          Copy-Item -Path "$SrcDir\*" -Destination $DestDir -Recurse -Force
+          
+          # Copy any additional DLLs if they exist
+          if (Test-Path "windows\*.dll") {
+            Copy-Item -Path "windows\*.dll" -Destination $DestDir -Force
+          }
+          
+          # Create ZIP archive
+          Compress-Archive -Path $DestDir -DestinationPath "build\windows\$ZipName" -Force
+          
+          echo "artifact_name=$ZipName" >> $env:GITHUB_OUTPUT
+          Write-Output "Built: $ZipName"
+      
+      - name: Upload Windows App
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-Windows
+          path: ${{ inputs.working_directory }}/build/windows/*.zip
+          retention-days: 90

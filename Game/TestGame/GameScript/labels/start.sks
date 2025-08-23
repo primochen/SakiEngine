@@ -1,3 +1,4 @@
+//label// SakiEngine 剧情标签脚本文件
 label start
 scene bg school 
 yk pose2 happy"欢迎来到SakiEngine！"

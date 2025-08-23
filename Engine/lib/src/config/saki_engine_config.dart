@@ -72,7 +72,7 @@ class SakiEngineConfig {
   Future<void> loadConfig() async {
     try {
       final configContent =
-          await AssetManager().loadString('assets/GameScript/configs/configs.skc');
+          await AssetManager().loadString('assets/GameScript/configs/configs.sks');
       final lines = configContent.split('\n');
       for (final line in lines) {
         final trimmedLine = line.trim();

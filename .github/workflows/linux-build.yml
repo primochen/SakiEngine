@@ -1,0 +1,110 @@
+name: Linux Build
+
+on:
+  workflow_call:
+    inputs:
+      flutter_version:
+        required: false
+        type: string
+        default: '3.29.3'
+      working_directory:
+        required: false
+        type: string
+        default: '.'
+      architecture:
+        required: false
+        type: string
+        default: 'amd64'
+        description: 'Target architecture: amd64 or arm64'
+    outputs:
+      version:
+        description: "App version from pubspec.yaml"
+        value: ${{ jobs.build-linux.outputs.version }}
+      artifact_name:
+        description: "Generated artifact name"
+        value: ${{ jobs.build-linux.outputs.artifact_name }}
+
+jobs:
+  build-linux:
+    name: Build Linux App
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      artifact_name: ${{ steps.build.outputs.artifact_name }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Get app version
+        id: get_version
+        working-directory: ${{ inputs.working_directory }}
+        shell: bash
+        run: |
+          version=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Detected version: $version"
+      
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            mpv libmpv-dev \
+            pkg-config \
+            clang cmake \
+            libgtk-3-dev \
+            ninja-build \
+            libasound2-dev \
+            libass-dev \
+            zip \
+            libkeybinder-3.0-dev
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.12.0
+        with:
+          flutter-version: ${{ inputs.flutter_version }}
+          channel: 'stable'
+          cache: true
+      
+      - name: Enable Linux desktop
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          flutter config --enable-linux-desktop
+      
+      - name: Flutter Pub Get
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          git config --global core.longpaths true
+          flutter pub get
+      
+      - name: Build Linux App
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          flutter build linux --release
+      
+      - name: Package Linux App
+        id: build
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          cd build/linux/x64/release
+          
+          # Generate artifact name
+          version="${{ steps.get_version.outputs.version }}"
+          arch="${{ inputs.architecture }}"
+          artifact_name="SakiEngine-${version}-Linux-${arch}.zip"
+          
+          # Create ZIP archive
+          zip -r "$artifact_name" bundle
+          
+          echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
+          echo "Built: $artifact_name"
+      
+      - name: Upload Linux App
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-Linux-${{ inputs.architecture }}
+          path: ${{ inputs.working_directory }}/build/linux/x64/release/*.zip
+          retention-days: 90

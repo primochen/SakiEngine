@@ -31,17 +31,17 @@ class GameManager {
   GameManager({this.onReturn});
 
   Future<void> _loadConfigs() async {
-    final charactersContent = await AssetManager().loadString('assets/GameScript/configs/characters.skn');
+    final charactersContent = await AssetManager().loadString('assets/GameScript/configs/characters.sks');
     _characterConfigs = ConfigParser().parseCharacters(charactersContent);
 
-    final posesContent = await AssetManager().loadString('assets/GameScript/configs/poses.skp');
+    final posesContent = await AssetManager().loadString('assets/GameScript/configs/poses.sks');
     _poseConfigs = ConfigParser().parsePoses(posesContent);
   }
 
   Future<void> startGame(String scriptName) async {
     await _loadConfigs();
     final scriptContent =
-        await AssetManager().loadString('assets/GameScript/labels/$scriptName.skr');
+        await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
     _script = SkrParser().parse(scriptContent);
     _buildLabelIndexMap();
     _currentState = GameState.initial();
@@ -187,7 +187,7 @@ class GameManager {
   Future<void> restoreFromSnapshot(String scriptName, GameStateSnapshot snapshot, {bool shouldReExecute = true}) async {
     await _loadConfigs();
     final scriptContent =
-        await AssetManager().loadString('assets/GameScript/labels/$scriptName.skr');
+        await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
     _script = SkrParser().parse(scriptContent);
     _buildLabelIndexMap();
     
@@ -215,7 +215,7 @@ class GameManager {
     
     await _loadConfigs();
     final scriptContent =
-        await AssetManager().loadString('assets/GameScript/labels/$scriptName.skr');
+        await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
     _script = SkrParser().parse(scriptContent);
     _buildLabelIndexMap();
     

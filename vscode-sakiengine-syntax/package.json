@@ -1,8 +1,8 @@
 {
     "name": "sakiengine-syntax",
     "displayName": "SakiEngine Syntax",
-    "description": "Syntax highlighting for SakiEngine script files",
-    "version": "0.1.6",
+    "description": "Syntax highlighting for SakiEngine script files (.sks) with first-line identifier support",
+    "version": "0.2.1",
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -12,17 +12,18 @@
     "contributes": {
         "languages": [
             {
-                "id": "saki-config",
-                "aliases": ["Saki Config", "skc"],
-                "extensions": [".skc"],
-                "configuration": "./language-configuration.json"
+                "id": "saki-script",
+                "aliases": ["Saki Script", "sks"],
+                "extensions": [".sks"],
+                "configuration": "./language-configuration.json",
+                "firstLine": "^//\\w+//.*"
             }
         ],
         "grammars": [
             {
-                "language": "saki-config",
-                "scopeName": "source.saki-config",
-                "path": "./syntaxes/saki-config.tmLanguage.json"
+                "language": "saki-script",
+                "scopeName": "source.sks",
+                "path": "./syntaxes/saki-script.tmLanguage.json"
             }
         ],
         "colors": [
@@ -33,11 +34,31 @@
                     "dark": "#569CD6",
                     "light": "#0000FF"
                 }
+            },
+            {
+                "id": "sakiEngine.characterName",
+                "description": "Color for character names",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#008B8B"
+                }
+            },
+            {
+                "id": "sakiEngine.dialogue",
+                "description": "Color for dialogue text",
+                "defaults": {
+                    "dark": "#CE9178",
+                    "light": "#A31515"
+                }
+            },
+            {
+                "id": "sakiEngine.firstLineIdentifier",
+                "description": "Color for first line identifiers",
+                "defaults": {
+                    "dark": "#DCDCAA",
+                    "light": "#795E26"
+                }
             }
-        ],
-        "colorPresentations": {
-            "scope": "source.saki-config",
-            "colorFormats": [ "hex" ]
-        }
+        ]
     }
 }
