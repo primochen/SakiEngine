@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
 
 /// SoraNoUta 项目的自定义模块
@@ -13,11 +14,13 @@ class SoranoutaModule extends DefaultGameModule {
   Widget createMainMenuScreen({
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
+    Function(SaveSlot)? onLoadGameWithSave,
   }) {
     // 🎯 使用 SoraNoUta 特色的圆角矩形按钮主菜单！
     return SoraNoutaMainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
+      onLoadGameWithSave: onLoadGameWithSave,
     );
   }
 

@@ -76,6 +76,13 @@ class BinarySerializer {
       buffer.addAll(_serializeDialogueHistoryEntry(entry));
     }
     
+    // 序列化 NVL 状态
+    buffer.add(snapshot.isNvlMode ? 1 : 0);
+    buffer.addAll(_writeInt32(snapshot.nvlDialogues.length));
+    for (final nvlDialogue in snapshot.nvlDialogues) {
+      buffer.addAll(_serializeNvlDialogue(nvlDialogue));
+    }
+    
     return Uint8List.fromList(buffer);
   }
 
@@ -91,10 +98,20 @@ class BinarySerializer {
       dialogueHistory.add(_deserializeDialogueHistoryEntry(reader));
     }
     
+    // 反序列化 NVL 状态
+    final isNvlMode = reader.readByte() == 1;
+    final nvlDialoguesLength = reader.readInt32();
+    final nvlDialogues = <NvlDialogue>[];
+    for (int i = 0; i < nvlDialoguesLength; i++) {
+      nvlDialogues.add(_deserializeNvlDialogue(reader));
+    }
+    
     return GameStateSnapshot(
       scriptIndex: scriptIndex,
       currentState: currentState,
       dialogueHistory: dialogueHistory,
+      isNvlMode: isNvlMode,
+      nvlDialogues: nvlDialogues,
     );
   }
 
@@ -233,6 +250,28 @@ class BinarySerializer {
     buffer.addAll(bytes);
     return Uint8List.fromList(buffer);
   }
+
+  /// 序列化 NvlDialogue
+  static Uint8List _serializeNvlDialogue(NvlDialogue nvlDialogue) {
+    final buffer = <int>[];
+    buffer.addAll(_writeNullableString(nvlDialogue.speaker));
+    buffer.addAll(_writeString(nvlDialogue.dialogue));
+    buffer.addAll(_writeInt64(nvlDialogue.timestamp.millisecondsSinceEpoch));
+    return Uint8List.fromList(buffer);
+  }
+
+  /// 反序列化 NvlDialogue
+  static NvlDialogue _deserializeNvlDialogue(_BinaryReader reader) {
+    final speaker = reader.readNullableString();
+    final dialogue = reader.readString();
+    final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    
+    return NvlDialogue(
+      speaker: speaker,
+      dialogue: dialogue,
+      timestamp: timestamp,
+    );
+  }
 }
 
 /// 二进制读取器类
@@ -254,6 +293,13 @@ class _BinaryReader {
   int readInt32() {
     final bytes = readBytes(4);
     return bytes.buffer.asByteData().getInt32(0, Endian.little);
+  }
+
+  int readByte() {
+    if (_position >= _data.length) {
+      throw RangeError('Not enough data to read 1 byte');
+    }
+    return _data[_position++];
   }
 
   int readInt64() {

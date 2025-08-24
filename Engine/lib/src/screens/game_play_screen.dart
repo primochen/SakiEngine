@@ -9,7 +9,7 @@ import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
-import 'package:sakiengine/src/skr_parser/skr_ast.dart';
+import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
 import 'package:sakiengine/src/widgets/dialogue_box.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
@@ -17,12 +17,22 @@ import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
+import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
+import 'package:sakiengine/src/widgets/settings_screen.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
+  final VoidCallback? onReturnToMenu;
+  final Function(SaveSlot)? onLoadGame;
 
-  const GamePlayScreen({super.key, this.saveSlotToLoad});
+  const GamePlayScreen({
+    super.key,
+    this.saveSlotToLoad,
+    this.onReturnToMenu,
+    this.onLoadGame,
+  });
 
   @override
   State<GamePlayScreen> createState() => _GamePlayScreenState();
@@ -35,6 +45,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
   bool _showLoadOverlay = false;
+  bool _showSettings = false;
   HotKey? _reloadHotKey;
 
   @override
@@ -49,20 +60,31 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
+      print('🎮 读取存档: currentScript = $_currentScript');
+      print('🎮 存档中的scriptIndex = ${widget.saveSlotToLoad!.snapshot.scriptIndex}');
       _gameManager.restoreFromSnapshot(
           _currentScript, widget.saveSlotToLoad!.snapshot, shouldReExecute: false);
       
       // 延迟显示读档成功通知，确保UI已经构建完成
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showNotificationMessage('读档成功');
+        // 设置context用于转场效果
+        _gameManager.setContext(context);
       });
     } else {
       _gameManager.startGame(_currentScript);
+      // 延迟设置context，确保组件已mounted
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _gameManager.setContext(context);
+      });
     }
   }
 
   void _returnToMainMenu() {
-    if (mounted) {
+    if (mounted && widget.onReturnToMenu != null) {
+      widget.onReturnToMenu!();
+    } else if (mounted) {
+      // 兼容性后退方案：使用传统的页面导航
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => MainMenuScreen(
@@ -82,8 +104,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
-          title: '确认返回',
-          content: '是否要返回主菜单？',
+          title: '返回主菜单',
+          content: '确定要返回主菜单吗？未保存的游戏进度将会丢失。',
           onConfirm: _returnToMainMenu,
         );
       },
@@ -160,12 +182,36 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _showNotificationMessage('跳转成功');
   }
 
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return ConfirmDialog(
+          title: '退出游戏',
+          content: '确定要退出游戏吗？未保存的游戏进度将会丢失。',
+          onConfirm: () => Navigator.of(context).pop(true),
+        );
+      },
+    );
+    return shouldExit ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      autofocus: true,
-      child: Scaffold(
-        body: StreamBuilder<GameState>(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (!didPop) {
+          final shouldExit = await _onWillPop();
+          if (shouldExit && mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
@@ -175,7 +221,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
             return Stack(
               children: [
                 GestureDetector(
-                  onTap: gameState.currentNode is MenuNode ? null : () => _gameManager.next(),
+                  onTap: gameState.currentNode is MenuNode ? null : () {
+                    print('🎯 点击事件触发');
+                    print('🎯 当前节点类型: ${gameState.currentNode.runtimeType}');
+                    print('🎯 调用 _gameManager.next()');
+                    _gameManager.next();
+                  },
                   child: Stack(
                     children: [
                       if (gameState.background != null)
@@ -193,8 +244,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                             return Container(color: Colors.black);
                           },
                         ),
-                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs),
-                      if (gameState.dialogue != null)
+                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
+                      if (gameState.dialogue != null && !gameState.isNvlMode)
                         DialogueBox(
                           speaker: gameState.speaker,
                           dialogue: gameState.dialogue!,
@@ -209,10 +260,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                     ],
                   ),
                 ),
+                // NVL 模式覆盖层
+                if (gameState.isNvlMode)
+                  NvlScreen(
+                    nvlDialogues: gameState.nvlDialogues,
+                    onTap: () {
+                      print('🎯 NVL 点击事件触发');
+                      // 在 NVL 模式下点击继续下一句对话
+                      _gameManager.next();
+                    },
+                  ),
                 QuickMenu(
                   onSave: () => setState(() => _showSaveOverlay = true),
                   onLoad: () => setState(() => _showLoadOverlay = true),
                   onReview: () => setState(() => _showReviewOverlay = true),
+                  onSettings: () => setState(() => _showSettings = true),
                   onBack: _handleQuickMenuBack,
                 ),
                 if (_showReviewOverlay)
@@ -231,6 +293,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   SaveLoadScreen(
                     mode: SaveLoadMode.load,
                     onClose: () => setState(() => _showLoadOverlay = false),
+                    onLoadSlot: widget.onLoadGame ?? (saveSlot) {
+                      // 如果没有回调，使用传统的导航方式（兼容性）
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => GamePlayScreen(saveSlotToLoad: saveSlot),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                  ),
+                if (_showSettings)
+                  SettingsScreen(
+                    onClose: () => setState(() => _showSettings = false),
                   ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,
@@ -240,11 +315,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
             );
           },
         ),
+        ),
       ),
     );
   }
 
-  List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs) {
+  List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
     return characters.entries.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
@@ -254,11 +330,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
       final poseImage = characterState.pose ?? 'pose1';
       final poseAssetName = 'characters/${characterState.resourceId}-$poseImage';
-      layers.add(_CharacterLayer(key: ValueKey('$characterId-pose'), assetName: poseAssetName));
+      layers.add(_CharacterLayer(
+        key: ValueKey('$characterId-pose'), 
+        assetName: poseAssetName,
+      ));
 
       final expressionImage = characterState.expression ?? 'happy';
       final expressionAssetName = 'characters/${characterState.resourceId}-$expressionImage';
-      layers.add(_CharacterLayer(key: ValueKey('$characterId-expression'), assetName: expressionAssetName));
+      layers.add(_CharacterLayer(
+        key: ValueKey('$characterId-expression'), 
+        assetName: expressionAssetName,
+      ));
       
       final characterStack = Stack(children: layers);
       
@@ -296,7 +378,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
 class _CharacterLayer extends StatefulWidget {
   final String assetName;
-  const _CharacterLayer({super.key, required this.assetName});
+  const _CharacterLayer({
+    super.key, 
+    required this.assetName,
+  });
 
   @override
   State<_CharacterLayer> createState() => _CharacterLayerState();
@@ -317,7 +402,7 @@ class _CharacterLayerState extends State<_CharacterLayer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 150),
     );
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
 
@@ -359,6 +444,9 @@ class _CharacterLayerState extends State<_CharacterLayer>
         setState(() {
           _currentImage = frame.image;
         });
+        
+        // 始终触发动画
+        _controller.forward(from: 0.0);
       }
     }
   }
@@ -384,29 +472,23 @@ class _CharacterLayerState extends State<_CharacterLayer>
           builder: (context, constraints) {
             final imageSize = Size(_currentImage!.width.toDouble(), _currentImage!.height.toDouble());
             
+            // 确定绘制尺寸
+            Size paintSize;
             if (!constraints.hasBoundedHeight) {
-              return CustomPaint(
-                size: imageSize,
-                painter: _DissolvePainter(
-                  program: _dissolveProgram!,
-                  progress: _animation.value,
-                  imageFrom: _previousImage ?? _currentImage!,
-                  imageTo: _currentImage!,
-                ),
-              );
+              paintSize = imageSize;
+            } else {
+              final imageAspectRatio = imageSize.width / imageSize.height;
+              final paintHeight = constraints.maxHeight;
+              final paintWidth = paintHeight * imageAspectRatio;
+              paintSize = Size(paintWidth, paintHeight);
             }
-
-            final imageAspectRatio = imageSize.width / imageSize.height;
-            final paintHeight = constraints.maxHeight;
-            final paintWidth = paintHeight * imageAspectRatio;
-            final paintSize = Size(paintWidth, paintHeight);
             
             return CustomPaint(
               size: paintSize,
               painter: _DissolvePainter(
                 program: _dissolveProgram!,
                 progress: _animation.value,
-                imageFrom: _previousImage ?? _currentImage!,
+                imageFrom: _previousImage ?? _currentImage!, // 没有previousImage时用当前图片，shader会处理透明
                 imageTo: _currentImage!,
               ),
             );
@@ -433,6 +515,24 @@ class _DissolvePainter extends CustomPainter {
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
     try {
+      // 如果没有之前的图片（首次显示），从透明开始
+      if (imageFrom == imageTo) {
+        // 首次显示：简单的透明度渐变
+        final paint = ui.Paint()
+          ..color = Colors.white.withOpacity(progress)
+          ..isAntiAlias = true
+          ..filterQuality = FilterQuality.high;
+        
+        canvas.drawImageRect(
+          imageTo,
+          ui.Rect.fromLTWH(0, 0, imageTo.width.toDouble(), imageTo.height.toDouble()),
+          ui.Rect.fromLTWH(0, 0, size.width, size.height),
+          paint,
+        );
+        return;
+      }
+
+      // 差分切换：使用dissolve效果
       final shader = program.fragmentShader();
       shader
         ..setFloat(0, progress)

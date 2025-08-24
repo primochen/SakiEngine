@@ -100,7 +100,11 @@ if [ -n "$assets_start_line" ]; then
     # 3. 写入 assets: 标签和动态生成的列表 (排除 shaders 目录)
     echo "  assets:" >> "$TEMP_PUBSPEC_PATH"
     echo "    - assets/default_game.txt" >> "$TEMP_PUBSPEC_PATH"
-    find -L "$ENGINE_DIR/assets" -mindepth 1 -type d -not -path "$ENGINE_DIR/assets/shaders" | while read -r dir; do
+    # 添加引擎默认字体目录
+    if [ -d "$ENGINE_DIR/assets/fonts" ]; then
+        echo "    - assets/fonts/" >> "$TEMP_PUBSPEC_PATH"
+    fi
+    find -L "$ENGINE_DIR/assets" -mindepth 1 -type d -not -path "$ENGINE_DIR/assets/shaders" -not -path "$ENGINE_DIR/assets/fonts" | while read -r dir; do
         relative_path=$(echo "$dir" | sed "s|$ENGINE_DIR/||")
         echo "    - $relative_path/" >> "$TEMP_PUBSPEC_PATH"
     done

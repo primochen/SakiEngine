@@ -1,74 +1,66 @@
-import 'package:flutter/material.dart';
-
-// Base class for all AST nodes.
 abstract class SksNode {}
 
-// Represents the entire screen.
-class ScreenNode extends SksNode {
+class ScriptNode implements SksNode {
+  final List<SksNode> children;
+  ScriptNode(this.children);
+}
+
+class ShowNode implements SksNode {
+  final String character;
+  final String? pose;
+  final String? expression;
+  ShowNode(this.character, {this.pose, this.expression});
+}
+
+class HideNode implements SksNode {
+  final String character;
+  HideNode(this.character);
+}
+
+class BackgroundNode implements SksNode {
+  final String background;
+  BackgroundNode(this.background);
+}
+
+class SayNode implements SksNode {
+  final String? character;
+  final String dialogue;
+  final String? pose;
+  final String? expression;
+  SayNode({this.character, required this.dialogue, this.pose, this.expression});
+}
+
+class ChoiceOptionNode {
+  final String text;
+  final String targetLabel;
+  ChoiceOptionNode(this.text, this.targetLabel);
+}
+
+class MenuNode implements SksNode {
+  final List<ChoiceOptionNode> choices;
+  MenuNode(this.choices);
+}
+
+class LabelNode implements SksNode {
   final String name;
-  final List<SksNode> children;
-
-  ScreenNode(this.name, this.children);
+  LabelNode(this.name);
 }
 
-// Represents a solid color background.
-class AddNode extends SksNode {
-  final String color; // Expecting format like #RRGGBB
+class ReturnNode implements SksNode {} 
 
-  AddNode(this.color);
-}
-
-// Represents a text label.
-class TextNode extends SksNode {
-  final String text;
-  final String? font;
-  final String? color;
-  final double? size;
-  final double? left;
-  final double? right;
-  final double? top;
-  final double? bottom;
-
-  TextNode({
-    required this.text,
-    this.font,
-    this.color,
-    this.size,
-    this.left,
-    this.right,
-    this.top,
-    this.bottom,
-  });
-}
-
-// Represents a horizontal layout container.
-class HBoxNode extends SksNode {
-  final List<SksNode> children;
-  final double? left;
-  final double? right;
-  final double? top;
-  final double? bottom;
-  final double? spacing;
-
-  HBoxNode({
-    required this.children,
-    this.left,
-    this.right,
-    this.top,
-    this.bottom,
-    this.spacing,
-  });
-}
-
-// Represents a text button.
-class TextButtonNode extends SksNode {
-  final String text;
-  final String action;
-  final TextStyle? style;
-
-  TextButtonNode({
-    required this.text,
-    required this.action,
-    this.style,
-  });
+class JumpNode implements SksNode {
+  final String targetLabel;
+  JumpNode(this.targetLabel);
 } 
+
+class CommentNode implements SksNode {
+  final String comment;
+  CommentNode(this.comment);
+  
+  @override
+  String toString() => '// $comment';
+}
+
+class NvlNode implements SksNode {}
+
+class EndNvlNode implements SksNode {}

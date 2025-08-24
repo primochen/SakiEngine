@@ -14,10 +14,16 @@ abstract class GameModule {
   Widget createMainMenuScreen({
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
+    Function(SaveSlot)? onLoadGameWithSave,
   });
 
   /// 游戏界面屏幕工厂
-  Widget createGamePlayScreen({SaveSlot? saveSlotToLoad});
+  Widget createGamePlayScreen({
+    Key? key,
+    SaveSlot? saveSlotToLoad,
+    VoidCallback? onReturnToMenu,
+    Function(SaveSlot)? onLoadGame,
+  });
 
   /// 存档界面屏幕工厂
   Widget createSaveLoadScreen({
@@ -54,16 +60,28 @@ class DefaultGameModule implements GameModule {
   Widget createMainMenuScreen({
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
+    Function(SaveSlot)? onLoadGameWithSave,
   }) {
     return MainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
+      onLoadGameWithSave: onLoadGameWithSave,
     );
   }
 
   @override
-  Widget createGamePlayScreen({SaveSlot? saveSlotToLoad}) {
-    return GamePlayScreen(saveSlotToLoad: saveSlotToLoad);
+  Widget createGamePlayScreen({
+    Key? key,
+    SaveSlot? saveSlotToLoad,
+    VoidCallback? onReturnToMenu,
+    Function(SaveSlot)? onLoadGame,
+  }) {
+    return GamePlayScreen(
+      key: key,
+      saveSlotToLoad: saveSlotToLoad,
+      onReturnToMenu: onReturnToMenu,
+      onLoadGame: onLoadGame,
+    );
   }
 
   @override

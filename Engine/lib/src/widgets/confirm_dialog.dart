@@ -5,15 +5,19 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 class ConfirmDialog extends StatelessWidget {
   final String title;
   final String content;
-  final VoidCallback onConfirm;
+  final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
+  final bool? confirmResult;
+  final bool? cancelResult;
 
   const ConfirmDialog({
     super.key,
     required this.title,
     required this.content,
-    required this.onConfirm,
+    this.onConfirm,
     this.onCancel,
+    this.confirmResult = true,
+    this.cancelResult = false,
   });
 
   @override
@@ -25,7 +29,7 @@ class ConfirmDialog extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       child: GestureDetector(
-        onTap: () => Navigator.of(context).pop(), // 点击背景关闭
+        onTap: () => Navigator.of(context).pop(cancelResult), // 点击背景关闭
         child: Container(
           width: double.infinity,
           height: double.infinity,
@@ -87,7 +91,7 @@ class ConfirmDialog extends StatelessWidget {
                           '取消', 
                           Icons.close_rounded,
                           () {
-                            Navigator.of(context).pop();
+                            Navigator.of(context).pop(cancelResult);
                             onCancel?.call();
                           },
                           uiScale,
@@ -101,8 +105,8 @@ class ConfirmDialog extends StatelessWidget {
                           '确定', 
                           Icons.check_rounded,
                           () {
-                            Navigator.of(context).pop();
-                            onConfirm();
+                            Navigator.of(context).pop(confirmResult);
+                            onConfirm?.call();
                           },
                           uiScale,
                           textScale,

@@ -316,6 +316,21 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
               ),
               const Spacer(),
               TextButton.icon(
+                onPressed: _generateTestLogs,
+                icon: Icon(
+                  Icons.bug_report,
+                  size: 16 * scale,
+                  color: config.themeColors.primary,
+                ),
+                label: Text(
+                  '测试日志',
+                  style: TextStyle(
+                    fontSize: 14 * scale,
+                    color: config.themeColors.primary,
+                  ),
+                ),
+              ),
+              TextButton.icon(
                 onPressed: _clearLogs,
                 icon: Icon(
                   Icons.clear_all,
@@ -371,17 +386,51 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
   Widget _buildLogContent(SakiEngineConfig config, double scale) {
     return StreamBuilder<List<String>>(
       stream: DebugLogger.instance.logStream,
+      initialData: DebugLogger.instance.logs, // 添加初始数据
       builder: (context, snapshot) {
-        final logs = snapshot.data ?? [];
+        final logs = snapshot.data ?? DebugLogger.instance.logs;
+        
+        // 在数据更新时自动滚动到底部
+        if (logs.isNotEmpty && snapshot.hasData) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_logScrollController.hasClients) {
+              _logScrollController.animateTo(
+                _logScrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
         
         if (logs.isEmpty) {
           return Center(
-            child: Text(
-              '暂无日志记录',
-              style: TextStyle(
-                fontSize: 14 * scale,
-                color: Colors.grey,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 48 * scale,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 12 * scale),
+                Text(
+                  '暂无日志记录',
+                  style: TextStyle(
+                    fontSize: 16 * scale,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 8 * scale),
+                Text(
+                  '应用运行时的调试信息会显示在这里',
+                  style: TextStyle(
+                    fontSize: 12 * scale,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -392,15 +441,27 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
           itemCount: logs.length,
           itemBuilder: (context, index) {
             final log = logs[index];
-            return Padding(
-              padding: EdgeInsets.only(bottom: 2 * scale),
+            return Container(
+              margin: EdgeInsets.only(bottom: 2 * scale),
+              padding: EdgeInsets.symmetric(
+                horizontal: 8 * scale,
+                vertical: 4 * scale,
+              ),
+              decoration: BoxDecoration(
+                color: _getLogBackgroundColor(log).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4 * scale),
+                border: Border.all(
+                  color: _getLogColor(log).withOpacity(0.2),
+                  width: 0.5,
+                ),
+              ),
               child: SelectableText(
                 log,
                 style: TextStyle(
                   fontFamily: 'Monaco',
                   fontSize: 12 * scale,
                   color: _getLogColor(log),
-                  height: 1.2,
+                  height: 1.3,
                 ),
               ),
             );
@@ -480,6 +541,14 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
     return Colors.green[300]!;
   }
 
+  Color _getLogBackgroundColor(String log) {
+    if (log.contains('[ERROR]')) return Colors.red;
+    if (log.contains('[WARN]')) return Colors.orange;
+    if (log.contains('[INFO]')) return Colors.blue;
+    if (log.contains('[DEBUG]')) return Colors.grey;
+    return Colors.green;
+  }
+
   String _getCpuArchitecture() {
     try {
       final result = Process.runSync('uname', ['-m']);
@@ -487,6 +556,21 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
     } catch (e) {
       return 'Unknown';
     }
+  }
+
+  void _generateTestLogs() {
+    DebugLogger.instance.log("生成测试日志开始");
+    DebugLogger.instance.log("[INFO] 这是一条信息级别的日志");
+    DebugLogger.instance.log("[WARN] 这是一条警告级别的日志");
+    DebugLogger.instance.log("[ERROR] 这是一条错误级别的日志");
+    DebugLogger.instance.log("[DEBUG] 这是一条调试级别的日志");
+    DebugLogger.instance.log("普通日志消息");
+    
+    // 也通过print函数测试
+    print("通过print函数输出的测试日志");
+    print("[INFO] 通过print输出的信息日志");
+    
+    DebugLogger.instance.log("测试日志生成完成");
   }
 
   void _scrollToBottom() {

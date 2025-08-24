@@ -1,11 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
+import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
+import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/settings_screen.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -71,11 +76,13 @@ class _HoverButtonState extends State<_HoverButton> {
 class MainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
+  final Function(SaveSlot)? onLoadGameWithSave;
 
   const MainMenuScreen({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
+    this.onLoadGameWithSave,
   });
 
   @override
@@ -85,6 +92,7 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
+  bool _showSettings = false;
   String _appTitle = 'SakiEngine';
 
   @override
@@ -104,6 +112,26 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     } catch (e) {
       // 保持默认标题
     }
+  }
+
+  void _handleNewGame() {
+    widget.onNewGame();
+  }
+
+  Future<void> _showExitConfirmation(BuildContext context) async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return ConfirmDialog(
+          title: '退出游戏',
+          content: '确定要退出游戏吗？',
+          onConfirm: () async {
+            Navigator.of(context).pop(); // 关闭对话框
+            await windowManager.destroy(); // 真正退出程序
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -176,7 +204,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 _buildMenuButton(
                   context, 
                   '新游戏', 
-                  widget.onNewGame,
+                  _handleNewGame,
                   menuScale,
                   config,
                 ),
@@ -191,8 +219,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 SizedBox(width: 20 * menuScale),
                 _buildMenuButton(
                   context, 
+                  '设置', 
+                  () => setState(() => _showSettings = true), 
+                  menuScale,
+                  config,
+                ),
+                SizedBox(width: 20 * menuScale),
+                _buildMenuButton(
+                  context, 
                   '退出游戏', 
-                  () => exit(0), 
+                  () => _showExitConfirmation(context), 
                   menuScale,
                   config,
                 ),
@@ -204,6 +240,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             SaveLoadScreen(
               mode: SaveLoadMode.load,
               onClose: () => setState(() => _showLoadOverlay = false),
+              onLoadSlot: widget.onLoadGameWithSave,
+            ),
+
+          if (_showSettings)
+            SettingsScreen(
+              onClose: () => setState(() => _showSettings = false),
             ),
 
           if (_showDebugPanel)

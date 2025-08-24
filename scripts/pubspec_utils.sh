@@ -28,7 +28,11 @@ update_pubspec_assets() {
         # 3. 写入 assets: 标签和动态生成的列表 (排除 shaders 目录)
         echo "  assets:" >> "$temp_pubspec_path"
         echo "    - assets/default_game.txt" >> "$temp_pubspec_path"
-        find -L "$engine_dir/assets" -mindepth 1 -type d -not -path "$engine_dir/assets/shaders" | while read -r dir; do
+        # 添加引擎默认字体目录
+        if [ -d "$engine_dir/assets/fonts" ]; then
+            echo "    - assets/fonts/" >> "$temp_pubspec_path"
+        fi
+        find -L "$engine_dir/assets" -mindepth 1 -type d -not -path "$engine_dir/assets/shaders" -not -path "$engine_dir/assets/fonts" | while read -r dir; do
             local relative_path=$(echo "$dir" | sed "s|$engine_dir/||")
             echo "    - $relative_path/" >> "$temp_pubspec_path"
         done
