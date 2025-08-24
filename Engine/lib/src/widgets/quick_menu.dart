@@ -6,6 +6,7 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback onSave;
   final VoidCallback onLoad;
   final VoidCallback onReview;
+  final VoidCallback onSettings;
   final VoidCallback onBack;
 
   const QuickMenu({
@@ -13,6 +14,7 @@ class QuickMenu extends StatefulWidget {
     required this.onSave,
     required this.onLoad,
     required this.onReview,
+    required this.onSettings,
     required this.onBack,
   });
 
@@ -74,6 +76,16 @@ class _QuickMenuState extends State<QuickMenu> {
               text: '回顾',
               icon: Icons.auto_stories_outlined,
               onPressed: widget.onReview,
+              scale: scale,
+              config: config,
+              isAnyButtonHovered: _isAnyButtonHovered,
+              onHover: (hovering) => setState(() => _isAnyButtonHovered = hovering),
+            ),
+            _buildDivider(scale, config),
+            _QuickMenuButton(
+              text: '设置',
+              icon: Icons.settings_outlined,
+              onPressed: widget.onSettings,
               scale: scale,
               config: config,
               isAnyButtonHovered: _isAnyButtonHovered,

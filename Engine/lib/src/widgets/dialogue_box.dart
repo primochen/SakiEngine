@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
@@ -23,6 +24,15 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
   bool _isDialogueComplete = false;
   late AnimationController _animationController;
   late Animation<double> _blinkAnimation;
+  double _dialogOpacity = SettingsManager.defaultDialogOpacity;
+  
+  void _onSettingsChanged() {
+    if (mounted) {
+      setState(() {
+        _dialogOpacity = SettingsManager().currentDialogOpacity;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -39,6 +49,26 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
         curve: Curves.easeInOut,
       ),
     );
+
+    // 监听设置变化
+    SettingsManager().addListener(_onSettingsChanged);
+    
+    // 加载对话框不透明度设置
+    _loadDialogOpacity();
+  }
+
+  @override
+  void dispose() {
+    SettingsManager().removeListener(_onSettingsChanged);
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDialogOpacity() async {
+    final opacity = await SettingsManager().getDialogOpacity();
+    if (mounted) {
+      setState(() => _dialogOpacity = opacity);
+    }
   }
 
   bool _isTextOverflowing(BuildContext context, String text, TextStyle style, double maxWidth) {
@@ -49,12 +79,6 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
     )..layout(maxWidth: maxWidth);
 
     return textPainter.height > maxWidth;
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 
   @override
@@ -83,7 +107,7 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
             height: screenSize.height * 0.25,
             margin: EdgeInsets.all(16.0 * uiScale),
             decoration: BoxDecoration(
-              color: config.themeColors.background.withOpacity(0.95),
+              color: config.themeColors.background.withOpacity(_dialogOpacity),
               borderRadius: BorderRadius.circular(8 * uiScale),
               border: Border.all(
                 color: config.themeColors.primary.withOpacity(_isHovered ? 0.4 : 0.2),

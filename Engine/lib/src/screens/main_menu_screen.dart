@@ -10,6 +10,7 @@ import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/settings_screen.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -91,6 +92,7 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
+  bool _showSettings = false;
   String _appTitle = 'SakiEngine';
 
   @override
@@ -217,6 +219,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 SizedBox(width: 20 * menuScale),
                 _buildMenuButton(
                   context, 
+                  '设置', 
+                  () => setState(() => _showSettings = true), 
+                  menuScale,
+                  config,
+                ),
+                SizedBox(width: 20 * menuScale),
+                _buildMenuButton(
+                  context, 
                   '退出游戏', 
                   () => _showExitConfirmation(context), 
                   menuScale,
@@ -231,6 +241,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               mode: SaveLoadMode.load,
               onClose: () => setState(() => _showLoadOverlay = false),
               onLoadSlot: widget.onLoadGameWithSave,
+            ),
+
+          if (_showSettings)
+            SettingsScreen(
+              onClose: () => setState(() => _showSettings = false),
             ),
 
           if (_showDebugPanel)

@@ -8,6 +8,7 @@ import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
@@ -140,6 +141,9 @@ void main() async {
     
     // 加载引擎配置
     await SakiEngineConfig().loadConfig();
+    
+    // 初始化设置管理器
+    await SettingsManager().init();
     
     // 初始化项目模块
     initializeProjectModules();

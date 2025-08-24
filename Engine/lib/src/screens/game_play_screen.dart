@@ -20,6 +20,7 @@ import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
+import 'package:sakiengine/src/widgets/settings_screen.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -44,6 +45,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
   bool _showLoadOverlay = false;
+  bool _showSettings = false;
   HotKey? _reloadHotKey;
 
   @override
@@ -272,6 +274,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   onSave: () => setState(() => _showSaveOverlay = true),
                   onLoad: () => setState(() => _showLoadOverlay = true),
                   onReview: () => setState(() => _showReviewOverlay = true),
+                  onSettings: () => setState(() => _showSettings = true),
                   onBack: _handleQuickMenuBack,
                 ),
                 if (_showReviewOverlay)
@@ -299,6 +302,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         (route) => false,
                       );
                     },
+                  ),
+                if (_showSettings)
+                  SettingsScreen(
+                    onClose: () => setState(() => _showSettings = false),
                   ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,
