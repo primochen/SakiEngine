@@ -5,6 +5,7 @@ import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/sks_parser/sks_parser.dart';
+import 'package:sakiengine/src/game/script_merger.dart';
 
 class GameManager {
   final _gameStateController = StreamController<GameState>.broadcast();
@@ -16,10 +17,8 @@ class GameManager {
   bool _isProcessing = false;
   Map<String, int> _labelIndexMap = {};
   
-  // 跨文件标签支持
-  Map<String, String> _globalLabelMap = {}; // label -> filename
-  Map<String, ScriptNode> _loadedScripts = {}; // filename -> script
-  String _currentScriptFile = '';
+  // 脚本合并器
+  final ScriptMerger _scriptMerger = ScriptMerger();
 
   Map<String, CharacterConfig> _characterConfigs = {};
   Map<String, PoseConfig> _poseConfigs = {};
@@ -32,6 +31,7 @@ class GameManager {
 
   // Getters for accessing configurations
   Map<String, PoseConfig> get poseConfigs => _poseConfigs;
+  String get currentScriptFile => _scriptMerger.getFileNameByIndex(_scriptIndex) ?? 'start';
 
   GameManager({this.onReturn});
 
@@ -45,107 +45,44 @@ class GameManager {
 
   Future<void> startGame(String scriptName) async {
     await _loadConfigs();
-    await _buildGlobalLabelMap(); // 构建全局标签映射
-    await _loadScript(scriptName);
+    _script = await _scriptMerger.getMergedScript();
+    _buildLabelIndexMap();
     _currentState = GameState.initial();
     _dialogueHistory = [];
+    
+    // 如果指定了非 start 脚本，跳转到对应位置
+    if (scriptName != 'start') {
+      final startIndex = _scriptMerger.getFileStartIndex(scriptName);
+      if (startIndex != null) {
+        _scriptIndex = startIndex;
+      }
+    }
+    
     _executeScript();
   }
   
-  // 构建全局标签映射，扫描所有脚本文件
-  Future<void> _buildGlobalLabelMap() async {
-    _globalLabelMap = {};
-    _loadedScripts = {};
-    
-    try {
-      // 获取所有 .sks 文件
-      final scriptFiles = await AssetManager().listAssets('assets/GameScript/labels/', '.sks');
-      
-      for (final fileName in scriptFiles) {
-        final fileNameWithoutExt = fileName.replaceAll('.sks', '');
-        try {
-          final scriptContent = await AssetManager().loadString('assets/GameScript/labels/$fileName');
-          final script = SksParser().parse(scriptContent);
-          _loadedScripts[fileNameWithoutExt] = script;
-          
-          // 扫描该文件中的所有标签
-          for (final node in script.children) {
-            if (node is LabelNode) {
-              _globalLabelMap[node.name] = fileNameWithoutExt;
-              if (kDebugMode) {
-                print('[GameManager] 发现标签: ${node.name} 在文件 $fileNameWithoutExt 中');
-              }
-            }
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print('[GameManager] 加载脚本文件失败: $fileName - $e');
-          }
-        }
-      }
-      
-      if (kDebugMode) {
-        print('[GameManager] 全局标签映射构建完成，共 ${_globalLabelMap.length} 个标签');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('[GameManager] 构建全局标签映射失败: $e');
-      }
-    }
-  }
-  
-  // 加载指定脚本文件
-  Future<void> _loadScript(String scriptName) async {
-    _currentScriptFile = scriptName;
-    if (_loadedScripts.containsKey(scriptName)) {
-      _script = _loadedScripts[scriptName]!;
-    } else {
-      final scriptContent = await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
-      _script = SksParser().parse(scriptContent);
-      _loadedScripts[scriptName] = _script;
-    }
-    _buildLabelIndexMap();
-  }
-
   void _buildLabelIndexMap() {
     _labelIndexMap = {};
     for (int i = 0; i < _script.children.length; i++) {
       final node = _script.children[i];
       if (node is LabelNode) {
         _labelIndexMap[node.name] = i;
+        if (kDebugMode) {
+          print('[GameManager] 标签映射: ${node.name} -> $i');
+        }
       }
     }
   }
 
   Future<void> jumpToLabel(String label) async {
-    // 首先检查当前脚本中是否有该标签
+    // 在合并的脚本中查找标签
     if (_labelIndexMap.containsKey(label)) {
       _scriptIndex = _labelIndexMap[label]!;
       _currentState = _currentState.copyWith(forceNullCurrentNode: true);
-      _executeScript();
-      return;
-    }
-    
-    // 检查全局标签映射
-    if (_globalLabelMap.containsKey(label)) {
-      final targetFile = _globalLabelMap[label]!;
       if (kDebugMode) {
-        print('[GameManager] 跨文件跳转: $label -> $targetFile');
+        print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
       }
-      
-      // 加载目标文件
-      await _loadScript(targetFile);
-      
-      // 跳转到目标标签
-      if (_labelIndexMap.containsKey(label)) {
-        _scriptIndex = _labelIndexMap[label]!;
-        _currentState = _currentState.copyWith(forceNullCurrentNode: true);
-        _executeScript();
-      } else {
-        if (kDebugMode) {
-          print('[GameManager] 警告: 标签 $label 在文件 $targetFile 中未找到');
-        }
-      }
+      _executeScript();
     } else {
       if (kDebugMode) {
         print('[GameManager] 错误: 标签 $label 未找到');
@@ -154,16 +91,29 @@ class GameManager {
   }
 
   void next() {
+    print('📚 GameManager.next() 被调用');
+    print('📚 当前脚本索引: $_scriptIndex');
+    print('📚 脚本总长度: ${_script.children.length}');
     _executeScript();
   }
 
   void _executeScript() {
+    print('🎮 _executeScript() 开始执行');
+    print('🎮 _isProcessing: $_isProcessing');
     if (_isProcessing) return;
     _isProcessing = true;
 
     while (_scriptIndex < _script.children.length) {
       final node = _script.children[_scriptIndex];
       _scriptIndex++;
+
+      // 跳过注释节点（文件边界标记）
+      if (node is CommentNode) {
+        if (kDebugMode) {
+          print('[GameManager] 跳过注释: ${node.comment}');
+        }
+        continue;
+      }
 
       if (node is BackgroundNode) {
         _currentState = _currentState.copyWith(
@@ -277,11 +227,12 @@ class GameManager {
   }
 
   Future<void> restoreFromSnapshot(String scriptName, GameStateSnapshot snapshot, {bool shouldReExecute = true}) async {
+    print('📚 restoreFromSnapshot: scriptName = $scriptName');
+    print('📚 restoreFromSnapshot: snapshot.scriptIndex = ${snapshot.scriptIndex}');
     await _loadConfigs();
-    final scriptContent =
-        await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
-    _script = SksParser().parse(scriptContent);
+    _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
+    print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
     
     _scriptIndex = snapshot.scriptIndex;
     _currentState = snapshot.currentState.copyWith(poseConfigs: _poseConfigs);
@@ -305,10 +256,10 @@ class GameManager {
     
     _savedSnapshot = saveStateSnapshot();
     
+    // 清理缓存并重新合并脚本
+    _scriptMerger.clearCache();
     await _loadConfigs();
-    final scriptContent =
-        await AssetManager().loadString('assets/GameScript/labels/$scriptName.sks');
-    _script = SksParser().parse(scriptContent);
+    _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     
     if (_savedSnapshot != null) {
@@ -370,6 +321,7 @@ class GameManager {
       _dialogueHistory.removeRange(targetIndex + 1, _dialogueHistory.length);
     }
     
+    // 使用合并的脚本，不需要重新加载特定脚本
     await restoreFromSnapshot(scriptName, entry.stateSnapshot, shouldReExecute: false);
   }
 

@@ -2,9 +2,73 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
+
+enum AppState { mainMenu, inGame }
+
+class GameContainer extends StatefulWidget {
+  const GameContainer({super.key});
+
+  @override
+  State<GameContainer> createState() => _GameContainerState();
+}
+
+class _GameContainerState extends State<GameContainer> {
+  AppState _currentState = AppState.mainMenu;
+  SaveSlot? _saveSlotToLoad;
+
+  void _enterGame({SaveSlot? saveSlot}) {
+    setState(() {
+      _currentState = AppState.inGame;
+      _saveSlotToLoad = saveSlot;
+    });
+  }
+
+  void _returnToMainMenu() {
+    setState(() {
+      _currentState = AppState.mainMenu;
+      _saveSlotToLoad = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: moduleLoader.getCurrentModule(),
+      builder: (builderContext, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final gameModule = snapshot.data!;
+
+        switch (_currentState) {
+          case AppState.mainMenu:
+            return gameModule.createMainMenuScreen(
+              onNewGame: () => _enterGame(),
+              onLoadGame: () {
+                // 这个回调现在只是个占位符，实际的load逻辑在MainMenuScreen内部处理
+              },
+              onLoadGameWithSave: (saveSlot) => _enterGame(saveSlot: saveSlot),
+            );
+          case AppState.inGame:
+            return gameModule.createGamePlayScreen(
+              key: ValueKey(_saveSlotToLoad?.id ?? 'new_game'),
+              saveSlotToLoad: _saveSlotToLoad,
+              onReturnToMenu: _returnToMainMenu,
+              onLoadGame: (saveSlot) => _enterGame(saveSlot: saveSlot),
+            );
+        }
+      },
+    );
+  }
+}
 
 void main() async {
   // 设置调试日志收集器
@@ -79,23 +143,7 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
                 primarySwatch: Colors.blue,
                 fontFamily: 'SourceHanSansCN-Bold',
               ),
-              home: Builder(
-                builder: (innerContext) {
-                  return gameModule.createMainMenuScreen(
-                    onNewGame: () {
-                      Navigator.of(innerContext).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => gameModule.createGamePlayScreen(),
-                        ),
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                    onLoadGame: () {
-                      // 加载游戏的逻辑由MainMenuScreen内部处理
-                    },
-                  );
-                }
-              ),
+              home: const GameContainer(),
             );
           },
         );

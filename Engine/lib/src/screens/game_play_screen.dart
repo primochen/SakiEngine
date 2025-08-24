@@ -21,8 +21,15 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
+  final VoidCallback? onReturnToMenu;
+  final Function(SaveSlot)? onLoadGame;
 
-  const GamePlayScreen({super.key, this.saveSlotToLoad});
+  const GamePlayScreen({
+    super.key,
+    this.saveSlotToLoad,
+    this.onReturnToMenu,
+    this.onLoadGame,
+  });
 
   @override
   State<GamePlayScreen> createState() => _GamePlayScreenState();
@@ -49,6 +56,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
+      print('🎮 读取存档: currentScript = $_currentScript');
+      print('🎮 存档中的scriptIndex = ${widget.saveSlotToLoad!.snapshot.scriptIndex}');
       _gameManager.restoreFromSnapshot(
           _currentScript, widget.saveSlotToLoad!.snapshot, shouldReExecute: false);
       
@@ -63,17 +72,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   void _returnToMainMenu() {
     if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => MainMenuScreen(
-            onNewGame: () => Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const GamePlayScreen()),
+      if (widget.onReturnToMenu != null) {
+        // 使用传入的回调，实现状态切换而非页面导航
+        widget.onReturnToMenu!();
+      } else {
+        // 兼容性后退方案：使用传统的页面导航
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => MainMenuScreen(
+              onNewGame: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const GamePlayScreen()),
+              ),
+              onLoadGame: () => setState(() => _showLoadOverlay = true),
             ),
-            onLoadGame: () => setState(() => _showLoadOverlay = true),
           ),
-        ),
-        (Route<dynamic> route) => false,
-      );
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 
@@ -175,7 +190,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
             return Stack(
               children: [
                 GestureDetector(
-                  onTap: gameState.currentNode is MenuNode ? null : () => _gameManager.next(),
+                  onTap: gameState.currentNode is MenuNode ? null : () {
+                    print('🎯 点击事件触发');
+                    print('🎯 当前节点类型: ${gameState.currentNode.runtimeType}');
+                    print('🎯 调用 _gameManager.next()');
+                    _gameManager.next();
+                  },
                   child: Stack(
                     children: [
                       if (gameState.background != null)
@@ -231,6 +251,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   SaveLoadScreen(
                     mode: SaveLoadMode.load,
                     onClose: () => setState(() => _showLoadOverlay = false),
+                    onLoadSlot: widget.onLoadGame ?? (saveSlot) {
+                      // 如果没有回调，使用传统的导航方式（兼容性）
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => GamePlayScreen(saveSlotToLoad: saveSlot),
+                        ),
+                        (route) => false,
+                      );
+                    },
                   ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,

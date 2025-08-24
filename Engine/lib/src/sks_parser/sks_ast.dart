@@ -52,3 +52,11 @@ class JumpNode implements SksNode {
   final String targetLabel;
   JumpNode(this.targetLabel);
 } 
+
+class CommentNode implements SksNode {
+  final String comment;
+  CommentNode(this.comment);
+  
+  @override
+  String toString() => '// $comment';
+}

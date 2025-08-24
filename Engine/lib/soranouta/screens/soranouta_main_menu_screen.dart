@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 
 /// SoraNoUta 项目的自定义主菜单屏幕
@@ -11,11 +13,13 @@ import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 class SoraNoutaMainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
+  final Function(SaveSlot)? onLoadGameWithSave;
 
   const SoraNoutaMainMenuScreen({
     Key? key,
     required this.onNewGame,
     required this.onLoadGame,
+    this.onLoadGameWithSave,
   }) : super(key: key);
 
   @override
@@ -169,6 +173,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
               SaveLoadScreen(
                 mode: SaveLoadMode.load,
                 onClose: () => setState(() => _showLoadOverlay = false),
+                onLoadSlot: widget.onLoadGameWithSave,
               ),
               
             if (_showDebugPanel)

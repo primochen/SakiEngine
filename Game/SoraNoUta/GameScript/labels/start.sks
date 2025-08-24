@@ -1,4 +1,6 @@
 //label// SoraNoUta 主标签脚本文件
 label start
+"start1"
+"start2"
 // 直接跳转到第一章
 jump cp0_001

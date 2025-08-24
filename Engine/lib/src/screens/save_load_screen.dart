@@ -18,6 +18,7 @@ class SaveLoadScreen extends StatefulWidget {
   final GameManager? gameManager;
   final VoidCallback onClose;
   final VoidCallback? onLoadSuccess;
+  final Function(SaveSlot)? onLoadSlot;
 
   const SaveLoadScreen({
     super.key,
@@ -25,6 +26,7 @@ class SaveLoadScreen extends StatefulWidget {
     this.gameManager,
     required this.onClose,
     this.onLoadSuccess,
+    this.onLoadSlot,
   });
 
   @override
@@ -60,7 +62,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     );
 
     final snapshot = widget.gameManager!.saveStateSnapshot();
-    await _saveLoadManager.saveGame(slotId, 'start', snapshot);
+    await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot);
     
     _notificationOverlayKey.currentState?.show('保存成功');
     
@@ -74,7 +76,11 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   }
 
   Future<void> _handleLoad(SaveSlot slot) async {
-    if (widget.onLoadSuccess != null) {
+    if (widget.onLoadSlot != null) {
+      // 使用新的回调传递存档信息
+      widget.onLoadSlot!(slot);
+      widget.onClose(); // 关闭对话框
+    } else if (widget.onLoadSuccess != null) {
       // 如果有读档成功回调，就调用它而不是直接导航
       widget.onLoadSuccess!();
     } else {

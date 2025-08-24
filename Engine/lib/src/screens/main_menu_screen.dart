@@ -5,6 +5,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 
 class _HoverButton extends StatefulWidget {
@@ -71,11 +72,13 @@ class _HoverButtonState extends State<_HoverButton> {
 class MainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
+  final Function(SaveSlot)? onLoadGameWithSave;
 
   const MainMenuScreen({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
+    this.onLoadGameWithSave,
   });
 
   @override
@@ -204,6 +207,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             SaveLoadScreen(
               mode: SaveLoadMode.load,
               onClose: () => setState(() => _showLoadOverlay = false),
+              onLoadSlot: widget.onLoadGameWithSave,
             ),
 
           if (_showDebugPanel)
