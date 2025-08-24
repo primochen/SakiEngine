@@ -169,6 +169,10 @@ class ScriptMerger {
       return 'Menu: ${node.choices.length} choices';
     } else if (node is ReturnNode) {
       return 'Return';
+    } else if (node is NvlNode) {
+      return 'NVL: Start';
+    } else if (node is EndNvlNode) {
+      return 'NVL: End';
     } else {
       return 'Unknown: ${node.runtimeType}';
     }

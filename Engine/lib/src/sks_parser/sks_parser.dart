@@ -65,6 +65,12 @@ class SksParser {
         case 'hide':
           nodes.add(HideNode(parts[1]));
           break;
+        case 'nvl':
+          nodes.add(NvlNode());
+          break;
+        case 'endnvl':
+          nodes.add(EndNvlNode());
+          break;
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {

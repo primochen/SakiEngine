@@ -60,3 +60,7 @@ class CommentNode implements SksNode {
   @override
   String toString() => '// $comment';
 }
+
+class NvlNode implements SksNode {}
+
+class EndNvlNode implements SksNode {}

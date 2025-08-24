@@ -57,6 +57,12 @@ class SakiEngineConfig {
   double mainMenuTitleBottom = 0.0;
   double mainMenuTitleLeft = 0.0;
 
+  // NVL 模式间距配置
+  double nvlLeft = 200.0;
+  double nvlRight = 40.0;
+  double nvlTop = 100.0;
+  double nvlBottom = 60.0;
+
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
   TextStyle choiceTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
@@ -137,6 +143,28 @@ class SakiEngineConfig {
         }
         if (trimmedLine.startsWith('base_quick_menu:')) {
           quickMenuTextStyle = _parseTextStyle(trimmedLine.split(':')[1].trim());
+        }
+        if (trimmedLine.startsWith('nvl:')) {
+          final nvlParams = trimmedLine.split(':')[1].trim().split(' ');
+          for (final param in nvlParams) {
+            final keyValue = param.split('=');
+            if (keyValue.length == 2) {
+              switch (keyValue[0]) {
+                case 'left':
+                  nvlLeft = double.tryParse(keyValue[1]) ?? 200.0;
+                  break;
+                case 'right':
+                  nvlRight = double.tryParse(keyValue[1]) ?? 40.0;
+                  break;
+                case 'top':
+                  nvlTop = double.tryParse(keyValue[1]) ?? 100.0;
+                  break;
+                case 'bottom':
+                  nvlBottom = double.tryParse(keyValue[1]) ?? 60.0;
+                  break;
+              }
+            }
+          }
         }
       }
     } catch (e) {

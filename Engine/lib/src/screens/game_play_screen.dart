@@ -17,6 +17,7 @@ import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
+import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
@@ -214,7 +215,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                           },
                         ),
                       ..._buildCharacters(context, gameState.characters, gameState.poseConfigs),
-                      if (gameState.dialogue != null)
+                      if (gameState.dialogue != null && !gameState.isNvlMode)
                         DialogueBox(
                           speaker: gameState.speaker,
                           dialogue: gameState.dialogue!,
@@ -229,6 +230,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                     ],
                   ),
                 ),
+                // NVL 模式覆盖层
+                if (gameState.isNvlMode)
+                  NvlScreen(
+                    nvlDialogues: gameState.nvlDialogues,
+                    onTap: () {
+                      print('🎯 NVL 点击事件触发');
+                      // 在 NVL 模式下点击继续下一句对话
+                      _gameManager.next();
+                    },
+                  ),
                 QuickMenu(
                   onSave: () => setState(() => _showSaveOverlay = true),
                   onLoad: () => setState(() => _showLoadOverlay = true),

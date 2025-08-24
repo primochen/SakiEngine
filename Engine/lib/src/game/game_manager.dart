@@ -97,6 +97,17 @@ class GameManager {
     _executeScript();
   }
 
+  void exitNvlMode() {
+    print('📚 退出 NVL 模式');
+    _currentState = _currentState.copyWith(
+      isNvlMode: false,
+      nvlDialogues: [],
+      clearDialogueAndSpeaker: true,
+    );
+    _gameStateController.add(_currentState);
+    _executeScript();
+  }
+
   void _executeScript() {
     print('🎮 _executeScript() 开始执行');
     print('🎮 _isProcessing: $_isProcessing');
@@ -173,27 +184,58 @@ class GameManager {
           );
           _currentState = _currentState.copyWith(characters: newCharacters);
         }
-        
-        _currentState = _currentState.copyWith(
-          dialogue: node.dialogue,
-          speaker: characterConfig?.name,
-          poseConfigs: _poseConfigs,
-          currentNode: null,
-          clearDialogueAndSpeaker: false,
-          forceNullSpeaker: node.character == null,
-        );
 
-        _addToDialogueHistory(
-          speaker: characterConfig?.name,
-          dialogue: node.dialogue,
-          timestamp: DateTime.now(),
-          currentNodeIndex: _scriptIndex - 1,
-        );
+        // 在 NVL 模式下的特殊处理
+        if (_currentState.isNvlMode) {
+          final newNvlDialogue = NvlDialogue(
+            speaker: characterConfig?.name,
+            dialogue: node.dialogue,
+            timestamp: DateTime.now(),
+          );
+          
+          final updatedNvlDialogues = List<NvlDialogue>.from(_currentState.nvlDialogues);
+          updatedNvlDialogues.add(newNvlDialogue);
+          
+          _currentState = _currentState.copyWith(
+            nvlDialogues: updatedNvlDialogues,
+            clearDialogueAndSpeaker: true,
+          );
+          
+          // 也添加到对话历史
+          _addToDialogueHistory(
+            speaker: characterConfig?.name,
+            dialogue: node.dialogue,
+            timestamp: DateTime.now(),
+            currentNodeIndex: _scriptIndex - 1,
+          );
+          
+          _gameStateController.add(_currentState);
+          
+          // NVL 模式下每句话都要停下来等待点击
+          _isProcessing = false;
+          return;
+        } else {
+          // 普通对话模式
+          _currentState = _currentState.copyWith(
+            dialogue: node.dialogue,
+            speaker: characterConfig?.name,
+            poseConfigs: _poseConfigs,
+            currentNode: null,
+            clearDialogueAndSpeaker: false,
+            forceNullSpeaker: node.character == null,
+          );
 
-        _gameStateController.add(_currentState);
+          _addToDialogueHistory(
+            speaker: characterConfig?.name,
+            dialogue: node.dialogue,
+            timestamp: DateTime.now(),
+            currentNodeIndex: _scriptIndex - 1,
+          );
 
-        _isProcessing = false;
-        return;
+          _gameStateController.add(_currentState);
+          _isProcessing = false;
+          return;
+        }
       }
 
       if (node is MenuNode) {
@@ -214,6 +256,27 @@ class GameManager {
         jumpToLabel(node.targetLabel);
         return;
       }
+
+      if (node is NvlNode) {
+        _currentState = _currentState.copyWith(
+          isNvlMode: true,
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+        );
+        _gameStateController.add(_currentState);
+        continue;
+      }
+
+      if (node is EndNvlNode) {
+        // 退出 NVL 模式并继续执行后续脚本
+        _currentState = _currentState.copyWith(
+          isNvlMode: false,
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+        );
+        _gameStateController.add(_currentState);
+        continue; // 继续执行后续节点
+      }
     }
     _isProcessing = false;
   }
@@ -223,19 +286,31 @@ class GameManager {
       scriptIndex: _scriptIndex,
       currentState: _currentState,
       dialogueHistory: List.from(_dialogueHistory),
+      isNvlMode: _currentState.isNvlMode,
+      nvlDialogues: List.from(_currentState.nvlDialogues),
     );
   }
 
   Future<void> restoreFromSnapshot(String scriptName, GameStateSnapshot snapshot, {bool shouldReExecute = true}) async {
     print('📚 restoreFromSnapshot: scriptName = $scriptName');
     print('📚 restoreFromSnapshot: snapshot.scriptIndex = ${snapshot.scriptIndex}');
+    print('📚 restoreFromSnapshot: isNvlMode = ${snapshot.isNvlMode}');
+    print('📚 restoreFromSnapshot: nvlDialogues count = ${snapshot.nvlDialogues.length}');
+    
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
     
     _scriptIndex = snapshot.scriptIndex;
-    _currentState = snapshot.currentState.copyWith(poseConfigs: _poseConfigs);
+    
+    // 恢复 NVL 状态
+    _currentState = snapshot.currentState.copyWith(
+      poseConfigs: _poseConfigs,
+      isNvlMode: snapshot.isNvlMode,
+      nvlDialogues: snapshot.nvlDialogues,
+    );
+    
     if (snapshot.dialogueHistory.isNotEmpty) {
       _dialogueHistory = List.from(snapshot.dialogueHistory);
     }
@@ -274,6 +349,9 @@ class GameManager {
         poseConfigs: _poseConfigs,
         clearDialogueAndSpeaker: true,
         forceNullCurrentNode: true,
+        // 恢复 NVL 状态
+        isNvlMode: _savedSnapshot!.isNvlMode,
+        nvlDialogues: _savedSnapshot!.nvlDialogues,
       );
       
       _isProcessing = false;
@@ -291,11 +369,13 @@ class GameManager {
     required DateTime timestamp,
     required int currentNodeIndex,
   }) {
-    // 为历史条目创建快照时，不包含历史记录本身，以避免循环引用。
+    // 为历史条目创建快照时，包含当前的 NVL 状态
     final snapshot = GameStateSnapshot(
       scriptIndex: _scriptIndex,
       currentState: _currentState,
-      dialogueHistory: const [], 
+      dialogueHistory: const [], // 避免循环引用
+      isNvlMode: _currentState.isNvlMode,
+      nvlDialogues: List.from(_currentState.nvlDialogues),
     );
     
     _dialogueHistory.add(DialogueHistoryEntry(
@@ -322,7 +402,9 @@ class GameManager {
     }
     
     // 使用合并的脚本，不需要重新加载特定脚本
-    await restoreFromSnapshot(scriptName, entry.stateSnapshot, shouldReExecute: false);
+    // 恢复历史条目时，需要检查是否处于 NVL 模式
+    final snapshot = entry.stateSnapshot;
+    await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
   }
 
   void dispose() {
@@ -337,6 +419,8 @@ class GameState {
   final String? speaker;
   final Map<String, PoseConfig> poseConfigs;
   final SksNode? currentNode;
+  final bool isNvlMode;
+  final List<NvlDialogue> nvlDialogues;
 
   GameState({
     this.background,
@@ -345,6 +429,8 @@ class GameState {
     this.speaker,
     this.poseConfigs = const {},
     this.currentNode,
+    this.isNvlMode = false,
+    this.nvlDialogues = const [],
   });
 
   factory GameState.initial() {
@@ -362,6 +448,8 @@ class GameState {
     bool clearDialogueAndSpeaker = false,
     bool forceNullCurrentNode = false,
     bool forceNullSpeaker = false,
+    bool? isNvlMode,
+    List<NvlDialogue>? nvlDialogues,
   }) {
     return GameState(
       background: background ?? this.background,
@@ -372,8 +460,22 @@ class GameState {
           : (clearDialogueAndSpeaker ? null : (speaker ?? this.speaker)),
       poseConfigs: poseConfigs ?? this.poseConfigs,
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
+      isNvlMode: isNvlMode ?? this.isNvlMode,
+      nvlDialogues: nvlDialogues ?? this.nvlDialogues,
     );
   }
+}
+
+class NvlDialogue {
+  final String? speaker;
+  final String dialogue;
+  final DateTime timestamp;
+
+  NvlDialogue({
+    this.speaker,
+    required this.dialogue,
+    required this.timestamp,
+  });
 }
 
 class CharacterState {
@@ -400,11 +502,15 @@ class GameStateSnapshot {
   final int scriptIndex;
   final GameState currentState;
   final List<DialogueHistoryEntry> dialogueHistory;
+  final bool isNvlMode;
+  final List<NvlDialogue> nvlDialogues;
 
   GameStateSnapshot({
     required this.scriptIndex,
     required this.currentState,
     this.dialogueHistory = const [],
+    this.isNvlMode = false,
+    this.nvlDialogues = const [],
   });
 
 }

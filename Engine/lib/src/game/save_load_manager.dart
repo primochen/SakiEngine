@@ -58,7 +58,18 @@ class SaveLoadManager {
     
     String dialoguePreview = '...';
     final currentState = snapshot.currentState;
-    if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
+    
+    // 优先检查 NVL 模式
+    if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
+      // 使用最新的 NVL 对话作为预览
+      final latestNvlDialogue = currentState.nvlDialogues.last;
+      if (latestNvlDialogue.speaker != null && latestNvlDialogue.speaker!.isNotEmpty) {
+        dialoguePreview = '【${latestNvlDialogue.speaker}】${latestNvlDialogue.dialogue}';
+      } else {
+        dialoguePreview = latestNvlDialogue.dialogue;
+      }
+    } else if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
+      // 普通模式的对话
       if (currentState.speaker != null && currentState.speaker!.isNotEmpty) {
         dialoguePreview = '【${currentState.speaker}】${currentState.dialogue}';
       } else {
