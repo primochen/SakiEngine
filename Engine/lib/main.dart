@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
@@ -8,6 +9,7 @@ import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
+import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -18,9 +20,43 @@ class GameContainer extends StatefulWidget {
   State<GameContainer> createState() => _GameContainerState();
 }
 
-class _GameContainerState extends State<GameContainer> {
+class _GameContainerState extends State<GameContainer> with WindowListener {
   AppState _currentState = AppState.mainMenu;
   SaveSlot? _saveSlotToLoad;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  Future<void> onWindowClose() async {
+    bool shouldClose = await _showExitConfirmation();
+    if (shouldClose) {
+      await windowManager.destroy();
+    }
+  }
+
+  Future<bool> _showExitConfirmation() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return ConfirmDialog(
+          title: '退出游戏',
+          content: '确定要退出游戏吗？未保存的游戏进度将会丢失。',
+          onConfirm: () => Navigator.of(context).pop(true),
+        );
+      },
+    );
+    return shouldExit ?? false;
+  }
 
   void _enterGame({SaveSlot? saveSlot}) {
     TransitionOverlayManager.instance.transition(
@@ -94,6 +130,10 @@ void main() async {
   runZoned(() async {
     // 初始化Flutter绑定
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // 初始化窗口管理器
+    await windowManager.ensureInitialized();
+    await windowManager.setPreventClose(true);
     
     // 初始化系统热键，清理之前的注册（用于热重载）
     await hotKeyManager.unregisterAll();

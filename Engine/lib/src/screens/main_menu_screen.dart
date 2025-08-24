@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
@@ -8,6 +9,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
+import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -114,6 +116,22 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     widget.onNewGame();
   }
 
+  Future<void> _showExitConfirmation(BuildContext context) async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return ConfirmDialog(
+          title: '退出游戏',
+          content: '确定要退出游戏吗？',
+          onConfirm: () async {
+            Navigator.of(context).pop(); // 关闭对话框
+            await windowManager.destroy(); // 真正退出程序
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
@@ -200,7 +218,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 _buildMenuButton(
                   context, 
                   '退出游戏', 
-                  () => exit(0), 
+                  () => _showExitConfirmation(context), 
                   menuScale,
                   config,
                 ),

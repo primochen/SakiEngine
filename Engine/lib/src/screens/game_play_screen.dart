@@ -102,8 +102,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
-          title: '确认返回',
-          content: '是否要返回主菜单？',
+          title: '返回主菜单',
+          content: '确定要返回主菜单吗？未保存的游戏进度将会丢失。',
           onConfirm: _returnToMainMenu,
         );
       },
@@ -180,12 +180,36 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _showNotificationMessage('跳转成功');
   }
 
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return ConfirmDialog(
+          title: '退出游戏',
+          content: '确定要退出游戏吗？未保存的游戏进度将会丢失。',
+          onConfirm: () => Navigator.of(context).pop(true),
+        );
+      },
+    );
+    return shouldExit ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      autofocus: true,
-      child: Scaffold(
-        body: StreamBuilder<GameState>(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (!didPop) {
+          final shouldExit = await _onWillPop();
+          if (shouldExit && mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
@@ -283,6 +307,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
               ],
             );
           },
+        ),
         ),
       ),
     );
