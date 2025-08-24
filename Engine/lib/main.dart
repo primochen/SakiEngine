@@ -7,6 +7,7 @@ import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -22,17 +23,27 @@ class _GameContainerState extends State<GameContainer> {
   SaveSlot? _saveSlotToLoad;
 
   void _enterGame({SaveSlot? saveSlot}) {
-    setState(() {
-      _currentState = AppState.inGame;
-      _saveSlotToLoad = saveSlot;
-    });
+    TransitionOverlayManager.instance.transition(
+      context: context,
+      onMidTransition: () {
+        setState(() {
+          _currentState = AppState.inGame;
+          _saveSlotToLoad = saveSlot;
+        });
+      },
+    );
   }
 
   void _returnToMainMenu() {
-    setState(() {
-      _currentState = AppState.mainMenu;
-      _saveSlotToLoad = null;
-    });
+    TransitionOverlayManager.instance.transition(
+      context: context,
+      onMidTransition: () {
+        setState(() {
+          _currentState = AppState.mainMenu;
+          _saveSlotToLoad = null;
+        });
+      },
+    );
   }
 
   @override
@@ -48,23 +59,28 @@ class _GameContainerState extends State<GameContainer> {
 
         final gameModule = snapshot.data!;
 
+        Widget currentScreen;
         switch (_currentState) {
           case AppState.mainMenu:
-            return gameModule.createMainMenuScreen(
+            currentScreen = gameModule.createMainMenuScreen(
               onNewGame: () => _enterGame(),
               onLoadGame: () {
                 // 这个回调现在只是个占位符，实际的load逻辑在MainMenuScreen内部处理
               },
               onLoadGameWithSave: (saveSlot) => _enterGame(saveSlot: saveSlot),
             );
+            break;
           case AppState.inGame:
-            return gameModule.createGamePlayScreen(
+            currentScreen = gameModule.createGamePlayScreen(
               key: ValueKey(_saveSlotToLoad?.id ?? 'new_game'),
               saveSlotToLoad: _saveSlotToLoad,
               onReturnToMenu: _returnToMainMenu,
               onLoadGame: (saveSlot) => _enterGame(saveSlot: saveSlot),
             );
+            break;
         }
+
+        return currentScreen;
       },
     );
   }

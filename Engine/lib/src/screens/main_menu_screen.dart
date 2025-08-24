@@ -7,6 +7,7 @@ import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
+import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -109,6 +110,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
   }
 
+  void _handleNewGame() {
+    widget.onNewGame();
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
@@ -179,7 +184,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 _buildMenuButton(
                   context, 
                   '新游戏', 
-                  widget.onNewGame,
+                  _handleNewGame,
                   menuScale,
                   config,
                 ),

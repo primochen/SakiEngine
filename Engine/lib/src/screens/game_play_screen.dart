@@ -19,6 +19,7 @@ import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -72,24 +73,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   void _returnToMainMenu() {
-    if (mounted) {
-      if (widget.onReturnToMenu != null) {
-        // 使用传入的回调，实现状态切换而非页面导航
-        widget.onReturnToMenu!();
-      } else {
-        // 兼容性后退方案：使用传统的页面导航
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => MainMenuScreen(
-              onNewGame: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const GamePlayScreen()),
-              ),
-              onLoadGame: () => setState(() => _showLoadOverlay = true),
+    if (mounted && widget.onReturnToMenu != null) {
+      widget.onReturnToMenu!();
+    } else if (mounted) {
+      // 兼容性后退方案：使用传统的页面导航
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => MainMenuScreen(
+            onNewGame: () => Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const GamePlayScreen()),
             ),
+            onLoadGame: () => setState(() => _showLoadOverlay = true),
           ),
-          (Route<dynamic> route) => false,
-        );
-      }
+        ),
+        (Route<dynamic> route) => false,
+      );
     }
   }
 
@@ -357,7 +355,7 @@ class _CharacterLayerState extends State<_CharacterLayer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 150),
     );
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
 

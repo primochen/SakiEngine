@@ -8,6 +8,7 @@ menu
 "保持沉默" after_choice2
 "表情测试" after_choice3
 "测试长句子" after_choice4
+"切换背景" after_choice5
 endmenu
 //就是这样，选择之后会跳转到after_choice1，after_choice2，after_choice3
 label after_choice1
@@ -41,4 +42,11 @@ yk "这是一句很长很长很长很长很长很长很长很长很长很长很�
 yk "这是一句很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长的句子。2"
 yk "这是一句很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长的句子。3"
 yk "这是一句很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长的句子。4"
+return
+label after_choice5
+scene sky
+yk "背景被切换咯～"
+scene bg school
+yk say "背景又切回来了。"
+yk sad "再见。"
 return
