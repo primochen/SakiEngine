@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// 全局转场覆盖层管理器
@@ -20,9 +21,13 @@ class TransitionOverlayManager {
     required VoidCallback onMidTransition,
     Duration duration = const Duration(milliseconds: 800),
   }) async {
+    print('[TransitionManager] 请求转场，当前状态: isTransitioning=$_isTransitioning');
     if (_isTransitioning) return;
     
     _isTransitioning = true;
+    print('[TransitionManager] 开始转场，时长: ${duration.inMilliseconds}ms');
+    
+    final completer = Completer<void>();
     
     // 创建覆盖层
     _overlayEntry = OverlayEntry(
@@ -30,14 +35,72 @@ class TransitionOverlayManager {
         duration: duration,
         onMidTransition: onMidTransition,
         onComplete: () {
+          print('[TransitionManager] 转场完成，移除覆盖层');
           _removeOverlay();
           _isTransitioning = false;
+          completer.complete();
         },
       ),
     );
     
     // 插入覆盖层
+    print('[TransitionManager] 插入转场覆盖层');
     Overlay.of(context).insert(_overlayEntry!);
+    
+    return completer.future;
+  }
+  
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+  
+  bool get isTransitioning => _isTransitioning;
+}
+
+/// Scene转场管理器（独立于全局转场）
+class SceneTransitionManager {
+  static SceneTransitionManager? _instance;
+  static SceneTransitionManager get instance => _instance ??= SceneTransitionManager._();
+  
+  SceneTransitionManager._();
+  
+  OverlayEntry? _overlayEntry;
+  bool _isTransitioning = false;
+  
+  /// 执行Scene转场过渡
+  Future<void> transition({
+    required BuildContext context,
+    required VoidCallback onMidTransition,
+    Duration duration = const Duration(milliseconds: 800),
+  }) async {
+    print('[SceneTransition] 请求scene转场，当前状态: isTransitioning=$_isTransitioning');
+    if (_isTransitioning) return;
+    
+    _isTransitioning = true;
+    print('[SceneTransition] 开始scene转场，时长: ${duration.inMilliseconds}ms');
+    
+    final completer = Completer<void>();
+    
+    // 创建覆盖层
+    _overlayEntry = OverlayEntry(
+      builder: (context) => _TransitionOverlay(
+        duration: duration,
+        onMidTransition: onMidTransition,
+        onComplete: () {
+          print('[SceneTransition] scene转场完成，移除覆盖层');
+          _removeOverlay();
+          _isTransitioning = false;
+          completer.complete();
+        },
+      ),
+    );
+    
+    // 插入覆盖层
+    print('[SceneTransition] 插入scene转场覆盖层');
+    Overlay.of(context).insert(_overlayEntry!);
+    
+    return completer.future;
   }
   
   void _removeOverlay() {
@@ -109,6 +172,7 @@ class _TransitionOverlayState extends State<_TransitionOverlay>
     // 在动画中点执行场景切换
     if (!_midTransitionExecuted && _controller.value >= 0.5) {
       _midTransitionExecuted = true;
+      print('[TransitionOverlay] 到达转场中点，执行回调');
       widget.onMidTransition();
     }
   }

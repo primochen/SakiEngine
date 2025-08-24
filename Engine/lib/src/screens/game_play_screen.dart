@@ -66,9 +66,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       // 延迟显示读档成功通知，确保UI已经构建完成
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showNotificationMessage('读档成功');
+        // 设置context用于转场效果
+        _gameManager.setContext(context);
       });
     } else {
       _gameManager.startGame(_currentScript);
+      // 延迟设置context，确保组件已mounted
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _gameManager.setContext(context);
+      });
     }
   }
 
@@ -212,7 +218,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                             return Container(color: Colors.black);
                           },
                         ),
-                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs),
+                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
                       if (gameState.dialogue != null && !gameState.isNvlMode)
                         DialogueBox(
                           speaker: gameState.speaker,
@@ -282,7 +288,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
-  List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs) {
+  List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
     return characters.entries.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
@@ -292,11 +298,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
       final poseImage = characterState.pose ?? 'pose1';
       final poseAssetName = 'characters/${characterState.resourceId}-$poseImage';
-      layers.add(_CharacterLayer(key: ValueKey('$characterId-pose'), assetName: poseAssetName));
+      layers.add(_CharacterLayer(
+        key: ValueKey('$characterId-pose'), 
+        assetName: poseAssetName,
+      ));
 
       final expressionImage = characterState.expression ?? 'happy';
       final expressionAssetName = 'characters/${characterState.resourceId}-$expressionImage';
-      layers.add(_CharacterLayer(key: ValueKey('$characterId-expression'), assetName: expressionAssetName));
+      layers.add(_CharacterLayer(
+        key: ValueKey('$characterId-expression'), 
+        assetName: expressionAssetName,
+      ));
       
       final characterStack = Stack(children: layers);
       
@@ -334,7 +346,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
 class _CharacterLayer extends StatefulWidget {
   final String assetName;
-  const _CharacterLayer({super.key, required this.assetName});
+  const _CharacterLayer({
+    super.key, 
+    required this.assetName,
+  });
 
   @override
   State<_CharacterLayer> createState() => _CharacterLayerState();
@@ -397,6 +412,9 @@ class _CharacterLayerState extends State<_CharacterLayer>
         setState(() {
           _currentImage = frame.image;
         });
+        
+        // 始终触发动画
+        _controller.forward(from: 0.0);
       }
     }
   }
@@ -422,29 +440,23 @@ class _CharacterLayerState extends State<_CharacterLayer>
           builder: (context, constraints) {
             final imageSize = Size(_currentImage!.width.toDouble(), _currentImage!.height.toDouble());
             
+            // 确定绘制尺寸
+            Size paintSize;
             if (!constraints.hasBoundedHeight) {
-              return CustomPaint(
-                size: imageSize,
-                painter: _DissolvePainter(
-                  program: _dissolveProgram!,
-                  progress: _animation.value,
-                  imageFrom: _previousImage ?? _currentImage!,
-                  imageTo: _currentImage!,
-                ),
-              );
+              paintSize = imageSize;
+            } else {
+              final imageAspectRatio = imageSize.width / imageSize.height;
+              final paintHeight = constraints.maxHeight;
+              final paintWidth = paintHeight * imageAspectRatio;
+              paintSize = Size(paintWidth, paintHeight);
             }
-
-            final imageAspectRatio = imageSize.width / imageSize.height;
-            final paintHeight = constraints.maxHeight;
-            final paintWidth = paintHeight * imageAspectRatio;
-            final paintSize = Size(paintWidth, paintHeight);
             
             return CustomPaint(
               size: paintSize,
               painter: _DissolvePainter(
                 program: _dissolveProgram!,
                 progress: _animation.value,
-                imageFrom: _previousImage ?? _currentImage!,
+                imageFrom: _previousImage ?? _currentImage!, // 没有previousImage时用当前图片，shader会处理透明
                 imageTo: _currentImage!,
               ),
             );
@@ -471,6 +483,24 @@ class _DissolvePainter extends CustomPainter {
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
     try {
+      // 如果没有之前的图片（首次显示），从透明开始
+      if (imageFrom == imageTo) {
+        // 首次显示：简单的透明度渐变
+        final paint = ui.Paint()
+          ..color = Colors.white.withOpacity(progress)
+          ..isAntiAlias = true
+          ..filterQuality = FilterQuality.high;
+        
+        canvas.drawImageRect(
+          imageTo,
+          ui.Rect.fromLTWH(0, 0, imageTo.width.toDouble(), imageTo.height.toDouble()),
+          ui.Rect.fromLTWH(0, 0, size.width, size.height),
+          paint,
+        );
+        return;
+      }
+
+      // 差分切换：使用dissolve效果
       final shader = program.fragmentShader();
       shader
         ..setFloat(0, progress)

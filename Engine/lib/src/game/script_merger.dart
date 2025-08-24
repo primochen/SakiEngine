@@ -30,23 +30,23 @@ class ScriptMerger {
             if (node is LabelNode) {
               _globalLabelMap[node.name] = fileNameWithoutExt;
               if (kDebugMode) {
-                print('[ScriptMerger] 发现标签: ${node.name} 在文件 $fileNameWithoutExt 中');
+                //print('[ScriptMerger] 发现标签: ${node.name} 在文件 $fileNameWithoutExt 中');
               }
             }
           }
         } catch (e) {
           if (kDebugMode) {
-            print('[ScriptMerger] 加载脚本文件失败: $fileName - $e');
+            //print('[ScriptMerger] 加载脚本文件失败: $fileName - $e');
           }
         }
       }
       
       if (kDebugMode) {
-        print('[ScriptMerger] 全局标签映射构建完成，共 ${_globalLabelMap.length} 个标签');
+        //print('[ScriptMerger] 全局标签映射构建完成，共 ${_globalLabelMap.length} 个标签');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[ScriptMerger] 构建全局标签映射失败: $e');
+        //print('[ScriptMerger] 构建全局标签映射失败: $e');
       }
     }
   }
@@ -67,20 +67,6 @@ class ScriptMerger {
     await _mergeFileRecursively('start', mergedChildren, processedFiles);
     
     _mergedScript = ScriptNode(mergedChildren);
-    
-    if (kDebugMode) {
-      print('[ScriptMerger] 脚本合并完成，总节点数: ${mergedChildren.length}');
-      print('[ScriptMerger] 文件起始索引映射: $_fileStartIndices');
-      
-      // 打印合并后的脚本内容
-      print('[ScriptMerger] === 合并后的脚本内容 ===');
-      for (int i = 0; i < mergedChildren.length; i++) {
-        final node = mergedChildren[i];
-        print('[$i] ${_nodeToString(node)}');
-      }
-      print('[ScriptMerger] === 脚本内容结束 ===');
-    }
-    
     return _mergedScript!;
   }
 
@@ -93,10 +79,6 @@ class ScriptMerger {
     processedFiles.add(fileName);
     final script = _loadedScripts[fileName]!;
     _fileStartIndices[fileName] = mergedChildren.length;
-    
-    if (kDebugMode) {
-      print('[ScriptMerger] 合并文件: $fileName, 起始索引: ${mergedChildren.length}');
-    }
     
     // 添加文件开始标记
     mergedChildren.add(CommentNode('=== 文件: $fileName ==='));
