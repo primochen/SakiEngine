@@ -43,11 +43,9 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   SakiEngineConfig? createCustomConfig() {
-    // SoraNoUta 项目特定配置 - 启用电影黑边模式
+    // SoraNoUta 项目特定配置
     final config = SakiEngineConfig();
-    config.nvlCinematicMode = true;         // 启用电影黑边
-    config.nvlCinematicBarHeight = 100.0;   // 设置黑边高度
-    config.nvlCinematicBarColor = Colors.black;  // 黑色边框
+    // 可以在这里添加项目特定的配置
     return config;
   }
 

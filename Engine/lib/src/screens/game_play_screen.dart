@@ -264,6 +264,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 if (gameState.isNvlMode)
                   NvlScreen(
                     nvlDialogues: gameState.nvlDialogues,
+                    isMovieMode: gameState.isNvlMovieMode,
                     onTap: () {
                       print('🎯 NVL 点击事件触发');
                       // 在 NVL 模式下点击继续下一句对话

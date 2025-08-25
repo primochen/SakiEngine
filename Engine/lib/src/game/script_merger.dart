@@ -153,8 +153,12 @@ class ScriptMerger {
       return 'Return';
     } else if (node is NvlNode) {
       return 'NVL: Start';
+    } else if (node is NvlMovieNode) {
+      return 'NVLM: Start';
     } else if (node is EndNvlNode) {
       return 'NVL: End';
+    } else if (node is EndNvlMovieNode) {
+      return 'NVLM: End';
     } else {
       return 'Unknown: ${node.runtimeType}';
     }

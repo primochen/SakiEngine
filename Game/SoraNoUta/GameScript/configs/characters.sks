@@ -5,7 +5,9 @@
 main : "主角" : narrator
 nr : "旁白" : narrator
 n : "空白" : narrator
-
+nan : "???" :  narrator
+lm : "林澄母亲" : narrator
+l : "林澄" : narrator
 // 添加你的角色定义：
 // 格式: 角色别名 : "角色显示名称" : 角色资源ID
 // 示例: alice : "爱丽丝" : alice at pose
