@@ -6,4 +6,5 @@ base_speaker: size=35
 base_choice: size=24
 base_review_title: size=45
 base_quick_menu: size=25
+base_window: border=50
 main_menu: background=sky size=200 top=0.3 right=0.05

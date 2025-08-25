@@ -51,6 +51,7 @@ class OverlayScaffold extends StatelessWidget {
                     height: screenSize.height * 0.8,
                     decoration: BoxDecoration(
                       color: config.themeColors.background.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(config.baseWindowBorder),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
@@ -59,12 +60,15 @@ class OverlayScaffold extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: Column(
-                      children: [
-                        _buildHeader(uiScale, textScale, config),
-                        Expanded(child: content),
-                        if (footer != null) footer!,
-                      ],
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(config.baseWindowBorder),
+                      child: Column(
+                        children: [
+                          _buildHeader(uiScale, textScale, config),
+                          Expanded(child: content),
+                          if (footer != null) footer!,
+                        ],
+                      ),
                     ),
                   ),
                 ),

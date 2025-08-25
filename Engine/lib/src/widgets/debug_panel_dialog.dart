@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 
 class DebugPanelDialog extends StatefulWidget {
   final VoidCallback onClose;
@@ -52,95 +53,22 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
     final config = SakiEngineConfig();
     final scale = context.scaleFor(ComponentType.ui);
 
-    return GestureDetector(
-      onTap: widget.onClose,
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: config.themeColors.primaryDark.withOpacity(0.5),
-        child: GestureDetector(
-          onTap: () {}, // 防止点击内容区域时关闭
-          child: Center(
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.8,
-              height: MediaQuery.of(context).size.height * 0.8,
-              decoration: BoxDecoration(
-                color: config.themeColors.background.withOpacity(0.95),
-                border: Border.all(
-                  color: config.themeColors.primary.withOpacity(0.8),
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // 标题栏
-                  _buildHeader(config, scale),
-                  
-                  // 标签页
-                  _buildTabBar(config, scale),
-                  
-                  // 内容区域
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildSystemTab(config, scale),
-                        _buildLogTab(config, scale),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(SakiEngineConfig config, double scale) {
-    return Container(
-      height: 60 * scale,
-      decoration: BoxDecoration(
-        color: config.themeColors.primaryDark.withOpacity(0.1),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Row(
+    return OverlayScaffold(
+      title: '调试面板',
+      onClose: widget.onClose,
+      content: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20 * scale),
-            child: Icon(
-              Icons.settings_applications,
-              color: config.themeColors.primary,
-              size: 24 * scale,
-            ),
-          ),
+          // 标签页
+          _buildTabBar(config, scale),
+          
+          // 内容区域
           Expanded(
-            child: Text(
-              '调试界面',
-              style: TextStyle(
-                fontFamily: 'SourceHanSansCN-Bold',
-                fontSize: 20 * scale,
-                color: config.themeColors.primary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: widget.onClose,
-            icon: Icon(
-              Icons.close,
-              color: config.themeColors.primary,
-              size: 24 * scale,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildSystemTab(config, scale),
+                _buildLogTab(config, scale),
+              ],
             ),
           ),
         ],
@@ -192,7 +120,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
 
   Widget _buildSystemInfoCard(SakiEngineConfig config, double scale) {
     return Expanded(
-      flex: 2,
+      flex: 3,
       child: Container(
         padding: EdgeInsets.all(16 * scale),
         decoration: BoxDecoration(
@@ -238,7 +166,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
 
   Widget _buildQuickActionsCard(SakiEngineConfig config, double scale) {
     return Expanded(
-      flex: 1,
+      flex: 2,
       child: Container(
         padding: EdgeInsets.all(16 * scale),
         decoration: BoxDecoration(

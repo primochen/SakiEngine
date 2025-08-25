@@ -63,6 +63,9 @@ class SakiEngineConfig {
   double nvlTop = 100.0;
   double nvlBottom = 60.0;
 
+  // 基础窗口配置
+  double baseWindowBorder = 0.0;
+
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
   TextStyle choiceTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
@@ -161,6 +164,20 @@ class SakiEngineConfig {
                   break;
                 case 'bottom':
                   nvlBottom = double.tryParse(keyValue[1]) ?? 60.0;
+                  break;
+              }
+            }
+          }
+        }
+        if (trimmedLine.startsWith('base_window:')) {
+          final windowParams = trimmedLine.split(':')[1].trim().split(' ');
+          for (final param in windowParams) {
+            final keyValue = param.split('=');
+            if (keyValue.length == 2) {
+              switch (keyValue[0]) {
+                case 'border':
+                  baseWindowBorder = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] baseWindowBorder 设置为: $baseWindowBorder');
                   break;
               }
             }
