@@ -389,19 +389,3 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
     );
   }
 }
-
-class _CloseIntent extends Intent {
-  const _CloseIntent();
-}
-
-class _CloseAction extends Action<_CloseIntent> {
-  final VoidCallback onClose;
-
-  _CloseAction(this.onClose);
-
-  @override
-  Object? invoke(_CloseIntent intent) {
-    onClose();
-    return null;
-  }
-}

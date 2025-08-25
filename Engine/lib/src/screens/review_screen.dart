@@ -272,20 +272,3 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     }
   }
 }
-
-// 定义关闭意图和动作
-class _CloseIntent extends Intent {
-  const _CloseIntent();
-}
-
-class _CloseAction extends Action<_CloseIntent> {
-  final VoidCallback onClose;
-
-  _CloseAction(this.onClose);
-
-  @override
-  Object? invoke(_CloseIntent intent) {
-    onClose();
-    return null;
-  }
-}
