@@ -63,12 +63,15 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
           
           // 内容区域
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildSystemTab(config, scale),
-                _buildLogTab(config, scale),
-              ],
+            child: Focus(
+              canRequestFocus: false,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildSystemTab(config, scale),
+                  _buildLogTab(config, scale),
+                ],
+              ),
             ),
           ),
         ],

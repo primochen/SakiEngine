@@ -209,7 +209,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         }
       },
       child: Focus(
-        autofocus: true,
+        autofocus: false,
         child: Scaffold(
           body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
