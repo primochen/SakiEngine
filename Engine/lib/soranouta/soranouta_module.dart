@@ -43,11 +43,12 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   SakiEngineConfig? createCustomConfig() {
-    // 可以返回项目特定的配置
-    // final config = SakiEngineConfig();
-    // config.themeColors = CustomThemeColors(...);
-    // return config;
-    return null; // 使用默认配置
+    // SoraNoUta 项目特定配置 - 启用电影黑边模式
+    final config = SakiEngineConfig();
+    config.nvlCinematicMode = true;         // 启用电影黑边
+    config.nvlCinematicBarHeight = 100.0;   // 设置黑边高度
+    config.nvlCinematicBarColor = Colors.black;  // 黑色边框
+    return config;
   }
 
   @override

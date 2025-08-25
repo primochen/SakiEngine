@@ -60,7 +60,7 @@ class _HoverButtonState extends State<_HoverButton> {
             widget.text,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'SourceHanSansCN-Bold',
+              fontFamily: 'SourceHanSansCN',
               fontSize: 28 * widget.scale,
               color: widget.config.themeColors.primary,
               letterSpacing: 2,
@@ -164,7 +164,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             child: Text(
               _appTitle,
               style: TextStyle(
-                fontFamily: 'SourceHanSansCN-Bold',
+                fontFamily: 'SourceHanSansCN',
                 fontSize: config.mainMenuTitleSize * textScale,
                 color: config.themeColors.background,
                 letterSpacing: 4,
@@ -309,7 +309,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               Text(
                 '调试界面',
                 style: TextStyle(
-                  fontFamily: 'SourceHanSansCN-Bold',
+                  fontFamily: 'SourceHanSansCN',
                   fontSize: 14 * scale,
                   color: config.themeColors.primary,
                   fontWeight: FontWeight.w600,

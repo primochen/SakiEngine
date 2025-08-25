@@ -95,7 +95,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
         labelColor: config.themeColors.primary,
         unselectedLabelColor: config.themeColors.primary.withOpacity(0.6),
         labelStyle: TextStyle(
-          fontFamily: 'SourceHanSansCN-Bold',
+          fontFamily: 'SourceHanSansCN',
           fontSize: 16 * scale,
           fontWeight: FontWeight.w600,
         ),
@@ -140,7 +140,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
             Text(
               '系统信息',
               style: TextStyle(
-                fontFamily: 'SourceHanSansCN-Bold',
+                fontFamily: 'SourceHanSansCN',
                 fontSize: 16 * scale,
                 color: config.themeColors.primary,
                 fontWeight: FontWeight.bold,
@@ -186,7 +186,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
             Text(
               '快速操作',
               style: TextStyle(
-                fontFamily: 'SourceHanSansCN-Bold',
+                fontFamily: 'SourceHanSansCN',
                 fontSize: 16 * scale,
                 color: config.themeColors.primary,
                 fontWeight: FontWeight.bold,
@@ -239,7 +239,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
               Text(
                 '调试日志',
                 style: TextStyle(
-                  fontFamily: 'SourceHanSansCN-Bold',
+                  fontFamily: 'SourceHanSansCN',
                   fontSize: 16 * scale,
                   color: config.themeColors.primary,
                   fontWeight: FontWeight.bold,

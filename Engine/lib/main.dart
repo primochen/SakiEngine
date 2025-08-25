@@ -201,7 +201,7 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
               debugShowCheckedModeBanner: false,
               theme: customTheme ?? ThemeData(
                 primarySwatch: Colors.blue,
-                fontFamily: 'SourceHanSansCN-Bold',
+                fontFamily: 'SourceHanSansCN',
               ),
               home: const GameContainer(),
             );
