@@ -494,13 +494,18 @@ class GameManager {
     required int currentNodeIndex,
   }) {
     // 为历史条目创建快照时，使用正确的节点索引
+    // 对于NVL模式，只保存当前单句对话而不是整个NVL列表，避免回退时重复显示
+    final nvlDialoguesForSnapshot = _currentState.isNvlMode 
+        ? [NvlDialogue(speaker: speaker, dialogue: dialogue, timestamp: timestamp)]
+        : List.from(_currentState.nvlDialogues);
+    
     final snapshot = GameStateSnapshot(
       scriptIndex: currentNodeIndex,
       currentState: _currentState,
       dialogueHistory: const [], // 避免循环引用
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
-      nvlDialogues: List.from(_currentState.nvlDialogues),
+      nvlDialogues: nvlDialoguesForSnapshot,
     );
     
     _dialogueHistory.add(DialogueHistoryEntry(
