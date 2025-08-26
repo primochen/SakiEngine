@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -182,6 +183,43 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         print('应用内快捷键注册也失败: $e2');
       }
     }
+
+    // 添加箭头键支持（替代滚轮）
+    try {
+      final nextHotKey = HotKey(
+        key: PhysicalKeyboardKey.arrowDown,
+        scope: HotKeyScope.inapp,
+      );
+      
+      final prevHotKey = HotKey(
+        key: PhysicalKeyboardKey.arrowUp,
+        scope: HotKeyScope.inapp,
+      );
+
+      await hotKeyManager.register(
+        nextHotKey,
+        keyDownHandler: (hotKey) {
+          print('🎮 下箭头键 - 前进剧情');
+          if (mounted && !_isShowingMenu) {
+            _gameManager.next();
+          }
+        },
+      );
+
+      await hotKeyManager.register(
+        prevHotKey,
+        keyDownHandler: (hotKey) {
+          print('🎮 上箭头键 - 回滚剧情');
+          if (mounted) {
+            _handlePreviousDialogue();
+          }
+        },
+      );
+      
+      print('箭头键快捷键注册成功');
+    } catch (e) {
+      print('箭头键快捷键注册失败: $e');
+    }
   }
 
   // 显示通知消息
@@ -250,7 +288,30 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
               }
             });
             
-            return Stack(
+            return Listener(
+              onPointerSignal: (pointerSignal) {
+                // 处理标准的PointerScrollEvent（鼠标滚轮）
+                if (pointerSignal is PointerScrollEvent) {
+                  // 向上滚动: 前进剧情
+                  if (pointerSignal.scrollDelta.dy < 0) {
+                    if (!_isShowingMenu) {
+                      _gameManager.next();
+                    }
+                  }
+                  // 向下滚动: 回滚剧情
+                  else if (pointerSignal.scrollDelta.dy > 0) {
+                    _handlePreviousDialogue();
+                  }
+                }
+                // 处理macOS触控板事件
+                else if (pointerSignal.toString().contains('Scroll')) {
+                  // 触控板滚动事件，推进剧情
+                  if (!_isShowingMenu) {
+                    _gameManager.next();
+                  }
+                }
+              },
+              child: Stack(
               children: [
                 GestureDetector(
                   onTap: gameState.currentNode is MenuNode ? null : () {
@@ -346,6 +407,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   scale: context.scaleFor(ComponentType.ui),
                 ),
               ],
+            ),
             );
           },
         ),
