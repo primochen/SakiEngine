@@ -154,8 +154,8 @@ class _NvlScreenState extends State<NvlScreen>
         curve: Curves.easeInOut,
       ));
       
-      // 延迟启动动画，为每个对话添加不同的延迟
-      Future.delayed(Duration(milliseconds: index * 100), () {
+      // 立即启动淡入动画，避免累积延迟
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && controller.isCompleted == false) {
           controller.forward();
         }

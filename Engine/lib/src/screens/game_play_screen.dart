@@ -342,6 +342,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         DialogueBox(
                           speaker: gameState.speaker,
                           dialogue: gameState.dialogue!,
+                          onNext: () => _gameManager.next(),
                         ),
                       if (gameState.currentNode is MenuNode)
                         ChoiceMenu(
