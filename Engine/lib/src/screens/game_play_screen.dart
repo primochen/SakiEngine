@@ -298,23 +298,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
             
             return Listener(
               onPointerSignal: (pointerSignal) {
+                // 检查是否有弹窗或菜单显示
+                final hasOverlayOpen = _isShowingMenu || 
+                    _showSaveOverlay || 
+                    _showLoadOverlay || 
+                    _showReviewOverlay ||
+                    _showSettings;
+                
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
                 if (pointerSignal is PointerScrollEvent) {
                   // 向上滚动: 前进剧情
                   if (pointerSignal.scrollDelta.dy < 0) {
-                    if (!_isShowingMenu) {
+                    if (!hasOverlayOpen) {
                       _dialogueProgressionManager.progressDialogue();
                     }
                   }
                   // 向下滚动: 回滚剧情
                   else if (pointerSignal.scrollDelta.dy > 0) {
-                    _handlePreviousDialogue();
+                    if (!hasOverlayOpen) {
+                      _handlePreviousDialogue();
+                    }
                   }
                 }
                 // 处理macOS触控板事件
                 else if (pointerSignal.toString().contains('Scroll')) {
                   // 触控板滚动事件，推进剧情
-                  if (!_isShowingMenu) {
+                  if (!hasOverlayOpen) {
                     _dialogueProgressionManager.progressDialogue();
                   }
                 }
