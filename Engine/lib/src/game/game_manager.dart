@@ -17,6 +17,8 @@ class GameManager {
   late ScriptNode _script;
   int _scriptIndex = 0;
   bool _isProcessing = false;
+  bool _isWaitingForTimer = false; // 新增：专门的计时器等待标志
+  Timer? _currentTimer; // 新增：当前活跃的计时器引用
   Map<String, int> _labelIndexMap = {};
   
   // 脚本合并器
@@ -101,9 +103,6 @@ class GameManager {
   }
 
   void next() {
-    //print('📚 GameManager.next() 被调用');
-    //print('📚 当前脚本索引: $_scriptIndex');
-    //print('📚 脚本总长度: ${_script.children.length}');
     _executeScript();
   }
 
@@ -120,37 +119,58 @@ class GameManager {
   }
 
   void _executeScript() {
-    //print('🎮 _executeScript() 开始执行');
-    //print('🎮 _isProcessing: $_isProcessing');
-    if (_isProcessing) return;
+    if (_isProcessing || _isWaitingForTimer) {
+      return;
+    }
     _isProcessing = true;
 
     //print('🎮 开始处理脚本，当前索引: $_scriptIndex');
     
     while (_scriptIndex < _script.children.length) {
       final node = _script.children[_scriptIndex];
+      final currentNodeIndex = _scriptIndex; // 保存当前节点索引
       //print('🎮 处理节点[$_scriptIndex]: ${node.runtimeType} - $node');
-      _scriptIndex++;
 
       // 跳过注释节点（文件边界标记）
       if (node is CommentNode) {
         if (kDebugMode) {
           //print('[GameManager] 跳过注释: ${node.comment}');
         }
+        _scriptIndex++;
+        continue;
+      }
+
+      // 跳过标签节点
+      if (node is LabelNode) {
+        _scriptIndex++;
         continue;
       }
 
       if (node is BackgroundNode) {
-        //print('[GameManager] 处理背景切换: ${node.background}');
-        //print('[GameManager] context是否可用: ${_context != null}');
-        
         // 检查是否是游戏开始时的初始背景设置
         final isInitialBackground = _currentState.background == null;
         
         if (_context != null && !isInitialBackground) {
           // 只有在非初始背景时才使用转场效果
-          //print('[GameManager] 使用转场效果切换背景（scene切换）');
-          _transitionToNewBackground(node.background);
+          // 立即递增索引，避免重复处理
+          _scriptIndex++;
+          
+          // 如果有计时器，提前设置保护
+          if (node.timer != null && node.timer! > 0) {
+            _isWaitingForTimer = true;
+            _isProcessing = false; // 释放当前处理锁，但保持timer锁
+          }
+          
+          _transitionToNewBackground(node.background).then((_) {
+            // 如果有计时器，启动计时器
+            if (node.timer != null && node.timer! > 0) {
+              _startSceneTimer(node.timer!);
+            } else {
+              // 没有计时器，直接继续执行
+              _isProcessing = false;
+              _executeScript();
+            }
+          });
           return; // 转场过程中暂停脚本执行，将在转场完成后自动恢复
         } else {
           //print('[GameManager] 直接设置背景（${isInitialBackground ? "初始背景" : "无转场"}）');
@@ -160,13 +180,24 @@ class GameManager {
               clearDialogueAndSpeaker: true,
               everShownCharacters: _everShownCharacters);
           _gameStateController.add(_currentState);
+          
+          // 如果有计时器，启动计时器
+          if (node.timer != null && node.timer! > 0) {
+            // 启动计时器，保持 _isProcessing = true 直到计时器结束
+            _startSceneTimer(node.timer!);
+            return;
+          }
         }
+        _scriptIndex++;
         continue;
       }
 
       if (node is ShowNode) {
         final characterConfig = _characterConfigs[node.character];
-        if (characterConfig == null) continue;
+        if (characterConfig == null) {
+          _scriptIndex++;
+          continue;
+        }
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(node.character);
@@ -184,6 +215,7 @@ class GameManager {
         _currentState =
             _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         continue;
       }
 
@@ -193,6 +225,7 @@ class GameManager {
         _currentState =
             _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         continue;
       }
 
@@ -241,12 +274,13 @@ class GameManager {
             speaker: characterConfig?.name,
             dialogue: node.dialogue,
             timestamp: DateTime.now(),
-            currentNodeIndex: _scriptIndex - 1,
+            currentNodeIndex: currentNodeIndex,
           );
           
           _gameStateController.add(_currentState);
           
           // NVL 模式下每句话都要停下来等待点击
+          _scriptIndex++;
           _isProcessing = false;
           return;
         } else {
@@ -265,10 +299,11 @@ class GameManager {
             speaker: characterConfig?.name,
             dialogue: node.dialogue,
             timestamp: DateTime.now(),
-            currentNodeIndex: _scriptIndex - 1,
+            currentNodeIndex: currentNodeIndex,
           );
 
           _gameStateController.add(_currentState);
+          _scriptIndex++;
           _isProcessing = false;
           return;
         }
@@ -277,17 +312,20 @@ class GameManager {
       if (node is MenuNode) {
         _currentState = _currentState.copyWith(currentNode: node, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         _isProcessing = false;
         return;
       }
 
       if (node is ReturnNode) {
+        _scriptIndex++;
         onReturn?.call();
         _isProcessing = false;
         return;
       }
       
       if (node is JumpNode) {
+        _scriptIndex++;
         _isProcessing = false;
         jumpToLabel(node.targetLabel);
         return;
@@ -302,6 +340,7 @@ class GameManager {
           everShownCharacters: _everShownCharacters,
         );
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         continue;
       }
 
@@ -314,6 +353,7 @@ class GameManager {
           everShownCharacters: _everShownCharacters,
         );
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         continue;
       }
 
@@ -327,6 +367,7 @@ class GameManager {
           everShownCharacters: _everShownCharacters,
         );
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         continue; // 继续执行后续节点
       }
 
@@ -340,6 +381,7 @@ class GameManager {
           everShownCharacters: _everShownCharacters,
         );
         _gameStateController.add(_currentState);
+        _scriptIndex++;
         continue; // 继续执行后续节点
       }
     }
@@ -370,6 +412,14 @@ class GameManager {
     
     _scriptIndex = snapshot.scriptIndex;
     
+    // 重置所有处理标志，确保恢复状态时没有遗留的锁定状态
+    _isProcessing = false;
+    _isWaitingForTimer = false;
+    
+    // 取消当前活跃的计时器
+    _currentTimer?.cancel();
+    _currentTimer = null;
+    
     // 恢复 NVL 状态
     _currentState = snapshot.currentState.copyWith(
       poseConfigs: _poseConfigs,
@@ -384,10 +434,8 @@ class GameManager {
     }
     
     if (shouldReExecute) {
-      _isProcessing = false;
       _executeScript();
     } else {
-      _isProcessing = false;
       _gameStateController.add(_currentState);
     }
   }
@@ -425,6 +473,12 @@ class GameManager {
       );
       
       _isProcessing = false;
+      _isWaitingForTimer = false; // 重置计时器标志
+      
+      // 取消当前活跃的计时器
+      _currentTimer?.cancel();
+      _currentTimer = null;
+      
       _executeScript();
     }
   }
@@ -439,9 +493,9 @@ class GameManager {
     required DateTime timestamp,
     required int currentNodeIndex,
   }) {
-    // 为历史条目创建快照时，包含当前的 NVL 状态
+    // 为历史条目创建快照时，使用正确的节点索引
     final snapshot = GameStateSnapshot(
-      scriptIndex: _scriptIndex,
+      scriptIndex: currentNodeIndex,
       currentState: _currentState,
       dialogueHistory: const [], // 避免循环引用
       isNvlMode: _currentState.isNvlMode,
@@ -478,6 +532,23 @@ class GameManager {
     await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
   }
 
+  /// 启动场景计时器
+  void _startSceneTimer(double seconds) {
+    // 取消之前的计时器（如果存在）
+    _currentTimer?.cancel();
+    
+    final durationMs = (seconds * 1000).round();
+    
+    _currentTimer = Timer(Duration(milliseconds: durationMs), () {
+      // 检查计时器是否仍然有效（防止已被取消的计时器执行）
+      if (_isWaitingForTimer && _currentTimer != null && _currentTimer!.isActive == false) {
+        _isWaitingForTimer = false;
+        _currentTimer = null;
+        _executeScript();
+      }
+    });
+  }
+
   /// 使用转场效果切换背景
   Future<void> _transitionToNewBackground(String newBackground) async {
     if (_context == null) return;
@@ -510,6 +581,7 @@ class GameManager {
   }
 
   void dispose() {
+    _currentTimer?.cancel(); // 取消活跃的计时器
     _gameStateController.close();
   }
 }

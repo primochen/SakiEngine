@@ -47,7 +47,13 @@ class SksParser {
         case 'endmenu':
           break;
         case 'scene':
-          nodes.add(BackgroundNode(parts.sublist(1).join(' ')));
+          if (parts.length >= 4 && parts[parts.length - 2] == 'timer') {
+            final backgroundName = parts.sublist(1, parts.length - 2).join(' ');
+            final timerValue = double.tryParse(parts.last);
+            nodes.add(BackgroundNode(backgroundName, timer: timerValue));
+          } else {
+            nodes.add(BackgroundNode(parts.sublist(1).join(' ')));
+          }
           break;
         case 'show':
           final character = parts[1];
