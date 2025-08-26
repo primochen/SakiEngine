@@ -213,7 +213,9 @@ class _ChoiceButtonState extends State<_ChoiceButton>
                     color: widget.config.themeColors.primary.withOpacity(0.5 + 0.3 * _glowAnimation.value),
                     width: 1 + _glowAnimation.value,
                   ),
-                  borderRadius: BorderRadius.circular(4 * widget.scale),
+                  borderRadius: BorderRadius.circular(widget.config.baseWindowBorder > 0 
+                      ? widget.config.baseWindowBorder * widget.scale 
+                      : 0 * widget.scale),
                   boxShadow: _isHovered ? [
                     BoxShadow(
                       color: widget.config.themeColors.primary.withOpacity(0.3 * _glowAnimation.value),

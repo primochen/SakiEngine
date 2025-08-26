@@ -186,7 +186,9 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
             margin: EdgeInsets.all(16.0 * uiScale),
             decoration: BoxDecoration(
               color: config.themeColors.background.withOpacity(_dialogOpacity),
-              borderRadius: BorderRadius.circular(8 * uiScale),
+              borderRadius: BorderRadius.circular(config.baseWindowBorder > 0 
+                  ? config.baseWindowBorder * uiScale 
+                  : 0 * uiScale),
               border: Border.all(
                 color: config.themeColors.primary.withOpacity(_isHovered ? 0.4 : 0.2),
                 width: 1,

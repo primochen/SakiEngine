@@ -800,7 +800,9 @@ class _SettingsTabState extends State<_SettingsTab> with SingleTickerProviderSta
                           : Colors.transparent),
                     width: widget.isSelected ? 2 : 1,
                   ),
-                  borderRadius: BorderRadius.circular(4 * widget.scale),
+                  borderRadius: BorderRadius.circular(widget.config.baseWindowBorder > 0 
+                      ? widget.config.baseWindowBorder * widget.scale 
+                      : 0 * widget.scale),
                   boxShadow: widget.isSelected ? [
                     BoxShadow(
                       color: widget.config.themeColors.primary.withOpacity(0.2 * _glowAnimation.value),
