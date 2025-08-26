@@ -33,10 +33,12 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
   late AnimationController _animationController;
   late AnimationController _pulseController;
   late AnimationController _dragController;
+  late AnimationController _hoverPulseController;
   late Animation<double> _glowAnimation;
   late Animation<double> _pulseAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<Color?> _trackColorAnimation;
+  late Animation<double> _hoverPulseAnimation;
   
   bool _isDragging = false;
   bool _isHovered = false;
@@ -60,6 +62,12 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
     // 拖拽动画控制器
     _dragController = AnimationController(
       duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+
+    // 悬浮脉冲动画控制器
+    _hoverPulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
@@ -99,6 +107,15 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
       curve: Curves.easeInOut,
     ));
 
+    // 悬浮脉冲动画
+    _hoverPulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(
+      parent: _hoverPulseController,
+      curve: Curves.easeInOut,
+    ));
+
     // 启动脉冲动画
     _pulseController.repeat(reverse: true);
   }
@@ -108,6 +125,7 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
     _animationController.dispose();
     _pulseController.dispose();
     _dragController.dispose();
+    _hoverPulseController.dispose();
     super.dispose();
   }
 
@@ -134,8 +152,15 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
     final thumbSize = 32 * widget.scale;
     
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _hoverPulseController.repeat(reverse: true);
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _hoverPulseController.stop();
+        _hoverPulseController.reset();
+      },
       child: Container(
         width: double.infinity,
         height: sliderHeight + 32 * widget.scale,
@@ -152,6 +177,7 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
                 _animationController,
                 _pulseController,
                 _dragController,
+                _hoverPulseController,
               ]),
               builder: (context, child) {
                 return Stack(
@@ -258,7 +284,7 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
                           }
                         },
                         child: Transform.scale(
-                          scale: 1.0 + 0.1 * _scaleAnimation.value + (_isHovered ? 0.05 : 0.0),
+                          scale: (1.0 + 0.1 * _scaleAnimation.value + (_isHovered && !_isDragging ? 0.05 : 0.0)) * (_isHovered && !_isDragging ? _hoverPulseAnimation.value : 1.0),
                           child: Container(
                             width: thumbSize,
                             height: thumbSize,
@@ -284,6 +310,13 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
                                   blurRadius: 12 * widget.scale * _pulseAnimation.value,
                                   offset: Offset(0, 0),
                                 ),
+                                // 悬浮时额外发光
+                                if (_isHovered && !_isDragging)
+                                  BoxShadow(
+                                    color: widget.config.themeColors.primary.withOpacity(0.3 * _hoverPulseAnimation.value),
+                                    blurRadius: 8 * widget.scale * _hoverPulseAnimation.value,
+                                    offset: Offset(0, 0),
+                                  ),
                                 // 拖拽时额外发光
                                 if (_isDragging)
                                   BoxShadow(
@@ -298,7 +331,7 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
                                 animation: _pulseController,
                                 builder: (context, child) {
                                   return Transform.scale(
-                                    scale: _isDragging ? 1.0 : _pulseAnimation.value * 0.3 + 0.7,
+                                    scale: _isDragging ? 1.0 : (_isHovered ? _hoverPulseAnimation.value * 0.1 + 0.9 : _pulseAnimation.value * 0.3 + 0.7),
                                     child: Container(
                                       width: thumbSize * 0.5,
                                       height: thumbSize * 0.5,

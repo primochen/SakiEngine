@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
@@ -19,12 +20,16 @@ class DialogueBox extends StatefulWidget {
   State<DialogueBox> createState() => _DialogueBoxState();
 }
 
-class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStateMixin {
+class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin {
   bool _isHovered = false;
   bool _isDialogueComplete = false;
   late AnimationController _animationController;
   late Animation<double> _blinkAnimation;
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
+  
+  // 打字机动画管理器
+  late TypewriterAnimationManager _typewriterController;
+  bool _enableTypewriter = true;
   
   void _onSettingsChanged() {
     if (mounted) {
@@ -37,6 +42,11 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
+
+    // 初始化打字机动画管理器
+    _typewriterController = TypewriterAnimationManager();
+    _typewriterController.initialize(this);
+    _typewriterController.addListener(_onTypewriterStateChanged);
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -53,21 +63,67 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
     // 监听设置变化
     SettingsManager().addListener(_onSettingsChanged);
     
-    // 加载对话框不透明度设置
-    _loadDialogOpacity();
+    // 加载设置
+    _loadSettings();
+    
+    // 开始打字机动画
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_enableTypewriter) {
+        _typewriterController.startTyping(widget.dialogue);
+      }
+    });
   }
 
   @override
   void dispose() {
     SettingsManager().removeListener(_onSettingsChanged);
+    _typewriterController.removeListener(_onTypewriterStateChanged);
+    _typewriterController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadDialogOpacity() async {
-    final opacity = await SettingsManager().getDialogOpacity();
+  @override
+  void didUpdateWidget(DialogueBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 如果对话内容发生变化，重新开始打字机动画
+    if (widget.dialogue != oldWidget.dialogue) {
+      if (_enableTypewriter) {
+        _typewriterController.startTyping(widget.dialogue);
+      }
+    }
+  }
+
+  void _onTypewriterStateChanged() {
     if (mounted) {
-      setState(() => _dialogOpacity = opacity);
+      setState(() {
+        _isDialogueComplete = _typewriterController.isCompleted;
+      });
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    final settings = SettingsManager();
+    final opacity = await settings.getDialogOpacity();
+    // 可以添加打字机开关设置
+    // final enableTypewriter = await settings.getEnableTypewriter();
+    
+    if (mounted) {
+      setState(() {
+        _dialogOpacity = opacity;
+        // _enableTypewriter = enableTypewriter;
+      });
+    }
+  }
+
+  void _handleTap() {
+    if (_enableTypewriter && _typewriterController.isTyping) {
+      // 如果正在打字，点击跳过动画
+      _typewriterController.skipToEnd();
+    } else if (_isDialogueComplete) {
+      // 如果动画完成，继续下一步
+      widget.onNext?.call();
     }
   }
 
@@ -96,7 +152,7 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
     );
 
     return GestureDetector(
-      onTap: widget.onNext,
+      onTap: _handleTap,
       child: Align(
         alignment: Alignment.bottomCenter,
         child: MouseRegion(
@@ -179,7 +235,9 @@ class _DialogueBoxState extends State<DialogueBox> with SingleTickerProviderStat
                                  text: TextSpan(
                                    children: [
                                      TextSpan(
-                                       text: widget.dialogue,
+                                       text: _enableTypewriter 
+                                         ? _typewriterController.displayedText 
+                                         : widget.dialogue,
                                        style: dialogueStyle,
                                      ),
                                      if (_isDialogueComplete)

@@ -6,6 +6,8 @@ import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/game_style_switch.dart';
 import 'package:sakiengine/src/widgets/game_style_slider.dart';
+import 'package:sakiengine/src/widgets/game_style_scrollbar.dart';
+import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -26,8 +28,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isFullscreen = SettingsManager.defaultIsFullscreen;
   bool _isLoading = true;
   
+  // 打字机设置
+  double _typewriterCharsPerSecond = SettingsManager.defaultTypewriterCharsPerSecond;
+  bool _skipPunctuationDelay = SettingsManager.defaultSkipPunctuationDelay;
+  
   int _selectedTabIndex = 0;
-  final List<String> _tabTitles = ['视频设置', '音频设置', '玩法设置', '操控设置'];
+  final List<String> _tabTitles = ['画面设置', '音频设置', '玩法设置', '操控设置'];
 
   @override
   void initState() {
@@ -50,6 +56,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _dialogOpacity = await SettingsManager().getDialogOpacity();
       _isFullscreen = await SettingsManager().getIsFullscreen();
       
+      // 加载打字机设置
+      _typewriterCharsPerSecond = await SettingsManager().getTypewriterCharsPerSecond();
+      _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
+      
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
@@ -64,6 +74,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateFullscreen(bool value) async {
     setState(() => _isFullscreen = value);
     await _settingsManager.setIsFullscreen(value);
+  }
+
+  Future<void> _updateTypewriterCharsPerSecond(double value) async {
+    setState(() => _typewriterCharsPerSecond = value);
+    await _settingsManager.setTypewriterCharsPerSecond(value);
+    // 通知所有TypewriterAnimationManager实例更新设置
+    TypewriterAnimationManager.notifySettingsChanged();
+  }
+
+  Future<void> _updateSkipPunctuationDelay(bool value) async {
+    setState(() => _skipPunctuationDelay = value);
+    await _settingsManager.setSkipPunctuationDelay(value);
+    // 通知所有TypewriterAnimationManager实例更新设置
+    TypewriterAnimationManager.notifySettingsChanged();
   }
 
   Future<void> _resetToDefault() async {
@@ -109,10 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _buildTabBar(config, scale),
         Expanded(
-          child: Padding(
-            padding: EdgeInsets.all(32 * scale),
-            child: _buildTabContent(config, scale),
-          ),
+          child: _buildTabContent(config, scale),
         ),
       ],
     );
@@ -146,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildTabContent(SakiEngineConfig config, double scale) {
     switch (_selectedTabIndex) {
-      case 0: // 视频设置
+      case 0: // 画面设置
         return _buildVideoSettings(config, scale);
       case 1: // 音频设置
         return _buildAudioSettings(config, scale);
@@ -174,63 +195,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildVideoSettingsSingleColumn(SakiEngineConfig config, double scale) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildOpacitySlider(config, scale),
-        SizedBox(height: 40 * scale),
-        _buildFullscreenToggle(config, scale),
-        const Spacer(),
-      ],
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(32 * scale),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildOpacitySlider(config, scale),
+            SizedBox(height: 40 * scale),
+            _buildFullscreenToggle(config, scale),
+            SizedBox(height: 40 * scale),
+            _buildTypewriterSpeedSlider(config, scale),
+            SizedBox(height: 40 * scale), // 底部间距
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildVideoSettingsDualColumn(SakiEngineConfig config, double scale, BoxConstraints constraints) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        // 左列
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildOpacitySlider(config, scale),
-              SizedBox(height: 40 * scale),
-              // 可以在这里添加更多左列设置项
-            ],
-          ),
-        ),
-        
-        // 中间分割线
-        Container(
-          width: 1,
-          height: constraints.maxHeight * 0.6,
-          margin: EdgeInsets.symmetric(horizontal: 32 * scale),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                config.themeColors.primary.withOpacity(0.3),
-                config.themeColors.primary.withOpacity(0.6),
-                config.themeColors.primary.withOpacity(0.3),
-                Colors.transparent,
-              ],
-              stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+        // 主要内容区域
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start, // 确保顶对齐
+          children: [
+            // 左列
+            Expanded(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32 * scale,
+                    top: 32 * scale,
+                    bottom: 32 * scale,
+                    right: 32 * scale,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildOpacitySlider(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildTypewriterSpeedSlider(config, scale),
+                      SizedBox(height: 40 * scale), // 底部间距
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
+            
+            // 右列间距
+            SizedBox(width: 0), // 移除间距，让分割线居中
+            
+            // 右列
+            Expanded(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32 * scale,
+                    top: 32 * scale,
+                    bottom: 32 * scale,
+                    right: 32 * scale,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFullscreenToggle(config, scale),
+                      SizedBox(height: 40 * scale),
+                      // 可以在这里添加更多右列设置项
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         
-        // 右列
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildFullscreenToggle(config, scale),
-              SizedBox(height: 40 * scale),
-              // 可以在这里添加更多右列设置项
-            ],
+        // 固定的中间分割线 - 简化居中定位
+        Positioned.fill(
+          child: Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: 1 * scale,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    config.themeColors.primary.withOpacity(0.3),
+                    config.themeColors.primary.withOpacity(0.6),
+                    config.themeColors.primary.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -279,61 +343,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildOpacitySlider(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '对话框不透明度',
-              style: config.reviewTitleTextStyle.copyWith(
-                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.opacity,
                 color: config.themeColors.primary,
-                fontWeight: FontWeight.w600,
+                size: 24 * scale,
               ),
-            ),
-            Text(
-              '${(_dialogOpacity * 100).round()}%',
-              style: config.reviewTitleTextStyle.copyWith(
-                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.6,
-                color: config.themeColors.primary.withOpacity(0.8),
-                fontWeight: FontWeight.w500,
+              SizedBox(width: 16 * scale),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '对话框不透明度',
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                        color: config.themeColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '调整对话框的透明度',
+                      style: config.dialogueTextStyle.copyWith(
+                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                        color: config.themeColors.primary.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        SizedBox(height: 16 * scale),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 16 * scale),
-          decoration: BoxDecoration(
-            color: config.themeColors.surface.withOpacity(0.5),
-            border: Border.all(
-              color: config.themeColors.primary.withOpacity(0.3),
-              width: 1,
-            ),
+            ],
           ),
-          child: Center(
-            child: GameStyleSlider(
-              value: _dialogOpacity,
-              min: 0.3,
-              max: 1.0,
-              divisions: 7,
-              scale: scale,
-              config: config,
-              onChanged: _updateDialogOpacity,
+          SizedBox(height: 16 * scale),
+          GameStyleSlider(
+            value: _dialogOpacity,
+            min: 0.3,
+            max: 1.0,
+            divisions: 7,
+            scale: scale,
+            config: config,
+            onChanged: _updateDialogOpacity,
+            showValue: false,
+          ),
+          SizedBox(height: 8 * scale),
+          Text(
+            '当前透明度: ${(_dialogOpacity * 100).round()}%',
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+              color: config.themeColors.primary.withOpacity(0.8),
             ),
           ),
-        ),
-        SizedBox(height: 8 * scale),
-        Text(
-          '调整对话框的透明度，较低的值会使对话框更加透明',
-          style: config.dialogueTextStyle.copyWith(
-            fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-            color: config.themeColors.primary.withOpacity(0.6),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -388,6 +462,107 @@ class _SettingsScreenState extends State<SettingsScreen> {
             config: config,
             trueText: '全屏',
             falseText: '窗口',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypewriterSpeedSlider(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.speed,
+                color: config.themeColors.primary,
+                size: 24 * scale,
+              ),
+              SizedBox(width: 16 * scale),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '文字显示速度',
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                        color: config.themeColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '控制打字机动画的文字出现速度',
+                      style: config.dialogueTextStyle.copyWith(
+                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                        color: config.themeColors.primary.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16 * scale),
+          GameStyleSlider(
+            value: _typewriterCharsPerSecond,
+            min: 10.0,
+            max: 200.0,
+            divisions: 19,
+            onChanged: _updateTypewriterCharsPerSecond,
+            config: config,
+            scale: scale,
+            showValue: false, // 关闭内置的值显示
+          ),
+          SizedBox(height: 8 * scale),
+          Text(
+            _typewriterCharsPerSecond >= 200.0 
+              ? '当前速度: 瞬间' 
+              : '当前速度: ${_typewriterCharsPerSecond.round()} 字符/秒',
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+              color: config.themeColors.primary.withOpacity(0.8),
+            ),
+          ),
+          SizedBox(height: 16 * scale),
+          // 标点符号停顿设置
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '标点符号停顿',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary,
+                  ),
+                ),
+              ),
+              GameStyleSwitch(
+                value: !_skipPunctuationDelay, // 注意：这里取反，因为设置是"跳过"，但UI显示为"停顿"
+                onChanged: (value) => _updateSkipPunctuationDelay(!value),
+                config: config,
+                scale: scale * 0.8,
+              ),
+            ],
+          ),
+          Text(
+            '启用后，标点符号处会有短暂停顿，增强阅读体验',
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+              color: config.themeColors.primary.withOpacity(0.6),
+            ),
           ),
         ],
       ),

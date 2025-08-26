@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
@@ -114,28 +115,42 @@ class _NvlScreenState extends State<NvlScreen>
     );
   }
 
-  Widget _buildNvlDialogue(NvlDialogue dialogue, SakiEngineConfig config, double textScale, double uiScale) {
+  Widget _buildNvlDialogue(NvlDialogue dialogue, SakiEngineConfig config, double textScale, double uiScale, int index) {
     // 构建统一格式的文本
     String displayText;
     if (dialogue.speaker != null) {
-      // 有说话人：角色名: “对话内容”
-      displayText = '${dialogue.speaker}: “${dialogue.dialogue}”';
+      // 有说话人：角色名: "对话内容"
+      displayText = '${dialogue.speaker}: "${dialogue.dialogue}"';
     } else {
       // 无说话人：直接显示内容（内心想法/旁白）
       displayText = dialogue.dialogue;
     }
     
+    // 只对最后一条对话使用打字机效果
+    bool isLastDialogue = index == widget.nvlDialogues.length - 1;
+    
     return Padding(
       padding: EdgeInsets.only(bottom: 16 * uiScale),
-      child: Text(
-        displayText,
-        style: config.dialogueTextStyle.copyWith(
-          fontSize: config.dialogueTextStyle.fontSize! * textScale,
-          color: Colors.white,
-          height: 1.6,
-          letterSpacing: 0.3,
-        ),
-      ),
+      child: isLastDialogue 
+        ? TypewriterText(
+            text: displayText,
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale,
+              color: Colors.white,
+              height: 1.6,
+              letterSpacing: 0.3,
+            ),
+            autoStart: true,
+          )
+        : Text(
+            displayText,
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale,
+              color: Colors.white,
+              height: 1.6,
+              letterSpacing: 0.3,
+            ),
+          ),
     );
   }
 
@@ -191,8 +206,10 @@ class _NvlScreenState extends State<NvlScreen>
                 controller: _scrollController,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: widget.nvlDialogues.map((dialogue) {
-                    return _buildNvlDialogue(dialogue, config, textScale, uiScale);
+                  children: widget.nvlDialogues.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    NvlDialogue dialogue = entry.value;
+                    return _buildNvlDialogue(dialogue, config, textScale, uiScale, index);
                   }).toList(),
                 ),
               ),
