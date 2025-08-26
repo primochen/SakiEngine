@@ -148,7 +148,7 @@ class AssetManager {
       return null;
     }
 
-    final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.avif'];
     
     // 从查询名称中提取文件名，例如 "backgrounds/sky" -> "sky"
     final targetFileName = name.split('/').last;

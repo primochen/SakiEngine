@@ -26,7 +26,7 @@ class GameManager {
   Map<String, PoseConfig> _poseConfigs = {};
   VoidCallback? onReturn;
   BuildContext? _context;
-  Set<String> _everShownCharacters = {};
+  final Set<String> _everShownCharacters = {};
   
   GameStateSnapshot? _savedSnapshot;
   
@@ -41,7 +41,7 @@ class GameManager {
 
   /// 设置BuildContext用于转场效果
   void setContext(BuildContext context) {
-    print('[GameManager] 设置上下文用于转场效果');
+    //print('[GameManager] 设置上下文用于转场效果');
     _context = context;
   }
 
@@ -78,7 +78,7 @@ class GameManager {
       if (node is LabelNode) {
         _labelIndexMap[node.name] = i;
         if (kDebugMode) {
-          print('[GameManager] 标签映射: ${node.name} -> $i');
+          //print('[GameManager] 标签映射: ${node.name} -> $i');
         }
       }
     }
@@ -90,25 +90,25 @@ class GameManager {
       _scriptIndex = _labelIndexMap[label]!;
       _currentState = _currentState.copyWith(forceNullCurrentNode: true, everShownCharacters: _everShownCharacters);
       if (kDebugMode) {
-        print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
+        //print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
       }
       _executeScript();
     } else {
       if (kDebugMode) {
-        print('[GameManager] 错误: 标签 $label 未找到');
+        //print('[GameManager] 错误: 标签 $label 未找到');
       }
     }
   }
 
   void next() {
-    print('📚 GameManager.next() 被调用');
-    print('📚 当前脚本索引: $_scriptIndex');
-    print('📚 脚本总长度: ${_script.children.length}');
+    //print('📚 GameManager.next() 被调用');
+    //print('📚 当前脚本索引: $_scriptIndex');
+    //print('📚 脚本总长度: ${_script.children.length}');
     _executeScript();
   }
 
   void exitNvlMode() {
-    print('📚 退出 NVL 模式');
+    //print('📚 退出 NVL 模式');
     _currentState = _currentState.copyWith(
       isNvlMode: false,
       nvlDialogues: [],
@@ -120,40 +120,40 @@ class GameManager {
   }
 
   void _executeScript() {
-    print('🎮 _executeScript() 开始执行');
-    print('🎮 _isProcessing: $_isProcessing');
+    //print('🎮 _executeScript() 开始执行');
+    //print('🎮 _isProcessing: $_isProcessing');
     if (_isProcessing) return;
     _isProcessing = true;
 
-    print('🎮 开始处理脚本，当前索引: $_scriptIndex');
+    //print('🎮 开始处理脚本，当前索引: $_scriptIndex');
     
     while (_scriptIndex < _script.children.length) {
       final node = _script.children[_scriptIndex];
-      print('🎮 处理节点[${_scriptIndex}]: ${node.runtimeType} - ${node}');
+      //print('🎮 处理节点[$_scriptIndex]: ${node.runtimeType} - $node');
       _scriptIndex++;
 
       // 跳过注释节点（文件边界标记）
       if (node is CommentNode) {
         if (kDebugMode) {
-          print('[GameManager] 跳过注释: ${node.comment}');
+          //print('[GameManager] 跳过注释: ${node.comment}');
         }
         continue;
       }
 
       if (node is BackgroundNode) {
-        print('[GameManager] 处理背景切换: ${node.background}');
-        print('[GameManager] context是否可用: ${_context != null}');
+        //print('[GameManager] 处理背景切换: ${node.background}');
+        //print('[GameManager] context是否可用: ${_context != null}');
         
         // 检查是否是游戏开始时的初始背景设置
         final isInitialBackground = _currentState.background == null;
         
         if (_context != null && !isInitialBackground) {
           // 只有在非初始背景时才使用转场效果
-          print('[GameManager] 使用转场效果切换背景（scene切换）');
+          //print('[GameManager] 使用转场效果切换背景（scene切换）');
           _transitionToNewBackground(node.background);
           return; // 转场过程中暂停脚本执行，将在转场完成后自动恢复
         } else {
-          print('[GameManager] 直接设置背景（${isInitialBackground ? "初始背景" : "无转场"}）');
+          //print('[GameManager] 直接设置背景（${isInitialBackground ? "初始背景" : "无转场"}）');
           // 直接切换背景 - 初始背景或无context时
           _currentState = _currentState.copyWith(
               background: node.background, 
@@ -358,15 +358,15 @@ class GameManager {
   }
 
   Future<void> restoreFromSnapshot(String scriptName, GameStateSnapshot snapshot, {bool shouldReExecute = true}) async {
-    print('📚 restoreFromSnapshot: scriptName = $scriptName');
-    print('📚 restoreFromSnapshot: snapshot.scriptIndex = ${snapshot.scriptIndex}');
-    print('📚 restoreFromSnapshot: isNvlMode = ${snapshot.isNvlMode}');
-    print('📚 restoreFromSnapshot: nvlDialogues count = ${snapshot.nvlDialogues.length}');
+    //print('📚 restoreFromSnapshot: scriptName = $scriptName');
+    //print('📚 restoreFromSnapshot: snapshot.scriptIndex = ${snapshot.scriptIndex}');
+    //print('📚 restoreFromSnapshot: isNvlMode = ${snapshot.isNvlMode}');
+    //print('📚 restoreFromSnapshot: nvlDialogues count = ${snapshot.nvlDialogues.length}');
     
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
-    print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
+    //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
     
     _scriptIndex = snapshot.scriptIndex;
     
@@ -482,12 +482,12 @@ class GameManager {
   Future<void> _transitionToNewBackground(String newBackground) async {
     if (_context == null) return;
     
-    print('[GameManager] 开始scene转场到背景: $newBackground');
+    //print('[GameManager] 开始scene转场到背景: $newBackground');
     
     await SceneTransitionManager.instance.transition(
       context: _context!,
       onMidTransition: () {
-        print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
+        //print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
         // 在黑屏最深时切换背景，清除对话和所有角色（类似Renpy）
         final oldState = _currentState;
         _currentState = _currentState.copyWith(
@@ -496,14 +496,14 @@ class GameManager {
           clearCharacters: true,
           everShownCharacters: _everShownCharacters,
         );
-        print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
+        //print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
         _gameStateController.add(_currentState);
-        print('[GameManager] 状态已发送到Stream');
+        //print('[GameManager] 状态已发送到Stream');
       },
       duration: const Duration(milliseconds: 800),
     );
     
-    print('[GameManager] scene转场完成，恢复脚本执行');
+    //print('[GameManager] scene转场完成，恢复脚本执行');
     // 转场完成后继续执行脚本
     _isProcessing = false;
     _executeScript();

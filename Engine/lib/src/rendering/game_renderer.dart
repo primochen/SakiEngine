@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/utils/image_loader.dart';
 
 /// 游戏渲染器 - 统一的背景和角色绘制逻辑
 /// 同时供游戏界面和截图生成器使用，确保完全一致的渲染效果
@@ -28,11 +29,9 @@ class GameRenderer {
       final backgroundPath = await AssetManager().findAsset('backgrounds/${backgroundName.replaceAll(' ', '-')}');
       if (backgroundPath == null) return;
       
-      // 加载背景图片
-      final data = await rootBundle.load(backgroundPath);
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      final frame = await codec.getNextFrame();
-      final backgroundImage = frame.image;
+      // 使用新的图像加载器加载背景图片
+      final backgroundImage = await ImageLoader.loadImage(backgroundPath);
+      if (backgroundImage == null) return;
       
       // 使用与游戏界面相同的填充逻辑 (BoxFit.cover)
       _drawImageWithBoxFitCover(canvas, backgroundImage, canvasSize);
@@ -199,10 +198,7 @@ class GameRenderer {
       final assetPath = await AssetManager().findAsset(assetName);
       if (assetPath == null) return null;
       
-      final data = await rootBundle.load(assetPath);
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      final frame = await codec.getNextFrame();
-      return frame.image;
+      return await ImageLoader.loadImage(assetPath);
     } catch (e) {
       print('加载角色图片失败 $assetName: $e');
       return null;
