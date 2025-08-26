@@ -31,6 +31,10 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   late TypewriterAnimationManager _typewriterController;
   bool _enableTypewriter = true;
   
+  // 文本淡入动画控制器
+  late AnimationController _textFadeController;
+  late Animation<double> _textFadeAnimation;
+  
   void _onSettingsChanged() {
     if (mounted) {
       setState(() {
@@ -60,14 +64,29 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
       ),
     );
 
+    // 初始化文本淡入动画
+    _textFadeController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    
+    _textFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _textFadeController,
+      curve: Curves.easeInOut,
+    ));
+
     // 监听设置变化
     SettingsManager().addListener(_onSettingsChanged);
     
     // 加载设置
     _loadSettings();
     
-    // 开始打字机动画
+    // 开始文本淡入和打字机动画
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _textFadeController.forward();
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
@@ -80,6 +99,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     _typewriterController.removeListener(_onTypewriterStateChanged);
     _typewriterController.dispose();
     _animationController.dispose();
+    _textFadeController.dispose();
     super.dispose();
   }
 
@@ -87,8 +107,10 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   void didUpdateWidget(DialogueBox oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    // 如果对话内容发生变化，重新开始打字机动画
+    // 如果对话内容发生变化，重新开始文本淡入和打字机动画
     if (widget.dialogue != oldWidget.dialogue) {
+      _textFadeController.reset();
+      _textFadeController.forward();
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
@@ -231,36 +253,39 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                               RichText(
-                                 text: TextSpan(
-                                   children: [
-                                     TextSpan(
-                                       text: _enableTypewriter 
-                                         ? _typewriterController.displayedText 
-                                         : widget.dialogue,
-                                       style: dialogueStyle,
-                                     ),
-                                     if (_isDialogueComplete)
-                                       WidgetSpan(
-                                         alignment: PlaceholderAlignment.middle,
-                                         child: Padding(
-                                           padding: EdgeInsets.only(left: uiScale),
-                                           child: AnimatedBuilder(
-                                             animation: _blinkAnimation,
-                                             builder: (context, child) {
-                                               return Opacity(
-                                                 opacity: _blinkAnimation.value,
-                                                 child: Icon(
-                                                   Icons.keyboard_arrow_right_rounded,
-                                                   color: config.themeColors.primary.withOpacity(0.7),
-                                                   size: dialogueStyle.fontSize! * 2,
-                                                 ),
-                                               );
-                                             },
+                               FadeTransition(
+                                 opacity: _textFadeAnimation,
+                                 child: RichText(
+                                   text: TextSpan(
+                                     children: [
+                                       TextSpan(
+                                         text: _enableTypewriter 
+                                           ? _typewriterController.displayedText 
+                                           : widget.dialogue,
+                                         style: dialogueStyle,
+                                       ),
+                                       if (_isDialogueComplete)
+                                         WidgetSpan(
+                                           alignment: PlaceholderAlignment.middle,
+                                           child: Padding(
+                                             padding: EdgeInsets.only(left: uiScale),
+                                             child: AnimatedBuilder(
+                                               animation: _blinkAnimation,
+                                               builder: (context, child) {
+                                                 return Opacity(
+                                                   opacity: _blinkAnimation.value,
+                                                   child: Icon(
+                                                     Icons.keyboard_arrow_right_rounded,
+                                                     color: config.themeColors.primary.withOpacity(0.7),
+                                                     size: dialogueStyle.fontSize! * 2,
+                                                   ),
+                                                 );
+                                               },
+                                             ),
                                            ),
                                          ),
-                                       ),
-                                   ],
+                                     ],
+                                   ),
                                  ),
                                ),
                             ],

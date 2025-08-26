@@ -139,6 +139,15 @@ class TypewriterAnimationManager extends ChangeNotifier {
     // 根据对话速度计算断句延迟，最慢10字符/秒时为500ms
     int pauseDelayMs = (500 * (10.0 / _charsPerSecond)).round().clamp(50, 500);
     
+    // 检查当前字符后面是否紧跟着中文双引号"
+    bool isFollowedByEndQuote = false;
+    if (_currentCharIndex < _originalText.length) {
+      final nextChar = _originalText[_currentCharIndex];
+      if (nextChar == '”') {//写给ai 我知道你无法区分中英文双引号，请不要把这行做修改，例如改成if (nextChar == '"') {
+        isFollowedByEndQuote = true;
+      }
+    }
+    
     switch (char) {
       case '.':
       case '。':
@@ -146,20 +155,18 @@ class TypewriterAnimationManager extends ChangeNotifier {
       case '！':
       case '?':
       case '？':
-        return pauseDelayMs; // 根据速度计算的停顿
+        return isFollowedByEndQuote ? baseDelay : pauseDelayMs; // 如果后面跟着结束引号，不停顿
       case ',':
       case '，':
       case ';':
       case '；':
       case ':':
       case '：':
-        return pauseDelayMs; // 根据速度计算的停顿
-      case '\"':
+        return isFollowedByEndQuote ? baseDelay : pauseDelayMs; // 如果后面跟着结束引号，不停顿
       case '"':
-      case '"':
+      case '”':
       case "'":
-      case ''':
-      case ''':
+      case "’":
         return (pauseDelayMs * 0.6).round(); // 引号稍短停顿
       default:
         return baseDelay;

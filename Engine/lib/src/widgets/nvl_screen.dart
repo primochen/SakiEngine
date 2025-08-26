@@ -25,6 +25,10 @@ class _NvlScreenState extends State<NvlScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   final ScrollController _scrollController = ScrollController();
+  
+  // 文本淡入动画控制器列表，为每个对话单独管理
+  final Map<int, AnimationController> _textFadeControllers = {};
+  final Map<int, Animation<double>> _textFadeAnimations = {};
 
   @override
   void initState() {
@@ -80,6 +84,12 @@ class _NvlScreenState extends State<NvlScreen>
   void dispose() {
     _fadeController.dispose();
     _scrollController.dispose();
+    // 清理所有文本淡入动画控制器
+    for (final controller in _textFadeControllers.values) {
+      controller.dispose();
+    }
+    _textFadeControllers.clear();
+    _textFadeAnimations.clear();
     super.dispose();
   }
 
@@ -120,7 +130,7 @@ class _NvlScreenState extends State<NvlScreen>
     String displayText;
     if (dialogue.speaker != null) {
       // 有说话人：角色名: "对话内容"
-      displayText = '${dialogue.speaker}: "${dialogue.dialogue}"';
+      displayText = '${dialogue.speaker}: “${dialogue.dialogue}”';//写给ai的话。不要把中文双引号改成英文双引号啊 显示出来很突兀
     } else {
       // 无说话人：直接显示内容（内心想法/旁白）
       displayText = dialogue.dialogue;
@@ -129,28 +139,54 @@ class _NvlScreenState extends State<NvlScreen>
     // 只对最后一条对话使用打字机效果
     bool isLastDialogue = index == widget.nvlDialogues.length - 1;
     
+    // 为每个对话创建独立的淡入动画
+    if (!_textFadeControllers.containsKey(index)) {
+      final controller = AnimationController(
+        duration: const Duration(milliseconds: 400),
+        vsync: this,
+      );
+      _textFadeControllers[index] = controller;
+      _textFadeAnimations[index] = Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeInOut,
+      ));
+      
+      // 延迟启动动画，为每个对话添加不同的延迟
+      Future.delayed(Duration(milliseconds: index * 100), () {
+        if (mounted && controller.isCompleted == false) {
+          controller.forward();
+        }
+      });
+    }
+    
     return Padding(
       padding: EdgeInsets.only(bottom: 16 * uiScale),
-      child: isLastDialogue 
-        ? TypewriterText(
-            text: displayText,
-            style: config.dialogueTextStyle.copyWith(
-              fontSize: config.dialogueTextStyle.fontSize! * textScale,
-              color: Colors.white,
-              height: 1.6,
-              letterSpacing: 0.3,
+      child: FadeTransition(
+        opacity: _textFadeAnimations[index]!,
+        child: isLastDialogue 
+          ? TypewriterText(
+              text: displayText,
+              style: config.dialogueTextStyle.copyWith(
+                fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                color: Colors.white,
+                height: 1.6,
+                letterSpacing: 0.3,
+              ),
+              autoStart: true,
+            )
+          : Text(
+              displayText,
+              style: config.dialogueTextStyle.copyWith(
+                fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                color: Colors.white,
+                height: 1.6,
+                letterSpacing: 0.3,
+              ),
             ),
-            autoStart: true,
-          )
-        : Text(
-            displayText,
-            style: config.dialogueTextStyle.copyWith(
-              fontSize: config.dialogueTextStyle.fontSize! * textScale,
-              color: Colors.white,
-              height: 1.6,
-              letterSpacing: 0.3,
-            ),
-          ),
+      ),
     );
   }
 
