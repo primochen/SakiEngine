@@ -8,6 +8,7 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback onReview;
   final VoidCallback onSettings;
   final VoidCallback onBack;
+  final VoidCallback onPreviousDialogue;
 
   const QuickMenu({
     super.key,
@@ -16,6 +17,7 @@ class QuickMenu extends StatefulWidget {
     required this.onReview,
     required this.onSettings,
     required this.onBack,
+    required this.onPreviousDialogue,
   });
 
   @override
@@ -96,6 +98,18 @@ class _QuickMenuState extends State<QuickMenu> {
                 ),
                 _buildDivider(scale, config),
                 _QuickMenuButton(
+                  text: '回退',
+                  icon: Icons.undo_outlined,
+                  onPressed: widget.onPreviousDialogue,
+                  scale: scale,
+                  config: config,
+                  onHover: (hovering, text) => setState(() {
+                    _hoveredButtonText = hovering ? text : null;
+                    _hoveredButtonIndex = hovering ? 3 : null;
+                  }),
+                ),
+                _buildDivider(scale, config),
+                _QuickMenuButton(
                   text: '设置',
                   icon: Icons.settings_outlined,
                   onPressed: widget.onSettings,
@@ -103,7 +117,7 @@ class _QuickMenuState extends State<QuickMenu> {
                   config: config,
                   onHover: (hovering, text) => setState(() {
                     _hoveredButtonText = hovering ? text : null;
-                    _hoveredButtonIndex = hovering ? 3 : null;
+                    _hoveredButtonIndex = hovering ? 4 : null;
                   }),
                 ),
                 _buildDivider(scale, config),
@@ -115,7 +129,7 @@ class _QuickMenuState extends State<QuickMenu> {
                   config: config,
                   onHover: (hovering, text) => setState(() {
                     _hoveredButtonText = hovering ? text : null;
-                    _hoveredButtonIndex = hovering ? 4 : null;
+                    _hoveredButtonIndex = hovering ? 5 : null;
                   }),
                 ),
               ],

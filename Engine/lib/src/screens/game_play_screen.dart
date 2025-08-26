@@ -46,6 +46,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool _showSaveOverlay = false;
   bool _showLoadOverlay = false;
   bool _showSettings = false;
+  bool _isShowingMenu = false;
   HotKey? _reloadHotKey;
 
   @override
@@ -110,6 +111,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         );
       },
     );
+  }
+
+  void _handlePreviousDialogue() {
+    final history = _gameManager.getDialogueHistory();
+    
+    // 如果当前显示选项，回到最后一句对话（选项出现前的对话）
+    if (_isShowingMenu) {
+      if (history.isNotEmpty) {
+        final lastEntry = history.last;
+        _jumpToHistoryEntryQuiet(lastEntry);
+      }
+    } 
+    // 如果没有选项，正常回到上一句
+    else if (history.length >= 2) {
+      final previousEntry = history[history.length - 2];
+      _jumpToHistoryEntryQuiet(previousEntry);
+    }
   }
 
   @override
@@ -182,6 +200,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _showNotificationMessage('跳转成功');
   }
 
+  Future<void> _jumpToHistoryEntryQuiet(DialogueHistoryEntry entry) async {
+    await _gameManager.jumpToHistoryEntry(entry, _currentScript);
+  }
+
   Future<bool> _onWillPop() async {
     final shouldExit = await showDialog<bool>(
       context: context,
@@ -218,6 +240,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             final gameState = snapshot.data!;
+            
+            // 更新选项显示状态
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _isShowingMenu = gameState.currentNode is MenuNode;
+                });
+              }
+            });
+            
             return Stack(
               children: [
                 GestureDetector(
@@ -277,6 +309,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   onReview: () => setState(() => _showReviewOverlay = true),
                   onSettings: () => setState(() => _showSettings = true),
                   onBack: _handleQuickMenuBack,
+                  onPreviousDialogue: _handlePreviousDialogue,
                 ),
                 if (_showReviewOverlay)
                   ReviewOverlay(
