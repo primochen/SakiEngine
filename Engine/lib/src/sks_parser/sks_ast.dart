@@ -64,3 +64,7 @@ class CommentNode implements SksNode {
 class NvlNode implements SksNode {}
 
 class EndNvlNode implements SksNode {}
+
+class NvlMovieNode implements SksNode {}
+
+class EndNvlMovieNode implements SksNode {}

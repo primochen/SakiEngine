@@ -49,7 +49,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     final textScale = context.scaleFor(ComponentType.text);
 
     return OverlayScaffold(
-      title: '回忆录',
+      title: '对话记录',
       onClose: widget.onClose,
       content: Container(
         padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),

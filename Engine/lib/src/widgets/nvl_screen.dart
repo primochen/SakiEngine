@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
-  final VoidCallback onTap;
+  final DialogueProgressionManager? progressionManager;
+  final bool isMovieMode;
 
   const NvlScreen({
     super.key,
     required this.nvlDialogues,
-    required this.onTap,
+    this.progressionManager,
+    this.isMovieMode = false,
   });
 
   @override
@@ -22,6 +26,13 @@ class _NvlScreenState extends State<NvlScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   final ScrollController _scrollController = ScrollController();
+  
+  // 文本淡入动画控制器列表，为每个对话单独管理
+  final Map<int, AnimationController> _textFadeControllers = {};
+  final Map<int, Animation<double>> _textFadeAnimations = {};
+  
+  // 当前打字机控制器（只有最后一句对话使用）
+  TypewriterAnimationManager? _currentTypewriterController;
 
   @override
   void initState() {
@@ -77,7 +88,27 @@ class _NvlScreenState extends State<NvlScreen>
   void dispose() {
     _fadeController.dispose();
     _scrollController.dispose();
+    // 从推进管理器注销打字机
+    widget.progressionManager?.registerTypewriter(null);
+    _currentTypewriterController?.dispose();
+    // 清理所有文本淡入动画控制器
+    for (final controller in _textFadeControllers.values) {
+      controller.dispose();
+    }
+    _textFadeControllers.clear();
+    _textFadeAnimations.clear();
     super.dispose();
+  }
+
+  /// 获取或创建打字机控制器，并注册到推进管理器
+  TypewriterAnimationManager _getOrCreateTypewriterController(int index) {
+    if (_currentTypewriterController == null) {
+      _currentTypewriterController = TypewriterAnimationManager();
+      _currentTypewriterController!.initialize(this);
+      // 注册到推进管理器
+      widget.progressionManager?.registerTypewriter(_currentTypewriterController);
+    }
+    return _currentTypewriterController!;
   }
 
   @override
@@ -87,75 +118,162 @@ class _NvlScreenState extends State<NvlScreen>
     final uiScale = context.scaleFor(ComponentType.ui);
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: () {
+        // 使用推进管理器统一处理对话推进
+        widget.progressionManager?.progressDialogue();
+      },
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          // 半透明黑色遮罩
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.7),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: config.nvlLeft * uiScale,    // 使用配置文件参数
-                right: config.nvlRight * uiScale,  // 使用配置文件参数
-                top: config.nvlTop * uiScale,      // 使用配置文件参数
-                bottom: config.nvlBottom * uiScale, // 使用配置文件参数
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // 整个容器也左对齐
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start, // 改为左对齐
-                        children: widget.nvlDialogues.map((dialogue) {
-                          return _buildNvlDialogue(dialogue, config, textScale, uiScale);
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                  // 移除提示文本
-                ],
+        child: Stack(
+          children: [
+            // 背景遮罩
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
               ),
             ),
-          ),
+            
+            // 如果是电影模式，添加上下黑边
+            if (widget.isMovieMode) ..._buildCinematicBars(context),
+            
+            // 内容区域
+            _buildContent(config, textScale, uiScale),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNvlDialogue(NvlDialogue dialogue, SakiEngineConfig config, double textScale, double uiScale) {
+  Widget _buildNvlDialogue(NvlDialogue dialogue, SakiEngineConfig config, double textScale, double uiScale, int index) {
+    // 构建统一格式的文本
+    String displayText;
+    if (dialogue.speaker != null) {
+      // 有说话人：角色名: "对话内容"
+      displayText = '${dialogue.speaker}: “${dialogue.dialogue}”';//写给ai的话。不要把中文双引号改成英文双引号啊 显示出来很突兀
+    } else {
+      // 无说话人：直接显示内容（内心想法/旁白）
+      displayText = dialogue.dialogue;
+    }
+    
+    // 只对最后一条对话使用打字机效果
+    bool isLastDialogue = index == widget.nvlDialogues.length - 1;
+    
+    // 为每个对话创建独立的淡入动画
+    if (!_textFadeControllers.containsKey(index)) {
+      final controller = AnimationController(
+        duration: const Duration(milliseconds: 400),
+        vsync: this,
+      );
+      _textFadeControllers[index] = controller;
+      _textFadeAnimations[index] = Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeInOut,
+      ));
+      
+      // 立即启动淡入动画，避免累积延迟
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && controller.isCompleted == false) {
+          controller.forward();
+        }
+      });
+    }
+    
     return Padding(
       padding: EdgeInsets.only(bottom: 16 * uiScale),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (dialogue.speaker != null) ...[
-            Text(
-              dialogue.speaker!,
-              style: config.speakerTextStyle.copyWith(
-                fontSize: config.speakerTextStyle.fontSize! * textScale,
-                color: config.themeColors.primary,
-                letterSpacing: 0.5,
+      child: FadeTransition(
+        opacity: _textFadeAnimations[index]!,
+        child: isLastDialogue 
+          ? TypewriterText(
+              text: displayText,
+              style: config.dialogueTextStyle.copyWith(
+                fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                color: Colors.white,
+                height: 1.6,
+                letterSpacing: 0.3,
+              ),
+              autoStart: true,
+              controller: _getOrCreateTypewriterController(index),
+            )
+          : Text(
+              displayText,
+              style: config.dialogueTextStyle.copyWith(
+                fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                color: Colors.white,
+                height: 1.6,
+                letterSpacing: 0.3,
               ),
             ),
-            SizedBox(height: 8 * uiScale),
-          ],
-          Text(
-            dialogue.dialogue,
-            style: config.dialogueTextStyle.copyWith(
-              fontSize: config.dialogueTextStyle.fontSize! * textScale,
-              color: Colors.white,
-              height: 1.6,
-              letterSpacing: 0.3,
+      ),
+    );
+  }
+
+  List<Widget> _buildCinematicBars(BuildContext context) {
+    final barHeight = MediaQuery.of(context).size.height * 0.12; // 12% 的屏幕高度
+    
+    return [
+      // 上方黑边
+      Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: Container(
+          height: barHeight,
+          color: Colors.black,
+        ),
+      ),
+      // 下方黑边
+      Positioned(
+        bottom: 0,
+        left: 0,
+        right: 0,
+        child: Container(
+          height: barHeight,
+          color: Colors.black,
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildContent(SakiEngineConfig config, double textScale, double uiScale) {
+    final topPadding = widget.isMovieMode 
+        ? MediaQuery.of(context).size.height * 0.12 + config.nvlTop * uiScale
+        : config.nvlTop * uiScale;
+    
+    final bottomPadding = widget.isMovieMode 
+        ? MediaQuery.of(context).size.height * 0.12 + config.nvlBottom * uiScale
+        : config.nvlBottom * uiScale;
+    
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: config.nvlLeft * uiScale,
+          right: config.nvlRight * uiScale,
+          top: topPadding,
+          bottom: bottomPadding,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: widget.nvlDialogues.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    NvlDialogue dialogue = entry.value;
+                    return _buildNvlDialogue(dialogue, config, textScale, uiScale, index);
+                  }).toList(),
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

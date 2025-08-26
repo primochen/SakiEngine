@@ -43,7 +43,7 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
       vsync: this,
     );
 
-    // 脉冲动画控制器 - 控制活跃状态的脉冲效果
+    // 脉冲动画控制器 - 控制悬浮时的呼吸效果
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -78,7 +78,7 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
 
     // 脉冲动画 - 开启状态时的呼吸效果
     _pulseAnimation = Tween<double>(
-      begin: 0.8,
+      begin: 1.0,
       end: 1.2,
     ).animate(CurvedAnimation(
       parent: _pulseController,
@@ -96,7 +96,6 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
 
     if (widget.value) {
       _animationController.value = 1.0;
-      _pulseController.repeat(reverse: true);
     }
   }
 
@@ -106,7 +105,6 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
     if (oldWidget.value != widget.value) {
       if (widget.value) {
         _animationController.forward();
-        _pulseController.repeat(reverse: true);
       } else {
         _animationController.reverse();
         _pulseController.stop();
@@ -134,8 +132,17 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
     final padding = 6 * widget.scale;
     
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        if (widget.value) {
+          _pulseController.repeat(reverse: true);
+        }
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _pulseController.stop();
+        _pulseController.reset();
+      },
       child: GestureDetector(
         onTap: _handleTap,
         child: AnimatedBuilder(
@@ -161,8 +168,8 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                       blurRadius: 4 * widget.scale,
                       offset: Offset(0, 2 * widget.scale),
                     ),
-                    // 发光效果（仅在激活时）
-                    if (widget.value)
+                    // 发光效果（仅在激活且悬浮时）
+                    if (widget.value && _isHovered)
                       BoxShadow(
                         color: widget.config.themeColors.primary.withOpacity(0.3 * _glowAnimation.value * _pulseAnimation.value),
                         blurRadius: 12 * widget.scale * _pulseAnimation.value,
@@ -237,7 +244,7 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                             letterSpacing: 1,
                           ),
                           child: Transform.scale(
-                            scale: widget.value ? (1.0 + 0.1 * _scaleAnimation.value * _pulseAnimation.value) : 1.0,
+                            scale: widget.value && _isHovered ? (1.0 + 0.1 * _scaleAnimation.value * _pulseAnimation.value) : 1.0,
                             child: Text(widget.trueText),
                           ),
                         ),
@@ -269,8 +276,8 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                                     blurRadius: 4 * widget.scale,
                                     offset: Offset(0, 2 * widget.scale),
                                   ),
-                                  // 激活时的脉冲发光
-                                  if (widget.value)
+                                  // 激活且悬浮时的脉冲发光
+                                  if (widget.value && _isHovered)
                                     BoxShadow(
                                       color: widget.config.themeColors.primary.withOpacity(0.4 * _pulseAnimation.value),
                                       blurRadius: 8 * widget.scale * _pulseAnimation.value,
@@ -283,14 +290,14 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                                   animation: _pulseController,
                                   builder: (context, child) {
                                     return Transform.scale(
-                                      scale: widget.value ? _pulseAnimation.value : 1.0,
+                                      scale: widget.value && _isHovered ? _pulseAnimation.value : 1.0,
                                       child: Container(
                                         width: knobSize * 0.4,
                                         height: knobSize * 0.4,
                                         decoration: BoxDecoration(
                                           color: _colorAnimation.value,
                                           shape: BoxShape.circle,
-                                          boxShadow: widget.value ? [
+                                          boxShadow: widget.value && _isHovered ? [
                                             BoxShadow(
                                               color: _colorAnimation.value!.withOpacity(0.6),
                                               blurRadius: 4 * widget.scale,

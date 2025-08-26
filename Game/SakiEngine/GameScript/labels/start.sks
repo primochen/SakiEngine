@@ -8,7 +8,10 @@ menu
 "保持沉默" after_choice2
 "表情测试" after_choice3
 "测试长句子" after_choice4
+"测试断句" after_choice6
 "切换背景" after_choice5
+"测试旁白模式" after_choice_nvl
+"测试电影旁白模式" after_choice_nvlm
 endmenu
 //就是这样，选择之后会跳转到after_choice1，after_choice2，after_choice3
 label after_choice1
@@ -43,10 +46,39 @@ yk "这是一句很长很长很长很长很长很长很长很长很长很长很�
 yk "这是一句很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长的句子。3"
 yk "这是一句很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长的句子。4"
 return
+
 label after_choice5
 scene sky
 yk "背景被切换咯～"
 scene bg school
 yk say "背景又切回来了。"
 yk sad "再见。"
+return
+label after_choice6
+yk "你好，世界。"
+yk "平凡的天才展现才能，真正的天才忘却才能。"
+yk "没有爱，就看不见。"
+yk "自由的定义是什么？让你可以像这样发问。"
+label after_choice_nvl
+nvl
+"这是旁白模式的开始。"
+"在这个模式下，所有的文本都会累积显示。"
+"就像小说一样。"
+yk "我也可以在旁白模式中说话。"
+"旁白可以继续。"
+"这样可以讲述更长的故事。"
+endnvl
+yk "现在退出旁白模式了。"
+return
+
+label after_choice_nvlm
+nvlm
+"这是宽幅电影模式的旁白。"
+"在这个模式下，上下会有黑边。"
+"就像看电影一样的感觉。"
+yk "我在电影模式中说话。"
+"这种模式更有电影感。"
+"适合重要剧情的叙述。"
+endnvlm
+yk "现在退出电影旁白模式了。"
 return

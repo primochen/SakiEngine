@@ -96,7 +96,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
               child: Text(
                 _appTitle,
                 style: TextStyle(
-                  fontFamily: 'SourceHanSansCN-Bold',
+                  fontFamily: 'SourceHanSansCN',
                   fontSize: config.mainMenuTitleSize * textScale,
                   color: Colors.white,
                   letterSpacing: 4,
@@ -277,7 +277,7 @@ class _SoraNoutaRoundedButtonState extends State<_SoraNoutaRoundedButton>
                   child: Text(
                     widget.text,
                     style: TextStyle(
-                      fontFamily: 'SourceHanSansCN-Bold',
+                      fontFamily: 'SourceHanSansCN',
                       fontSize: 24 * widget.textScale,
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

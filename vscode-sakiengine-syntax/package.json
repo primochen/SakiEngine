@@ -1,8 +1,8 @@
 {
     "name": "sakiengine-syntax",
     "displayName": "SakiEngine Syntax",
-    "description": "Syntax highlighting for SakiEngine script files (.sks) with first-line identifier support",
-    "version": "0.2.1",
+    "description": "Syntax highlighting for SakiEngine script files (.sks) with first-line identifier support and NVL mode keywords",
+    "version": "0.2.2",
     "engines": {
         "vscode": "^1.80.0"
     },

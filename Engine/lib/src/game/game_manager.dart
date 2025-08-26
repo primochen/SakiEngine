@@ -296,6 +296,19 @@ class GameManager {
       if (node is NvlNode) {
         _currentState = _currentState.copyWith(
           isNvlMode: true,
+          isNvlMovieMode: false,
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        continue;
+      }
+
+      if (node is NvlMovieNode) {
+        _currentState = _currentState.copyWith(
+          isNvlMode: true,
+          isNvlMovieMode: true,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
           everShownCharacters: _everShownCharacters,
@@ -308,6 +321,20 @@ class GameManager {
         // 退出 NVL 模式并继续执行后续脚本
         _currentState = _currentState.copyWith(
           isNvlMode: false,
+          isNvlMovieMode: false,
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        continue; // 继续执行后续节点
+      }
+
+      if (node is EndNvlMovieNode) {
+        // 退出 NVL 电影模式并继续执行后续脚本
+        _currentState = _currentState.copyWith(
+          isNvlMode: false,
+          isNvlMovieMode: false,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
           everShownCharacters: _everShownCharacters,
@@ -325,6 +352,7 @@ class GameManager {
       currentState: _currentState,
       dialogueHistory: List.from(_dialogueHistory),
       isNvlMode: _currentState.isNvlMode,
+      isNvlMovieMode: _currentState.isNvlMovieMode,
       nvlDialogues: List.from(_currentState.nvlDialogues),
     );
   }
@@ -346,6 +374,7 @@ class GameManager {
     _currentState = snapshot.currentState.copyWith(
       poseConfigs: _poseConfigs,
       isNvlMode: snapshot.isNvlMode,
+      isNvlMovieMode: snapshot.isNvlMovieMode,
       nvlDialogues: snapshot.nvlDialogues,
       everShownCharacters: _everShownCharacters,
     );
@@ -390,6 +419,7 @@ class GameManager {
         forceNullCurrentNode: true,
         // 恢复 NVL 状态
         isNvlMode: _savedSnapshot!.isNvlMode,
+        isNvlMovieMode: _savedSnapshot!.isNvlMovieMode,
         nvlDialogues: _savedSnapshot!.nvlDialogues,
         everShownCharacters: _everShownCharacters,
       );
@@ -415,6 +445,7 @@ class GameManager {
       currentState: _currentState,
       dialogueHistory: const [], // 避免循环引用
       isNvlMode: _currentState.isNvlMode,
+      isNvlMovieMode: _currentState.isNvlMovieMode,
       nvlDialogues: List.from(_currentState.nvlDialogues),
     );
     
@@ -491,6 +522,7 @@ class GameState {
   final Map<String, PoseConfig> poseConfigs;
   final SksNode? currentNode;
   final bool isNvlMode;
+  final bool isNvlMovieMode;
   final List<NvlDialogue> nvlDialogues;
   final Set<String> everShownCharacters;
 
@@ -502,6 +534,7 @@ class GameState {
     this.poseConfigs = const {},
     this.currentNode,
     this.isNvlMode = false,
+    this.isNvlMovieMode = false,
     this.nvlDialogues = const [],
     this.everShownCharacters = const {},
   });
@@ -523,6 +556,7 @@ class GameState {
     bool forceNullCurrentNode = false,
     bool forceNullSpeaker = false,
     bool? isNvlMode,
+    bool? isNvlMovieMode,
     List<NvlDialogue>? nvlDialogues,
     Set<String>? everShownCharacters,
   }) {
@@ -536,6 +570,7 @@ class GameState {
       poseConfigs: poseConfigs ?? this.poseConfigs,
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
       isNvlMode: isNvlMode ?? this.isNvlMode,
+      isNvlMovieMode: isNvlMovieMode ?? this.isNvlMovieMode,
       nvlDialogues: nvlDialogues ?? this.nvlDialogues,
       everShownCharacters: everShownCharacters ?? this.everShownCharacters,
     );
@@ -579,6 +614,7 @@ class GameStateSnapshot {
   final GameState currentState;
   final List<DialogueHistoryEntry> dialogueHistory;
   final bool isNvlMode;
+  final bool isNvlMovieMode;
   final List<NvlDialogue> nvlDialogues;
 
   GameStateSnapshot({
@@ -586,6 +622,7 @@ class GameStateSnapshot {
     required this.currentState,
     this.dialogueHistory = const [],
     this.isNvlMode = false,
+    this.isNvlMovieMode = false,
     this.nvlDialogues = const [],
   });
 

@@ -10,19 +10,35 @@ class SettingsManager extends ChangeNotifier {
   static const String _dialogOpacityKey = 'dialog_opacity';
   static const String _isFullscreenKey = 'is_fullscreen';
   
+  // 打字机设置键
+  static const String _typewriterSpeedKey = 'typewriter_chars_per_second';
+  static const String _skipPunctuationDelayKey = 'skip_punctuation_delay';
+  
   // 默认值
   static const double defaultDialogOpacity = 0.9;
   static const bool defaultIsFullscreen = false;
+  
+  // 打字机默认值 - 每秒显示字数
+  static const double defaultTypewriterCharsPerSecond = 50.0;
+  static const bool defaultSkipPunctuationDelay = false;
 
   SharedPreferences? _prefs;
   double _currentDialogOpacity = defaultDialogOpacity;
   bool _currentIsFullscreen = defaultIsFullscreen;
+  
+  // 打字机设置状态变量
+  double _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
+  bool _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
     // 初始化时加载当前值
     _currentDialogOpacity = _prefs?.getDouble(_dialogOpacityKey) ?? defaultDialogOpacity;
     _currentIsFullscreen = _prefs?.getBool(_isFullscreenKey) ?? defaultIsFullscreen;
+    
+    // 加载打字机设置
+    _currentTypewriterCharsPerSecond = _prefs?.getDouble(_typewriterSpeedKey) ?? defaultTypewriterCharsPerSecond;
+    _currentSkipPunctuationDelay = _prefs?.getBool(_skipPunctuationDelayKey) ?? defaultSkipPunctuationDelay;
   }
 
   // 对话框不透明度
@@ -63,14 +79,44 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners(); // 通知所有监听者
   }
 
+  // 打字机每秒字符数设置
+  Future<double> getTypewriterCharsPerSecond() async {
+    await init();
+    return _currentTypewriterCharsPerSecond;
+  }
+
+  Future<void> setTypewriterCharsPerSecond(double charsPerSecond) async {
+    await init();
+    _currentTypewriterCharsPerSecond = charsPerSecond;
+    await _prefs?.setDouble(_typewriterSpeedKey, charsPerSecond);
+    notifyListeners();
+  }
+
+  // 跳过标点符号延迟设置
+  Future<bool> getSkipPunctuationDelay() async {
+    await init();
+    return _currentSkipPunctuationDelay;
+  }
+
+  Future<void> setSkipPunctuationDelay(bool skip) async {
+    await init();
+    _currentSkipPunctuationDelay = skip;
+    await _prefs?.setBool(_skipPunctuationDelayKey, skip);
+    notifyListeners();
+  }
+
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
     _currentDialogOpacity = defaultDialogOpacity;
     _currentIsFullscreen = defaultIsFullscreen;
+    _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
+    _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
     
     await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
     await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
+    await _prefs?.setDouble(_typewriterSpeedKey, defaultTypewriterCharsPerSecond);
+    await _prefs?.setBool(_skipPunctuationDelayKey, defaultSkipPunctuationDelay);
     
     // 应用默认全屏设置
     await windowManager.setFullScreen(defaultIsFullscreen);
@@ -83,6 +129,8 @@ class SettingsManager extends ChangeNotifier {
     return {
       'dialogOpacity': await getDialogOpacity(),
       'isFullscreen': await getIsFullscreen(),
+      'typewriterCharsPerSecond': await getTypewriterCharsPerSecond(),
+      'skipPunctuationDelay': await getSkipPunctuationDelay(),
     };
   }
 }

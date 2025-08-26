@@ -43,11 +43,10 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   SakiEngineConfig? createCustomConfig() {
-    // 可以返回项目特定的配置
-    // final config = SakiEngineConfig();
-    // config.themeColors = CustomThemeColors(...);
-    // return config;
-    return null; // 使用默认配置
+    // SoraNoUta 项目特定配置
+    final config = SakiEngineConfig();
+    // 可以在这里添加项目特定的配置
+    return config;
   }
 
   @override

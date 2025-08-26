@@ -211,7 +211,7 @@ class SakiEngineConfig {
       }
     }
     
-    return TextStyle(fontSize: size, color: color, fontFamily: 'SourceHanSansCN-Bold');
+    return TextStyle(fontSize: size, color: color, fontFamily: 'SourceHanSansCN');
   }
 
 

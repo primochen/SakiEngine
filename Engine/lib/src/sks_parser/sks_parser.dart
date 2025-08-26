@@ -71,6 +71,12 @@ class SksParser {
         case 'endnvl':
           nodes.add(EndNvlNode());
           break;
+        case 'nvlm':
+          nodes.add(NvlMovieNode());
+          break;
+        case 'endnvlm':
+          nodes.add(EndNvlMovieNode());
+          break;
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {

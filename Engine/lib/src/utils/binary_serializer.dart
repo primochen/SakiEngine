@@ -78,6 +78,7 @@ class BinarySerializer {
     
     // 序列化 NVL 状态
     buffer.add(snapshot.isNvlMode ? 1 : 0);
+    buffer.add(snapshot.isNvlMovieMode ? 1 : 0);  // 添加电影模式状态
     buffer.addAll(_writeInt32(snapshot.nvlDialogues.length));
     for (final nvlDialogue in snapshot.nvlDialogues) {
       buffer.addAll(_serializeNvlDialogue(nvlDialogue));
@@ -100,6 +101,7 @@ class BinarySerializer {
     
     // 反序列化 NVL 状态
     final isNvlMode = reader.readByte() == 1;
+    final isNvlMovieMode = reader.readByte() == 1;  // 添加电影模式状态
     final nvlDialoguesLength = reader.readInt32();
     final nvlDialogues = <NvlDialogue>[];
     for (int i = 0; i < nvlDialoguesLength; i++) {
@@ -111,6 +113,7 @@ class BinarySerializer {
       currentState: currentState,
       dialogueHistory: dialogueHistory,
       isNvlMode: isNvlMode,
+      isNvlMovieMode: isNvlMovieMode,  // 添加电影模式状态
       nvlDialogues: nvlDialogues,
     );
   }
@@ -128,6 +131,14 @@ class BinarySerializer {
     for (final entry in state.characters.entries) {
       buffer.addAll(_writeString(entry.key));
       buffer.addAll(_serializeCharacterState(entry.value));
+    }
+    
+    // 序列化 NVL 状态
+    buffer.add(state.isNvlMode ? 1 : 0);
+    buffer.add(state.isNvlMovieMode ? 1 : 0);
+    buffer.addAll(_writeInt32(state.nvlDialogues.length));
+    for (final nvlDialogue in state.nvlDialogues) {
+      buffer.addAll(_serializeNvlDialogue(nvlDialogue));
     }
     
     return Uint8List.fromList(buffer);
@@ -148,11 +159,23 @@ class BinarySerializer {
       characters[key] = value;
     }
     
+    // 反序列化 NVL 状态
+    final isNvlMode = reader.readByte() == 1;
+    final isNvlMovieMode = reader.readByte() == 1;
+    final nvlDialoguesLength = reader.readInt32();
+    final nvlDialogues = <NvlDialogue>[];
+    for (int i = 0; i < nvlDialoguesLength; i++) {
+      nvlDialogues.add(_deserializeNvlDialogue(reader));
+    }
+    
     return GameState(
       background: background,
       dialogue: dialogue,
       speaker: speaker,
       characters: characters,
+      isNvlMode: isNvlMode,
+      isNvlMovieMode: isNvlMovieMode,
+      nvlDialogues: nvlDialogues,
     );
   }
 
