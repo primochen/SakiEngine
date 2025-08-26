@@ -3,17 +3,18 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
   final String dialogue;
-  final VoidCallback? onNext;
+  final DialogueProgressionManager? progressionManager;
 
   const DialogueBox({
     super.key,
     this.speaker,
     required this.dialogue,
-    this.onNext,
+    this.progressionManager,
   });
 
   @override
@@ -51,6 +52,9 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     _typewriterController = TypewriterAnimationManager();
     _typewriterController.initialize(this);
     _typewriterController.addListener(_onTypewriterStateChanged);
+
+    // 注册打字机到推进管理器
+    widget.progressionManager?.registerTypewriter(_typewriterController);
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -95,6 +99,8 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
 
   @override
   void dispose() {
+    // 从推进管理器注销打字机
+    widget.progressionManager?.registerTypewriter(null);
     SettingsManager().removeListener(_onSettingsChanged);
     _typewriterController.removeListener(_onTypewriterStateChanged);
     _typewriterController.dispose();
@@ -106,6 +112,12 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   @override
   void didUpdateWidget(DialogueBox oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // 如果推进管理器发生变化，重新注册打字机
+    if (widget.progressionManager != oldWidget.progressionManager) {
+      oldWidget.progressionManager?.registerTypewriter(null);
+      widget.progressionManager?.registerTypewriter(_typewriterController);
+    }
     
     // 如果对话内容发生变化，重新开始文本淡入和打字机动画
     if (widget.dialogue != oldWidget.dialogue) {
@@ -140,13 +152,8 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   }
 
   void _handleTap() {
-    if (_enableTypewriter && _typewriterController.isTyping) {
-      // 如果正在打字，点击跳过动画
-      _typewriterController.skipToEnd();
-    } else if (_isDialogueComplete) {
-      // 如果动画完成，继续下一步
-      widget.onNext?.call();
-    }
+    // 使用推进管理器统一处理对话推进
+    widget.progressionManager?.progressDialogue();
   }
 
   bool _isTextOverflowing(BuildContext context, String text, TextStyle style, double maxWidth) {

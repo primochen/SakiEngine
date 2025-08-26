@@ -22,6 +22,7 @@ import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -41,6 +42,7 @@ class GamePlayScreen extends StatefulWidget {
 
 class _GamePlayScreenState extends State<GamePlayScreen> {
   late final GameManager _gameManager;
+  late final DialogueProgressionManager _dialogueProgressionManager;
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
@@ -55,6 +57,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     super.initState();
     _gameManager = GameManager(
       onReturn: _returnToMainMenu,
+    );
+    
+    // 初始化对话推进管理器
+    _dialogueProgressionManager = DialogueProgressionManager(
+      gameManager: _gameManager,
     );
 
     // 注册系统级热键 Shift+R
@@ -201,7 +208,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         keyDownHandler: (hotKey) {
           print('🎮 下箭头键 - 前进剧情');
           if (mounted && !_isShowingMenu) {
-            _gameManager.next();
+            _dialogueProgressionManager.progressDialogue();
           }
         },
       );
@@ -295,7 +302,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   // 向上滚动: 前进剧情
                   if (pointerSignal.scrollDelta.dy < 0) {
                     if (!_isShowingMenu) {
-                      _gameManager.next();
+                      _dialogueProgressionManager.progressDialogue();
                     }
                   }
                   // 向下滚动: 回滚剧情
@@ -307,7 +314,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 else if (pointerSignal.toString().contains('Scroll')) {
                   // 触控板滚动事件，推进剧情
                   if (!_isShowingMenu) {
-                    _gameManager.next();
+                    _dialogueProgressionManager.progressDialogue();
                   }
                 }
               },
@@ -317,8 +324,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   onTap: gameState.currentNode is MenuNode ? null : () {
                     print('🎯 点击事件触发');
                     print('🎯 当前节点类型: ${gameState.currentNode.runtimeType}');
-                    print('🎯 调用 _gameManager.next()');
-                    _gameManager.next();
+                    print('🎯 调用 _dialogueProgressionManager.progressDialogue()');
+                    _dialogueProgressionManager.progressDialogue();
                   },
                   child: Stack(
                     children: [
@@ -342,7 +349,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         DialogueBox(
                           speaker: gameState.speaker,
                           dialogue: gameState.dialogue!,
-                          onNext: () => _gameManager.next(),
+                          progressionManager: _dialogueProgressionManager,
                         ),
                       if (gameState.currentNode is MenuNode)
                         ChoiceMenu(
@@ -359,11 +366,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   NvlScreen(
                     nvlDialogues: gameState.nvlDialogues,
                     isMovieMode: gameState.isNvlMovieMode,
-                    onTap: () {
-                      print('🎯 NVL 点击事件触发');
-                      // 在 NVL 模式下点击继续下一句对话
-                      _gameManager.next();
-                    },
+                    progressionManager: _dialogueProgressionManager,
                   ),
                 QuickMenu(
                   onSave: () => setState(() => _showSaveOverlay = true),

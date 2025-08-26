@@ -3,16 +3,17 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
-  final VoidCallback onTap;
+  final DialogueProgressionManager? progressionManager;
   final bool isMovieMode;
 
   const NvlScreen({
     super.key,
     required this.nvlDialogues,
-    required this.onTap,
+    this.progressionManager,
     this.isMovieMode = false,
   });
 
@@ -29,6 +30,9 @@ class _NvlScreenState extends State<NvlScreen>
   // 文本淡入动画控制器列表，为每个对话单独管理
   final Map<int, AnimationController> _textFadeControllers = {};
   final Map<int, Animation<double>> _textFadeAnimations = {};
+  
+  // 当前打字机控制器（只有最后一句对话使用）
+  TypewriterAnimationManager? _currentTypewriterController;
 
   @override
   void initState() {
@@ -84,6 +88,9 @@ class _NvlScreenState extends State<NvlScreen>
   void dispose() {
     _fadeController.dispose();
     _scrollController.dispose();
+    // 从推进管理器注销打字机
+    widget.progressionManager?.registerTypewriter(null);
+    _currentTypewriterController?.dispose();
     // 清理所有文本淡入动画控制器
     for (final controller in _textFadeControllers.values) {
       controller.dispose();
@@ -93,6 +100,17 @@ class _NvlScreenState extends State<NvlScreen>
     super.dispose();
   }
 
+  /// 获取或创建打字机控制器，并注册到推进管理器
+  TypewriterAnimationManager _getOrCreateTypewriterController(int index) {
+    if (_currentTypewriterController == null) {
+      _currentTypewriterController = TypewriterAnimationManager();
+      _currentTypewriterController!.initialize(this);
+      // 注册到推进管理器
+      widget.progressionManager?.registerTypewriter(_currentTypewriterController);
+    }
+    return _currentTypewriterController!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
@@ -100,7 +118,10 @@ class _NvlScreenState extends State<NvlScreen>
     final uiScale = context.scaleFor(ComponentType.ui);
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: () {
+        // 使用推进管理器统一处理对话推进
+        widget.progressionManager?.progressDialogue();
+      },
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Stack(
@@ -176,6 +197,7 @@ class _NvlScreenState extends State<NvlScreen>
                 letterSpacing: 0.3,
               ),
               autoStart: true,
+              controller: _getOrCreateTypewriterController(index),
             )
           : Text(
               displayText,
