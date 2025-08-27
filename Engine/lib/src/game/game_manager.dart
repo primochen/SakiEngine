@@ -505,7 +505,7 @@ class GameManager {
       dialogueHistory: const [], // 避免循环引用
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
-      nvlDialogues: nvlDialoguesForSnapshot,
+      nvlDialogues: List.from(_currentState.nvlDialogues),
     );
     
     _dialogueHistory.add(DialogueHistoryEntry(
