@@ -535,6 +535,11 @@ class GameManager {
     // 恢复历史条目时，需要检查是否处于 NVL 模式
     final snapshot = entry.stateSnapshot;
     await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
+    
+    // 修复NVL模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
+    if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+      _scriptIndex++;
+    }
   }
 
   /// 启动场景计时器
