@@ -155,21 +155,16 @@ class GameManager {
           // 立即递增索引，避免重复处理
           _scriptIndex++;
           
-          // 如果有计时器，提前设置保护
-          if (node.timer != null && node.timer! > 0) {
-            _isWaitingForTimer = true;
-            _isProcessing = false; // 释放当前处理锁，但保持timer锁
-          }
+          // 如果没有指定timer，默认使用0.01秒，确保转场后正确执行后续脚本
+          final timerDuration = node.timer ?? 0.01;
+          
+          // 提前设置计时器等待标志
+          _isWaitingForTimer = true;
+          _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
           _transitionToNewBackground(node.background).then((_) {
-            // 如果有计时器，启动计时器
-            if (node.timer != null && node.timer! > 0) {
-              _startSceneTimer(node.timer!);
-            } else {
-              // 没有计时器，直接继续执行
-              _isProcessing = false;
-              _executeScript();
-            }
+            // 转场完成后启动计时器
+            _startSceneTimer(timerDuration);
           });
           return; // 转场过程中暂停脚本执行，将在转场完成后自动恢复
         } else {
@@ -584,10 +579,9 @@ class GameManager {
       duration: const Duration(milliseconds: 800),
     );
     
-    //print('[GameManager] scene转场完成，恢复脚本执行');
-    // 转场完成后继续执行脚本
+    //print('[GameManager] scene转场完成，等待计时器结束');
+    // 转场完成，等待计时器结束后自动执行后续脚本
     _isProcessing = false;
-    _executeScript();
   }
 
   void dispose() {
