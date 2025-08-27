@@ -241,7 +241,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
     return ScreenshotThumbnail(
       key: ValueKey('${widget.saveSlot?.id}_${widget.saveSlot?.saveTime}'),
       screenshotData: widget.saveSlot?.screenshotData,
-      borderRadius: 4 * widget.uiScale,
+      borderRadius: 0 * widget.uiScale,
       placeholderColor: widget.config.themeColors.primary.withOpacity(0.1),
       iconColor: widget.config.themeColors.primary.withOpacity(0.3),
       iconSize: 24 * widget.uiScale,
@@ -257,7 +257,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
       color: Colors.transparent,
       child: InkWell(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(4 * uiScale),
+        borderRadius: BorderRadius.circular(0 * uiScale),
         hoverColor: config.themeColors.primary.withOpacity(0.1),
         onHover: (hovering) {
           if (mounted) {
@@ -276,7 +276,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
               color: config.themeColors.primary.withOpacity(_isHovered ? 0.5 : 0.2),
               width: 1,
             ),
-            borderRadius: BorderRadius.circular(4 * uiScale),
+            borderRadius: BorderRadius.circular(0 * uiScale),
           ),
           child: Padding(
             padding: EdgeInsets.all(12.0 * uiScale),
@@ -322,7 +322,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
             Expanded(
               flex: 16,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(4 * uiScale),
+                borderRadius: BorderRadius.circular(0 * uiScale),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: _buildScreenshot(),

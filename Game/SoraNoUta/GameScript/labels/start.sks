@@ -16,4 +16,5 @@ nvlm
 "这声音，原来是出自我那再熟悉不过的。"
 "那是————"
 endnvlm
+scene chapter0 timer 5.0
 jump cp0_001

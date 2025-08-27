@@ -11,6 +11,7 @@ import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
+import 'package:sakiengine/src/widgets/smart_image.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -149,7 +150,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             future: AssetManager().findAsset('backgrounds/${config.mainMenuBackground}'),
             builder: (context, snapshot) {
               if (snapshot.hasData && snapshot.data != null) {
-                return Image.asset(
+                return SmartImage.asset(
                   snapshot.data!,
                   fit: BoxFit.cover,
                 );

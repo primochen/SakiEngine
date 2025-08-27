@@ -19,7 +19,8 @@ class HideNode implements SksNode {
 
 class BackgroundNode implements SksNode {
   final String background;
-  BackgroundNode(this.background);
+  final double? timer;
+  BackgroundNode(this.background, {this.timer});
 }
 
 class SayNode implements SksNode {

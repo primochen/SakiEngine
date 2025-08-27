@@ -102,12 +102,22 @@ class _NvlScreenState extends State<NvlScreen>
 
   /// 获取或创建打字机控制器，并注册到推进管理器
   TypewriterAnimationManager _getOrCreateTypewriterController(int index) {
-    if (_currentTypewriterController == null) {
-      _currentTypewriterController = TypewriterAnimationManager();
-      _currentTypewriterController!.initialize(this);
-      // 注册到推进管理器
-      widget.progressionManager?.registerTypewriter(_currentTypewriterController);
+    // 为了避免显示上一句对话，每次都创建新的控制器
+    // 这样确保TypewriterText从空白状态开始
+    
+    // 先清理旧的控制器
+    if (_currentTypewriterController != null) {
+      widget.progressionManager?.registerTypewriter(null);
+      // 不dispose，因为可能还在使用中，让系统自动GC
     }
+    
+    // 创建新的控制器
+    _currentTypewriterController = TypewriterAnimationManager();
+    _currentTypewriterController!.initialize(this);
+    
+    // 注册到推进管理器
+    widget.progressionManager?.registerTypewriter(_currentTypewriterController);
+    
     return _currentTypewriterController!;
   }
 

@@ -18,6 +18,7 @@ import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
+import 'package:sakiengine/src/utils/image_loader.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
@@ -69,8 +70,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
-      print('🎮 读取存档: currentScript = $_currentScript');
-      print('🎮 存档中的scriptIndex = ${widget.saveSlotToLoad!.snapshot.scriptIndex}');
+      //print('🎮 读取存档: currentScript = $_currentScript');
+      //print('🎮 存档中的scriptIndex = ${widget.saveSlotToLoad!.snapshot.scriptIndex}');
       _gameManager.restoreFromSnapshot(
           _currentScript, widget.saveSlotToLoad!.snapshot, shouldReExecute: false);
       
@@ -206,7 +207,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       await hotKeyManager.register(
         nextHotKey,
         keyDownHandler: (hotKey) {
-          print('🎮 下箭头键 - 前进剧情');
+          //print('🎮 下箭头键 - 前进剧情');
           if (mounted && !_isShowingMenu) {
             _dialogueProgressionManager.progressDialogue();
           }
@@ -216,7 +217,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       await hotKeyManager.register(
         prevHotKey,
         keyDownHandler: (hotKey) {
-          print('🎮 上箭头键 - 回滚剧情');
+          //print('🎮 上箭头键 - 回滚剧情');
           if (mounted) {
             _handlePreviousDialogue();
           }
@@ -297,23 +298,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
             
             return Listener(
               onPointerSignal: (pointerSignal) {
+                // 检查是否有弹窗或菜单显示
+                final hasOverlayOpen = _isShowingMenu || 
+                    _showSaveOverlay || 
+                    _showLoadOverlay || 
+                    _showReviewOverlay ||
+                    _showSettings;
+                
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
                 if (pointerSignal is PointerScrollEvent) {
                   // 向上滚动: 前进剧情
                   if (pointerSignal.scrollDelta.dy < 0) {
-                    if (!_isShowingMenu) {
+                    if (!hasOverlayOpen) {
                       _dialogueProgressionManager.progressDialogue();
                     }
                   }
                   // 向下滚动: 回滚剧情
                   else if (pointerSignal.scrollDelta.dy > 0) {
-                    _handlePreviousDialogue();
+                    if (!hasOverlayOpen) {
+                      _handlePreviousDialogue();
+                    }
                   }
                 }
                 // 处理macOS触控板事件
                 else if (pointerSignal.toString().contains('Scroll')) {
                   // 触控板滚动事件，推进剧情
-                  if (!_isShowingMenu) {
+                  if (!hasOverlayOpen) {
                     _dialogueProgressionManager.progressDialogue();
                   }
                 }
@@ -537,12 +547,10 @@ class _CharacterLayerState extends State<_CharacterLayer>
   Future<void> _loadImage() async {
     final assetPath = await AssetManager().findAsset(widget.assetName);
     if (assetPath != null && mounted) {
-      final data = await rootBundle.load(assetPath);
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      final frame = await codec.getNextFrame();
-      if (mounted) {
+      final image = await ImageLoader.loadImage(assetPath);
+      if (mounted && image != null) {
         setState(() {
-          _currentImage = frame.image;
+          _currentImage = image;
         });
         
         // 始终触发动画

@@ -10,8 +10,10 @@ menu
 "测试长句子" after_choice4
 "测试断句" after_choice6
 "切换背景" after_choice5
+"切换背景&&旁白" after_choice7
 "测试旁白模式" after_choice_nvl
 "测试电影旁白模式" after_choice_nvlm
+"测试计时器" after_choice_timer
 endmenu
 //就是这样，选择之后会跳转到after_choice1，after_choice2，after_choice3
 label after_choice1
@@ -54,6 +56,30 @@ scene bg school
 yk say "背景又切回来了。"
 yk sad "再见。"
 return
+label after_choice_timer
+scene sky timer 2.0
+yk "背景被切换咯～，经过了2秒。"
+scene bg school timer 5.0
+yk say "背景又切回来了。很不得了，五秒过去了。"
+yk sad "再见。"
+return
+label after_choice7
+nvl
+"这是旁白模式的开始。"
+"在这个模式下，所有的文本都会累积显示。"
+"就像小说一样。"
+yk "我也可以在旁白模式中说话。"
+"旁白可以继续。"
+"这样可以讲述更长的故事。"
+endnvl
+scene sky
+yk "背景被切换咯～"
+yk "嗯。"
+scene bg school
+yk say "背景又切回来了。"
+yk sad "再见。"
+return
+
 label after_choice6
 yk "你好，世界。"
 yk "平凡的天才展现才能，真正的天才忘却才能。"

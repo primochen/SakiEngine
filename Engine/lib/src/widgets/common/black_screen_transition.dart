@@ -21,11 +21,11 @@ class TransitionOverlayManager {
     required VoidCallback onMidTransition,
     Duration duration = const Duration(milliseconds: 800),
   }) async {
-    print('[TransitionManager] 请求转场，当前状态: isTransitioning=$_isTransitioning');
+    //print('[TransitionManager] 请求转场，当前状态: isTransitioning=$_isTransitioning');
     if (_isTransitioning) return;
     
     _isTransitioning = true;
-    print('[TransitionManager] 开始转场，时长: ${duration.inMilliseconds}ms');
+    //print('[TransitionManager] 开始转场，时长: ${duration.inMilliseconds}ms');
     
     final completer = Completer<void>();
     
@@ -35,7 +35,7 @@ class TransitionOverlayManager {
         duration: duration,
         onMidTransition: onMidTransition,
         onComplete: () {
-          print('[TransitionManager] 转场完成，移除覆盖层');
+          //print('[TransitionManager] 转场完成，移除覆盖层');
           _removeOverlay();
           _isTransitioning = false;
           completer.complete();
@@ -44,7 +44,7 @@ class TransitionOverlayManager {
     );
     
     // 插入覆盖层
-    print('[TransitionManager] 插入转场覆盖层');
+    //print('[TransitionManager] 插入转场覆盖层');
     Overlay.of(context).insert(_overlayEntry!);
     
     return completer.future;
@@ -206,7 +206,7 @@ class _TransitionOverlayState extends State<_TransitionOverlay>
         
         return Material(
           color: Colors.black.withOpacity(opacity),
-          child: Container(
+          child: SizedBox(
             width: double.infinity,
             height: double.infinity,
           ),
