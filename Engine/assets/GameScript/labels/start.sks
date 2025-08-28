@@ -13,6 +13,7 @@ menu
 "切换背景&&旁白" after_choice7
 "测试旁白模式" after_choice_nvl
 "测试电影旁白模式" after_choice_nvlm
+"测试计时器" after_choice_timer
 endmenu
 //就是这样，选择之后会跳转到after_choice1，after_choice2，after_choice3
 label after_choice1
@@ -55,7 +56,13 @@ scene bg school
 yk say "背景又切回来了。"
 yk sad "再见。"
 return
-
+label after_choice_timer
+scene sky timer 2.0
+yk "背景被切换咯～，经过了2秒。"
+scene bg school timer 5.0
+yk say "背景又切回来了。很不得了，五秒过去了。"
+yk sad "再见。"
+return
 label after_choice7
 nvl
 "这是旁白模式的开始。"
@@ -67,6 +74,7 @@ yk "我也可以在旁白模式中说话。"
 endnvl
 scene sky
 yk "背景被切换咯～"
+yk "嗯。"
 scene bg school
 yk say "背景又切回来了。"
 yk sad "再见。"

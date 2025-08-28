@@ -4,6 +4,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
@@ -24,8 +25,6 @@ class DialogueBox extends StatefulWidget {
 class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin {
   bool _isHovered = false;
   bool _isDialogueComplete = false;
-  late AnimationController _animationController;
-  late Animation<double> _blinkAnimation;
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
   
   // 打字机动画管理器
@@ -56,17 +55,6 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     // 注册打字机到推进管理器
     widget.progressionManager?.registerTypewriter(_typewriterController);
 
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _blinkAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
 
     // 初始化文本淡入动画
     _textFadeController = AnimationController(
@@ -104,7 +92,6 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     SettingsManager().removeListener(_onSettingsChanged);
     _typewriterController.removeListener(_onTypewriterStateChanged);
     _typewriterController.dispose();
-    _animationController.dispose();
     _textFadeController.dispose();
     super.dispose();
   }
@@ -278,18 +265,10 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                                            alignment: PlaceholderAlignment.middle,
                                            child: Padding(
                                              padding: EdgeInsets.only(left: uiScale),
-                                             child: AnimatedBuilder(
-                                               animation: _blinkAnimation,
-                                               builder: (context, child) {
-                                                 return Opacity(
-                                                   opacity: _blinkAnimation.value,
-                                                   child: Icon(
-                                                     Icons.keyboard_arrow_right_rounded,
-                                                     color: config.themeColors.primary.withOpacity(0.7),
-                                                     size: dialogueStyle.fontSize! * 2,
-                                                   ),
-                                                 );
-                                               },
+                                             child: DialogueNextArrow(
+                                               visible: _isDialogueComplete,
+                                               fontSize: dialogueStyle.fontSize!,
+                                               color: config.themeColors.primary.withOpacity(0.7),
                                              ),
                                            ),
                                          ),
