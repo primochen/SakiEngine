@@ -115,12 +115,15 @@ class _NvlScreenState extends State<NvlScreen>
     // 先清理旧的控制器
     if (_currentTypewriterController != null) {
       widget.progressionManager?.registerTypewriter(null);
+      _currentTypewriterController!.removeListener(_onTypewriterStateChanged);
       // 不dispose，因为可能还在使用中，让系统自动GC
     }
     
     // 创建新的控制器
     _currentTypewriterController = TypewriterAnimationManager();
     _currentTypewriterController!.initialize(this);
+    
+    // 添加监听器
     _currentTypewriterController!.addListener(_onTypewriterStateChanged);
     
     // 注册到推进管理器
@@ -132,7 +135,6 @@ class _NvlScreenState extends State<NvlScreen>
   void _onTypewriterStateChanged() {
     if (mounted) {
       final isCompleted = _currentTypewriterController?.isCompleted ?? false;
-      debugPrint('NVL Typewriter state changed: completed = $isCompleted');
       setState(() {
         _isLastDialogueComplete = isCompleted;
       });
@@ -188,8 +190,6 @@ class _NvlScreenState extends State<NvlScreen>
     // 只对最后一条对话使用打字机效果
     bool isLastDialogue = index == widget.nvlDialogues.length - 1;
     
-    debugPrint('NVL building dialogue $index, isLast: $isLastDialogue, completed: $_isLastDialogueComplete');
-    
     // 为每个对话创建独立的淡入动画
     if (!_textFadeControllers.containsKey(index)) {
       final controller = AnimationController(
@@ -217,40 +217,43 @@ class _NvlScreenState extends State<NvlScreen>
       padding: EdgeInsets.only(bottom: 16 * uiScale),
       child: FadeTransition(
         opacity: _textFadeAnimations[index]!,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center, // 垂直居中对齐
           children: [
-            Expanded(
-              child: isLastDialogue 
-                ? TypewriterText(
-                    text: displayText,
-                    style: config.dialogueTextStyle.copyWith(
-                      fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                      color: Colors.white,
-                      height: 1.6,
-                      letterSpacing: 0.3,
-                    ),
-                    autoStart: true,
-                    controller: _getOrCreateTypewriterController(index),
-                  )
-                : Text(
-                    displayText,
-                    style: config.dialogueTextStyle.copyWith(
-                      fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                      color: Colors.white,
-                      height: 1.6,
-                      letterSpacing: 0.3,
-                    ),
+            isLastDialogue 
+              ? TypewriterText(
+                  text: displayText,
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                    color: Colors.white,
+                    height: 1.6,
+                    letterSpacing: 0.3,
                   ),
-            ),
-            // 只在最后一句对话且打字机完成时显示白色箭头
-            if (isLastDialogue)
+                  autoStart: true,
+                  controller: _getOrCreateTypewriterController(index),
+                  onComplete: () {
+                    setState(() {
+                      _isLastDialogueComplete = true;
+                    });
+                  },
+                )
+              : Text(
+                  displayText,
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                    color: Colors.white,
+                    height: 1.6,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+            // 箭头紧跟在文本后面
+            if (isLastDialogue && _isLastDialogueComplete)
               Padding(
-                padding: EdgeInsets.only(left: 8 * uiScale),
+                padding: EdgeInsets.only(left: 4 * uiScale),
                 child: DialogueNextArrow(
-                  visible: _isLastDialogueComplete,
-                  fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                  color: Colors.white, // 旁白模式使用纯白箭头
+                  visible: true,
+                  fontSize: (config.dialogueTextStyle.fontSize! * textScale) * 0.7, // 缩小到70%
+                  color: Colors.white,
                 ),
               ),
           ],
