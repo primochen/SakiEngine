@@ -161,41 +161,46 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: moduleLoader.getCurrentModule(),
-      builder: (builderContext, snapshot) {
-        if (!snapshot.hasData) {
-          return const MaterialApp(
-            debugShowCheckedModeBanner: false,
-            home: Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
-          );
-        }
-
-        final gameModule = snapshot.data!;
-
-        return FutureBuilder<String>(
-          future: gameModule.getAppTitle(),
-          builder: (context, titleSnapshot) {
-            final appTitle = titleSnapshot.data ?? 'SakiEngine';
-            final customTheme = gameModule.createTheme();
-
-            // 设置窗口标题
-            if (titleSnapshot.hasData) {
-              windowManager.setTitle(appTitle);
+    return AnimatedBuilder(
+      animation: SettingsManager(),
+      builder: (context, child) {
+        return FutureBuilder(
+          future: moduleLoader.getCurrentModule(),
+          builder: (builderContext, snapshot) {
+            if (!snapshot.hasData) {
+              return const MaterialApp(
+                debugShowCheckedModeBanner: false,
+                home: Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              );
             }
 
-            return MaterialApp(
-              title: appTitle,
-              debugShowCheckedModeBanner: false,
-              theme: customTheme ?? ThemeData(
-                primarySwatch: Colors.blue,
-                fontFamily: 'SourceHanSansCN',
-              ),
-              home: const GameContainer(),
+            final gameModule = snapshot.data!;
+
+            return FutureBuilder<String>(
+              future: gameModule.getAppTitle(),
+              builder: (context, titleSnapshot) {
+                final appTitle = titleSnapshot.data ?? 'SakiEngine';
+                final customTheme = gameModule.createTheme();
+
+                // 设置窗口标题
+                if (titleSnapshot.hasData) {
+                  windowManager.setTitle(appTitle);
+                }
+
+                return MaterialApp(
+                  title: appTitle,
+                  debugShowCheckedModeBanner: false,
+                  theme: customTheme ?? ThemeData(
+                    primarySwatch: Colors.blue,
+                    fontFamily: 'SourceHanSansCN',
+                  ),
+                  home: const GameContainer(),
+                );
+              },
             );
           },
         );

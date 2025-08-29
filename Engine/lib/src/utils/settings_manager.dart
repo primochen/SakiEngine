@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:sakiengine/src/config/saki_engine_config.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
@@ -9,6 +10,7 @@ class SettingsManager extends ChangeNotifier {
 
   static const String _dialogOpacityKey = 'dialog_opacity';
   static const String _isFullscreenKey = 'is_fullscreen';
+  static const String _darkModeKey = 'dark_mode';
   
   // 打字机设置键
   static const String _typewriterSpeedKey = 'typewriter_chars_per_second';
@@ -18,6 +20,7 @@ class SettingsManager extends ChangeNotifier {
   // 默认值
   static const double defaultDialogOpacity = 0.9;
   static const bool defaultIsFullscreen = false;
+  static const bool defaultDarkMode = false;
   
   // 打字机默认值 - 每秒显示字数
   static const double defaultTypewriterCharsPerSecond = 50.0;
@@ -27,6 +30,7 @@ class SettingsManager extends ChangeNotifier {
   SharedPreferences? _prefs;
   double _currentDialogOpacity = defaultDialogOpacity;
   bool _currentIsFullscreen = defaultIsFullscreen;
+  bool _currentDarkMode = defaultDarkMode;
   
   // 打字机设置状态变量
   double _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
@@ -38,6 +42,7 @@ class SettingsManager extends ChangeNotifier {
     // 初始化时加载当前值
     _currentDialogOpacity = _prefs?.getDouble(_dialogOpacityKey) ?? defaultDialogOpacity;
     _currentIsFullscreen = _prefs?.getBool(_isFullscreenKey) ?? defaultIsFullscreen;
+    _currentDarkMode = _prefs?.getBool(_darkModeKey) ?? defaultDarkMode;
     
     // 加载打字机设置
     _currentTypewriterCharsPerSecond = _prefs?.getDouble(_typewriterSpeedKey) ?? defaultTypewriterCharsPerSecond;
@@ -79,6 +84,25 @@ class SettingsManager extends ChangeNotifier {
     } else {
       await windowManager.setFullScreen(false);
     }
+    
+    notifyListeners(); // 通知所有监听者
+  }
+
+  // 深色模式
+  Future<bool> getDarkMode() async {
+    await init();
+    return _currentDarkMode;
+  }
+
+  bool get currentDarkMode => _currentDarkMode;
+
+  Future<void> setDarkMode(bool isDarkMode) async {
+    await init();
+    _currentDarkMode = isDarkMode;
+    await _prefs?.setBool(_darkModeKey, isDarkMode);
+    
+    // 更新主题颜色
+    SakiEngineConfig().updateThemeForDarkMode();
     
     notifyListeners(); // 通知所有监听者
   }
@@ -129,12 +153,14 @@ class SettingsManager extends ChangeNotifier {
     await init();
     _currentDialogOpacity = defaultDialogOpacity;
     _currentIsFullscreen = defaultIsFullscreen;
+    _currentDarkMode = defaultDarkMode;
     _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
     _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = defaultSpeakerAnimation;
     
     await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
     await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
+    await _prefs?.setBool(_darkModeKey, defaultDarkMode);
     await _prefs?.setDouble(_typewriterSpeedKey, defaultTypewriterCharsPerSecond);
     await _prefs?.setBool(_skipPunctuationDelayKey, defaultSkipPunctuationDelay);
     await _prefs?.setBool(_speakerAnimationKey, defaultSpeakerAnimation);

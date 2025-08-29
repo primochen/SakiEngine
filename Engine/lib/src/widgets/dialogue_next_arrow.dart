@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 /// 对话框中提示下一句话的箭头组件
 class DialogueNextArrow extends StatefulWidget {
@@ -46,7 +47,11 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
     }
 
     final config = SakiEngineConfig();
-    final effectiveColor = widget.color ?? config.themeColors.primary.withValues(alpha: 0.7);
+    // 深色模式下使用亮色，浅色模式下使用深色
+    final defaultColor = SettingsManager().currentDarkMode 
+        ? Colors.white.withValues(alpha: 0.8)  // 深色模式用白色
+        : config.themeColors.primary.withValues(alpha: 0.7);  // 浅色模式用主题色
+    final effectiveColor = widget.color ?? defaultColor;
     final size = widget.fontSize*1.6;
 
     return AnimatedBuilder(

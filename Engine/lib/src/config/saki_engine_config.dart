@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/color_parser.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class ThemeColors {
   final Color primary;
@@ -33,6 +34,21 @@ class ThemeColors {
       surface: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.8, 0.92).toColor(),
       onSurface: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.6, 0.3).toColor(),
       onSurfaceVariant: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.4, 0.5).toColor(),
+    );
+  }
+  
+  factory ThemeColors.fromPrimaryDark(Color primary) {
+    // 深色模式：从主色生成深色主题
+    final hsl = HSLColor.fromColor(primary);
+    
+    return ThemeColors(
+      primary: primary,
+      primaryDark: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation, (hsl.lightness + 0.2).clamp(0.0, 1.0)).toColor(),
+      primaryLight: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation, (hsl.lightness - 0.2).clamp(0.0, 1.0)).toColor(),
+      background: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.3, 0.1).toColor(), // 深色背景
+      surface: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.8, 0.15).toColor(), // 深色表面
+      onSurface: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.6, 0.9).toColor(), // 亮色文字
+      onSurfaceVariant: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.4, 0.7).toColor(), // 亮色变体
     );
   }
 }
@@ -102,6 +118,17 @@ class SakiEngineConfig {
   ThemeColors themeColors = ThemeColors.fromPrimary(const Color(0xFF8B4513));
 
   TextStyle? textButtonDefaultStyle;
+
+  void updateThemeForDarkMode() {
+    final isDarkMode = SettingsManager().currentDarkMode;
+    final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);
+    
+    if (isDarkMode) {
+      themeColors = ThemeColors.fromPrimaryDark(baseColor);
+    } else {
+      themeColors = ThemeColors.fromPrimary(baseColor);
+    }
+  }
 
   Future<void> loadConfig() async {
     try {
@@ -297,6 +324,9 @@ class SakiEngineConfig {
     } catch (e) {
       // 如果配置文件读取失败，保持默认值
     }
+    
+    // 根据深色模式设置更新主题
+    updateThemeForDarkMode();
   }
 
   TextStyle _parseTextStyle(String styleString) {

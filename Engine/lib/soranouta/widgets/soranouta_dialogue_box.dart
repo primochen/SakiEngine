@@ -228,10 +228,10 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
 
     final speakerStyle = config.speakerTextStyle.copyWith(
       fontSize: config.speakerTextStyle.fontSize! * textScale,
-      color: Colors.white,
+      color: SettingsManager().currentDarkMode ? Colors.black : Colors.white,
       letterSpacing: 0.5,
       fontFamily: 'ChillJinshuSongPro_Soft',
-      backgroundColor: Colors.black,
+      backgroundColor: SettingsManager().currentDarkMode ? Colors.white : Colors.black,
       height: 1.1,
     );
 
@@ -382,9 +382,9 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
                                                                   '_',
                                                                   style: dialogueStyle
                                                                       .copyWith(
-                                                                    color: config
-                                                                        .themeColors
-                                                                        .primary,
+                                                                    color: SettingsManager().currentDarkMode 
+                                                                        ? Colors.white 
+                                                                        : config.themeColors.primary,
                                                                     fontWeight:
                                                                         FontWeight
                                                                             .bold,
@@ -407,11 +407,9 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
                                                             fontSize:
                                                                 dialogueStyle
                                                                     .fontSize!,
-                                                            color: config
-                                                                .themeColors
-                                                                .primary
-                                                                .withOpacity(
-                                                                    0.7),
+                                                            color: SettingsManager().currentDarkMode
+                                                                ? Colors.white.withValues(alpha: 0.8)
+                                                                : config.themeColors.primary.withValues(alpha: 0.7),
                                                           ),
                                                         ),
                                                 ),

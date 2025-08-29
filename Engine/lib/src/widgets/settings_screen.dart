@@ -26,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
   bool _isFullscreen = SettingsManager.defaultIsFullscreen;
+  bool _darkMode = SettingsManager.defaultDarkMode;
   bool _isLoading = true;
   
   // 打字机设置
@@ -49,6 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 使用新的getter方法获取当前值
       _dialogOpacity = SettingsManager().currentDialogOpacity;
       _isFullscreen = SettingsManager().currentIsFullscreen;
+      _darkMode = SettingsManager().currentDarkMode;
       
       // 确保SettingsManager已初始化
       await SettingsManager().init();
@@ -56,6 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 再次获取以确保是最新值
       _dialogOpacity = await SettingsManager().getDialogOpacity();
       _isFullscreen = await SettingsManager().getIsFullscreen();
+      _darkMode = await SettingsManager().getDarkMode();
       
       // 加载打字机设置
       _typewriterCharsPerSecond = await SettingsManager().getTypewriterCharsPerSecond();
@@ -76,6 +79,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateFullscreen(bool value) async {
     setState(() => _isFullscreen = value);
     await _settingsManager.setIsFullscreen(value);
+  }
+
+  Future<void> _updateDarkMode(bool value) async {
+    setState(() => _darkMode = value);
+    await _settingsManager.setDarkMode(value);
   }
 
   Future<void> _updateTypewriterCharsPerSecond(double value) async {
@@ -213,6 +221,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SizedBox(height: 40 * scale),
             _buildFullscreenToggle(config, scale),
             SizedBox(height: 40 * scale),
+            _buildDarkModeToggle(config, scale),
+            SizedBox(height: 40 * scale),
             _buildSpeakerAnimationToggle(config, scale),
             SizedBox(height: 40 * scale),
             _buildTypewriterSpeedSlider(config, scale),
@@ -272,6 +282,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildFullscreenToggle(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildDarkModeToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildSpeakerAnimationToggle(config, scale),
                       SizedBox(height: 40 * scale),
@@ -473,6 +485,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
             config: config,
             trueText: '全屏',
             falseText: '窗口',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDarkModeToggle(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _darkMode ? Icons.dark_mode : Icons.light_mode,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '深色模式',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  '切换游戏界面的深色或浅色主题',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: _darkMode,
+            onChanged: _updateDarkMode,
+            scale: scale,
+            config: config,
+            trueText: '深色',
+            falseText: '浅色',
           ),
         ],
       ),
