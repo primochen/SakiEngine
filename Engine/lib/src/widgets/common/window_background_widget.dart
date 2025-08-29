@@ -21,24 +21,30 @@ class WindowBackgroundWidget extends StatelessWidget {
     return ClipRect(
       child: Stack(
         children: [
+          child,
           Positioned.fill(
             child: IgnorePointer(
-              child: Container(
-                color: config.themeColors.background.withOpacity(0.99),
-                child: Align(
-                  alignment: Alignment(
-                    (config.baseWindowXAlign - 0.5) * 2,
-                    (config.baseWindowYAlign - 0.5) * 2,
+              child: Opacity(
+                opacity: config.baseWindowBackgroundAlpha,
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    Colors.transparent,
+                    config.baseWindowBackgroundBlendMode,
                   ),
-                  child: SmartAssetImage(
-                    assetName: config.baseWindowBackground!,
-                    fit: BoxFit.contain,
+                  child: Align(
+                    alignment: Alignment(
+                      (config.baseWindowXAlign - 0.5) * 2,
+                      (config.baseWindowYAlign - 0.5) * 2,
+                    ),
+                    child: SmartAssetImage(
+                      assetName: config.baseWindowBackground!,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          child,
         ],
       ),
     );

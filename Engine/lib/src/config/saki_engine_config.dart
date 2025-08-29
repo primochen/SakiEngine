@@ -74,6 +74,8 @@ class SakiEngineConfig {
   String? baseWindowBackground;
   double baseWindowXAlign = 0.5;
   double baseWindowYAlign = 0.5;
+  double baseWindowBackgroundAlpha = 0.3;
+  BlendMode baseWindowBackgroundBlendMode = BlendMode.multiply;
 
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
@@ -215,6 +217,14 @@ class SakiEngineConfig {
                   baseWindowYAlign = double.tryParse(keyValue[1]) ?? 0.5;
                   print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
                   break;
+                case 'background_alpha':
+                  baseWindowBackgroundAlpha = double.tryParse(keyValue[1]) ?? 0.3;
+                  print('[Config] baseWindowBackgroundAlpha 设置为: $baseWindowBackgroundAlpha');
+                  break;
+                case 'background_blend':
+                  baseWindowBackgroundBlendMode = _parseBlendMode(keyValue[1]);
+                  print('[Config] baseWindowBackgroundBlendMode 设置为: $baseWindowBackgroundBlendMode');
+                  break;
               }
             }
           }
@@ -248,6 +258,36 @@ class SakiEngineConfig {
     }
     
     return TextStyle(fontSize: size, color: color, fontFamily: 'SourceHanSansCN');
+  }
+
+  BlendMode _parseBlendMode(String blendModeString) {
+    switch (blendModeString.toLowerCase()) {
+      case 'multiply':
+        return BlendMode.multiply;
+      case 'screen':
+        return BlendMode.screen;
+      case 'overlay':
+        return BlendMode.overlay;
+      case 'darken':
+        return BlendMode.darken;
+      case 'lighten':
+        return BlendMode.lighten;
+      case 'color_dodge':
+        return BlendMode.colorDodge;
+      case 'color_burn':
+        return BlendMode.colorBurn;
+      case 'hard_light':
+        return BlendMode.hardLight;
+      case 'soft_light':
+        return BlendMode.softLight;
+      case 'difference':
+        return BlendMode.difference;
+      case 'exclusion':
+        return BlendMode.exclusion;
+      case 'src_over':
+      default:
+        return BlendMode.srcOver;
+    }
   }
 
 
