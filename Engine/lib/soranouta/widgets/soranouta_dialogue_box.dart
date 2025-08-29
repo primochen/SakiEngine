@@ -170,6 +170,8 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
       color: Colors.white,
       letterSpacing: 0.5,
       fontFamily: 'ChillJinshuSongPro_Soft',
+      backgroundColor: Colors.black,
+      height: 1.1,
     );
 
     return Stack(
@@ -320,20 +322,12 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
             bottom: 16 * uiScale + (screenSize.height * 0.35 / 1.5) * (1.0 - config.soranoutaSpeakerYPos),
             child: FractionalTranslation(
               translation: const Offset(0.0, 0.5),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                ),
-                padding: EdgeInsets.zero,
-                child: Text(
-                  widget.speaker!,
-                  style: speakerStyle.copyWith(
-                    height: 1.0,
-                  ),
-                  textHeightBehavior: const TextHeightBehavior(
-                    applyHeightToFirstAscent: false,
-                    applyHeightToLastDescent: false,
-                  ),
+              child: Text(
+                widget.speaker!,
+                style: speakerStyle,
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
                 ),
               ),
             ),
