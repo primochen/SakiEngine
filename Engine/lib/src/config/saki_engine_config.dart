@@ -76,6 +76,7 @@ class SakiEngineConfig {
   double baseWindowYAlign = 0.5;
   double baseWindowBackgroundAlpha = 0.3;
   BlendMode baseWindowBackgroundBlendMode = BlendMode.multiply;
+  double baseWindowBackgroundScale = 1.0;
 
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
@@ -224,6 +225,18 @@ class SakiEngineConfig {
                 case 'background_blend':
                   baseWindowBackgroundBlendMode = _parseBlendMode(keyValue[1]);
                   print('[Config] baseWindowBackgroundBlendMode 设置为: $baseWindowBackgroundBlendMode');
+                  break;
+                case 'background_scale':
+                  baseWindowBackgroundScale = double.tryParse(keyValue[1]) ?? 1.0;
+                  print('[Config] baseWindowBackgroundScale 设置为: $baseWindowBackgroundScale');
+                  break;
+                case 'background_xalign':
+                  baseWindowXAlign = (double.tryParse(keyValue[1]) ?? 0.5).clamp(0.0, 1.0);
+                  print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
+                  break;
+                case 'background_yalign':
+                  baseWindowYAlign = (double.tryParse(keyValue[1]) ?? 0.5).clamp(0.0, 1.0);
+                  print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
                   break;
               }
             }

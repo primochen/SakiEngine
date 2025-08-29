@@ -146,9 +146,12 @@ class _ConfirmDialogState extends State<ConfirmDialog>
                                             (config.baseWindowXAlign - 0.5) * 2,
                                             (config.baseWindowYAlign - 0.5) * 2,
                                           ),
-                                          child: SmartAssetImage(
-                                            assetName: config.baseWindowBackground!,
-                                            fit: BoxFit.contain,
+                                          child: Transform.scale(
+                                            scale: config.baseWindowBackgroundScale,
+                                            child: SmartAssetImage(
+                                              assetName: config.baseWindowBackground!,
+                                              fit: BoxFit.contain,
+                                            ),
                                           ),
                                         ),
                                       ),
