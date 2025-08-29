@@ -64,6 +64,21 @@ abstract class GameModule {
     required SakiEngineConfig config,
     required double scale,
   });
+
+  /// 获取主菜单按钮布局配置
+  MenuButtonsLayoutConfig getMenuButtonsLayoutConfig() {
+    return const MenuButtonsLayoutConfig(
+      isVertical: false,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.end,
+      spacing: 20,
+      bottom: 0.05,
+      right: 0.01,
+    );
+  }
+
+  /// 是否显示底部横条
+  bool get showBottomBar => true;
 }
 
 /// 默认游戏模块实现 - 使用src/下的默认组件
@@ -151,4 +166,19 @@ class DefaultGameModule implements GameModule {
       scale: scale,
     );
   }
+
+  @override
+  MenuButtonsLayoutConfig getMenuButtonsLayoutConfig() {
+    return const MenuButtonsLayoutConfig(
+      isVertical: false,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.end,
+      spacing: 20,
+      bottom: 0.05,
+      right: 0.01,
+    );
+  }
+
+  @override
+  bool get showBottomBar => true;
 }

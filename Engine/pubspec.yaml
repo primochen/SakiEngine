@@ -110,6 +110,9 @@ flutter:
       fonts:
         - asset: assets/fonts/SourceHanSansCN-Bold.ttf
           weight: 700
+    - family: ChillJinshuSongPro_Soft
+      fonts:
+        - asset: assets/Assets/fonts/ChillJinshuSongPro_Soft.otf
   #   - family: Schyler
   #     fonts:
   #       - asset: fonts/Schyler-Regular.ttf

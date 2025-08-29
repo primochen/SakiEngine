@@ -1,5 +1,32 @@
 import 'package:flutter/material.dart';
 
+/// 按钮布局配置
+class MenuButtonsLayoutConfig {
+  final bool isVertical;
+  final CrossAxisAlignment crossAxisAlignment;
+  final MainAxisAlignment mainAxisAlignment;
+  final double spacing;
+  final EdgeInsetsGeometry? padding;
+  final Alignment? alignment;
+  final double? top;
+  final double? bottom;
+  final double? left;
+  final double? right;
+
+  const MenuButtonsLayoutConfig({
+    this.isVertical = false,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+    this.mainAxisAlignment = MainAxisAlignment.end,
+    this.spacing = 20,
+    this.padding,
+    this.alignment,
+    this.top,
+    this.bottom,
+    this.left,
+    this.right,
+  });
+}
+
 /// 可配置的菜单按钮配置类
 class MenuButtonConfig {
   final String text;
@@ -103,7 +130,7 @@ class _ConfigurableMenuButtonState extends State<ConfigurableMenuButton>
           decoration: BoxDecoration(
             color: _isHovered && widget.config.hoverColor != null
                 ? widget.config.hoverColor
-                : widget.config.backgroundColor ?? Colors.grey.withOpacity(0.8),
+                : widget.config.backgroundColor ?? Colors.grey.withValues(alpha: 0.8),
             border: widget.config.border,
             borderRadius: BorderRadius.circular(
               widget.config.borderRadius ?? 0,

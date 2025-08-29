@@ -145,6 +145,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     final screenSize = MediaQuery.of(context).size;
     final menuScale = context.scaleFor(ComponentType.menu);
     final textScale = context.scaleFor(ComponentType.text);
+    final gameModule = widget.gameModule ?? DefaultGameModule();
 
     return Scaffold(
       body: Stack(
@@ -214,15 +215,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ),
           ),
           
-          Positioned(
-            bottom: screenSize.height * 0.04,
-            right: screenSize.width * 0.01,
-            child: Container(
-              width: screenSize.width * 0.4,
-              height: screenSize.height * 0.02,
-              color: config.themeColors.primary,
+          if (gameModule.showBottomBar)
+            Positioned(
+              bottom: screenSize.height * 0.04,
+              right: screenSize.width * 0.01,
+              child: Container(
+                width: screenSize.width * 0.4,
+                height: screenSize.height * 0.02,
+                color: config.themeColors.primary,
+              ),
             ),
-          ),
           
           Positioned(
             bottom: screenSize.height * 0.05,
@@ -230,11 +232,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             child: _buildDebugButton(context, menuScale, config),
           ),
           
-          Positioned(
-            bottom: screenSize.height * 0.05,
-            right: screenSize.width * 0.01,
-            child: _buildMenuButtons(context, menuScale, config),
-          ),
+          _buildMenuButtons(context, menuScale, config),
 
           if (_showLoadOverlay)
             SaveLoadScreen(
@@ -271,21 +269,56 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       config: config,
       scale: scale,
     );
+    
+    final layoutConfig = gameModule.getMenuButtonsLayoutConfig();
+    final screenSize = MediaQuery.of(context).size;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: buttonConfigs.map((buttonConfig) {
-        final index = buttonConfigs.indexOf(buttonConfig);
-        return Row(
-          children: [
-            if (index > 0) SizedBox(width: 20 * scale),
-            ConfigurableMenuButton(
-              config: buttonConfig,
-              scale: scale,
-            ),
-          ],
-        );
-      }).toList(),
+    Widget buttonsWidget;
+    
+    if (layoutConfig.isVertical) {
+      buttonsWidget = Column(
+        crossAxisAlignment: layoutConfig.crossAxisAlignment,
+        mainAxisAlignment: layoutConfig.mainAxisAlignment,
+        mainAxisSize: MainAxisSize.min,
+        children: buttonConfigs.map((buttonConfig) {
+          final index = buttonConfigs.indexOf(buttonConfig);
+          return Column(
+            children: [
+              if (index > 0) SizedBox(height: layoutConfig.spacing),
+              ConfigurableMenuButton(
+                config: buttonConfig,
+                scale: scale,
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    } else {
+      buttonsWidget = Row(
+        mainAxisAlignment: layoutConfig.mainAxisAlignment,
+        crossAxisAlignment: layoutConfig.crossAxisAlignment,
+        mainAxisSize: MainAxisSize.min,
+        children: buttonConfigs.map((buttonConfig) {
+          final index = buttonConfigs.indexOf(buttonConfig);
+          return Row(
+            children: [
+              if (index > 0) SizedBox(width: layoutConfig.spacing),
+              ConfigurableMenuButton(
+                config: buttonConfig,
+                scale: scale,
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    }
+
+    return Positioned(
+      top: layoutConfig.top != null ? screenSize.height * layoutConfig.top! : null,
+      bottom: layoutConfig.bottom != null ? screenSize.height * layoutConfig.bottom! : null,
+      left: layoutConfig.left != null ? screenSize.width * layoutConfig.left! : null,
+      right: layoutConfig.right != null ? screenSize.width * layoutConfig.right! : null,
+      child: buttonsWidget,
     );
   }
 
