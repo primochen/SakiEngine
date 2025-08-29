@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
+import 'package:sakiengine/src/core/project_module_loader.dart';
+import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
@@ -47,6 +49,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
+  GameModule? _currentModule;
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
@@ -66,6 +69,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     _dialogueProgressionManager = DialogueProgressionManager(
       gameManager: _gameManager,
     );
+
+    // 初始化当前模块
+    _initializeModule();
 
     // 注册系统级热键 Shift+R
     _setupHotkey();
@@ -108,6 +114,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         ),
         (Route<dynamic> route) => false,
       );
+    }
+  }
+
+  Future<void> _initializeModule() async {
+    final module = await moduleLoader.getCurrentModule();
+    if (mounted) {
+      setState(() {
+        _currentModule = module;
+      });
     }
   }
 
@@ -335,7 +350,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         _buildBackground(gameState.background!),
                       ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
                       if (gameState.dialogue != null && !gameState.isNvlMode)
-                        DialogueBox(
+                        _currentModule?.createDialogueBox(
+                          speaker: gameState.speaker,
+                          dialogue: gameState.dialogue!,
+                          progressionManager: _dialogueProgressionManager,
+                        ) ?? DialogueBox(
                           speaker: gameState.speaker,
                           dialogue: gameState.dialogue!,
                           progressionManager: _dialogueProgressionManager,

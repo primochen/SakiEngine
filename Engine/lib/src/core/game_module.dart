@@ -6,8 +6,10 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/src/widgets/common/default_menu_buttons.dart';
+import 'package:sakiengine/src/widgets/dialogue_box.dart';
 
 /// 游戏模块接口 - 定义项目可以覆盖的所有组件
 abstract class GameModule {
@@ -32,6 +34,13 @@ abstract class GameModule {
     required SaveLoadMode mode,
     GameManager? gameManager,
     VoidCallback? onClose,
+  });
+
+  /// 对话框组件工厂
+  Widget createDialogueBox({
+    String? speaker,
+    required String dialogue,
+    DialogueProgressionManager? progressionManager,
   });
 
   /// 自定义配置（可选）
@@ -122,6 +131,19 @@ class DefaultGameModule implements GameModule {
       mode: mode,
       gameManager: gameManager,
       onClose: onClose ?? () {},
+    );
+  }
+
+  @override
+  Widget createDialogueBox({
+    String? speaker,
+    required String dialogue,
+    DialogueProgressionManager? progressionManager,
+  }) {
+    return DialogueBox(
+      speaker: speaker,
+      dialogue: dialogue,
+      progressionManager: progressionManager,
     );
   }
 

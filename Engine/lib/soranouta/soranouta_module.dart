@@ -4,9 +4,11 @@ import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
+import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
 
 /// SoraNoUta 项目的自定义模块
@@ -74,6 +76,19 @@ class SoranoutaModule extends DefaultGameModule {
   @override
   MenuButtonsLayoutConfig getMenuButtonsLayoutConfig() {
     return SoranoutaMenuButtons.getLayoutConfig();
+  }
+
+  @override
+  Widget createDialogueBox({
+    String? speaker,
+    required String dialogue,
+    DialogueProgressionManager? progressionManager,
+  }) {
+    return SoranoUtaDialogueBox(
+      speaker: speaker,
+      dialogue: dialogue,
+      progressionManager: progressionManager,
+    );
   }
 
   @override

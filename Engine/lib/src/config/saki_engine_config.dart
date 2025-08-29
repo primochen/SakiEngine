@@ -83,6 +83,10 @@ class SakiEngineConfig {
   double dialogueBackgroundXAlign = 1.0;
   double dialogueBackgroundYAlign = 0.5;
 
+  // SoraNoUta 说话人位置配置
+  double soranoutaSpeakerXPos = 0.2;
+  double soranoutaSpeakerYPos = 0.0;
+
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
   TextStyle choiceTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
@@ -254,6 +258,24 @@ class SakiEngineConfig {
                 case 'dialogue_background_yalign':
                   dialogueBackgroundYAlign = double.tryParse(keyValue[1]) ?? 0.5;
                   print('[Config] dialogueBackgroundYAlign 设置为: $dialogueBackgroundYAlign');
+                  break;
+              }
+            }
+          }
+        }
+        if (trimmedLine.startsWith('soranouta_dialogbox:')) {
+          final params = trimmedLine.split(':')[1].trim().split(' ');
+          for (final param in params) {
+            final keyValue = param.split('=');
+            if (keyValue.length == 2) {
+              switch (keyValue[0]) {
+                case 'xpos':
+                  soranoutaSpeakerXPos = double.tryParse(keyValue[1]) ?? 0.2;
+                  print('[Config] soranoutaSpeakerXPos 设置为: $soranoutaSpeakerXPos');
+                  break;
+                case 'ypos':
+                  soranoutaSpeakerYPos = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] soranoutaSpeakerYPos 设置为: $soranoutaSpeakerYPos');
                   break;
               }
             }
