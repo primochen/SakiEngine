@@ -135,7 +135,9 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 
           final savedSlots = snapshot.data ?? [];
           
-          return GridView.builder(
+          return ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: GridView.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 1 : 
                               MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2 : 3,
@@ -168,6 +170,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
                 },
               );
             },
+          ),
           );
         },
       ),
