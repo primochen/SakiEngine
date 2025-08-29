@@ -49,6 +49,7 @@ class SakiEngineConfig {
 
   // 主菜单背景配置
   String mainMenuBackground = 'sky';
+  String mainMenuTitle = '';
   double mainMenuTitleSize = 72.0;
   
   // 主菜单标题位置配置
@@ -100,16 +101,23 @@ class SakiEngineConfig {
           }
         }
         if (trimmedLine.startsWith('main_menu:')) {
+          print('Debug: parsing main_menu config line: $trimmedLine');
           final menuParams = trimmedLine.split(':')[1].trim().split(' ');
           for (final param in menuParams) {
             final keyValue = param.split('=');
             if (keyValue.length == 2) {
+              print('Debug: parsing param ${keyValue[0]} = ${keyValue[1]}');
               switch (keyValue[0]) {
+                case 'title':
+                  mainMenuTitle = keyValue[1];
+                  print('Debug: set mainMenuTitle to: $mainMenuTitle');
+                  break;
                 case 'background':
                   mainMenuBackground = keyValue[1];
                   break;
                 case 'size':
                   mainMenuTitleSize = double.tryParse(keyValue[1]) ?? 72.0;
+                  print('Debug: set mainMenuTitleSize to: $mainMenuTitleSize');
                   break;
                 case 'top':
                   mainMenuTitleTop = double.tryParse(keyValue[1]) ?? 0.1;
@@ -119,9 +127,11 @@ class SakiEngineConfig {
                   break;
                 case 'bottom':
                   mainMenuTitleBottom = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('Debug: set mainMenuTitleBottom to: $mainMenuTitleBottom');
                   break;
                 case 'left':
                   mainMenuTitleLeft = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('Debug: set mainMenuTitleLeft to: $mainMenuTitleLeft');
                   break;
               }
             }

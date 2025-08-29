@@ -7,6 +7,7 @@ import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
+import 'package:sakiengine/src/widgets/smart_image.dart';
 
 /// SoraNoUta 项目的自定义主菜单屏幕
 /// 特色：使用圆角矩形按钮验证模块化系统
@@ -87,28 +88,6 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                   ),
                 );
               },
-            ),
-            
-            // 标题
-            Positioned(
-              top: screenSize.height * config.mainMenuTitleTop,
-              right: screenSize.width * config.mainMenuTitleRight,
-              child: Text(
-                _appTitle,
-                style: TextStyle(
-                  fontFamily: 'SourceHanSansCN',
-                  fontSize: config.mainMenuTitleSize * textScale,
-                  color: Colors.white,
-                  letterSpacing: 4,
-                  shadows: [
-                    Shadow(
-                      blurRadius: 10.0,
-                      color: Colors.indigo.shade800,
-                      offset: const Offset(2, 2),
-                    ),
-                  ],
-                ),
-              ),
             ),
             
             // SoraNoUta 特色：圆角矩形按钮菜单

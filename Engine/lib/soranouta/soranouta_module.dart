@@ -16,8 +16,8 @@ class SoranoutaModule extends DefaultGameModule {
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
   }) {
-    // 🎯 使用 SoraNoUta 特色的圆角矩形按钮主菜单！
-    return SoraNoutaMainMenuScreen(
+    // 使用系统默认主菜单，支持 title 配置
+    return super.createMainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,

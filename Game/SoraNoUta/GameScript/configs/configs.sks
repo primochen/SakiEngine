@@ -7,5 +7,5 @@ base_choice: size=24
 base_review_title: size=45
 base_quick_menu: size=25
 base_window: border=0
-main_menu: background=sky size=200 top=0.3 right=0.05
+main_menu: background=main title=title size=500 bottom=0.0 left=0.05
 nvl: left=200 right=40 top=100 bottom=60

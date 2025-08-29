@@ -160,24 +160,54 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
           
           Positioned(
-            top: screenSize.height * config.mainMenuTitleTop,
-            right: screenSize.width * config.mainMenuTitleRight,
-            child: Text(
-              _appTitle,
-              style: TextStyle(
-                fontFamily: 'SourceHanSansCN',
-                fontSize: config.mainMenuTitleSize * textScale,
-                color: config.themeColors.background,
-                letterSpacing: 4,
-                shadows: [
-                  Shadow(
-                    blurRadius: 10.0,
-                    color: config.themeColors.primaryDark,
-                    offset: const Offset(2, 2),
+            top: config.mainMenuTitleBottom > 0 ? null : screenSize.height * config.mainMenuTitleTop,
+            bottom: config.mainMenuTitleBottom > 0 ? screenSize.height * config.mainMenuTitleBottom : null,
+            left: config.mainMenuTitleLeft > 0 ? screenSize.width * config.mainMenuTitleLeft : null,
+            right: config.mainMenuTitleLeft > 0 ? null : screenSize.width * config.mainMenuTitleRight,
+            child: config.mainMenuTitle.isNotEmpty
+                ? FutureBuilder<String?>(
+                    future: AssetManager().findAsset(config.mainMenuTitle),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData && snapshot.data != null) {
+                        return SmartImage.asset(
+                          snapshot.data!,
+                          height: config.mainMenuTitleSize * textScale,
+                        );
+                      }
+                      return Text(
+                        _appTitle,
+                        style: TextStyle(
+                          fontFamily: 'SourceHanSansCN',
+                          fontSize: config.mainMenuTitleSize * textScale,
+                          color: config.themeColors.background,
+                          letterSpacing: 4,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 10.0,
+                              color: config.themeColors.primaryDark,
+                              offset: const Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : Text(
+                    _appTitle,
+                    style: TextStyle(
+                      fontFamily: 'SourceHanSansCN',
+                      fontSize: config.mainMenuTitleSize * textScale,
+                      color: config.themeColors.background,
+                      letterSpacing: 4,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 10.0,
+                          color: config.themeColors.primaryDark,
+                          offset: const Offset(2, 2),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
           ),
           
           Positioned(

@@ -2,17 +2,6 @@
 label start
 // 背景设置为白天天空
 scene sky
-// 测试十六进制颜色背景
-scene #FF0000
-"测试红色背景"
-scene #00FF00
-"测试绿色背景"
-scene #0000FF
-"测试蓝色背景"
-scene #FF69B4
-"测试粉色背景"
-// 恢复原来的背景
-scene sky
 nvlm
 // 旁白文本（移除了xp前缀）
 "风吹动着。"
