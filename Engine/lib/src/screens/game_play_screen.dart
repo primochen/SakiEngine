@@ -24,6 +24,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -340,20 +341,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                   child: Stack(
                     children: [
                       if (gameState.background != null)
-                        FutureBuilder<String?>(
-                          future: AssetManager().findAsset('backgrounds/${gameState.background!.replaceAll(' ', '-')}'),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData && snapshot.data != null) {
-                              return Image.asset(
-                                snapshot.data!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              );
-                            }
-                            return Container(color: Colors.black);
-                          },
-                        ),
+                        _buildBackground(gameState.background!),
                       ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
                       if (gameState.dialogue != null && !gameState.isNvlMode)
                         DialogueBox(
@@ -427,6 +415,30 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
         ),
         ),
       ),
+    );
+  }
+
+  /// 构建背景Widget - 支持图片背景和十六进制颜色背景
+  Widget _buildBackground(String background) {
+    // 检查是否为十六进制颜色格式
+    if (ColorBackgroundRenderer.isValidHexColor(background)) {
+      return ColorBackgroundRenderer.createColorBackgroundWidget(background);
+    }
+    
+    // 处理图片背景
+    return FutureBuilder<String?>(
+      future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return Image.asset(
+            snapshot.data!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          );
+        }
+        return Container(color: Colors.black);
+      },
     );
   }
 

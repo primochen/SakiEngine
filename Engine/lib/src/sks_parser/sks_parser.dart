@@ -1,4 +1,5 @@
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
+import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 class SksParser {
   ScriptNode parse(String content) {
@@ -47,12 +48,17 @@ class SksParser {
         case 'endmenu':
           break;
         case 'scene':
-          if (parts.length >= 4 && parts[parts.length - 2] == 'timer') {
+          final backgroundParam = parts.sublist(1).join(' ');
+          
+          // 检查是否为十六进制颜色格式
+          if (ColorBackgroundRenderer.isValidHexColor(backgroundParam.trim())) {
+            nodes.add(BackgroundNode(backgroundParam.trim()));
+          } else if (parts.length >= 4 && parts[parts.length - 2] == 'timer') {
             final backgroundName = parts.sublist(1, parts.length - 2).join(' ');
             final timerValue = double.tryParse(parts.last);
             nodes.add(BackgroundNode(backgroundName, timer: timerValue));
           } else {
-            nodes.add(BackgroundNode(parts.sublist(1).join(' ')));
+            nodes.add(BackgroundNode(backgroundParam));
           }
           break;
         case 'show':
