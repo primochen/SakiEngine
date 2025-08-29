@@ -5,6 +5,7 @@ import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
+import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 /// 游戏渲染器 - 统一的背景和角色绘制逻辑
 /// 同时供游戏界面和截图生成器使用，确保完全一致的渲染效果
@@ -22,6 +23,12 @@ class GameRenderer {
         Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
         Paint()..color = Colors.black,
       );
+      return;
+    }
+
+    // 检查是否为十六进制颜色格式
+    if (ColorBackgroundRenderer.isValidHexColor(backgroundName)) {
+      ColorBackgroundRenderer.drawColorBackground(canvas, backgroundName, canvasSize);
       return;
     }
 

@@ -4,6 +4,11 @@ import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
+import 'package:sakiengine/src/screens/main_menu_screen.dart';
+import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
+import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
 
 /// SoraNoUta 项目的自定义模块
@@ -16,28 +21,11 @@ class SoranoutaModule extends DefaultGameModule {
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
   }) {
-    // 🎯 使用 SoraNoUta 特色的圆角矩形按钮主菜单！
+    // 使用专门的 SoraNoUta 主菜单，继承标题但使用专用按钮
     return SoraNoutaMainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
-    );
-  }
-
-  @override
-  ThemeData? createTheme() {
-    // SoraNoUta 项目的自定义主题
-    return ThemeData(
-      primarySwatch: Colors.indigo,
-      fontFamily: 'SourceHanSansCN-Bold',
-      // 可以在这里定义更多自定义主题属性
-      colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.indigo).copyWith(
-        secondary: Colors.purpleAccent,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.indigo,
-        elevation: 0,
-      ),
     );
   }
 
@@ -54,23 +42,52 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   Future<String> getAppTitle() async {
-    // SoraNoUta 项目的自定义应用标题
-    try {
-      final defaultTitle = await super.getAppTitle();
-      return '$defaultTitle - SoraNoUta';
-    } catch (e) {
-      return 'SoraNoUta - SakiEngine';
-    }
+    return 'SoraNoUta';
   }
 
   @override
   Future<void> initialize() async {
-    if (kDebugMode) {
-      print('[SoraNoutaModule] 🎯 SoraNoUta 项目模块初始化完成 - 使用圆角矩形按钮！');
-    }
-    // 在这里可以进行项目特定的初始化
-    // 比如加载特殊的资源、设置特殊的配置等
   }
+
+  @override
+  List<MenuButtonConfig> createMainMenuButtonConfigs({
+    required VoidCallback onNewGame,
+    required VoidCallback onLoadGame,
+    required VoidCallback onSettings,
+    required VoidCallback onExit,
+    required SakiEngineConfig config,
+    required double scale,
+  }) {
+    return SoranoutaMenuButtons.createConfigs(
+      onNewGame: onNewGame,
+      onLoadGame: onLoadGame,
+      onSettings: onSettings,
+      onExit: onExit,
+      config: config,
+      scale: scale,
+    );
+  }
+
+  @override
+  MenuButtonsLayoutConfig getMenuButtonsLayoutConfig() {
+    return SoranoutaMenuButtons.getLayoutConfig();
+  }
+
+  @override
+  Widget createDialogueBox({
+    String? speaker,
+    required String dialogue,
+    DialogueProgressionManager? progressionManager,
+  }) {
+    return SoranoUtaDialogueBox(
+      speaker: speaker,
+      dialogue: dialogue,
+      progressionManager: progressionManager,
+    );
+  }
+
+  @override
+  bool get showBottomBar => false;
 }
 
 // 自动注册这个模块

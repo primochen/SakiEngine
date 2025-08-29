@@ -6,6 +6,10 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
+import 'package:sakiengine/src/widgets/common/default_menu_buttons.dart';
+import 'package:sakiengine/src/widgets/dialogue_box.dart';
 
 /// 游戏模块接口 - 定义项目可以覆盖的所有组件
 abstract class GameModule {
@@ -32,6 +36,13 @@ abstract class GameModule {
     VoidCallback? onClose,
   });
 
+  /// 对话框组件工厂
+  Widget createDialogueBox({
+    String? speaker,
+    required String dialogue,
+    DialogueProgressionManager? progressionManager,
+  });
+
   /// 自定义配置（可选）
   SakiEngineConfig? createCustomConfig() => null;
 
@@ -52,6 +63,31 @@ abstract class GameModule {
 
   /// 模块初始化（可选）
   Future<void> initialize() async {}
+
+  /// 创建主菜单按钮配置列表
+  List<MenuButtonConfig> createMainMenuButtonConfigs({
+    required VoidCallback onNewGame,
+    required VoidCallback onLoadGame,
+    required VoidCallback onSettings,
+    required VoidCallback onExit,
+    required SakiEngineConfig config,
+    required double scale,
+  });
+
+  /// 获取主菜单按钮布局配置
+  MenuButtonsLayoutConfig getMenuButtonsLayoutConfig() {
+    return const MenuButtonsLayoutConfig(
+      isVertical: false,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.end,
+      spacing: 20,
+      bottom: 0.05,
+      right: 0.01,
+    );
+  }
+
+  /// 是否显示底部横条
+  bool get showBottomBar => true;
 }
 
 /// 默认游戏模块实现 - 使用src/下的默认组件
@@ -66,6 +102,7 @@ class DefaultGameModule implements GameModule {
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
+      //gameModule: this,
     );
   }
 
@@ -98,6 +135,19 @@ class DefaultGameModule implements GameModule {
   }
 
   @override
+  Widget createDialogueBox({
+    String? speaker,
+    required String dialogue,
+    DialogueProgressionManager? progressionManager,
+  }) {
+    return DialogueBox(
+      speaker: speaker,
+      dialogue: dialogue,
+      progressionManager: progressionManager,
+    );
+  }
+
+  @override
   SakiEngineConfig? createCustomConfig() => null;
 
   @override
@@ -119,4 +169,38 @@ class DefaultGameModule implements GameModule {
   Future<void> initialize() async {
     // 默认模块无需特殊初始化
   }
+
+  @override
+  List<MenuButtonConfig> createMainMenuButtonConfigs({
+    required VoidCallback onNewGame,
+    required VoidCallback onLoadGame,
+    required VoidCallback onSettings,
+    required VoidCallback onExit,
+    required SakiEngineConfig config,
+    required double scale,
+  }) {
+    return DefaultMenuButtons.createDefaultConfigs(
+      onNewGame: onNewGame,
+      onLoadGame: onLoadGame,
+      onSettings: onSettings,
+      onExit: onExit,
+      config: config,
+      scale: scale,
+    );
+  }
+
+  @override
+  MenuButtonsLayoutConfig getMenuButtonsLayoutConfig() {
+    return const MenuButtonsLayoutConfig(
+      isVertical: false,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.end,
+      spacing: 20,
+      bottom: 0.05,
+      right: 0.01,
+    );
+  }
+
+  @override
+  bool get showBottomBar => true;
 }

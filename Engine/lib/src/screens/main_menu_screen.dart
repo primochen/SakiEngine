@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
@@ -9,9 +8,11 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
-import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
-import 'package:sakiengine/src/widgets/smart_image.dart';
+import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
+import 'package:sakiengine/src/core/game_module.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -78,12 +79,14 @@ class MainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
+  final GameModule? gameModule;
 
   const MainMenuScreen({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
     this.onLoadGameWithSave,
+    this.gameModule,
   });
 
   @override
@@ -120,19 +123,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   Future<void> _showExitConfirmation(BuildContext context) async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return ConfirmDialog(
-          title: '退出游戏',
-          content: '确定要退出游戏吗？',
-          onConfirm: () async {
-            Navigator.of(context).pop(); // 关闭对话框
-            await windowManager.destroy(); // 真正退出程序
-          },
-        );
-      },
-    );
+    await ExitConfirmationDialog.showExitConfirmationAndDestroy(context);
   }
 
   @override
@@ -141,54 +132,71 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     final screenSize = MediaQuery.of(context).size;
     final menuScale = context.scaleFor(ComponentType.menu);
     final textScale = context.scaleFor(ComponentType.text);
+    final gameModule = widget.gameModule ?? DefaultGameModule();
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          FutureBuilder<String?>(
-            future: AssetManager().findAsset('backgrounds/${config.mainMenuBackground}'),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data != null) {
-                return SmartImage.asset(
-                  snapshot.data!,
-                  fit: BoxFit.cover,
-                );
-              }
-              return Container(color: Colors.black);
-            },
+          SmartAssetImage(
+            assetName: 'backgrounds/${config.mainMenuBackground}',
+            fit: BoxFit.cover,
           ),
           
           Positioned(
-            top: screenSize.height * config.mainMenuTitleTop,
-            right: screenSize.width * config.mainMenuTitleRight,
-            child: Text(
-              _appTitle,
-              style: TextStyle(
-                fontFamily: 'SourceHanSansCN',
-                fontSize: config.mainMenuTitleSize * textScale,
-                color: config.themeColors.background,
-                letterSpacing: 4,
-                shadows: [
-                  Shadow(
-                    blurRadius: 10.0,
-                    color: config.themeColors.primaryDark,
-                    offset: const Offset(2, 2),
+            top: config.hasBottom ? null : screenSize.height * config.mainMenuTitleTop,
+            bottom: config.hasBottom ? screenSize.height * config.mainMenuTitleBottom : null,
+            left: config.hasLeft ? screenSize.width * config.mainMenuTitleLeft : null,
+            right: config.hasLeft ? null : screenSize.width * config.mainMenuTitleRight,
+            child: config.mainMenuTitle.isNotEmpty
+                ? SmartAssetImage(
+                    assetName: config.mainMenuTitle,
+                    height: config.mainMenuTitleSize * textScale,
+                    errorWidget: Text(
+                      _appTitle,
+                      style: TextStyle(
+                        fontFamily: 'SourceHanSansCN',
+                        fontSize: config.mainMenuTitleSize * textScale,
+                        color: config.themeColors.background,
+                        letterSpacing: 4,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 10.0,
+                            color: config.themeColors.primaryDark,
+                            offset: const Offset(2, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Text(
+                    _appTitle,
+                    style: TextStyle(
+                      fontFamily: 'SourceHanSansCN',
+                      fontSize: config.mainMenuTitleSize * textScale,
+                      color: config.themeColors.background,
+                      letterSpacing: 4,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 10.0,
+                          color: config.themeColors.primaryDark,
+                          offset: const Offset(2, 2),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+          ),
+          
+          if (gameModule.showBottomBar)
+            Positioned(
+              bottom: screenSize.height * 0.04,
+              right: screenSize.width * 0.01,
+              child: Container(
+                width: screenSize.width * 0.4,
+                height: screenSize.height * 0.02,
+                color: config.themeColors.primary,
               ),
             ),
-          ),
-          
-          Positioned(
-            bottom: screenSize.height * 0.04,
-            right: screenSize.width * 0.01,
-            child: Container(
-              width: screenSize.width * 0.4,
-              height: screenSize.height * 0.02,
-              color: config.themeColors.primary,
-            ),
-          ),
           
           Positioned(
             bottom: screenSize.height * 0.05,
@@ -196,46 +204,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             child: _buildDebugButton(context, menuScale, config),
           ),
           
-          Positioned(
-            bottom: screenSize.height * 0.05,
-            right: screenSize.width * 0.01,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _buildMenuButton(
-                  context, 
-                  '新游戏', 
-                  _handleNewGame,
-                  menuScale,
-                  config,
-                ),
-                SizedBox(width: 20 * menuScale),
-                _buildMenuButton(
-                  context, 
-                  '继续游戏', 
-                  () => setState(() => _showLoadOverlay = true), 
-                  menuScale,
-                  config,
-                ),
-                SizedBox(width: 20 * menuScale),
-                _buildMenuButton(
-                  context, 
-                  '设置', 
-                  () => setState(() => _showSettings = true), 
-                  menuScale,
-                  config,
-                ),
-                SizedBox(width: 20 * menuScale),
-                _buildMenuButton(
-                  context, 
-                  '退出游戏', 
-                  () => _showExitConfirmation(context), 
-                  menuScale,
-                  config,
-                ),
-              ],
-            ),
-          ),
+          _buildMenuButtons(context, menuScale, config),
 
           if (_showLoadOverlay)
             SaveLoadScreen(
@@ -255,6 +224,73 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMenuButtons(
+    BuildContext context,
+    double scale,
+    SakiEngineConfig config,
+  ) {
+    final gameModule = widget.gameModule ?? DefaultGameModule();
+    final buttonConfigs = gameModule.createMainMenuButtonConfigs(
+      onNewGame: _handleNewGame,
+      onLoadGame: () => setState(() => _showLoadOverlay = true),
+      onSettings: () => setState(() => _showSettings = true),
+      onExit: () => _showExitConfirmation(context),
+      config: config,
+      scale: scale,
+    );
+    
+    final layoutConfig = gameModule.getMenuButtonsLayoutConfig();
+    final screenSize = MediaQuery.of(context).size;
+
+    Widget buttonsWidget;
+    
+    if (layoutConfig.isVertical) {
+      buttonsWidget = Column(
+        crossAxisAlignment: layoutConfig.crossAxisAlignment,
+        mainAxisAlignment: layoutConfig.mainAxisAlignment,
+        mainAxisSize: MainAxisSize.min,
+        children: buttonConfigs.map((buttonConfig) {
+          final index = buttonConfigs.indexOf(buttonConfig);
+          return Column(
+            children: [
+              if (index > 0) SizedBox(height: layoutConfig.spacing),
+              ConfigurableMenuButton(
+                config: buttonConfig,
+                scale: scale,
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    } else {
+      buttonsWidget = Row(
+        mainAxisAlignment: layoutConfig.mainAxisAlignment,
+        crossAxisAlignment: layoutConfig.crossAxisAlignment,
+        mainAxisSize: MainAxisSize.min,
+        children: buttonConfigs.map((buttonConfig) {
+          final index = buttonConfigs.indexOf(buttonConfig);
+          return Row(
+            children: [
+              if (index > 0) SizedBox(width: layoutConfig.spacing),
+              ConfigurableMenuButton(
+                config: buttonConfig,
+                scale: scale,
+              ),
+            ],
+          );
+        }).toList(),
+      );
+    }
+
+    return Positioned(
+      top: layoutConfig.top != null ? screenSize.height * layoutConfig.top! : null,
+      bottom: layoutConfig.bottom != null ? screenSize.height * layoutConfig.bottom! : null,
+      left: layoutConfig.left != null ? screenSize.width * layoutConfig.left! : null,
+      right: layoutConfig.right != null ? screenSize.width * layoutConfig.right! : null,
+      child: buttonsWidget,
     );
   }
 

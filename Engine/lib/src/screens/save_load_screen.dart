@@ -121,21 +121,22 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   }
 
   Widget _buildGridContent(double uiScale, double textScale, SakiEngineConfig config) {
-    return Container(
-      padding: EdgeInsets.all(32 * uiScale),
-      child: FutureBuilder<List<SaveSlot>>(
-        future: _saveSlotsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('读取存档失败: ${snapshot.error}', style: TextStyle(color: config.themeColors.primary, fontSize: 16 * textScale)));
-          }
+    return FutureBuilder<List<SaveSlot>>(
+      future: _saveSlotsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('读取存档失败: ${snapshot.error}', style: TextStyle(color: config.themeColors.primary, fontSize: 16 * textScale)));
+        }
 
-          final savedSlots = snapshot.data ?? [];
-          
-          return GridView.builder(
+        final savedSlots = snapshot.data ?? [];
+        
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: GridView.builder(
+            padding: EdgeInsets.all(32 * uiScale),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 1 : 
                               MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2 : 3,
@@ -168,9 +169,9 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
                 },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 

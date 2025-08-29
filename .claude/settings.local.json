@@ -3,7 +3,9 @@
     "allow": [
       "Bash(flutter analyze:*)",
       "WebSearch",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(flutter pub get)",
+      "Bash(dart analyze:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,6 @@
 //label// SoraNoUta Chapter 0 Part 1
 label cp0_001
+scene #000000
 nvlm
 nan"该起床去上学了。"
 endnvlm
@@ -36,4 +37,5 @@ scene home 9
 l "那我出门了。"
 lm "路上注意安全啊。"
 l "好。"
+"实际上并不好。"
 return

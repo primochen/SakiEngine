@@ -4,6 +4,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
@@ -33,6 +34,9 @@ class _NvlScreenState extends State<NvlScreen>
   
   // 当前打字机控制器（只有最后一句对话使用）
   TypewriterAnimationManager? _currentTypewriterController;
+  
+  // 跟踪最后一句对话是否完成（用于显示箭头）
+  bool _isLastDialogueComplete = false;
 
   @override
   void initState() {
@@ -67,8 +71,10 @@ class _NvlScreenState extends State<NvlScreen>
   void didUpdateWidget(NvlScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    // 当有新对话添加时，自动滚动到底部
+    // 当有新对话添加时，重置状态
     if (widget.nvlDialogues.length > oldWidget.nvlDialogues.length) {
+      _isLastDialogueComplete = false; // 重置箭头状态
+      
       // 重新播放淡入动画（可选，显示新对话的效果）
       _fadeController.forward();
       
@@ -90,6 +96,7 @@ class _NvlScreenState extends State<NvlScreen>
     _scrollController.dispose();
     // 从推进管理器注销打字机
     widget.progressionManager?.registerTypewriter(null);
+    _currentTypewriterController?.removeListener(_onTypewriterStateChanged);
     _currentTypewriterController?.dispose();
     // 清理所有文本淡入动画控制器
     for (final controller in _textFadeControllers.values) {
@@ -108,6 +115,7 @@ class _NvlScreenState extends State<NvlScreen>
     // 先清理旧的控制器
     if (_currentTypewriterController != null) {
       widget.progressionManager?.registerTypewriter(null);
+      _currentTypewriterController!.removeListener(_onTypewriterStateChanged);
       // 不dispose，因为可能还在使用中，让系统自动GC
     }
     
@@ -115,10 +123,22 @@ class _NvlScreenState extends State<NvlScreen>
     _currentTypewriterController = TypewriterAnimationManager();
     _currentTypewriterController!.initialize(this);
     
+    // 添加监听器
+    _currentTypewriterController!.addListener(_onTypewriterStateChanged);
+    
     // 注册到推进管理器
     widget.progressionManager?.registerTypewriter(_currentTypewriterController);
     
     return _currentTypewriterController!;
+  }
+  
+  void _onTypewriterStateChanged() {
+    if (mounted) {
+      final isCompleted = _currentTypewriterController?.isCompleted ?? false;
+      setState(() {
+        _isLastDialogueComplete = isCompleted;
+      });
+    }
   }
 
   @override
@@ -197,27 +217,47 @@ class _NvlScreenState extends State<NvlScreen>
       padding: EdgeInsets.only(bottom: 16 * uiScale),
       child: FadeTransition(
         opacity: _textFadeAnimations[index]!,
-        child: isLastDialogue 
-          ? TypewriterText(
-              text: displayText,
-              style: config.dialogueTextStyle.copyWith(
-                fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                color: Colors.white,
-                height: 1.6,
-                letterSpacing: 0.3,
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center, // 垂直居中对齐
+          children: [
+            isLastDialogue 
+              ? TypewriterText(
+                  text: displayText,
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                    color: Colors.white,
+                    height: 1.6,
+                    letterSpacing: 0.3,
+                  ),
+                  autoStart: true,
+                  controller: _getOrCreateTypewriterController(index),
+                  onComplete: () {
+                    setState(() {
+                      _isLastDialogueComplete = true;
+                    });
+                  },
+                )
+              : Text(
+                  displayText,
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                    color: Colors.white,
+                    height: 1.6,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+            // 箭头紧跟在文本后面
+            if (isLastDialogue && _isLastDialogueComplete)
+              Padding(
+                padding: EdgeInsets.only(left: 4 * uiScale,top:5*uiScale),
+                child: DialogueNextArrow(
+                  visible: true,
+                  fontSize: (config.dialogueTextStyle.fontSize! * textScale) * 0.7, // 缩小到70%
+                  color: Colors.white,
+                ),
               ),
-              autoStart: true,
-              controller: _getOrCreateTypewriterController(index),
-            )
-          : Text(
-              displayText,
-              style: config.dialogueTextStyle.copyWith(
-                fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                color: Colors.white,
-                height: 1.6,
-                letterSpacing: 0.3,
-              ),
-            ),
+          ],
+        ),
       ),
     );
   }

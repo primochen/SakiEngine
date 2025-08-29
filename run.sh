@@ -188,6 +188,12 @@ if ! update_pubspec_assets "$ENGINE_DIR"; then
     exit 1
 fi
 
+# 更新字体配置
+if ! update_pubspec_fonts "$ENGINE_DIR" "$GAME_DIR"; then
+    echo -e "${RED}更新字体配置失败${NC}"
+    exit 1
+fi
+
 # 启动Flutter项目
 echo ""
 echo -e "${YELLOW}正在启动 SakiEngine (${PLATFORM_NAME})...${NC}"

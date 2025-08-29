@@ -51,12 +51,9 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     return OverlayScaffold(
       title: '对话记录',
       onClose: widget.onClose,
-      content: Container(
-        padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),
-        child: widget.dialogueHistory.isEmpty
-            ? _buildEmptyState(uiScale, textScale, config)
-            : _buildDialogueList(uiScale, textScale, config),
-      ),
+      content: widget.dialogueHistory.isEmpty
+          ? _buildEmptyState(uiScale, textScale, config)
+          : _buildDialogueList(uiScale, textScale, config),
       footer: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 12 * uiScale),
@@ -130,18 +127,20 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
   }
 
   Widget _buildDialogueList(double uiScale, double textScale, SakiEngineConfig config) {
-    return Scrollbar(
-      controller: _scrollController,
-      thumbVisibility: false,
-      thickness: 6 * uiScale,
-      radius: Radius.circular(3 * uiScale),
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
       child: ListView.builder(
         controller: _scrollController,
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),
         itemCount: widget.dialogueHistory.length,
         itemBuilder: (context, index) {
           final entry = widget.dialogueHistory[index];
-          return _buildDialogueEntry(entry, index, uiScale, textScale, config);
+          return Column(
+            children: [
+              _buildDialogueEntry(entry, index, uiScale, textScale, config),
+              SizedBox(height: 8 * uiScale),
+            ],
+          );
         },
       ),
     );
@@ -155,7 +154,6 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     SakiEngineConfig config,
   ) {
     return Container(
-      margin: EdgeInsets.only(bottom: 2 * uiScale),
       padding: EdgeInsets.symmetric(
         horizontal: 20 * uiScale,
         vertical: 12 * uiScale,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/color_parser.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class ThemeColors {
   final Color primary;
@@ -35,6 +36,21 @@ class ThemeColors {
       onSurfaceVariant: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.4, 0.5).toColor(),
     );
   }
+  
+  factory ThemeColors.fromPrimaryDark(Color primary) {
+    // 深色模式：从主色生成深色主题
+    final hsl = HSLColor.fromColor(primary);
+    
+    return ThemeColors(
+      primary: primary,
+      primaryDark: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation, (hsl.lightness + 0.2).clamp(0.0, 1.0)).toColor(),
+      primaryLight: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation, (hsl.lightness - 0.2).clamp(0.0, 1.0)).toColor(),
+      background: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.3, 0.1).toColor(), // 深色背景
+      surface: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.8, 0.15).toColor(), // 深色表面
+      onSurface: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.6, 0.9).toColor(), // 亮色文字
+      onSurfaceVariant: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.4, 0.7).toColor(), // 亮色变体
+    );
+  }
 }
 
 
@@ -49,6 +65,7 @@ class SakiEngineConfig {
 
   // 主菜单背景配置
   String mainMenuBackground = 'sky';
+  String mainMenuTitle = '';
   double mainMenuTitleSize = 72.0;
   
   // 主菜单标题位置配置
@@ -56,6 +73,10 @@ class SakiEngineConfig {
   double mainMenuTitleRight = 0.05;
   double mainMenuTitleBottom = 0.0;
   double mainMenuTitleLeft = 0.0;
+  
+  // 记录配置中实际设置的位置参数
+  bool hasBottom = false;
+  bool hasLeft = false;
 
   // NVL 模式间距配置
   double nvlLeft = 200.0;
@@ -65,6 +86,26 @@ class SakiEngineConfig {
 
   // 基础窗口配置
   double baseWindowBorder = 0.0;
+  double baseWindowAlpha = 1.0;
+  String? baseWindowBackground;
+  double baseWindowXAlign = 0.5;
+  double baseWindowYAlign = 0.5;
+  double baseWindowBackgroundAlpha = 0.3;
+  BlendMode baseWindowBackgroundBlendMode = BlendMode.multiply;
+  double baseWindowBackgroundScale = 1.0;
+  
+  // 对话框专用背景缩放
+  double dialogueBackgroundScale = 1.0;
+  double dialogueBackgroundXAlign = 1.0;
+  double dialogueBackgroundYAlign = 0.5;
+
+  // SoraNoUta 说话人位置配置
+  double soranoutaSpeakerXPos = 0.2;
+  double soranoutaSpeakerYPos = 0.0;
+  
+  // SoraNoUta 对话框内部文本位置配置
+  double soranoUtaTextXPos = 0.0;
+  double soranoUtaTextYPos = 0.0;
 
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
@@ -77,6 +118,17 @@ class SakiEngineConfig {
   ThemeColors themeColors = ThemeColors.fromPrimary(const Color(0xFF8B4513));
 
   TextStyle? textButtonDefaultStyle;
+
+  void updateThemeForDarkMode() {
+    final isDarkMode = SettingsManager().currentDarkMode;
+    final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);
+    
+    if (isDarkMode) {
+      themeColors = ThemeColors.fromPrimaryDark(baseColor);
+    } else {
+      themeColors = ThemeColors.fromPrimary(baseColor);
+    }
+  }
 
   Future<void> loadConfig() async {
     try {
@@ -100,16 +152,23 @@ class SakiEngineConfig {
           }
         }
         if (trimmedLine.startsWith('main_menu:')) {
+          print('Debug: parsing main_menu config line: $trimmedLine');
           final menuParams = trimmedLine.split(':')[1].trim().split(' ');
           for (final param in menuParams) {
             final keyValue = param.split('=');
             if (keyValue.length == 2) {
+              print('Debug: parsing param ${keyValue[0]} = ${keyValue[1]}');
               switch (keyValue[0]) {
+                case 'title':
+                  mainMenuTitle = keyValue[1];
+                  print('Debug: set mainMenuTitle to: $mainMenuTitle');
+                  break;
                 case 'background':
                   mainMenuBackground = keyValue[1];
                   break;
                 case 'size':
                   mainMenuTitleSize = double.tryParse(keyValue[1]) ?? 72.0;
+                  print('Debug: set mainMenuTitleSize to: $mainMenuTitleSize');
                   break;
                 case 'top':
                   mainMenuTitleTop = double.tryParse(keyValue[1]) ?? 0.1;
@@ -119,9 +178,13 @@ class SakiEngineConfig {
                   break;
                 case 'bottom':
                   mainMenuTitleBottom = double.tryParse(keyValue[1]) ?? 0.0;
+                  hasBottom = true;
+                  print('Debug: set mainMenuTitleBottom to: $mainMenuTitleBottom');
                   break;
                 case 'left':
                   mainMenuTitleLeft = double.tryParse(keyValue[1]) ?? 0.0;
+                  hasLeft = true;
+                  print('Debug: set mainMenuTitleLeft to: $mainMenuTitleLeft');
                   break;
               }
             }
@@ -179,6 +242,80 @@ class SakiEngineConfig {
                   baseWindowBorder = double.tryParse(keyValue[1]) ?? 0.0;
                   print('[Config] baseWindowBorder 设置为: $baseWindowBorder');
                   break;
+                case 'alpha':
+                  baseWindowAlpha = double.tryParse(keyValue[1]) ?? 1.0;
+                  print('[Config] baseWindowAlpha 设置为: $baseWindowAlpha');
+                  break;
+                case 'background':
+                  baseWindowBackground = keyValue[1];
+                  print('[Config] baseWindowBackground 设置为: $baseWindowBackground');
+                  break;
+                case 'xalign':
+                  baseWindowXAlign = double.tryParse(keyValue[1]) ?? 0.5;
+                  print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
+                  break;
+                case 'yalign':
+                  baseWindowYAlign = double.tryParse(keyValue[1]) ?? 0.5;
+                  print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
+                  break;
+                case 'background_alpha':
+                  baseWindowBackgroundAlpha = double.tryParse(keyValue[1]) ?? 0.3;
+                  print('[Config] baseWindowBackgroundAlpha 设置为: $baseWindowBackgroundAlpha');
+                  break;
+                case 'background_blend':
+                  baseWindowBackgroundBlendMode = _parseBlendMode(keyValue[1]);
+                  print('[Config] baseWindowBackgroundBlendMode 设置为: $baseWindowBackgroundBlendMode');
+                  break;
+                case 'background_scale':
+                  baseWindowBackgroundScale = double.tryParse(keyValue[1]) ?? 1.0;
+                  print('[Config] baseWindowBackgroundScale 设置为: $baseWindowBackgroundScale');
+                  break;
+                case 'background_xalign':
+                  baseWindowXAlign = (double.tryParse(keyValue[1]) ?? 0.5).clamp(0.0, 1.0);
+                  print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
+                  break;
+                case 'background_yalign':
+                  baseWindowYAlign = (double.tryParse(keyValue[1]) ?? 0.5).clamp(0.0, 1.0);
+                  print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
+                  break;
+                case 'dialogue_background_scale':
+                  dialogueBackgroundScale = double.tryParse(keyValue[1]) ?? 1.0;
+                  print('[Config] dialogueBackgroundScale 设置为: $dialogueBackgroundScale');
+                  break;
+                case 'dialogue_background_xalign':
+                  dialogueBackgroundXAlign = double.tryParse(keyValue[1]) ?? 1.0;
+                  print('[Config] dialogueBackgroundXAlign 设置为: $dialogueBackgroundXAlign');
+                  break;
+                case 'dialogue_background_yalign':
+                  dialogueBackgroundYAlign = double.tryParse(keyValue[1]) ?? 0.5;
+                  print('[Config] dialogueBackgroundYAlign 设置为: $dialogueBackgroundYAlign');
+                  break;
+              }
+            }
+          }
+        }
+        if (trimmedLine.startsWith('soranouta_dialogbox:')) {
+          final params = trimmedLine.split(':')[1].trim().split(' ');
+          for (final param in params) {
+            final keyValue = param.split('=');
+            if (keyValue.length == 2) {
+              switch (keyValue[0]) {
+                case 'xpos':
+                  soranoutaSpeakerXPos = double.tryParse(keyValue[1]) ?? 0.2;
+                  print('[Config] soranoutaSpeakerXPos 设置为: $soranoutaSpeakerXPos');
+                  break;
+                case 'ypos':
+                  soranoutaSpeakerYPos = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] soranoutaSpeakerYPos 设置为: $soranoutaSpeakerYPos');
+                  break;
+                case 'dialogue_xpos':
+                  soranoUtaTextXPos = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] soranoUtaTextXPos 设置为: $soranoUtaTextXPos');
+                  break;
+                case 'dialogue_ypos':
+                  soranoUtaTextYPos = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] soranoUtaTextYPos 设置为: $soranoUtaTextYPos');
+                  break;
               }
             }
           }
@@ -187,6 +324,9 @@ class SakiEngineConfig {
     } catch (e) {
       // 如果配置文件读取失败，保持默认值
     }
+    
+    // 根据深色模式设置更新主题
+    updateThemeForDarkMode();
   }
 
   TextStyle _parseTextStyle(String styleString) {
@@ -212,6 +352,36 @@ class SakiEngineConfig {
     }
     
     return TextStyle(fontSize: size, color: color, fontFamily: 'SourceHanSansCN');
+  }
+
+  BlendMode _parseBlendMode(String blendModeString) {
+    switch (blendModeString.toLowerCase()) {
+      case 'multiply':
+        return BlendMode.multiply;
+      case 'screen':
+        return BlendMode.screen;
+      case 'overlay':
+        return BlendMode.overlay;
+      case 'darken':
+        return BlendMode.darken;
+      case 'lighten':
+        return BlendMode.lighten;
+      case 'color_dodge':
+        return BlendMode.colorDodge;
+      case 'color_burn':
+        return BlendMode.colorBurn;
+      case 'hard_light':
+        return BlendMode.hardLight;
+      case 'soft_light':
+        return BlendMode.softLight;
+      case 'difference':
+        return BlendMode.difference;
+      case 'exclusion':
+        return BlendMode.exclusion;
+      case 'src_over':
+      default:
+        return BlendMode.srcOver;
+    }
   }
 
 

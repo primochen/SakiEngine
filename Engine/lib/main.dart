@@ -10,7 +10,7 @@ import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
-import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -46,17 +46,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
   }
 
   Future<bool> _showExitConfirmation() async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return ConfirmDialog(
-          title: '退出游戏',
-          content: '确定要退出游戏吗？未保存的游戏进度将会丢失。',
-          onConfirm: () => Navigator.of(context).pop(true),
-        );
-      },
-    );
-    return shouldExit ?? false;
+    return await ExitConfirmationDialog.showExitConfirmation(context, hasProgress: true);
   }
 
   void _enterGame({SaveSlot? saveSlot}) {
@@ -168,42 +158,49 @@ class SakiEngineApp extends StatefulWidget {
 }
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
-  String _appTitle = 'SakiEngine';
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: moduleLoader.getCurrentModule(),
-      builder: (builderContext, snapshot) {
-        if (!snapshot.hasData) {
-          // 显示加载画面
-          return MaterialApp(
-            title: _appTitle,
-            debugShowCheckedModeBanner: false,
-            home: const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
-          );
-        }
+    return AnimatedBuilder(
+      animation: SettingsManager(),
+      builder: (context, child) {
+        return FutureBuilder(
+          future: moduleLoader.getCurrentModule(),
+          builder: (builderContext, snapshot) {
+            if (!snapshot.hasData) {
+              return const MaterialApp(
+                debugShowCheckedModeBanner: false,
+                home: Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              );
+            }
 
-        final gameModule = snapshot.data!;
+            final gameModule = snapshot.data!;
 
-        return FutureBuilder<String>(
-          future: gameModule.getAppTitle(),
-          builder: (context, titleSnapshot) {
-            final appTitle = titleSnapshot.data ?? 'SakiEngine';
-            final customTheme = gameModule.createTheme();
+            return FutureBuilder<String>(
+              future: gameModule.getAppTitle(),
+              builder: (context, titleSnapshot) {
+                final appTitle = titleSnapshot.data ?? 'SakiEngine';
+                final customTheme = gameModule.createTheme();
 
-            return MaterialApp(
-              title: appTitle,
-              debugShowCheckedModeBanner: false,
-              theme: customTheme ?? ThemeData(
-                primarySwatch: Colors.blue,
-                fontFamily: 'SourceHanSansCN',
-              ),
-              home: const GameContainer(),
+                // 设置窗口标题
+                if (titleSnapshot.hasData) {
+                  windowManager.setTitle(appTitle);
+                }
+
+                return MaterialApp(
+                  title: appTitle,
+                  debugShowCheckedModeBanner: false,
+                  theme: customTheme ?? ThemeData(
+                    primarySwatch: Colors.blue,
+                    fontFamily: 'SourceHanSansCN',
+                  ),
+                  home: const GameContainer(),
+                );
+              },
             );
           },
         );
