@@ -249,7 +249,7 @@ class _NvlScreenState extends State<NvlScreen>
             // 箭头紧跟在文本后面
             if (isLastDialogue && _isLastDialogueComplete)
               Padding(
-                padding: EdgeInsets.only(left: 4 * uiScale),
+                padding: EdgeInsets.only(left: 4 * uiScale,top:5*uiScale),
                 child: DialogueNextArrow(
                   visible: true,
                   fontSize: (config.dialogueTextStyle.fontSize! * textScale) * 0.7, // 缩小到70%

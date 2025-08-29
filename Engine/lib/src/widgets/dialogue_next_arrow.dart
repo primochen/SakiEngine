@@ -47,7 +47,7 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
 
     final config = SakiEngineConfig();
     final effectiveColor = widget.color ?? config.themeColors.primary.withValues(alpha: 0.7);
-    final size = widget.fontSize * 2;
+    final size = widget.fontSize*1.6;
 
     return AnimatedBuilder(
       animation: _animationController,
