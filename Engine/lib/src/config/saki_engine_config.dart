@@ -57,6 +57,10 @@ class SakiEngineConfig {
   double mainMenuTitleRight = 0.05;
   double mainMenuTitleBottom = 0.0;
   double mainMenuTitleLeft = 0.0;
+  
+  // 记录配置中实际设置的位置参数
+  bool hasBottom = false;
+  bool hasLeft = false;
 
   // NVL 模式间距配置
   double nvlLeft = 200.0;
@@ -127,10 +131,12 @@ class SakiEngineConfig {
                   break;
                 case 'bottom':
                   mainMenuTitleBottom = double.tryParse(keyValue[1]) ?? 0.0;
+                  hasBottom = true;
                   print('Debug: set mainMenuTitleBottom to: $mainMenuTitleBottom');
                   break;
                 case 'left':
                   mainMenuTitleLeft = double.tryParse(keyValue[1]) ?? 0.0;
+                  hasLeft = true;
                   print('Debug: set mainMenuTitleLeft to: $mainMenuTitleLeft');
                   break;
               }

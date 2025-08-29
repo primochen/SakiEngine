@@ -160,10 +160,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
           
           Positioned(
-            top: config.mainMenuTitleBottom > 0 ? null : screenSize.height * config.mainMenuTitleTop,
-            bottom: config.mainMenuTitleBottom > 0 ? screenSize.height * config.mainMenuTitleBottom : null,
-            left: config.mainMenuTitleLeft > 0 ? screenSize.width * config.mainMenuTitleLeft : null,
-            right: config.mainMenuTitleLeft > 0 ? null : screenSize.width * config.mainMenuTitleRight,
+            top: config.hasBottom ? null : screenSize.height * config.mainMenuTitleTop,
+            bottom: config.hasBottom ? screenSize.height * config.mainMenuTitleBottom : null,
+            left: config.hasLeft ? screenSize.width * config.mainMenuTitleLeft : null,
+            right: config.hasLeft ? null : screenSize.width * config.mainMenuTitleRight,
             child: config.mainMenuTitle.isNotEmpty
                 ? FutureBuilder<String?>(
                     future: AssetManager().findAsset(config.mainMenuTitle),

@@ -1,5 +1,5 @@
 //config// SakiEngine 配置文件
-theme: color=rgba(139, 99, 19, 1)
+theme: color=rgba(123, 81, 45, 1)
 base_textbutton: size=40
 base_dialogue: size=24
 base_speaker: size=35
