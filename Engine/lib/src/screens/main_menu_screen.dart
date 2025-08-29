@@ -9,7 +9,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
-import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/widgets/smart_image.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
@@ -124,19 +124,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   Future<void> _showExitConfirmation(BuildContext context) async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return ConfirmDialog(
-          title: '退出游戏',
-          content: '确定要退出游戏吗？',
-          onConfirm: () async {
-            Navigator.of(context).pop(); // 关闭对话框
-            await windowManager.destroy(); // 真正退出程序
-          },
-        );
-      },
-    );
+    await ExitConfirmationDialog.showExitConfirmationAndDestroy(context);
   }
 
   @override

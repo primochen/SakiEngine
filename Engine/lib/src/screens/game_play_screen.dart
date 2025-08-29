@@ -16,6 +16,7 @@ import 'package:sakiengine/src/widgets/dialogue_box.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
+import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
@@ -252,17 +253,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return ConfirmDialog(
-          title: '退出游戏',
-          content: '确定要退出游戏吗？未保存的游戏进度将会丢失。',
-          onConfirm: () => Navigator.of(context).pop(true),
-        );
-      },
-    );
-    return shouldExit ?? false;
+    return await ExitConfirmationDialog.showExitConfirmation(context, hasProgress: true);
   }
 
   @override
