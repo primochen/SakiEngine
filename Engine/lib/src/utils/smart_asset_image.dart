@@ -33,6 +33,8 @@ class SmartAssetImage extends StatelessWidget {
               fit: fit ?? BoxFit.contain,
               width: width,
               height: height,
+              colorFilter: null,
+              allowDrawingOutsideViewBox: true,
               placeholderBuilder: errorWidget != null 
                 ? (context) => errorWidget!
                 : null,

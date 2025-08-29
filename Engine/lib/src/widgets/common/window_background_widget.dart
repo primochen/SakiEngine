@@ -24,7 +24,7 @@ class WindowBackgroundWidget extends StatelessWidget {
           Positioned.fill(
             child: IgnorePointer(
               child: Container(
-                color: config.themeColors.background.withOpacity(0.5),
+                color: config.themeColors.background.withOpacity(0.99),
                 child: Align(
                   alignment: Alignment(
                     (config.baseWindowXAlign - 0.5) * 2,
