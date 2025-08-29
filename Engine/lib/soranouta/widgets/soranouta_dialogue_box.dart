@@ -31,6 +31,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
   // 打字机动画管理器
   late TypewriterAnimationManager _typewriterController;
   bool _enableTypewriter = true;
+  bool _enableSpeakerAnimation = true;
   
   // 文本淡入动画控制器
   late AnimationController _textFadeController;
@@ -41,10 +42,15 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
   late Animation<double> _speakerWipeAnimation;
   String? _currentSpeaker;
   
+  // 等待键入字符闪烁动画控制器
+  late AnimationController _blinkController;
+  late Animation<double> _blinkAnimation;
+  
   void _onSettingsChanged() {
     if (mounted) {
       setState(() {
         _dialogOpacity = SettingsManager().currentDialogOpacity;
+        _enableSpeakerAnimation = SettingsManager().currentSpeakerAnimation;
       });
     }
   }
@@ -91,6 +97,19 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
 
     _currentSpeaker = widget.speaker;
 
+    // 初始化等待键入字符闪烁动画
+    _blinkController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    
+    _blinkAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_blinkController);
+    
+    _blinkController.repeat(reverse: true);
+
     // 监听设置变化
     SettingsManager().addListener(_onSettingsChanged);
     
@@ -100,7 +119,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
     // 开始文本淡入和打字机动画
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _textFadeController.forward();
-      if (widget.speaker != null && widget.speaker!.isNotEmpty) {
+      if (widget.speaker != null && widget.speaker!.isNotEmpty && _enableSpeakerAnimation) {
         _speakerWipeController.forward();
       }
       if (_enableTypewriter) {
@@ -118,6 +137,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
     _typewriterController.dispose();
     _textFadeController.dispose();
     _speakerWipeController.dispose();
+    _blinkController.dispose();
     super.dispose();
   }
 
@@ -134,7 +154,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
     // 如果说话人发生变化，重新开始说话人擦除动画
     if (widget.speaker != oldWidget.speaker) {
       _currentSpeaker = widget.speaker;
-      if (widget.speaker != null && widget.speaker!.isNotEmpty) {
+      if (widget.speaker != null && widget.speaker!.isNotEmpty && _enableSpeakerAnimation) {
         _speakerWipeController.reset();
         _speakerWipeController.forward();
       }
@@ -161,6 +181,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
   Future<void> _loadSettings() async {
     final settings = SettingsManager();
     final opacity = await settings.getDialogOpacity();
+    _enableSpeakerAnimation = await settings.getSpeakerAnimation();
     
     if (mounted) {
       setState(() {
@@ -320,14 +341,31 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
                                              ),
                                              if (_isDialogueComplete)
                                                WidgetSpan(
-                                                 alignment: PlaceholderAlignment.middle,
+                                                 alignment: PlaceholderAlignment.bottom,
                                                  child: Padding(
-                                                   padding: EdgeInsets.only(left: uiScale),
-                                                   child: DialogueNextArrow(
-                                                     visible: _isDialogueComplete,
-                                                     fontSize: dialogueStyle.fontSize!,
-                                                     color: config.themeColors.primary.withOpacity(0.7),
-                                                   ),
+                                                   padding: EdgeInsets.only(left: uiScale, bottom: 4 * uiScale),
+                                                   child: widget.speaker != null && widget.speaker!.isNotEmpty 
+                                                     ? AnimatedBuilder(
+                                                         animation: _blinkAnimation,
+                                                         builder: (context, child) {
+                                                           return Opacity(
+                                                             opacity: _blinkAnimation.value,
+                                                             child: Text(
+                                                               '_',
+                                                               style: dialogueStyle.copyWith(
+                                                                 color: config.themeColors.primary,
+                                                                 fontWeight: FontWeight.bold,
+                                                                 height: 1.0,
+                                                               ),
+                                                             ),
+                                                           );
+                                                         },
+                                                       )
+                                                     : DialogueNextArrow(
+                                                         visible: _isDialogueComplete,
+                                                         fontSize: dialogueStyle.fontSize!,
+                                                         color: config.themeColors.primary.withOpacity(0.7),
+                                                       ),
                                                  ),
                                                ),
                                            ],
@@ -350,13 +388,14 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
         ),
         
         // 说话人黑色矩形（独立控件，在对话框之上）
-        if (widget.speaker != null && widget.speaker!.isNotEmpty)
-          Positioned(
-            left: (screenSize.width * 0.85) * config.soranoutaSpeakerXPos + 16 * uiScale,
-            bottom: 16 * uiScale + (screenSize.height * 0.35 / 1.5) * (1.0 - config.soranoutaSpeakerYPos),
-            child: FractionalTranslation(
-              translation: const Offset(0.0, 0.5),
-              child: AnimatedBuilder(
+        Positioned(
+          left: (screenSize.width * 0.85) * config.soranoutaSpeakerXPos + 16 * uiScale,
+          bottom: 16 * uiScale + (screenSize.height * 0.35 / 1.5) * (1.0 - config.soranoutaSpeakerYPos),
+          child: FractionalTranslation(
+            translation: const Offset(0.0, 0.5),
+            child: Opacity(
+              opacity: (widget.speaker != null && widget.speaker!.isNotEmpty) ? 1.0 : 0.0,
+              child: _enableSpeakerAnimation ? AnimatedBuilder(
                 animation: _speakerWipeAnimation,
                 builder: (context, child) {
                   return ClipRect(
@@ -364,7 +403,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
                       alignment: Alignment.centerLeft,
                       widthFactor: _speakerWipeAnimation.value,
                       child: Text(
-                        widget.speaker!,
+                        widget.speaker ?? '',
                         style: speakerStyle,
                         textHeightBehavior: const TextHeightBehavior(
                           applyHeightToFirstAscent: false,
@@ -374,9 +413,17 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
                     ),
                   );
                 },
+              ) : Text(
+                widget.speaker ?? '',
+                style: speakerStyle,
+                textHeightBehavior: const TextHeightBehavior(
+                  applyHeightToFirstAscent: false,
+                  applyHeightToLastDescent: false,
+                ),
               ),
             ),
           ),
+        ),
       ],
     );
   }

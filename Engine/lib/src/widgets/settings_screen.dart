@@ -31,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // 打字机设置
   double _typewriterCharsPerSecond = SettingsManager.defaultTypewriterCharsPerSecond;
   bool _skipPunctuationDelay = SettingsManager.defaultSkipPunctuationDelay;
+  bool _speakerAnimation = SettingsManager.defaultSpeakerAnimation;
   
   int _selectedTabIndex = 0;
   final List<String> _tabTitles = ['画面设置', '音频设置', '玩法设置', '操控设置'];
@@ -59,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 加载打字机设置
       _typewriterCharsPerSecond = await SettingsManager().getTypewriterCharsPerSecond();
       _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
+      _speakerAnimation = await SettingsManager().getSpeakerAnimation();
       
       setState(() => _isLoading = false);
     } catch (e) {
@@ -88,6 +90,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _settingsManager.setSkipPunctuationDelay(value);
     // 通知所有TypewriterAnimationManager实例更新设置
     TypewriterAnimationManager.notifySettingsChanged();
+  }
+
+  Future<void> _updateSpeakerAnimation(bool value) async {
+    setState(() => _speakerAnimation = value);
+    await _settingsManager.setSpeakerAnimation(value);
   }
 
   Future<void> _resetToDefault() async {
@@ -206,6 +213,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SizedBox(height: 40 * scale),
             _buildFullscreenToggle(config, scale),
             SizedBox(height: 40 * scale),
+            _buildSpeakerAnimationToggle(config, scale),
+            SizedBox(height: 40 * scale),
             _buildTypewriterSpeedSlider(config, scale),
             SizedBox(height: 40 * scale), // 底部间距
           ],
@@ -263,6 +272,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildFullscreenToggle(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildSpeakerAnimationToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       // 可以在这里添加更多右列设置项
                     ],
@@ -462,6 +473,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
             config: config,
             trueText: '全屏',
             falseText: '窗口',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpeakerAnimationToggle(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _speakerAnimation ? Icons.animation : Icons.text_fields,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '说话人动画',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  '说话人名字的从左到右擦除显示动画',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: _speakerAnimation,
+            onChanged: _updateSpeakerAnimation,
+            scale: scale,
+            config: config,
+            trueText: '开启',
+            falseText: '关闭',
           ),
         ],
       ),
