@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
@@ -179,7 +180,6 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
             height: screenSize.height * 0.25,
             margin: EdgeInsets.all(16.0 * uiScale),
             decoration: BoxDecoration(
-              color: config.themeColors.background.withOpacity(_dialogOpacity),
               borderRadius: BorderRadius.circular(config.baseWindowBorder > 0 
                   ? config.baseWindowBorder * uiScale 
                   : 0 * uiScale),
@@ -195,7 +195,49 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                 ),
               ],
             ),
-            child: Column(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(config.baseWindowBorder > 0 
+                  ? config.baseWindowBorder * uiScale 
+                  : 0 * uiScale),
+              child: Stack(
+                children: [
+                  // 底层：纯色背景
+                  Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    color: config.themeColors.background,
+                  ),
+                  // 中层：背景图片
+                  if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: config.baseWindowBackgroundAlpha,
+                        child: ColorFiltered(
+                          colorFilter: ColorFilter.mode(
+                            Colors.transparent,
+                            config.baseWindowBackgroundBlendMode,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.none,
+                            alignment: Alignment(
+                              (config.dialogueBackgroundXAlign - 0.5) * 2,
+                              (config.dialogueBackgroundYAlign - 0.5) * 2,
+                            ),
+                            child: Transform.scale(
+                              scale: config.dialogueBackgroundScale,
+                              child: SmartAssetImage(
+                                assetName: config.baseWindowBackground!,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          ),
+                        ),
+                      ),
+                  // 上层：半透明控件
+                  Container(
+                    color: config.themeColors.background.withOpacity(config.baseWindowAlpha * _dialogOpacity),
+                    child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -283,7 +325,11 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                     },
                   ),
                 ),
-              ],
+                  ],
+                ),
+              ),
+                ],
+              ),
             ),
           ),
         ),
