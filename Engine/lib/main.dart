@@ -193,6 +193,11 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
             final appTitle = titleSnapshot.data ?? 'SakiEngine';
             final customTheme = gameModule.createTheme();
 
+            // 设置窗口标题
+            if (titleSnapshot.hasData) {
+              windowManager.setTitle(appTitle);
+            }
+
             return MaterialApp(
               title: appTitle,
               debugShowCheckedModeBanner: false,
