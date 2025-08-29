@@ -26,15 +26,18 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onPressed,
-        child: Text(
-          widget.text,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            fontFamily: 'ChillJinshuSongPro_Soft',
-            fontSize: 55 * widget.scale,
-            color: _isHovered ? Colors.white : Colors.black,
-            fontWeight: FontWeight.normal,
-            letterSpacing: 3,
+        child: Container(
+          margin: EdgeInsets.only(right: 20 * widget.scale), // 给按钮添加右边距
+          child: Text(
+            widget.text,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontFamily: 'ChillJinshuSongPro_Soft',
+              fontSize: 55 * widget.scale,
+              color: _isHovered ? Colors.white : Colors.black,
+              fontWeight: FontWeight.normal,
+              letterSpacing: 3,
+            ),
           ),
         ),
       ),

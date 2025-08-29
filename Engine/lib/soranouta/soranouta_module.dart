@@ -28,23 +28,6 @@ class SoranoutaModule extends DefaultGameModule {
   }
 
   @override
-  ThemeData? createTheme() {
-    // SoraNoUta 项目的自定义主题
-    return ThemeData(
-      primarySwatch: Colors.indigo,
-      fontFamily: 'SourceHanSansCN-Bold',
-      // 可以在这里定义更多自定义主题属性
-      colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.indigo).copyWith(
-        secondary: Colors.purpleAccent,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.indigo,
-        elevation: 0,
-      ),
-    );
-  }
-
-  @override
   SakiEngineConfig? createCustomConfig() {
     // SoraNoUta 项目特定配置
     final config = SakiEngineConfig();
@@ -57,13 +40,7 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   Future<String> getAppTitle() async {
-    // SoraNoUta 项目的自定义应用标题
-    try {
-      final defaultTitle = await super.getAppTitle();
-      return '$defaultTitle - SoraNoUta';
-    } catch (e) {
-      return 'SoraNoUta - SakiEngine';
-    }
+    return 'SoraNoUta';
   }
 
   @override

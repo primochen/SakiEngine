@@ -168,7 +168,6 @@ class SakiEngineApp extends StatefulWidget {
 }
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
-  String _appTitle = 'SakiEngine';
 
   @override
   Widget build(BuildContext context) {
@@ -176,11 +175,9 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
       future: moduleLoader.getCurrentModule(),
       builder: (builderContext, snapshot) {
         if (!snapshot.hasData) {
-          // 显示加载画面
-          return MaterialApp(
-            title: _appTitle,
+          return const MaterialApp(
             debugShowCheckedModeBanner: false,
-            home: const Scaffold(
+            home: Scaffold(
               body: Center(
                 child: CircularProgressIndicator(),
               ),

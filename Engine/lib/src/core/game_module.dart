@@ -93,7 +93,7 @@ class DefaultGameModule implements GameModule {
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
-      gameModule: this,
+      //gameModule: this,
     );
   }
 
