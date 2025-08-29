@@ -162,7 +162,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
       color: config.themeColors.onSurface,
       height: 1.6,
       letterSpacing: 0.3,
-      fontFamily: 'ChillJinshuSongPro_Soft',
+      fontFamily: 'SourceHanSansCN',
     );
 
     final speakerStyle = config.speakerTextStyle.copyWith(
@@ -218,7 +218,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
                       if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
                         Positioned.fill(
                           child: Opacity(
-                            opacity: config.baseWindowBackgroundAlpha * _dialogOpacity,
+                            opacity: config.baseWindowBackgroundAlpha * _dialogOpacity ,
                             child: ColorFiltered(
                               colorFilter: ColorFilter.mode(
                                 Colors.transparent,
@@ -245,7 +245,12 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
                       Container(
                         color: config.themeColors.background.withOpacity(config.baseWindowAlpha * 0.3),
                         child: Padding(
-                          padding: EdgeInsets.all(16.0 * uiScale),
+                          padding: EdgeInsets.only(
+                            left: 16.0 * uiScale + config.soranoUtaTextXPos,
+                            right: 16.0 * uiScale,
+                            top: 16.0 * uiScale + config.soranoUtaTextYPos,
+                            bottom: 16.0 * uiScale,
+                          ),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               // 检查文本是否溢出
@@ -319,9 +324,16 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
                 decoration: const BoxDecoration(
                   color: Colors.black,
                 ),
+                padding: EdgeInsets.zero,
                 child: Text(
                   widget.speaker!,
-                  style: speakerStyle,
+                  style: speakerStyle.copyWith(
+                    height: 1.0,
+                  ),
+                  textHeightBehavior: const TextHeightBehavior(
+                    applyHeightToFirstAscent: false,
+                    applyHeightToLastDescent: false,
+                  ),
                 ),
               ),
             ),

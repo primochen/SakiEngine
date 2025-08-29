@@ -86,6 +86,10 @@ class SakiEngineConfig {
   // SoraNoUta 说话人位置配置
   double soranoutaSpeakerXPos = 0.2;
   double soranoutaSpeakerYPos = 0.0;
+  
+  // SoraNoUta 对话框内部文本位置配置
+  double soranoUtaTextXPos = 0.0;
+  double soranoUtaTextYPos = 0.0;
 
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
@@ -276,6 +280,14 @@ class SakiEngineConfig {
                 case 'ypos':
                   soranoutaSpeakerYPos = double.tryParse(keyValue[1]) ?? 0.0;
                   print('[Config] soranoutaSpeakerYPos 设置为: $soranoutaSpeakerYPos');
+                  break;
+                case 'dialogue_xpos':
+                  soranoUtaTextXPos = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] soranoUtaTextXPos 设置为: $soranoUtaTextXPos');
+                  break;
+                case 'dialogue_ypos':
+                  soranoUtaTextYPos = double.tryParse(keyValue[1]) ?? 0.0;
+                  print('[Config] soranoUtaTextYPos 设置为: $soranoUtaTextYPos');
                   break;
               }
             }

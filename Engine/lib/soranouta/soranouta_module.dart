@@ -47,11 +47,6 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   Future<void> initialize() async {
-    if (kDebugMode) {
-      print('[SoraNoutaModule] 🎯 SoraNoUta 项目模块初始化完成 - 使用圆角矩形按钮！');
-    }
-    // 在这里可以进行项目特定的初始化
-    // 比如加载特殊的资源、设置特殊的配置等
   }
 
   @override
