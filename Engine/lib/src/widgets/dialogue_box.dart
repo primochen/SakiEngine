@@ -205,13 +205,13 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                   Container(
                     width: double.infinity,
                     height: double.infinity,
-                    color: config.themeColors.background,
+                    color: config.themeColors.background.withOpacity(_dialogOpacity),
                   ),
                   // 中层：背景图片
                   if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
                     Positioned.fill(
                       child: Opacity(
-                        opacity: config.baseWindowBackgroundAlpha,
+                        opacity: config.baseWindowBackgroundAlpha * _dialogOpacity,
                         child: ColorFiltered(
                           colorFilter: ColorFilter.mode(
                             Colors.transparent,
@@ -236,7 +236,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                       ),
                   // 上层：半透明控件
                   Container(
-                    color: config.themeColors.background.withOpacity(config.baseWindowAlpha * _dialogOpacity),
+                    color: config.themeColors.background.withOpacity(config.baseWindowAlpha * 0.3),
                     child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
