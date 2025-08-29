@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
-import 'package:sakiengine/src/widgets/smart_image.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 
 class GameBackgroundWidget extends StatelessWidget {
   final SakiEngineConfig config;
@@ -13,17 +12,10 @@ class GameBackgroundWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: AssetManager().findAsset('backgrounds/${config.mainMenuBackground}'),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return SmartImage.asset(
-            snapshot.data!,
-            fit: BoxFit.cover,
-          );
-        }
-        return Container(color: Colors.black);
-      },
+    return SmartAssetImage(
+      assetName: 'backgrounds/${config.mainMenuBackground}',
+      fit: BoxFit.cover,
+      errorWidget: Container(color: Colors.black),
     );
   }
 }

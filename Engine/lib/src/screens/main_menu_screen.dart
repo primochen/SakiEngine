@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
@@ -11,9 +10,9 @@ import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
-import 'package:sakiengine/src/widgets/smart_image.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/src/core/game_module.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -139,17 +138,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          FutureBuilder<String?>(
-            future: AssetManager().findAsset('backgrounds/${config.mainMenuBackground}'),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data != null) {
-                return SmartImage.asset(
-                  snapshot.data!,
-                  fit: BoxFit.cover,
-                );
-              }
-              return Container(color: Colors.black);
-            },
+          SmartAssetImage(
+            assetName: 'backgrounds/${config.mainMenuBackground}',
+            fit: BoxFit.cover,
           ),
           
           Positioned(
@@ -158,32 +149,25 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             left: config.hasLeft ? screenSize.width * config.mainMenuTitleLeft : null,
             right: config.hasLeft ? null : screenSize.width * config.mainMenuTitleRight,
             child: config.mainMenuTitle.isNotEmpty
-                ? FutureBuilder<String?>(
-                    future: AssetManager().findAsset(config.mainMenuTitle),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return SmartImage.asset(
-                          snapshot.data!,
-                          height: config.mainMenuTitleSize * textScale,
-                        );
-                      }
-                      return Text(
-                        _appTitle,
-                        style: TextStyle(
-                          fontFamily: 'SourceHanSansCN',
-                          fontSize: config.mainMenuTitleSize * textScale,
-                          color: config.themeColors.background,
-                          letterSpacing: 4,
-                          shadows: [
-                            Shadow(
-                              blurRadius: 10.0,
-                              color: config.themeColors.primaryDark,
-                              offset: const Offset(2, 2),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                ? SmartAssetImage(
+                    assetName: config.mainMenuTitle,
+                    height: config.mainMenuTitleSize * textScale,
+                    errorWidget: Text(
+                      _appTitle,
+                      style: TextStyle(
+                        fontFamily: 'SourceHanSansCN',
+                        fontSize: config.mainMenuTitleSize * textScale,
+                        color: config.themeColors.background,
+                        letterSpacing: 4,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 10.0,
+                            color: config.themeColors.primaryDark,
+                            offset: const Offset(2, 2),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 : Text(
                     _appTitle,

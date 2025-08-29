@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
-import 'package:sakiengine/src/widgets/smart_image.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 
 class GameTitleWidget extends StatefulWidget {
   final SakiEngineConfig config;
@@ -50,32 +49,25 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
       left: widget.config.hasLeft ? screenSize.width * widget.config.mainMenuTitleLeft : null,
       right: widget.config.hasLeft ? null : screenSize.width * widget.config.mainMenuTitleRight,
       child: widget.config.mainMenuTitle.isNotEmpty
-          ? FutureBuilder<String?>(
-              future: AssetManager().findAsset(widget.config.mainMenuTitle),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  return SmartImage.asset(
-                    snapshot.data!,
-                    height: widget.config.mainMenuTitleSize * widget.textScale,
-                  );
-                }
-                return Text(
-                  _appTitle,
-                  style: TextStyle(
-                    fontFamily: 'SourceHanSansCN',
-                    fontSize: widget.config.mainMenuTitleSize * widget.textScale,
-                    color: widget.config.themeColors.background,
-                    letterSpacing: 4,
-                    shadows: [
-                      Shadow(
-                        blurRadius: 10.0,
-                        color: widget.config.themeColors.primaryDark,
-                        offset: const Offset(2, 2),
-                      ),
-                    ],
-                  ),
-                );
-              },
+          ? SmartAssetImage(
+              assetName: widget.config.mainMenuTitle,
+              height: widget.config.mainMenuTitleSize * widget.textScale,
+              errorWidget: Text(
+                _appTitle,
+                style: TextStyle(
+                  fontFamily: 'SourceHanSansCN',
+                  fontSize: widget.config.mainMenuTitleSize * widget.textScale,
+                  color: widget.config.themeColors.background,
+                  letterSpacing: 4,
+                  shadows: [
+                    Shadow(
+                      blurRadius: 10.0,
+                      color: widget.config.themeColors.primaryDark,
+                      offset: const Offset(2, 2),
+                    ),
+                  ],
+                ),
+              ),
             )
           : Text(
               _appTitle,

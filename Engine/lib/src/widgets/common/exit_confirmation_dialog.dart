@@ -34,7 +34,6 @@ class ExitConfirmationDialog {
     );
     
     if (shouldExit == true) {
-      Navigator.of(context).pop();
       await windowManager.destroy();
     }
   }

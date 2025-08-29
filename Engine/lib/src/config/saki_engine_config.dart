@@ -71,6 +71,9 @@ class SakiEngineConfig {
   // 基础窗口配置
   double baseWindowBorder = 0.0;
   double baseWindowAlpha = 1.0;
+  String? baseWindowBackground;
+  double baseWindowXAlign = 0.5;
+  double baseWindowYAlign = 0.5;
 
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
@@ -199,6 +202,18 @@ class SakiEngineConfig {
                 case 'alpha':
                   baseWindowAlpha = double.tryParse(keyValue[1]) ?? 1.0;
                   print('[Config] baseWindowAlpha 设置为: $baseWindowAlpha');
+                  break;
+                case 'background':
+                  baseWindowBackground = keyValue[1];
+                  print('[Config] baseWindowBackground 设置为: $baseWindowBackground');
+                  break;
+                case 'xalign':
+                  baseWindowXAlign = double.tryParse(keyValue[1]) ?? 0.5;
+                  print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
+                  break;
+                case 'yalign':
+                  baseWindowYAlign = double.tryParse(keyValue[1]) ?? 0.5;
+                  print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
                   break;
               }
             }

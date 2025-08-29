@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
+import 'package:sakiengine/src/widgets/common/window_background_widget.dart';
 
 class OverlayScaffold extends StatelessWidget {
   final String title;
@@ -36,7 +37,7 @@ class OverlayScaffold extends StatelessWidget {
         child: Focus(
           autofocus: true,
           child: GestureDetector(
-            onTap: onClose, // 点击背景关闭
+            onTap: onClose,
             child: Container(
               width: double.infinity,
               height: double.infinity,
@@ -44,30 +45,33 @@ class OverlayScaffold extends StatelessWidget {
                 color: config.themeColors.primaryDark.withOpacity(0.5 * config.baseWindowAlpha),
               ),
               child: GestureDetector(
-                onTap: () {}, // 防止点击内容区域时也关闭
+                onTap: () {},
                 child: Center(
-                  child: Container(
-                    width: screenSize.width * 0.85,
-                    height: screenSize.height * 0.8,
-                    decoration: BoxDecoration(
-                      color: config.themeColors.background.withOpacity(0.95 * config.baseWindowAlpha),
-                      borderRadius: BorderRadius.circular(config.baseWindowBorder),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 20 * uiScale,
-                          offset: Offset(0, 8 * uiScale),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(config.baseWindowBorder),
-                      child: Column(
-                        children: [
-                          _buildHeader(uiScale, textScale, config),
-                          Expanded(child: content),
-                          if (footer != null) footer!,
+                  child: WindowBackgroundWidget(
+                    config: config,
+                    child: Container(
+                      width: screenSize.width * 0.85,
+                      height: screenSize.height * 0.8,
+                      decoration: BoxDecoration(
+                        color: config.themeColors.background.withOpacity(0.95 * config.baseWindowAlpha),
+                        borderRadius: BorderRadius.circular(config.baseWindowBorder),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 20 * uiScale,
+                            offset: Offset(0, 8 * uiScale),
+                          ),
                         ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(config.baseWindowBorder),
+                        child: Column(
+                          children: [
+                            _buildHeader(uiScale, textScale, config),
+                            Expanded(child: content),
+                            if (footer != null) footer!,
+                          ],
+                        ),
                       ),
                     ),
                   ),

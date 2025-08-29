@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/common/window_background_widget.dart';
 
 class ConfirmDialog extends StatelessWidget {
   final String title;
@@ -29,7 +30,7 @@ class ConfirmDialog extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       child: GestureDetector(
-        onTap: () => Navigator.of(context).pop(cancelResult), // 点击背景关闭
+        onTap: () => Navigator.of(context).pop(cancelResult),
         child: Container(
           width: double.infinity,
           height: double.infinity,
@@ -37,84 +38,85 @@ class ConfirmDialog extends StatelessWidget {
             color: config.themeColors.primaryDark.withOpacity(0.2 * config.baseWindowAlpha),
           ),
           child: GestureDetector(
-            onTap: () {}, // 防止点击内容区域时关闭
+            onTap: () {},
             child: Center(
-              child: Container(
-                width: 480 * uiScale,
-                constraints: const BoxConstraints(
-                  //minHeight: 200,
-                ),
-                decoration: BoxDecoration(
-                  color: config.themeColors.background.withOpacity(0.95 * config.baseWindowAlpha),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 20 * uiScale,
-                      offset: Offset(0, 8 * uiScale),
-                    ),
-                  ],
-                ),
-                padding: EdgeInsets.all(24 * uiScale),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      textAlign: TextAlign.left,
-                      style: config.dialogueTextStyle.copyWith(
-                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 1.2,
-                        fontWeight: FontWeight.bold,
-                        color: config.themeColors.primary,
+              child: WindowBackgroundWidget(
+                config: config,
+                child: Container(
+                  width: 480 * uiScale,
+                  constraints: const BoxConstraints(),
+                  decoration: BoxDecoration(
+                    color: config.themeColors.background.withOpacity(0.95 * config.baseWindowAlpha),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 20 * uiScale,
+                        offset: Offset(0, 8 * uiScale),
                       ),
-                    ),
-                    SizedBox(height: 16 * uiScale),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Text(
-                          content,
-                          textAlign: TextAlign.left,
-                          style: config.dialogueTextStyle.copyWith(
-                            fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                            color: config.themeColors.onSurface,
+                    ],
+                  ),
+                  padding: EdgeInsets.all(24 * uiScale),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        textAlign: TextAlign.left,
+                        style: config.dialogueTextStyle.copyWith(
+                          fontSize: config.dialogueTextStyle.fontSize! * textScale * 1.2,
+                          fontWeight: FontWeight.bold,
+                          color: config.themeColors.primary,
+                        ),
+                      ),
+                      SizedBox(height: 16 * uiScale),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Text(
+                            content,
+                            textAlign: TextAlign.left,
+                            style: config.dialogueTextStyle.copyWith(
+                              fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                              color: config.themeColors.onSurface,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 24 * uiScale),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _buildButton(
-                          context, 
-                          '取消', 
-                          Icons.close_rounded,
-                          () {
-                            Navigator.of(context).pop(cancelResult);
-                            onCancel?.call();
-                          },
-                          uiScale,
-                          textScale,
-                          config,
-                          isNegative: true,
-                        ),
-                        SizedBox(width: 16 * uiScale),
-                        _buildButton(
-                          context, 
-                          '确定', 
-                          Icons.check_rounded,
-                          () {
-                            Navigator.of(context).pop(confirmResult);
-                            onConfirm?.call();
-                          },
-                          uiScale,
-                          textScale,
-                          config,
-                        ),
-                      ],
-                    ),
-                  ],
+                      SizedBox(height: 24 * uiScale),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          _buildButton(
+                            context, 
+                            '取消', 
+                            Icons.close_rounded,
+                            () {
+                              Navigator.of(context).pop(cancelResult);
+                              onCancel?.call();
+                            },
+                            uiScale,
+                            textScale,
+                            config,
+                            isNegative: true,
+                          ),
+                          SizedBox(width: 16 * uiScale),
+                          _buildButton(
+                            context, 
+                            '确定', 
+                            Icons.check_rounded,
+                            () {
+                              Navigator.of(context).pop(confirmResult);
+                              onConfirm?.call();
+                            },
+                            uiScale,
+                            textScale,
+                            config,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
