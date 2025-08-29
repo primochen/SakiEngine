@@ -36,6 +36,11 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
   late AnimationController _textFadeController;
   late Animation<double> _textFadeAnimation;
   
+  // 说话人擦除动画控制器
+  late AnimationController _speakerWipeController;
+  late Animation<double> _speakerWipeAnimation;
+  String? _currentSpeaker;
+  
   void _onSettingsChanged() {
     if (mounted) {
       setState(() {
@@ -70,6 +75,22 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
       curve: Curves.easeInOut,
     ));
 
+    // 初始化说话人擦除动画
+    _speakerWipeController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    
+    _speakerWipeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _speakerWipeController,
+      curve: Curves.easeOutQuart,
+    ));
+
+    _currentSpeaker = widget.speaker;
+
     // 监听设置变化
     SettingsManager().addListener(_onSettingsChanged);
     
@@ -79,6 +100,9 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
     // 开始文本淡入和打字机动画
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _textFadeController.forward();
+      if (widget.speaker != null && widget.speaker!.isNotEmpty) {
+        _speakerWipeController.forward();
+      }
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
@@ -93,6 +117,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
     _typewriterController.removeListener(_onTypewriterStateChanged);
     _typewriterController.dispose();
     _textFadeController.dispose();
+    _speakerWipeController.dispose();
     super.dispose();
   }
 
@@ -104,6 +129,15 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
     if (widget.progressionManager != oldWidget.progressionManager) {
       oldWidget.progressionManager?.registerTypewriter(null);
       widget.progressionManager?.registerTypewriter(_typewriterController);
+    }
+    
+    // 如果说话人发生变化，重新开始说话人擦除动画
+    if (widget.speaker != oldWidget.speaker) {
+      _currentSpeaker = widget.speaker;
+      if (widget.speaker != null && widget.speaker!.isNotEmpty) {
+        _speakerWipeController.reset();
+        _speakerWipeController.forward();
+      }
     }
     
     // 如果对话内容发生变化，重新开始文本淡入和打字机动画
@@ -322,13 +356,24 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox> with Ticker
             bottom: 16 * uiScale + (screenSize.height * 0.35 / 1.5) * (1.0 - config.soranoutaSpeakerYPos),
             child: FractionalTranslation(
               translation: const Offset(0.0, 0.5),
-              child: Text(
-                widget.speaker!,
-                style: speakerStyle,
-                textHeightBehavior: const TextHeightBehavior(
-                  applyHeightToFirstAscent: false,
-                  applyHeightToLastDescent: false,
-                ),
+              child: AnimatedBuilder(
+                animation: _speakerWipeAnimation,
+                builder: (context, child) {
+                  return ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: _speakerWipeAnimation.value,
+                      child: Text(
+                        widget.speaker!,
+                        style: speakerStyle,
+                        textHeightBehavior: const TextHeightBehavior(
+                          applyHeightToFirstAscent: false,
+                          applyHeightToLastDescent: false,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
