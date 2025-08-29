@@ -12,6 +12,8 @@ import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/widgets/smart_image.dart';
+import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
+import 'package:sakiengine/src/core/game_module.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -78,12 +80,14 @@ class MainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
+  final GameModule? gameModule;
 
   const MainMenuScreen({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
     this.onLoadGameWithSave,
+    this.gameModule,
   });
 
   @override
@@ -229,42 +233,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           Positioned(
             bottom: screenSize.height * 0.05,
             right: screenSize.width * 0.01,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _buildMenuButton(
-                  context, 
-                  '新游戏', 
-                  _handleNewGame,
-                  menuScale,
-                  config,
-                ),
-                SizedBox(width: 20 * menuScale),
-                _buildMenuButton(
-                  context, 
-                  '继续游戏', 
-                  () => setState(() => _showLoadOverlay = true), 
-                  menuScale,
-                  config,
-                ),
-                SizedBox(width: 20 * menuScale),
-                _buildMenuButton(
-                  context, 
-                  '设置', 
-                  () => setState(() => _showSettings = true), 
-                  menuScale,
-                  config,
-                ),
-                SizedBox(width: 20 * menuScale),
-                _buildMenuButton(
-                  context, 
-                  '退出游戏', 
-                  () => _showExitConfirmation(context), 
-                  menuScale,
-                  config,
-                ),
-              ],
-            ),
+            child: _buildMenuButtons(context, menuScale, config),
           ),
 
           if (_showLoadOverlay)
@@ -285,6 +254,38 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMenuButtons(
+    BuildContext context,
+    double scale,
+    SakiEngineConfig config,
+  ) {
+    final gameModule = widget.gameModule ?? DefaultGameModule();
+    final buttonConfigs = gameModule.createMainMenuButtonConfigs(
+      onNewGame: _handleNewGame,
+      onLoadGame: () => setState(() => _showLoadOverlay = true),
+      onSettings: () => setState(() => _showSettings = true),
+      onExit: () => _showExitConfirmation(context),
+      config: config,
+      scale: scale,
+    );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: buttonConfigs.map((buttonConfig) {
+        final index = buttonConfigs.indexOf(buttonConfig);
+        return Row(
+          children: [
+            if (index > 0) SizedBox(width: 20 * scale),
+            ConfigurableMenuButton(
+              config: buttonConfig,
+              scale: scale,
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 

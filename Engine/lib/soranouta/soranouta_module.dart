@@ -4,7 +4,8 @@ import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
-import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
+import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
+import 'package:sakiengine/src/screens/main_menu_screen.dart';
 
 /// SoraNoUta 项目的自定义模块
 /// 这个示例展示了如何为特定项目创建自定义模块
@@ -16,11 +17,12 @@ class SoranoutaModule extends DefaultGameModule {
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
   }) {
-    // 使用系统默认主菜单，支持 title 配置
-    return super.createMainMenuScreen(
+    // 使用默认主菜单，但传递自己作为模块来应用自定义按钮配置
+    return MainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
+      gameModule: this,
     );
   }
 
@@ -70,6 +72,162 @@ class SoranoutaModule extends DefaultGameModule {
     }
     // 在这里可以进行项目特定的初始化
     // 比如加载特殊的资源、设置特殊的配置等
+  }
+
+  @override
+  List<MenuButtonConfig> createMainMenuButtonConfigs({
+    required VoidCallback onNewGame,
+    required VoidCallback onLoadGame,
+    required VoidCallback onSettings,
+    required VoidCallback onExit,
+    required SakiEngineConfig config,
+    required double scale,
+  }) {
+    // SoraNoUta 项目自定义圆角按钮配置
+    return [
+      MenuButtonConfig(
+        text: '新游戏',
+        onPressed: onNewGame,
+        backgroundColor: Colors.indigo.withValues(alpha: 0.9),
+        textColor: Colors.white,
+        hoverColor: Colors.indigo,
+        borderRadius: 30, // 圆角矩形
+        shadows: [
+          BoxShadow(
+            color: Colors.indigo.withValues(alpha: 0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        padding: EdgeInsets.symmetric(
+          horizontal: 32 * scale,
+          vertical: 20 * scale,
+        ),
+        textStyle: TextStyle(
+          fontFamily: 'SourceHanSansCN',
+          fontSize: 24 * scale,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1,
+          shadows: [
+            Shadow(
+              blurRadius: 3,
+              color: Colors.black.withValues(alpha: 0.5),
+              offset: const Offset(1, 1),
+            ),
+          ],
+        ),
+      ),
+      MenuButtonConfig(
+        text: '读取存档',
+        onPressed: onLoadGame,
+        backgroundColor: Colors.purple.withValues(alpha: 0.9),
+        textColor: Colors.white,
+        hoverColor: Colors.purple,
+        borderRadius: 30, // 圆角矩形
+        shadows: [
+          BoxShadow(
+            color: Colors.purple.withValues(alpha: 0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        padding: EdgeInsets.symmetric(
+          horizontal: 32 * scale,
+          vertical: 20 * scale,
+        ),
+        textStyle: TextStyle(
+          fontFamily: 'SourceHanSansCN',
+          fontSize: 24 * scale,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1,
+          shadows: [
+            Shadow(
+              blurRadius: 3,
+              color: Colors.black.withValues(alpha: 0.5),
+              offset: const Offset(1, 1),
+            ),
+          ],
+        ),
+      ),
+      MenuButtonConfig(
+        text: '设置',
+        onPressed: onSettings,
+        backgroundColor: Colors.teal.withValues(alpha: 0.9),
+        textColor: Colors.white,
+        hoverColor: Colors.teal,
+        borderRadius: 30, // 圆角矩形
+        icon: Icon(
+          Icons.settings,
+          color: Colors.white,
+          size: 20 * scale,
+        ),
+        shadows: [
+          BoxShadow(
+            color: Colors.teal.withValues(alpha: 0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        padding: EdgeInsets.symmetric(
+          horizontal: 32 * scale,
+          vertical: 20 * scale,
+        ),
+        textStyle: TextStyle(
+          fontFamily: 'SourceHanSansCN',
+          fontSize: 24 * scale,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1,
+          shadows: [
+            Shadow(
+              blurRadius: 3,
+              color: Colors.black.withValues(alpha: 0.5),
+              offset: const Offset(1, 1),
+            ),
+          ],
+        ),
+      ),
+      MenuButtonConfig(
+        text: '退出',
+        onPressed: onExit,
+        backgroundColor: Colors.red.withValues(alpha: 0.9),
+        textColor: Colors.white,
+        hoverColor: Colors.red,
+        borderRadius: 30, // 圆角矩形
+        icon: Icon(
+          Icons.exit_to_app,
+          color: Colors.white,
+          size: 20 * scale,
+        ),
+        shadows: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        padding: EdgeInsets.symmetric(
+          horizontal: 32 * scale,
+          vertical: 20 * scale,
+        ),
+        textStyle: TextStyle(
+          fontFamily: 'SourceHanSansCN',
+          fontSize: 24 * scale,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1,
+          shadows: [
+            Shadow(
+              blurRadius: 3,
+              color: Colors.black.withValues(alpha: 0.5),
+              offset: const Offset(1, 1),
+            ),
+          ],
+        ),
+      ),
+    ];
   }
 }
 
