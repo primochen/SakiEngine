@@ -70,6 +70,7 @@ class SakiEngineConfig {
 
   // 基础窗口配置
   double baseWindowBorder = 0.0;
+  double baseWindowAlpha = 1.0;
 
   TextStyle dialogueTextStyle = const TextStyle(fontSize: 24, color: Colors.white);
   TextStyle speakerTextStyle = const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold);
@@ -194,6 +195,10 @@ class SakiEngineConfig {
                 case 'border':
                   baseWindowBorder = double.tryParse(keyValue[1]) ?? 0.0;
                   print('[Config] baseWindowBorder 设置为: $baseWindowBorder');
+                  break;
+                case 'alpha':
+                  baseWindowAlpha = double.tryParse(keyValue[1]) ?? 1.0;
+                  print('[Config] baseWindowAlpha 设置为: $baseWindowAlpha');
                   break;
               }
             }

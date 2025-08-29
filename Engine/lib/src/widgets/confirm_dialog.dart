@@ -34,7 +34,7 @@ class ConfirmDialog extends StatelessWidget {
           width: double.infinity,
           height: double.infinity,
           decoration: BoxDecoration(
-            color: config.themeColors.primaryDark.withOpacity(0.2),
+            color: config.themeColors.primaryDark.withOpacity(0.2 * config.baseWindowAlpha),
           ),
           child: GestureDetector(
             onTap: () {}, // 防止点击内容区域时关闭
@@ -45,7 +45,7 @@ class ConfirmDialog extends StatelessWidget {
                   //minHeight: 200,
                 ),
                 decoration: BoxDecoration(
-                  color: config.themeColors.background.withOpacity(0.95),
+                  color: config.themeColors.background.withOpacity(0.95 * config.baseWindowAlpha),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.3),

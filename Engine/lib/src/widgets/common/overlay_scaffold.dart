@@ -41,7 +41,7 @@ class OverlayScaffold extends StatelessWidget {
               width: double.infinity,
               height: double.infinity,
               decoration: BoxDecoration(
-                color: config.themeColors.primaryDark.withOpacity(0.5),
+                color: config.themeColors.primaryDark.withOpacity(0.5 * config.baseWindowAlpha),
               ),
               child: GestureDetector(
                 onTap: () {}, // 防止点击内容区域时也关闭
@@ -50,7 +50,7 @@ class OverlayScaffold extends StatelessWidget {
                     width: screenSize.width * 0.85,
                     height: screenSize.height * 0.8,
                     decoration: BoxDecoration(
-                      color: config.themeColors.background.withOpacity(0.95),
+                      color: config.themeColors.background.withOpacity(0.95 * config.baseWindowAlpha),
                       borderRadius: BorderRadius.circular(config.baseWindowBorder),
                       boxShadow: [
                         BoxShadow(
