@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  audioplayers_windows
   flutter_avif_windows
   hotkey_manager_windows
   screen_retriever_windows

@@ -48,6 +48,7 @@ dependencies:
   hotkey_manager: ^0.2.3
   flutter_avif: ^3.0.0
   flutter_svg: ^2.0.10
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
