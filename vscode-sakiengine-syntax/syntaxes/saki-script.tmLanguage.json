@@ -112,7 +112,10 @@
             "patterns": [
                 {
                     "name": "keyword.control.sks",
-                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer)\\b"
+                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx)\\b"
+                },
+                {
+                    "include": "#fx-syntax"
                 }
             ]
         },
@@ -275,6 +278,35 @@
                 {
                     "name": "constant.numeric.sks",
                     "match": "\\b\\d+(?:\\.\\d+)?\\b"
+                }
+            ]
+        },
+        "fx-syntax": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.fx.sks",
+                    "match": "\\b(fx)\\s+(dreamy|nostalgic|blur)\\b",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.sks"
+                        },
+                        "2": {
+                            "name": "entity.name.type.filter.sks"
+                        }
+                    }
+                },
+                {
+                    "name": "variable.parameter.fx.sks",
+                    "match": "\\b(intensity|animation|duration):",
+                    "captures": {
+                        "1": {
+                            "name": "variable.parameter.fx.sks"
+                        }
+                    }
+                },
+                {
+                    "name": "constant.other.animation.sks",
+                    "match": "\\b(pulse|fade|wave|none)\\b"
                 }
             ]
         }
