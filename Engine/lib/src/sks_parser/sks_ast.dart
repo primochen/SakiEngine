@@ -69,3 +69,8 @@ class EndNvlNode implements SksNode {}
 class NvlMovieNode implements SksNode {}
 
 class EndNvlMovieNode implements SksNode {}
+
+class FxNode implements SksNode {
+  final String filterString;
+  FxNode(this.filterString);
+}

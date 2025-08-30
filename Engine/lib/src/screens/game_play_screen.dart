@@ -28,6 +28,7 @@ import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
+import 'package:sakiengine/src/effects/scene_filter.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -344,30 +345,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                     print('🎯 调用 _dialogueProgressionManager.progressDialogue()');
                     _dialogueProgressionManager.progressDialogue();
                   },
-                  child: Stack(
-                    children: [
-                      if (gameState.background != null)
-                        _buildBackground(gameState.background!),
-                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
-                      if (gameState.dialogue != null && !gameState.isNvlMode)
-                        _currentModule?.createDialogueBox(
-                          speaker: gameState.speaker,
-                          dialogue: gameState.dialogue!,
-                          progressionManager: _dialogueProgressionManager,
-                        ) ?? DialogueBox(
-                          speaker: gameState.speaker,
-                          dialogue: gameState.dialogue!,
-                          progressionManager: _dialogueProgressionManager,
-                        ),
-                      if (gameState.currentNode is MenuNode)
-                        ChoiceMenu(
-                          menuNode: gameState.currentNode as MenuNode,
-                          onChoiceSelected: (String targetLabel) {
-                            _gameManager.jumpToLabel(targetLabel);
-                          },
-                        ),
-                    ],
-                  ),
+                  child: _buildSceneWithFilter(gameState),
                 ),
                 // NVL 模式覆盖层
                 if (gameState.isNvlMode)
@@ -428,11 +406,45 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
+  Widget _buildSceneWithFilter(GameState gameState) {
+    return Stack(
+      children: [
+        if (gameState.background != null)
+          _buildBackground(gameState.background!, gameState.sceneFilter),
+        ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
+        if (gameState.dialogue != null && !gameState.isNvlMode)
+          _currentModule?.createDialogueBox(
+            speaker: gameState.speaker,
+            dialogue: gameState.dialogue!,
+            progressionManager: _dialogueProgressionManager,
+          ) ?? DialogueBox(
+            speaker: gameState.speaker,
+            dialogue: gameState.dialogue!,
+            progressionManager: _dialogueProgressionManager,
+          ),
+        if (gameState.currentNode is MenuNode)
+          ChoiceMenu(
+            menuNode: gameState.currentNode as MenuNode,
+            onChoiceSelected: (String targetLabel) {
+              _gameManager.jumpToLabel(targetLabel);
+            },
+          ),
+      ],
+    );
+  }
+
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景
-  Widget _buildBackground(String background) {
+  Widget _buildBackground(String background, [SceneFilter? sceneFilter]) {
     // 检查是否为十六进制颜色格式
     if (ColorBackgroundRenderer.isValidHexColor(background)) {
-      return ColorBackgroundRenderer.createColorBackgroundWidget(background);
+      final colorWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
+      if (sceneFilter != null) {
+        return _FilteredBackground(
+          filter: sceneFilter,
+          child: colorWidget,
+        );
+      }
+      return colorWidget;
     }
     
     // 处理图片背景
@@ -440,12 +452,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.asset(
+          final imageWidget = Image.asset(
             snapshot.data!,
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
           );
+          
+          if (sceneFilter != null) {
+            return _FilteredBackground(
+              filter: sceneFilter,
+              child: imageWidget,
+            );
+          }
+          return imageWidget;
         }
         return Container(color: Colors.black);
       },
@@ -690,5 +710,64 @@ class _DissolvePainter extends CustomPainter {
     return progress != oldDelegate.progress ||
         imageFrom != oldDelegate.imageFrom ||
         imageTo != oldDelegate.imageTo;
+  }
+}
+
+class _FilteredBackground extends StatefulWidget {
+  final SceneFilter filter;
+  final Widget child;
+  
+  const _FilteredBackground({
+    required this.filter,
+    required this.child,
+  });
+
+  @override
+  State<_FilteredBackground> createState() => _FilteredBackgroundState();
+}
+
+class _FilteredBackgroundState extends State<_FilteredBackground>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: Duration(milliseconds: (widget.filter.duration * 1000).round()),
+      vsync: this,
+    );
+    
+    if (widget.filter.animation != AnimationType.none) {
+      _animationController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_FilteredBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      _animationController.duration = Duration(milliseconds: (widget.filter.duration * 1000).round());
+      if (widget.filter.animation != AnimationType.none) {
+        _animationController.repeat();
+      } else {
+        _animationController.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterRenderer.applyFilter(
+      child: widget.child,
+      filter: widget.filter,
+      animationController: _animationController,
+    );
   }
 }

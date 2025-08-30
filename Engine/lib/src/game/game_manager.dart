@@ -8,6 +8,7 @@ import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/sks_parser/sks_parser.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
+import 'package:sakiengine/src/effects/scene_filter.dart';
 
 class GameManager {
   final _gameStateController = StreamController<GameState>.broadcast();
@@ -147,13 +148,21 @@ class GameManager {
       }
 
       if (node is BackgroundNode) {
+        // 检查下一个节点是否是FxNode，如果是则一起处理
+        SceneFilter? sceneFilter;
+        int nextIndex = _scriptIndex + 1;
+        if (nextIndex < _script.children.length && _script.children[nextIndex] is FxNode) {
+          final fxNode = _script.children[nextIndex] as FxNode;
+          sceneFilter = SceneFilter.fromString(fxNode.filterString);
+        }
+        
         // 检查是否是游戏开始时的初始背景设置
         final isInitialBackground = _currentState.background == null;
         
         if (_context != null && !isInitialBackground) {
           // 只有在非初始背景时才使用转场效果
-          // 立即递增索引，避免重复处理
-          _scriptIndex++;
+          // 立即递增索引，如果有fx节点也跳过
+          _scriptIndex += sceneFilter != null ? 2 : 1;
           
           // 如果没有指定timer，默认使用0.01秒，确保转场后正确执行后续脚本
           final timerDuration = node.timer ?? 0.01;
@@ -162,7 +171,7 @@ class GameManager {
           _isWaitingForTimer = true;
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
-          _transitionToNewBackground(node.background).then((_) {
+          _transitionToNewBackground(node.background, sceneFilter).then((_) {
             // 转场完成后启动计时器
             _startSceneTimer(timerDuration);
           });
@@ -172,6 +181,7 @@ class GameManager {
           // 直接切换背景 - 初始背景或无context时
           _currentState = _currentState.copyWith(
               background: node.background, 
+              sceneFilter: sceneFilter,
               clearDialogueAndSpeaker: true,
               everShownCharacters: _everShownCharacters);
           _gameStateController.add(_currentState);
@@ -183,7 +193,8 @@ class GameManager {
             return;
           }
         }
-        _scriptIndex++;
+        // 如果有fx节点也跳过
+        _scriptIndex += sceneFilter != null ? 2 : 1;
         continue;
       }
 
@@ -379,6 +390,19 @@ class GameManager {
         _scriptIndex++;
         continue; // 继续执行后续节点
       }
+
+      if (node is FxNode) {
+        final filter = SceneFilter.fromString(node.filterString);
+        if (filter != null) {
+          _currentState = _currentState.copyWith(
+            sceneFilter: filter,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        }
+        _scriptIndex++;
+        continue;
+      }
     }
     _isProcessing = false;
   }
@@ -555,7 +579,7 @@ class GameManager {
   }
 
   /// 使用转场效果切换背景
-  Future<void> _transitionToNewBackground(String newBackground) async {
+  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter]) async {
     if (_context == null) return;
     
     //print('[GameManager] 开始scene转场到背景: $newBackground');
@@ -568,6 +592,7 @@ class GameManager {
         final oldState = _currentState;
         _currentState = _currentState.copyWith(
           background: newBackground,
+          sceneFilter: sceneFilter,
           clearDialogueAndSpeaker: true,
           clearCharacters: true,
           everShownCharacters: _everShownCharacters,
@@ -601,6 +626,7 @@ class GameState {
   final bool isNvlMovieMode;
   final List<NvlDialogue> nvlDialogues;
   final Set<String> everShownCharacters;
+  final SceneFilter? sceneFilter;
 
   GameState({
     this.background,
@@ -613,6 +639,7 @@ class GameState {
     this.isNvlMovieMode = false,
     this.nvlDialogues = const [],
     this.everShownCharacters = const {},
+    this.sceneFilter,
   });
 
   factory GameState.initial() {
@@ -635,6 +662,8 @@ class GameState {
     bool? isNvlMovieMode,
     List<NvlDialogue>? nvlDialogues,
     Set<String>? everShownCharacters,
+    SceneFilter? sceneFilter,
+    bool clearSceneFilter = false,
   }) {
     return GameState(
       background: background ?? this.background,
@@ -649,6 +678,7 @@ class GameState {
       isNvlMovieMode: isNvlMovieMode ?? this.isNvlMovieMode,
       nvlDialogues: nvlDialogues ?? this.nvlDialogues,
       everShownCharacters: everShownCharacters ?? this.everShownCharacters,
+      sceneFilter: clearSceneFilter ? null : (sceneFilter ?? this.sceneFilter),
     );
   }
 }

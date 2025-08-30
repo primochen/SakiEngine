@@ -14,7 +14,9 @@ nvlm
 "直到渐渐的，渐渐的。"
 "渐渐的理解了含义。"
 "这声音，原来是出自我那再熟悉不过的。"
+endnvlm
+nvlm
 "那是————"
 endnvlm
-scene chapter0 timer 5.0
+scene chapter0 timer 5.0 fx dreamy
 jump cp0_001

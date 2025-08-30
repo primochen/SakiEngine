@@ -48,17 +48,39 @@ class SksParser {
         case 'endmenu':
           break;
         case 'scene':
-          final backgroundParam = parts.sublist(1).join(' ');
+          final allParams = parts.sublist(1);
+          String backgroundName = '';
+          double? timerValue;
+          String? fxString;
+          
+          // 解析参数
+          int i = 0;
+          while (i < allParams.length) {
+            if (allParams[i] == 'timer' && i + 1 < allParams.length) {
+              timerValue = double.tryParse(allParams[i + 1]);
+              i += 2; // 跳过timer和值
+            } else if (allParams[i] == 'fx') {
+              // 收集fx后面的所有参数
+              if (i + 1 < allParams.length) {
+                fxString = allParams.sublist(i + 1).join(' ');
+              }
+              break; // fx是最后的参数
+            } else {
+              backgroundName += (backgroundName.isEmpty ? '' : ' ') + allParams[i];
+              i++;
+            }
+          }
           
           // 检查是否为十六进制颜色格式
-          if (ColorBackgroundRenderer.isValidHexColor(backgroundParam.trim())) {
-            nodes.add(BackgroundNode(backgroundParam.trim()));
-          } else if (parts.length >= 4 && parts[parts.length - 2] == 'timer') {
-            final backgroundName = parts.sublist(1, parts.length - 2).join(' ');
-            final timerValue = double.tryParse(parts.last);
-            nodes.add(BackgroundNode(backgroundName, timer: timerValue));
+          if (ColorBackgroundRenderer.isValidHexColor(backgroundName.trim())) {
+            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue));
           } else {
-            nodes.add(BackgroundNode(backgroundParam));
+            nodes.add(BackgroundNode(backgroundName, timer: timerValue));
+          }
+          
+          // 如果有fx参数，添加FxNode
+          if (fxString != null && fxString.isNotEmpty) {
+            nodes.add(FxNode(fxString));
           }
           break;
         case 'show':
@@ -88,6 +110,10 @@ class SksParser {
           break;
         case 'endnvlm':
           nodes.add(EndNvlMovieNode());
+          break;
+        case 'fx':
+          final filterString = parts.sublist(1).join(' ');
+          nodes.add(FxNode(filterString));
           break;
         default:
           final sayNode = _parseSay(trimmedLine);
