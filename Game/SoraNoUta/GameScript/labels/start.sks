@@ -18,5 +18,5 @@ endnvlm
 nvlm
 "那是————"
 endnvlm
-scene chapter0 timer 5.0 fx blur
+scene [chapter0,title:bottom=0 left=0] timer 5.0 fx blur
 jump cp0_001

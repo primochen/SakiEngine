@@ -7,8 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
-import 'package:sakiengine/src/core/project_module_loader.dart';
-import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
@@ -29,6 +27,8 @@ import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -50,7 +50,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
-  GameModule? _currentModule;
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
@@ -58,6 +57,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool _showSettings = false;
   bool _isShowingMenu = false;
   HotKey? _reloadHotKey;
+  String? _projectName;
 
   @override
   void initState() {
@@ -71,8 +71,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       gameManager: _gameManager,
     );
 
-    // 初始化当前模块
-    _initializeModule();
+    // 获取项目名称
+    _loadProjectName();
 
     // 注册系统级热键 Shift+R
     _setupHotkey();
@@ -99,6 +99,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
+  Future<void> _loadProjectName() async {
+    try {
+      _projectName = await ProjectInfoManager().getAppName();
+      if (mounted) setState(() {});
+    } catch (e) {
+      _projectName = 'SakiEngine';
+    }
+  }
+
   void _returnToMainMenu() {
     if (mounted && widget.onReturnToMenu != null) {
       widget.onReturnToMenu!();
@@ -119,12 +128,28 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   Future<void> _initializeModule() async {
-    final module = await moduleLoader.getCurrentModule();
-    if (mounted) {
-      setState(() {
-        _currentModule = module;
-      });
+    // 移除模块系统 - 直接加载项目名称即可
+  }
+
+  Widget _createDialogueBox({
+    String? speaker,
+    required String dialogue,
+  }) {
+    // 根据项目名称选择对话框
+    if (_projectName == 'SoraNoUta') {
+      return SoranoUtaDialogueBox(
+        speaker: speaker,
+        dialogue: dialogue,
+        progressionManager: _dialogueProgressionManager,
+      );
     }
+    
+    // 默认对话框
+    return DialogueBox(
+      speaker: speaker,
+      dialogue: dialogue,
+      progressionManager: _dialogueProgressionManager,
+    );
   }
 
   void _handleQuickMenuBack() {
@@ -413,14 +438,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
           _buildBackground(gameState.background!, gameState.sceneFilter),
         ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
         if (gameState.dialogue != null && !gameState.isNvlMode)
-          _currentModule?.createDialogueBox(
+          _createDialogueBox(
             speaker: gameState.speaker,
             dialogue: gameState.dialogue!,
-            progressionManager: _dialogueProgressionManager,
-          ) ?? DialogueBox(
-            speaker: gameState.speaker,
-            dialogue: gameState.dialogue!,
-            progressionManager: _dialogueProgressionManager,
           ),
         if (gameState.currentNode is MenuNode)
           ChoiceMenu(

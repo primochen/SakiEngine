@@ -11,8 +11,9 @@ import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
-import 'package:sakiengine/src/core/game_module.dart';
+import 'package:sakiengine/src/widgets/common/default_menu_buttons.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
+import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -79,14 +80,12 @@ class MainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
-  final GameModule? gameModule;
 
   const MainMenuScreen({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
     this.onLoadGameWithSave,
-    this.gameModule,
   });
 
   @override
@@ -132,7 +131,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     final screenSize = MediaQuery.of(context).size;
     final menuScale = context.scaleFor(ComponentType.menu);
     final textScale = context.scaleFor(ComponentType.text);
-    final gameModule = widget.gameModule ?? DefaultGameModule();
 
     return Scaffold(
       body: Stack(
@@ -187,7 +185,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ),
           ),
           
-          if (gameModule.showBottomBar)
+          if (_showBottomBar())
             Positioned(
               bottom: screenSize.height * 0.04,
               right: screenSize.width * 0.01,
@@ -227,22 +225,47 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
+  bool _showBottomBar() {
+    return _appTitle != 'SoraNoUta'; // SoraNoUta项目不显示底条
+  }
+
   Widget _buildMenuButtons(
     BuildContext context,
     double scale,
     SakiEngineConfig config,
   ) {
-    final gameModule = widget.gameModule ?? DefaultGameModule();
-    final buttonConfigs = gameModule.createMainMenuButtonConfigs(
-      onNewGame: _handleNewGame,
-      onLoadGame: () => setState(() => _showLoadOverlay = true),
-      onSettings: () => setState(() => _showSettings = true),
-      onExit: () => _showExitConfirmation(context),
-      config: config,
-      scale: scale,
-    );
+    List<MenuButtonConfig> buttonConfigs;
+    MenuButtonsLayoutConfig layoutConfig;
     
-    final layoutConfig = gameModule.getMenuButtonsLayoutConfig();
+    // 根据项目选择按钮配置
+    if (_appTitle == 'SoraNoUta') {
+      buttonConfigs = SoranoutaMenuButtons.createConfigs(
+        onNewGame: _handleNewGame,
+        onLoadGame: () => setState(() => _showLoadOverlay = true),
+        onSettings: () => setState(() => _showSettings = true),
+        onExit: () => _showExitConfirmation(context),
+        config: config,
+        scale: scale,
+      );
+      layoutConfig = SoranoutaMenuButtons.getLayoutConfig();
+    } else {
+      buttonConfigs = DefaultMenuButtons.createDefaultConfigs(
+        onNewGame: _handleNewGame,
+        onLoadGame: () => setState(() => _showLoadOverlay = true),
+        onSettings: () => setState(() => _showSettings = true),
+        onExit: () => _showExitConfirmation(context),
+        config: config,
+        scale: scale,
+      );
+      layoutConfig = const MenuButtonsLayoutConfig(
+        isVertical: false,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.end,
+        spacing: 20,
+        bottom: 0.05,
+        right: 0.01,
+      );
+    }
     final screenSize = MediaQuery.of(context).size;
 
     Widget buttonsWidget;
