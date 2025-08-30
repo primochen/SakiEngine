@@ -58,7 +58,7 @@ class MusicManager extends ChangeNotifier {
     await _saveSettings();
     
     if (!enabled) {
-      await stopBackgroundMusic();
+      await _backgroundMusicPlayer.pause();
     } else if (_currentBackgroundMusic != null) {
       await playBackgroundMusic(_currentBackgroundMusic!);
     }
@@ -109,10 +109,20 @@ class MusicManager extends ChangeNotifier {
   Future<void> stopBackgroundMusic() async {
     try {
       await _backgroundMusicPlayer.stop();
-      _currentBackgroundMusic = null;
     } catch (e) {
       if (kDebugMode) {
         print('Error stopping background music: $e');
+      }
+    }
+  }
+
+  Future<void> clearBackgroundMusic() async {
+    try {
+      await _backgroundMusicPlayer.stop();
+      _currentBackgroundMusic = null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error clearing background music: $e');
       }
     }
   }
