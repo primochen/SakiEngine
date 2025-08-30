@@ -135,6 +135,9 @@ void main() async {
     // 初始化设置管理器
     await SettingsManager().init();
     
+    // 应用深色模式设置
+    SakiEngineConfig().updateThemeForDarkMode();
+    
     // 初始化项目模块
     initializeProjectModules();
     
