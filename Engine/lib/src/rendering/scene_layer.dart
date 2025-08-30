@@ -88,7 +88,8 @@ class MultiLayerRenderer {
   }
 
   static Widget _buildLayer(SceneLayer layer, Size screenSize) {
-    Widget widget = Image.asset(
+    // The base widget is the Image, configured to fill its parent container.
+    Widget imageContent = Image.asset(
       'assets/Assets/images/backgrounds/${layer.assetName.replaceAll(' ', '-')}.png',
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
@@ -109,20 +110,37 @@ class MultiLayerRenderer {
       },
     );
 
-    // 应用zoom缩放
-    if (layer.position?.zoom != null && layer.position!.zoom != 1.0) {
-      widget = Transform.scale(
-        scale: layer.position!.zoom,
-        alignment: _determineScaleAlignment(layer.position),
-        child: widget,
+    final pos = layer.position;
+
+    // Apply the zoom transformation directly to the image content.
+    if (pos != null && pos.zoom != 1.0) {
+      imageContent = Transform.scale(
+        scale: pos.zoom,
+        alignment: _determineScaleAlignment(pos),
+        child: imageContent,
       );
     }
 
-    if (layer.position == null) {
-      return Positioned.fill(child: widget);
+    // For a layer with no position info, fill the screen.
+    if (pos == null) {
+      return Positioned.fill(child: imageContent);
     }
 
-    final pos = layer.position!;
+    Widget finalChild = imageContent;
+
+    // CRITICAL FIX: If no explicit size is defined in the script (width/height are null),
+    // the image would use its static, intrinsic size, which is not responsive.
+    // To fix this, we provide a default responsive container that scales with the screen height,
+    // mirroring the behavior of character sprites.
+    if (pos.width == null && pos.height == null) {
+      finalChild = SizedBox(
+        height: screenSize.height,
+        child: finalChild,
+      );
+    }
+
+    // Position the final widget. If width/height are specified in the script,
+    // they will create a responsive container that overrides the default SizedBox.
     return Positioned(
       left: pos.left != null ? screenSize.width * pos.left! : null,
       right: pos.right != null ? screenSize.width * pos.right! : null,
@@ -130,7 +148,7 @@ class MultiLayerRenderer {
       bottom: pos.bottom != null ? screenSize.height * pos.bottom! : null,
       width: pos.width != null ? screenSize.width * pos.width! : null,
       height: pos.height != null ? screenSize.height * pos.height! : null,
-      child: widget,
+      child: finalChild,
     );
   }
 
