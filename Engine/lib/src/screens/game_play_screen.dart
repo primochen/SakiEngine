@@ -29,6 +29,7 @@ import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
+import 'package:sakiengine/src/rendering/scene_layer.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -435,7 +436,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     return Stack(
       children: [
         if (gameState.background != null)
-          _buildBackground(gameState.background!, gameState.sceneFilter),
+          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers),
         ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
         if (gameState.dialogue != null && !gameState.isNvlMode)
           _createDialogueBox(
@@ -453,8 +454,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
-  /// 构建背景Widget - 支持图片背景和十六进制颜色背景
-  Widget _buildBackground(String background, [SceneFilter? sceneFilter]) {
+  /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景
+  Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers]) {
+    // 如果有多图层数据，使用多图层渲染器
+    if (sceneLayers != null && sceneLayers.isNotEmpty) {
+      final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
+          .where((layer) => layer != null)
+          .cast<SceneLayer>()
+          .toList();
+      
+      if (layers.isNotEmpty) {
+        final multiLayerWidget = MultiLayerRenderer.buildMultiLayerScene(
+          layers: layers,
+          screenSize: MediaQuery.of(context).size,
+        );
+        
+        if (sceneFilter != null) {
+          return _FilteredBackground(
+            filter: sceneFilter,
+            child: multiLayerWidget,
+          );
+        }
+        return multiLayerWidget;
+      }
+    }
+    
+    // 单图层模式（原有逻辑）
     // 检查是否为十六进制颜色格式
     if (ColorBackgroundRenderer.isValidHexColor(background)) {
       final colorWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);

@@ -1,0 +1,14 @@
+// 测试多图层场景
+scene [chapter0,title:bottom=0.1 left=0.1 zoom=1.2] timer 3.0 fx dreamy
+
+"欢迎来到多图层测试场景，标题放大1.2倍"
+
+// 测试单图层（保持兼容性）
+scene normal_background timer 2.0 fx blur
+
+"这是单图层场景，应该清除多图层残留"
+
+// 测试复杂多图层与缩放
+scene [bg,overlay:top=0.05 right=0.05 zoom=0.8,ui:bottom=0 left=0 width=1.0 zoom=1.5] fx nostalgic
+
+"复杂多图层场景：overlay缩小0.8倍，ui放大1.5倍"

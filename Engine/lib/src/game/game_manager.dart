@@ -171,7 +171,7 @@ class GameManager {
           _isWaitingForTimer = true;
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
-          _transitionToNewBackground(node.background, sceneFilter).then((_) {
+          _transitionToNewBackground(node.background, sceneFilter, node.layers).then((_) {
             // 转场完成后启动计时器
             _startSceneTimer(timerDuration);
           });
@@ -182,6 +182,8 @@ class GameManager {
           _currentState = _currentState.copyWith(
               background: node.background, 
               sceneFilter: sceneFilter,
+              sceneLayers: node.layers,
+              clearSceneLayers: node.layers == null, // 如果是单图层，清除多图层数据
               clearDialogueAndSpeaker: true,
               everShownCharacters: _everShownCharacters);
           _gameStateController.add(_currentState);
@@ -579,7 +581,7 @@ class GameManager {
   }
 
   /// 使用转场效果切换背景
-  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter]) async {
+  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers]) async {
     if (_context == null) return;
     
     //print('[GameManager] 开始scene转场到背景: $newBackground');
@@ -593,6 +595,8 @@ class GameManager {
         _currentState = _currentState.copyWith(
           background: newBackground,
           sceneFilter: sceneFilter,
+          sceneLayers: layers,
+          clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
           clearDialogueAndSpeaker: true,
           clearCharacters: true,
           everShownCharacters: _everShownCharacters,
@@ -627,6 +631,7 @@ class GameState {
   final List<NvlDialogue> nvlDialogues;
   final Set<String> everShownCharacters;
   final SceneFilter? sceneFilter;
+  final List<String>? sceneLayers; // 新增：多图层支持
 
   GameState({
     this.background,
@@ -640,6 +645,7 @@ class GameState {
     this.nvlDialogues = const [],
     this.everShownCharacters = const {},
     this.sceneFilter,
+    this.sceneLayers,
   });
 
   factory GameState.initial() {
@@ -664,6 +670,8 @@ class GameState {
     Set<String>? everShownCharacters,
     SceneFilter? sceneFilter,
     bool clearSceneFilter = false,
+    List<String>? sceneLayers,
+    bool clearSceneLayers = false,
   }) {
     return GameState(
       background: background ?? this.background,
@@ -679,6 +687,7 @@ class GameState {
       nvlDialogues: nvlDialogues ?? this.nvlDialogues,
       everShownCharacters: everShownCharacters ?? this.everShownCharacters,
       sceneFilter: clearSceneFilter ? null : (sceneFilter ?? this.sceneFilter),
+      sceneLayers: clearSceneLayers ? null : (sceneLayers ?? this.sceneLayers),
     );
   }
 }

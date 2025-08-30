@@ -52,30 +52,64 @@ class SksParser {
           String backgroundName = '';
           double? timerValue;
           String? fxString;
+          List<String>? layers;
           
-          // 解析参数
-          int i = 0;
-          while (i < allParams.length) {
-            if (allParams[i] == 'timer' && i + 1 < allParams.length) {
-              timerValue = double.tryParse(allParams[i + 1]);
-              i += 2; // 跳过timer和值
-            } else if (allParams[i] == 'fx') {
-              // 收集fx后面的所有参数
-              if (i + 1 < allParams.length) {
-                fxString = allParams.sublist(i + 1).join(' ');
+          // 检查是否为多图层语法 [layer1,layer2:params,...]
+          if (allParams.isNotEmpty && allParams[0].startsWith('[') && allParams.join(' ').contains(']')) {
+            final layerContent = allParams.join(' ');
+            final startBracket = layerContent.indexOf('[');
+            final endBracket = layerContent.indexOf(']');
+            
+            if (startBracket >= 0 && endBracket > startBracket) {
+              final layerString = layerContent.substring(startBracket + 1, endBracket);
+              layers = layerString.split(',').map((s) => s.trim()).toList();
+              
+              // 第一个图层作为主背景名
+              if (layers.isNotEmpty) {
+                backgroundName = layers[0].split(':')[0]; // 去掉可能的位置参数
               }
-              break; // fx是最后的参数
-            } else {
-              backgroundName += (backgroundName.isEmpty ? '' : ' ') + allParams[i];
-              i++;
+              
+              // 解析后续参数（timer, fx等）
+              final remainingParams = layerContent.substring(endBracket + 1).trim().split(' ').where((s) => s.isNotEmpty).toList();
+              int i = 0;
+              while (i < remainingParams.length) {
+                if (remainingParams[i] == 'timer' && i + 1 < remainingParams.length) {
+                  timerValue = double.tryParse(remainingParams[i + 1]);
+                  i += 2;
+                } else if (remainingParams[i] == 'fx') {
+                  if (i + 1 < remainingParams.length) {
+                    fxString = remainingParams.sublist(i + 1).join(' ');
+                  }
+                  break;
+                } else {
+                  i++;
+                }
+              }
+            }
+          } else {
+            // 单图层模式（原有逻辑）
+            int i = 0;
+            while (i < allParams.length) {
+              if (allParams[i] == 'timer' && i + 1 < allParams.length) {
+                timerValue = double.tryParse(allParams[i + 1]);
+                i += 2;
+              } else if (allParams[i] == 'fx') {
+                if (i + 1 < allParams.length) {
+                  fxString = allParams.sublist(i + 1).join(' ');
+                }
+                break;
+              } else {
+                backgroundName += (backgroundName.isEmpty ? '' : ' ') + allParams[i];
+                i++;
+              }
             }
           }
           
           // 检查是否为十六进制颜色格式
           if (ColorBackgroundRenderer.isValidHexColor(backgroundName.trim())) {
-            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue));
+            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue, layers: layers));
           } else {
-            nodes.add(BackgroundNode(backgroundName, timer: timerValue));
+            nodes.add(BackgroundNode(backgroundName, timer: timerValue, layers: layers));
           }
           
           // 如果有fx参数，添加FxNode

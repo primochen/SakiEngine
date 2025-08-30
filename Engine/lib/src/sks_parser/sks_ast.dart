@@ -20,7 +20,8 @@ class HideNode implements SksNode {
 class BackgroundNode implements SksNode {
   final String background;
   final double? timer;
-  BackgroundNode(this.background, {this.timer});
+  final List<String>? layers; // 新增：多图层支持
+  BackgroundNode(this.background, {this.timer, this.layers});
 }
 
 class SayNode implements SksNode {
