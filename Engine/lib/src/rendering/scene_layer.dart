@@ -86,7 +86,7 @@ class MultiLayerRenderer {
       children: layers.map((layer) => _buildLayer(layer, screenSize)).toList(),
     );
   }
-  
+
   static Widget _buildLayer(SceneLayer layer, Size screenSize) {
     Widget widget = Image.asset(
       'assets/Assets/images/backgrounds/${layer.assetName.replaceAll(' ', '-')}.png',
@@ -108,19 +108,20 @@ class MultiLayerRenderer {
         );
       },
     );
-    
+
     // 应用zoom缩放
     if (layer.position?.zoom != null && layer.position!.zoom != 1.0) {
       widget = Transform.scale(
         scale: layer.position!.zoom,
+        alignment: _determineScaleAlignment(layer.position),
         child: widget,
       );
     }
-    
+
     if (layer.position == null) {
       return Positioned.fill(child: widget);
     }
-    
+
     final pos = layer.position!;
     return Positioned(
       left: pos.left != null ? screenSize.width * pos.left! : null,
@@ -131,5 +132,14 @@ class MultiLayerRenderer {
       height: pos.height != null ? screenSize.height * pos.height! : null,
       child: widget,
     );
+  }
+
+  static Alignment _determineScaleAlignment(LayerPosition? pos) {
+    if (pos == null) return Alignment.center;
+    
+    final double y = (pos.top != null) ? -1.0 : (pos.bottom != null) ? 1.0 : 0.0;
+    final double x = (pos.left != null) ? -1.0 : (pos.right != null) ? 1.0 : 0.0;
+    
+    return Alignment(x, y);
   }
 }
