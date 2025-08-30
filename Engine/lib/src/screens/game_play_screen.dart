@@ -28,6 +28,7 @@ import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
 
@@ -523,39 +524,49 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       final characterState = entry.value;
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
-      final layers = <Widget>[];
-
-      final poseImage = characterState.pose ?? 'pose1';
-      final poseAssetName = 'characters/${characterState.resourceId}-$poseImage';
-      layers.add(_CharacterLayer(
-        key: ValueKey('$characterId-pose'), 
-        assetName: poseAssetName,
-      ));
-
-      final expressionImage = characterState.expression ?? 'happy';
-      final expressionAssetName = 'characters/${characterState.resourceId}-$expressionImage';
-      layers.add(_CharacterLayer(
-        key: ValueKey('$characterId-expression'), 
-        assetName: expressionAssetName,
-      ));
+      // 使用新的异步图层解析器，但添加缓存键来避免重复解析
+      final cacheKey = '${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
       
-      final characterStack = Stack(children: layers);
-      
-      Widget finalWidget = characterStack;
-      if (poseConfig.scale > 0) {
-        finalWidget = SizedBox(
-          height: MediaQuery.of(context).size.height * poseConfig.scale,
-          child: characterStack,
-        );
-      }
-
-      return Positioned(
-        left: poseConfig.xcenter * MediaQuery.of(context).size.width,
-        top: poseConfig.ycenter * MediaQuery.of(context).size.height,
-        child: FractionalTranslation(
-          translation: _anchorToTranslation(poseConfig.anchor),
-          child: finalWidget,
+      return FutureBuilder<List<CharacterLayerInfo>>(
+        future: CharacterLayerParser.parseCharacterLayers(
+          resourceId: characterState.resourceId,
+          pose: characterState.pose ?? 'pose1',
+          expression: characterState.expression ?? 'happy',
         ),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox.shrink();
+          }
+
+          final layerInfos = snapshot.data!;
+
+          // 根据解析结果创建图层组件
+          final layers = layerInfos.map((layerInfo) {
+            return _CharacterLayer(
+              key: ValueKey('$characterId-${layerInfo.layerType}'),
+              assetName: layerInfo.assetName,
+            );
+          }).toList();
+          
+          final characterStack = Stack(children: layers);
+          
+          Widget finalWidget = characterStack;
+          if (poseConfig.scale > 0) {
+            finalWidget = SizedBox(
+              height: MediaQuery.of(context).size.height * poseConfig.scale,
+              child: characterStack,
+            );
+          }
+
+          return Positioned(
+            left: poseConfig.xcenter * MediaQuery.of(context).size.width,
+            top: poseConfig.ycenter * MediaQuery.of(context).size.height,
+            child: FractionalTranslation(
+              translation: _anchorToTranslation(poseConfig.anchor),
+              child: finalWidget,
+            ),
+          );
+        },
       );
     }).toList();
   }

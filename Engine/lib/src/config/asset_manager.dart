@@ -243,4 +243,102 @@ class AssetManager {
     print("Asset not found in file system: $name");
     return null;
   }
+
+  /// 扫描指定角色ID的所有可用图层文件
+  /// 返回按字母顺序排序的文件名列表（不包含扩展名和角色ID前缀）
+  static Future<List<String>> getAvailableCharacterLayers(String characterId) async {
+    final availableLayers = <String>[];
+    
+    try {
+      final gamePath = await _getGamePath();
+      final charactersDir = Directory(p.join(gamePath, 'Assets', 'images', 'characters'));
+      
+      if (!await charactersDir.exists()) {
+        return availableLayers;
+      }
+      
+      final prefix = '$characterId-';
+      final imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.avif'];
+      
+      await for (final file in charactersDir.list()) {
+        if (file is File) {
+          final fileName = p.basename(file.path);
+          final fileNameWithoutExt = p.basenameWithoutExtension(fileName);
+          
+          // 检查是否以指定角色ID开头且是图片文件
+          if (fileNameWithoutExt.startsWith(prefix) && 
+              imageExtensions.any((ext) => fileName.toLowerCase().endsWith(ext))) {
+            // 提取图层名称（去掉角色ID前缀）
+            final layerName = fileNameWithoutExt.substring(prefix.length);
+            if (layerName.isNotEmpty) {
+              availableLayers.add(layerName);
+            }
+          }
+        }
+      }
+      
+      // 按字母顺序排序
+      availableLayers.sort();
+      
+      if (kDebugMode) {
+        print("Available layers for $characterId: $availableLayers");
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error scanning character layers for $characterId: $e");
+      }
+    }
+    
+    return availableLayers;
+  }
+  
+  /// 获取指定角色ID和图层级别的默认图层名称
+  /// 返回该级别下按字母顺序第一个可用的图层
+  static Future<String?> getDefaultLayerForLevel(String characterId, int layerLevel) async {
+    final availableLayers = await getAvailableCharacterLayers(characterId);
+    
+    // 筛选出指定级别的图层
+    final layersForLevel = availableLayers.where((layer) {
+      // 解析图层级别
+      int dashCount = 0;
+      for (int i = 0; i < layer.length; i++) {
+        if (layer[i] == '-') {
+          dashCount++;
+        } else {
+          break;
+        }
+      }
+      
+      int currentLayerLevel;
+      if (dashCount == 0) {
+        currentLayerLevel = 1; // 无"-"，作为基础表情
+      } else if (dashCount == 1) {
+        currentLayerLevel = 1; // 单"-"，保持兼容
+      } else {
+        currentLayerLevel = dashCount; // 多"-"，按数量确定层级
+      }
+      
+      return currentLayerLevel == layerLevel;
+    }).toList();
+    
+    // 提取实际的图层名称（去掉前缀"-"）
+    if (layersForLevel.isNotEmpty) {
+      String firstLayer = layersForLevel.first;
+      
+      // 提取实际名称
+      int dashCount = 0;
+      for (int i = 0; i < firstLayer.length; i++) {
+        if (firstLayer[i] == '-') {
+          dashCount++;
+        } else {
+          break;
+        }
+      }
+      
+      return dashCount > 0 ? firstLayer.substring(dashCount) : firstLayer;
+    }
+    
+    return null;
+  }
 } 
