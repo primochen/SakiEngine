@@ -91,6 +91,7 @@ flutter:
     - assets/Assets/gui/
     - assets/Assets/fonts/
     - assets/Assets/sound/
+    - pubspec.yaml
 
   shaders:
     # 着色器必须在这里单独声明
