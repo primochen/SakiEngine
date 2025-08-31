@@ -4,6 +4,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
@@ -34,6 +35,25 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
   bool _showSettings = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startBackgroundMusic();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _startBackgroundMusic() async {
+    try {
+      await MusicManager().playBackgroundMusic('Assets/music/dream.ogg');
+    } catch (e) {
+      // Silently handle music loading errors
+    }
+  }
 
   Future<void> _showExitConfirmation(BuildContext context) async {
     await ExitConfirmationDialog.showExitConfirmationAndDestroy(context);

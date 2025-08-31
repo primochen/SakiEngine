@@ -6,6 +6,7 @@ import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
+import 'package:sakiengine/src/utils/character_layer_parser.dart';
 
 /// 游戏渲染器 - 统一的背景和角色绘制逻辑
 /// 同时供游戏界面和截图生成器使用，确保完全一致的渲染效果
@@ -72,33 +73,37 @@ class GameRenderer {
     try {
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
       
-      // 加载 pose 图层
-      final poseImage = characterState.pose ?? 'pose1';
-      final poseAssetName = 'characters/${characterState.resourceId}-$poseImage';
-      final poseImageData = await _loadCharacterImage(poseAssetName);
+      // 使用新的异步图层解析器
+      final layerInfos = await CharacterLayerParser.parseCharacterLayers(
+        resourceId: characterState.resourceId,
+        pose: characterState.pose ?? 'pose1',
+        expression: characterState.expression ?? 'happy',
+      );
       
-      // 加载 expression 图层
-      final expressionImage = characterState.expression ?? 'happy';
-      final expressionAssetName = 'characters/${characterState.resourceId}-$expressionImage';
-      final expressionImageData = await _loadCharacterImage(expressionAssetName);
+      // 加载所有图层的图片数据
+      ui.Image? sampleImage;
+      final layerImages = <ui.Image>[];
       
-      if (poseImageData == null && expressionImageData == null) return;
+      for (final layerInfo in layerInfos) {
+        final imageData = await _loadCharacterImage(layerInfo.assetName);
+        if (imageData != null) {
+          layerImages.add(imageData);
+          sampleImage ??= imageData; // 用第一个成功加载的图片作为尺寸参考
+        }
+      }
       
-      // 计算角色的绘制参数（完全复用游戏界面逻辑）
+      if (sampleImage == null) return;
+      
+      // 计算角色的绘制参数
       final renderParams = _calculateCharacterRenderParams(
         poseConfig, 
         canvasSize,
-        poseImageData ?? expressionImageData!,
+        sampleImage,
       );
       
-      // 绘制 pose 图层
-      if (poseImageData != null) {
-        _drawCharacterLayer(canvas, poseImageData, renderParams);
-      }
-      
-      // 绘制 expression 图层
-      if (expressionImageData != null) {
-        _drawCharacterLayer(canvas, expressionImageData, renderParams);
+      // 按层级顺序绘制所有图层
+      for (int i = 0; i < layerImages.length; i++) {
+        _drawCharacterLayer(canvas, layerImages[i], renderParams);
       }
     } catch (e) {
       print('绘制角色 $characterId 失败: $e');
@@ -162,11 +167,15 @@ class GameRenderer {
   
   /// 在Canvas上绘制角色图层
   static void _drawCharacterLayer(Canvas canvas, ui.Image image, CharacterRenderParams params) {
+    final paint = Paint()
+      ..filterQuality = FilterQuality.high
+      ..isAntiAlias = true;
+    
     canvas.drawImageRect(
       image,
       Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
       Rect.fromLTWH(params.x, params.y, params.width, params.height),
-      Paint(),
+      paint,
     );
   }
   

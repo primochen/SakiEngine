@@ -1,7 +1,8 @@
 //label// SoraNoUta 主标签脚本文件
 label start
 // 背景设置为白天天空
-scene sky
+scene #000000
+play sound kazekage loop
 nvlm
 // 旁白文本（移除了xp前缀）
 "风吹动着。"
@@ -14,7 +15,9 @@ nvlm
 "直到渐渐的，渐渐的。"
 "渐渐的理解了含义。"
 "这声音，原来是出自我那再熟悉不过的。"
+endnvlm
+nvlm
 "那是————"
 endnvlm
-scene chapter0 timer 5.0
+scene [chapter0,title:bottom=0.0 left=0.0 zoom=0.3] timer 5.0 fx blur
 jump cp0_001

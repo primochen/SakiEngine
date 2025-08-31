@@ -7,8 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
-import 'package:sakiengine/src/core/project_module_loader.dart';
-import 'package:sakiengine/src/core/game_module.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
@@ -28,6 +26,11 @@ import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
+import 'package:sakiengine/src/effects/scene_filter.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'package:sakiengine/src/utils/character_layer_parser.dart';
+import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
+import 'package:sakiengine/src/rendering/scene_layer.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -49,7 +52,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
-  GameModule? _currentModule;
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
@@ -57,6 +59,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   bool _showSettings = false;
   bool _isShowingMenu = false;
   HotKey? _reloadHotKey;
+  String? _projectName;
 
   @override
   void initState() {
@@ -70,8 +73,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       gameManager: _gameManager,
     );
 
-    // 初始化当前模块
-    _initializeModule();
+    // 获取项目名称
+    _loadProjectName();
 
     // 注册系统级热键 Shift+R
     _setupHotkey();
@@ -98,7 +101,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     }
   }
 
+  Future<void> _loadProjectName() async {
+    try {
+      _projectName = await ProjectInfoManager().getAppName();
+      if (mounted) setState(() {});
+    } catch (e) {
+      _projectName = 'SakiEngine';
+    }
+  }
+
   void _returnToMainMenu() {
+    // 停止所有音效，保留音乐
+    _gameManager.stopAllSounds();
+    
     if (mounted && widget.onReturnToMenu != null) {
       widget.onReturnToMenu!();
     } else if (mounted) {
@@ -118,12 +133,28 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   Future<void> _initializeModule() async {
-    final module = await moduleLoader.getCurrentModule();
-    if (mounted) {
-      setState(() {
-        _currentModule = module;
-      });
+    // 移除模块系统 - 直接加载项目名称即可
+  }
+
+  Widget _createDialogueBox({
+    String? speaker,
+    required String dialogue,
+  }) {
+    // 根据项目名称选择对话框
+    if (_projectName == 'SoraNoUta') {
+      return SoranoUtaDialogueBox(
+        speaker: speaker,
+        dialogue: dialogue,
+        progressionManager: _dialogueProgressionManager,
+      );
     }
+    
+    // 默认对话框
+    return DialogueBox(
+      speaker: speaker,
+      dialogue: dialogue,
+      progressionManager: _dialogueProgressionManager,
+    );
   }
 
   void _handleQuickMenuBack() {
@@ -339,35 +370,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
               children: [
                 GestureDetector(
                   onTap: gameState.currentNode is MenuNode ? null : () {
-                    print('🎯 点击事件触发');
-                    print('🎯 当前节点类型: ${gameState.currentNode.runtimeType}');
-                    print('🎯 调用 _dialogueProgressionManager.progressDialogue()');
                     _dialogueProgressionManager.progressDialogue();
                   },
-                  child: Stack(
-                    children: [
-                      if (gameState.background != null)
-                        _buildBackground(gameState.background!),
-                      ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
-                      if (gameState.dialogue != null && !gameState.isNvlMode)
-                        _currentModule?.createDialogueBox(
-                          speaker: gameState.speaker,
-                          dialogue: gameState.dialogue!,
-                          progressionManager: _dialogueProgressionManager,
-                        ) ?? DialogueBox(
-                          speaker: gameState.speaker,
-                          dialogue: gameState.dialogue!,
-                          progressionManager: _dialogueProgressionManager,
-                        ),
-                      if (gameState.currentNode is MenuNode)
-                        ChoiceMenu(
-                          menuNode: gameState.currentNode as MenuNode,
-                          onChoiceSelected: (String targetLabel) {
-                            _gameManager.jumpToLabel(targetLabel);
-                          },
-                        ),
-                    ],
-                  ),
+                  child: _buildSceneWithFilter(gameState),
                 ),
                 // NVL 模式覆盖层
                 if (gameState.isNvlMode)
@@ -428,11 +433,64 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     );
   }
 
-  /// 构建背景Widget - 支持图片背景和十六进制颜色背景
-  Widget _buildBackground(String background) {
+  Widget _buildSceneWithFilter(GameState gameState) {
+    return Stack(
+      children: [
+        if (gameState.background != null)
+          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers),
+        ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
+        if (gameState.dialogue != null && !gameState.isNvlMode)
+          _createDialogueBox(
+            speaker: gameState.speaker,
+            dialogue: gameState.dialogue!,
+          ),
+        if (gameState.currentNode is MenuNode)
+          ChoiceMenu(
+            menuNode: gameState.currentNode as MenuNode,
+            onChoiceSelected: (String targetLabel) {
+              _gameManager.jumpToLabel(targetLabel);
+            },
+          ),
+      ],
+    );
+  }
+
+  /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景
+  Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers]) {
+    // 如果有多图层数据，使用多图层渲染器
+    if (sceneLayers != null && sceneLayers.isNotEmpty) {
+      final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
+          .where((layer) => layer != null)
+          .cast<SceneLayer>()
+          .toList();
+      
+      if (layers.isNotEmpty) {
+        final multiLayerWidget = MultiLayerRenderer.buildMultiLayerScene(
+          layers: layers,
+          screenSize: MediaQuery.of(context).size,
+        );
+        
+        if (sceneFilter != null) {
+          return _FilteredBackground(
+            filter: sceneFilter,
+            child: multiLayerWidget,
+          );
+        }
+        return multiLayerWidget;
+      }
+    }
+    
+    // 单图层模式（原有逻辑）
     // 检查是否为十六进制颜色格式
     if (ColorBackgroundRenderer.isValidHexColor(background)) {
-      return ColorBackgroundRenderer.createColorBackgroundWidget(background);
+      final colorWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
+      if (sceneFilter != null) {
+        return _FilteredBackground(
+          filter: sceneFilter,
+          child: colorWidget,
+        );
+      }
+      return colorWidget;
     }
     
     // 处理图片背景
@@ -440,12 +498,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.asset(
+          final imageWidget = Image.asset(
             snapshot.data!,
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
           );
+          
+          if (sceneFilter != null) {
+            return _FilteredBackground(
+              filter: sceneFilter,
+              child: imageWidget,
+            );
+          }
+          return imageWidget;
         }
         return Container(color: Colors.black);
       },
@@ -458,39 +524,52 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       final characterState = entry.value;
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
-      final layers = <Widget>[];
-
-      final poseImage = characterState.pose ?? 'pose1';
-      final poseAssetName = 'characters/${characterState.resourceId}-$poseImage';
-      layers.add(_CharacterLayer(
-        key: ValueKey('$characterId-pose'), 
-        assetName: poseAssetName,
-      ));
-
-      final expressionImage = characterState.expression ?? 'happy';
-      final expressionAssetName = 'characters/${characterState.resourceId}-$expressionImage';
-      layers.add(_CharacterLayer(
-        key: ValueKey('$characterId-expression'), 
-        assetName: expressionAssetName,
-      ));
+      // 使用resourceId作为主要key，确保相同资源的角色共享Widget（保持动画）
+      final widgetKey = '${characterState.resourceId}';
+      final cacheKey = '$characterId:${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
       
-      final characterStack = Stack(children: layers);
-      
-      Widget finalWidget = characterStack;
-      if (poseConfig.scale > 0) {
-        finalWidget = SizedBox(
-          height: MediaQuery.of(context).size.height * poseConfig.scale,
-          child: characterStack,
-        );
-      }
-
-      return Positioned(
-        left: poseConfig.xcenter * MediaQuery.of(context).size.width,
-        top: poseConfig.ycenter * MediaQuery.of(context).size.height,
-        child: FractionalTranslation(
-          translation: _anchorToTranslation(poseConfig.anchor),
-          child: finalWidget,
+      return FutureBuilder<List<CharacterLayerInfo>>(
+        key: ValueKey(widgetKey), // 使用resourceId作为key，相同资源共享Widget
+        future: CharacterLayerParser.parseCharacterLayers(
+          resourceId: characterState.resourceId,
+          pose: characterState.pose ?? 'pose1',
+          expression: characterState.expression ?? 'happy',
         ),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox.shrink();
+          }
+
+          final layerInfos = snapshot.data!;
+
+          // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
+          final layers = layerInfos.map((layerInfo) {
+            return _CharacterLayer(
+              key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
+              assetName: layerInfo.assetName,
+            );
+          }).toList();
+          
+          final characterStack = Stack(children: layers);
+          
+          Widget finalWidget = characterStack;
+          if (poseConfig.scale > 0) {
+            finalWidget = SizedBox(
+              height: MediaQuery.of(context).size.height * poseConfig.scale,
+              child: characterStack,
+            );
+          }
+
+          return Positioned(
+            key: ValueKey('positioned-$widgetKey'), // 使用resourceId作为key
+            left: poseConfig.xcenter * MediaQuery.of(context).size.width,
+            top: poseConfig.ycenter * MediaQuery.of(context).size.height,
+            child: FractionalTranslation(
+              translation: _anchorToTranslation(poseConfig.anchor),
+              child: finalWidget,
+            ),
+          );
+        },
       );
     }).toList();
   }
@@ -690,5 +769,64 @@ class _DissolvePainter extends CustomPainter {
     return progress != oldDelegate.progress ||
         imageFrom != oldDelegate.imageFrom ||
         imageTo != oldDelegate.imageTo;
+  }
+}
+
+class _FilteredBackground extends StatefulWidget {
+  final SceneFilter filter;
+  final Widget child;
+  
+  const _FilteredBackground({
+    required this.filter,
+    required this.child,
+  });
+
+  @override
+  State<_FilteredBackground> createState() => _FilteredBackgroundState();
+}
+
+class _FilteredBackgroundState extends State<_FilteredBackground>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: Duration(milliseconds: (widget.filter.duration * 1000).round()),
+      vsync: this,
+    );
+    
+    if (widget.filter.animation != AnimationType.none) {
+      _animationController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_FilteredBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      _animationController.duration = Duration(milliseconds: (widget.filter.duration * 1000).round());
+      if (widget.filter.animation != AnimationType.none) {
+        _animationController.repeat();
+      } else {
+        _animationController.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterRenderer.applyFilter(
+      child: widget.child,
+      filter: widget.filter,
+      animationController: _animationController,
+    );
   }
 }

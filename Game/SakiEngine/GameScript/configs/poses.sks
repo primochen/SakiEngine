@@ -42,3 +42,4 @@ closeup_center: scale=0.8 xcenter=0.5 ycenter=0.8 anchor=center // 用立绘中�
 
 //////实际使用区域
 pose: scale=1.5 ycenter=0.8 anchor=center
+xiayo1pose: scale=1.2 ycenter=0.8 anchor=center

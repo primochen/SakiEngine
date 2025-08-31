@@ -48,6 +48,7 @@ dependencies:
   hotkey_manager: ^0.2.3
   flutter_avif: ^3.0.0
   flutter_svg: ^2.0.10
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -86,10 +87,14 @@ flutter:
     - assets/Assets/images/backgrounds/
     - assets/Assets/images/items/
     - assets/Assets/images/characters/
+    - assets/Assets/images/characters/story1/
+    - assets/Assets/images/characters/story1/emoji/
+    - assets/Assets/images/characters/story1/pose/
     - assets/Assets/voice/
     - assets/Assets/gui/
     - assets/Assets/fonts/
     - assets/Assets/sound/
+    - pubspec.yaml
 
   shaders:
     # 着色器必须在这里单独声明

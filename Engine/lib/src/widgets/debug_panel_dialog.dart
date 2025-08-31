@@ -23,11 +23,13 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _logScrollController = ScrollController();
+  String _engineVersion = '加载中...';
   
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadEngineVersion();
     
     // 自动滚动到日志底部
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -39,6 +41,30 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
         );
       }
     });
+  }
+  
+  Future<void> _loadEngineVersion() async {
+    try {
+      final pubspecContent = await rootBundle.loadString('pubspec.yaml');
+      // 简单的字符串解析，查找 "version: " 行
+      final lines = pubspecContent.split('\n');
+      for (final line in lines) {
+        if (line.trim().startsWith('version:')) {
+          final version = line.split(':')[1].trim();
+          setState(() {
+            _engineVersion = version;
+          });
+          return;
+        }
+      }
+      setState(() {
+        _engineVersion = '未找到';
+      });
+    } catch (e) {
+      setState(() {
+        _engineVersion = '读取失败: $e';
+      });
+    }
   }
 
   @override
@@ -152,7 +178,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoRow('引擎版本', '1.0.7', config, scale),
+                    _buildInfoRow('引擎版本', _engineVersion, config, scale),
                     _buildInfoRow('平台', Platform.operatingSystem, config, scale),
                     _buildInfoRow('操作系统版本', Platform.operatingSystemVersion, config, scale),
                     _buildInfoRow('CPU 架构', _getCpuArchitecture(), config, scale),
@@ -539,7 +565,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
 
   Future<void> _copySystemInfo() async {
     final info = '''
-引擎版本: 1.0.7
+引擎版本: $_engineVersion
 平台: ${Platform.operatingSystem}
 操作系统版本: ${Platform.operatingSystemVersion}
 CPU 架构: ${_getCpuArchitecture()}

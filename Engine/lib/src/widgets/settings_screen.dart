@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/game_style_switch.dart';
@@ -23,6 +24,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsManager _settingsManager = SettingsManager();
+  final MusicManager _musicManager = MusicManager();
   
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
   bool _isFullscreen = SettingsManager.defaultIsFullscreen;
@@ -33,6 +35,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _typewriterCharsPerSecond = SettingsManager.defaultTypewriterCharsPerSecond;
   bool _skipPunctuationDelay = SettingsManager.defaultSkipPunctuationDelay;
   bool _speakerAnimation = SettingsManager.defaultSpeakerAnimation;
+  
+  // 音频设置
+  bool _musicEnabled = true;
+  double _musicVolume = 0.8;
+  double _soundVolume = 0.8;
   
   int _selectedTabIndex = 0;
   final List<String> _tabTitles = ['画面设置', '音频设置', '玩法设置', '操控设置'];
@@ -64,6 +71,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _typewriterCharsPerSecond = await SettingsManager().getTypewriterCharsPerSecond();
       _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
       _speakerAnimation = await SettingsManager().getSpeakerAnimation();
+      
+      // 加载音频设置
+      _musicEnabled = _musicManager.isMusicEnabled;
+      _musicVolume = _musicManager.musicVolume;
+      _soundVolume = _musicManager.soundVolume;
       
       setState(() => _isLoading = false);
     } catch (e) {
@@ -103,6 +115,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateSpeakerAnimation(bool value) async {
     setState(() => _speakerAnimation = value);
     await _settingsManager.setSpeakerAnimation(value);
+  }
+
+  Future<void> _updateMusicEnabled(bool value) async {
+    setState(() => _musicEnabled = value);
+    await _musicManager.setMusicEnabled(value);
+  }
+
+  Future<void> _updateMusicVolume(double value) async {
+    setState(() => _musicVolume = value);
+    await _musicManager.setMusicVolume(value);
+  }
+
+  Future<void> _updateSoundVolume(double value) async {
+    setState(() => _soundVolume = value);
+    await _musicManager.setSoundVolume(value);
   }
 
   Future<void> _resetToDefault() async {
@@ -325,15 +352,123 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAudioSettings(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    return Center(
-      child: Text(
-        '音频设置功能开发中...',
-        style: config.reviewTitleTextStyle.copyWith(
-          fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.8,
-          color: config.themeColors.primary.withOpacity(0.6),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = constraints.maxWidth > constraints.maxHeight;
+        
+        if (isWideLayout) {
+          return _buildAudioSettingsDualColumn(config, scale, constraints);
+        } else {
+          return _buildAudioSettingsSingleColumn(config, scale);
+        }
+      },
+    );
+  }
+
+  Widget _buildAudioSettingsSingleColumn(SakiEngineConfig config, double scale) {
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(32 * scale),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildMusicEnabledToggle(config, scale),
+            SizedBox(height: 40 * scale),
+            _buildMusicVolumeSlider(config, scale),
+            SizedBox(height: 40 * scale),
+            _buildSoundVolumeSlider(config, scale),
+            SizedBox(height: 40 * scale),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAudioSettingsDualColumn(SakiEngineConfig config, double scale, BoxConstraints constraints) {
+    return Stack(
+      children: [
+        // 主要内容区域
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start, // 确保顶对齐
+          children: [
+            // 左列 - 音乐设置
+            Expanded(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32 * scale,
+                    top: 32 * scale,
+                    bottom: 32 * scale,
+                    right: 32 * scale,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMusicEnabledToggle(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildMusicVolumeSlider(config, scale),
+                      SizedBox(height: 40 * scale), // 底部间距
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            // 右列间距
+            SizedBox(width: 0), // 移除间距，让分割线居中
+            
+            // 右列 - 音效设置
+            Expanded(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32 * scale,
+                    top: 32 * scale,
+                    bottom: 32 * scale,
+                    right: 32 * scale,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSoundVolumeSlider(config, scale),
+                      SizedBox(height: 40 * scale),
+                      // 可以在这里添加更多音效设置项
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        // 固定的中间分割线 - 简化居中定位
+        Positioned.fill(
+          child: Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: 1 * scale,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    config.themeColors.primary.withOpacity(0.3),
+                    config.themeColors.primary.withOpacity(0.6),
+                    config.themeColors.primary.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -699,6 +834,205 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: config.dialogueTextStyle.copyWith(
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMusicEnabledToggle(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _musicEnabled ? Icons.music_note : Icons.music_off,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '背景音乐',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  '开启或关闭游戏背景音乐',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: _musicEnabled,
+            onChanged: _updateMusicEnabled,
+            scale: scale,
+            config: config,
+            trueText: '开启',
+            falseText: '关闭',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMusicVolumeSlider(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.volume_up,
+                color: config.themeColors.primary,
+                size: 24 * scale,
+              ),
+              SizedBox(width: 16 * scale),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '音乐音量',
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                        color: config.themeColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '调整背景音乐的音量大小',
+                      style: config.dialogueTextStyle.copyWith(
+                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                        color: config.themeColors.primary.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16 * scale),
+          GameStyleSlider(
+            value: _musicVolume,
+            min: 0.0,
+            max: 1.0,
+            divisions: 10,
+            scale: scale,
+            config: config,
+            onChanged: _updateMusicVolume,
+            showValue: false,
+          ),
+          SizedBox(height: 8 * scale),
+          Text(
+            '当前音量: ${(_musicVolume * 100).round()}%',
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+              color: config.themeColors.primary.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoundVolumeSlider(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.volume_down,
+                color: config.themeColors.primary,
+                size: 24 * scale,
+              ),
+              SizedBox(width: 16 * scale),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '音效音量',
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                        color: config.themeColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '调整游戏音效的音量大小',
+                      style: config.dialogueTextStyle.copyWith(
+                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                        color: config.themeColors.primary.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16 * scale),
+          GameStyleSlider(
+            value: _soundVolume,
+            min: 0.0,
+            max: 1.0,
+            divisions: 10,
+            scale: scale,
+            config: config,
+            onChanged: _updateSoundVolume,
+            showValue: false,
+          ),
+          SizedBox(height: 8 * scale),
+          Text(
+            '当前音量: ${(_soundVolume * 100).round()}%',
+            style: config.dialogueTextStyle.copyWith(
+              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+              color: config.themeColors.primary.withOpacity(0.8),
             ),
           ),
         ],

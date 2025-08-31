@@ -437,14 +437,6 @@ final bool _isRegistered = (() {
 })();
 EOF
 
-# 更新模块注册表
-echo -e "${YELLOW}更新模块注册表...${NC}"
-cd "$PROJECT_ROOT/Engine"
-if dart tool/generate_modules.dart; then
-    echo -e "${GREEN}✓ 模块注册表更新成功${NC}"
-else
-    echo -e "${YELLOW}⚠ 模块注册表更新失败，请手动运行: dart tool/generate_modules.dart${NC}"
-fi
 cd - > /dev/null
 
 echo ""

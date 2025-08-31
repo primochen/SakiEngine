@@ -9,7 +9,8 @@ class ShowNode implements SksNode {
   final String character;
   final String? pose;
   final String? expression;
-  ShowNode(this.character, {this.pose, this.expression});
+  final String? position;
+  ShowNode(this.character, {this.pose, this.expression, this.position});
 }
 
 class HideNode implements SksNode {
@@ -20,7 +21,9 @@ class HideNode implements SksNode {
 class BackgroundNode implements SksNode {
   final String background;
   final double? timer;
-  BackgroundNode(this.background, {this.timer});
+  final List<String>? layers; // 新增：多图层支持
+  final String? transitionType; // 新增：转场类型支持 (with语法)
+  BackgroundNode(this.background, {this.timer, this.layers, this.transitionType});
 }
 
 class SayNode implements SksNode {
@@ -69,3 +72,27 @@ class EndNvlNode implements SksNode {}
 class NvlMovieNode implements SksNode {}
 
 class EndNvlMovieNode implements SksNode {}
+
+class FxNode implements SksNode {
+  final String filterString;
+  FxNode(this.filterString);
+}
+
+class PlayMusicNode implements SksNode {
+  final String musicFile;
+  PlayMusicNode(this.musicFile);
+}
+
+class StopMusicNode implements SksNode {
+  StopMusicNode();
+}
+
+class PlaySoundNode implements SksNode {
+  final String soundFile;
+  final bool loop;
+  PlaySoundNode(this.soundFile, {this.loop = false});
+}
+
+class StopSoundNode implements SksNode {
+  StopSoundNode();
+}

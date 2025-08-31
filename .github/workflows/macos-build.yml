@@ -79,20 +79,30 @@ jobs:
         run: |
           cd Engine/build/macos/Build/Products/Release
           
+          # 从 default_game.txt 读取游戏名称
+          GAME_NAME=$(cat ../../../../../default_game.txt | tr -d '\n\r' | xargs)
+          APP_NAME="$GAME_NAME.app"
+
+          # 检查 .app 文件是否存在
+          if [ ! -d "$APP_NAME" ]; then
+            echo "❌ 错误: 未找到应用 '$APP_NAME'。"
+            exit 1
+          fi
+          
           # 生成构件名称
           version=$(grep '^version:' ../../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           
           if [ "${{ inputs.create_dmg }}" = "true" ]; then
             # 创建DMG
             mkdir -p dmg-contents
-            cp -R SakiEngine.app dmg-contents/
-            artifact_name="SakiEngine-${version}-macOS-arm64.dmg"
-            hdiutil create -srcfolder dmg-contents -volname "SakiEngine" -format UDZO "$artifact_name"
+            cp -R "$APP_NAME" dmg-contents/
+            artifact_name="${GAME_NAME}-${version}-macOS-arm64.dmg"
+            hdiutil create -srcfolder dmg-contents -volname "$GAME_NAME" -format UDZO "$artifact_name"
             echo "✅ 创建DMG: $artifact_name"
           else
             # 创建ZIP
-            artifact_name="SakiEngine-${version}-macOS-arm64.zip"
-            zip -r "$artifact_name" SakiEngine.app
+            artifact_name="${GAME_NAME}-${version}-macOS-arm64.zip"
+            zip -r "$artifact_name" "$APP_NAME"
             echo "✅ 创建ZIP: $artifact_name"
           fi
           

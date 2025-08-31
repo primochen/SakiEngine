@@ -5,6 +5,7 @@ import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
@@ -47,6 +48,7 @@ class SoranoutaModule extends DefaultGameModule {
 
   @override
   Future<void> initialize() async {
+    await MusicManager().initialize();
   }
 
   @override

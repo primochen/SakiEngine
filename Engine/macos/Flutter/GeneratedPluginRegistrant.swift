@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import audioplayers_darwin
 import flutter_avif_macos
 import hotkey_manager_macos
 import path_provider_foundation
@@ -14,6 +15,7 @@ import sqflite_darwin
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  AudioplayersDarwinPlugin.register(with: registry.registrar(forPlugin: "AudioplayersDarwinPlugin"))
   FlutterAvifPlugin.register(with: registry.registrar(forPlugin: "FlutterAvifPlugin"))
   HotkeyManagerMacosPlugin.register(with: registry.registrar(forPlugin: "HotkeyManagerMacosPlugin"))
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
