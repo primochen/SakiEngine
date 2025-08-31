@@ -524,10 +524,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       final characterState = entry.value;
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
-      // 使用新的异步图层解析器，但添加缓存键来避免重复解析
-      final cacheKey = '${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
+      // 使用resourceId作为主要key，确保相同资源的角色共享Widget（保持动画）
+      final widgetKey = '${characterState.resourceId}';
+      final cacheKey = '$characterId:${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
       
       return FutureBuilder<List<CharacterLayerInfo>>(
+        key: ValueKey(widgetKey), // 使用resourceId作为key，相同资源共享Widget
         future: CharacterLayerParser.parseCharacterLayers(
           resourceId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
@@ -540,10 +542,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
           final layerInfos = snapshot.data!;
 
-          // 根据解析结果创建图层组件
+          // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
           final layers = layerInfos.map((layerInfo) {
             return _CharacterLayer(
-              key: ValueKey('$characterId-${layerInfo.layerType}'),
+              key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
               assetName: layerInfo.assetName,
             );
           }).toList();
@@ -559,6 +561,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
           }
 
           return Positioned(
+            key: ValueKey('positioned-$widgetKey'), // 使用resourceId作为key
             left: poseConfig.xcenter * MediaQuery.of(context).size.width,
             top: poseConfig.ycenter * MediaQuery.of(context).size.height,
             child: FractionalTranslation(

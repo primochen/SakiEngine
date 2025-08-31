@@ -414,19 +414,10 @@ class GameManager {
 
         final newCharacters = Map.of(_currentState.characters);
         
-        // 检查是否已存在相同resourceId的角色
-        final existingCharacterKey = _findExistingCharacterKey(resourceId);
-        if (existingCharacterKey != null && existingCharacterKey != node.character) {
-          // 移除旧的角色key，使用新的角色key
-          newCharacters.remove(existingCharacterKey);
-        }
-        
-        final currentCharacterState = _currentState.characters[node.character] ?? 
-            _currentState.characters[existingCharacterKey] ?? 
-            CharacterState(
-              resourceId: resourceId,
-              positionId: positionId,
-            );
+        final currentCharacterState = _currentState.characters[node.character] ?? CharacterState(
+          resourceId: resourceId,
+          positionId: positionId,
+        );
 
         newCharacters[node.character] = currentCharacterState.copyWith(
           pose: node.pose,
@@ -459,7 +450,20 @@ class GameManager {
             // 检查是否已存在相同resourceId的角色
             final existingCharacterKey = _findExistingCharacterKey(characterConfig.resourceId);
             if (existingCharacterKey != null) {
+              // 找到了相同resourceId的角色，我们需要更新那个角色而不是创建新的
               currentCharacterState = _currentState.characters[existingCharacterKey];
+              
+              final newCharacters = Map.of(_currentState.characters);
+              
+              // 移除旧的key，添加新的key（这样可以处理角色名变化的情况）
+              newCharacters.remove(existingCharacterKey);
+              newCharacters[node.character!] = currentCharacterState!.copyWith(
+                pose: node.pose,
+                expression: node.expression,
+              );
+              
+              _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+              // 不要早期返回，继续处理对话显示逻辑
             } else {
               currentCharacterState = CharacterState(
                 resourceId: characterConfig.resourceId,
@@ -471,15 +475,6 @@ class GameManager {
 
         if (currentCharacterState != null) {
           final newCharacters = Map.of(_currentState.characters);
-          
-          // 检查是否需要移除旧的角色key（相同resourceId但不同角色名）
-          if (characterConfig != null) {
-            final existingCharacterKey = _findExistingCharacterKey(characterConfig.resourceId);
-            if (existingCharacterKey != null && existingCharacterKey != node.character!) {
-              // 移除旧的角色key，使用新的角色key
-              newCharacters.remove(existingCharacterKey);
-            }
-          }
           
           newCharacters[node.character!] = currentCharacterState.copyWith(
             pose: node.pose,
