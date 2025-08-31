@@ -16,6 +16,11 @@ class MusicManager extends ChangeNotifier {
   double _soundVolume = 0.8;
   String? _currentBackgroundMusic;
   
+  // 淡入淡出相关
+  Timer? _fadeTimer;
+  bool _isFading = false;
+  double _currentFadeVolume = 0.0;
+  
   bool get isMusicEnabled => _isMusicEnabled;
   double get musicVolume => _musicVolume;
   double get soundVolume => _soundVolume;
@@ -58,9 +63,14 @@ class MusicManager extends ChangeNotifier {
     await _saveSettings();
     
     if (!enabled) {
+      _cancelFade(); // 取消淡化
       await _backgroundMusicPlayer.pause();
     } else if (_currentBackgroundMusic != null) {
-      await playBackgroundMusic(_currentBackgroundMusic!);
+      await playBackgroundMusic(
+        _currentBackgroundMusic!,
+        fadeTransition: true,
+        fadeDuration: const Duration(milliseconds: 500),
+      );
     }
     
     notifyListeners();
@@ -82,22 +92,139 @@ class MusicManager extends ChangeNotifier {
 
   Future<void> _updateMusicVolume() async {
     final actualVolume = _isMusicEnabled ? _musicVolume : 0.0;
-    await _backgroundMusicPlayer.setVolume(actualVolume);
+    final fadeVolume = _isFading ? _currentFadeVolume : actualVolume;
+    await _backgroundMusicPlayer.setVolume(fadeVolume);
+  }
+  
+  /// 淡出当前音乐
+  /// [duration] 淡出时长，默认1秒
+  /// [onComplete] 淡出完成后的回调
+  Future<void> _fadeOut({
+    Duration duration = const Duration(milliseconds: 1000),
+    VoidCallback? onComplete,
+  }) async {
+    if (!_isMusicEnabled || _currentBackgroundMusic == null) {
+      onComplete?.call();
+      return;
+    }
+    
+    _cancelFade(); // 取消之前的淡化效果
+    _isFading = true;
+    _currentFadeVolume = _musicVolume;
+    
+    const steps = 20; // 分20步进行淡出
+    final stepDuration = Duration(milliseconds: duration.inMilliseconds ~/ steps);
+    final volumeStep = _musicVolume / steps;
+    
+    int currentStep = 0;
+    _fadeTimer = Timer.periodic(stepDuration, (timer) async {
+      currentStep++;
+      _currentFadeVolume = _musicVolume - (volumeStep * currentStep);
+      _currentFadeVolume = _currentFadeVolume.clamp(0.0, 1.0);
+      
+      await _updateMusicVolume();
+      
+      if (currentStep >= steps || _currentFadeVolume <= 0.0) {
+        timer.cancel();
+        _isFading = false;
+        _currentFadeVolume = 0.0;
+        onComplete?.call();
+      }
+    });
+  }
+  
+  /// 淡入音乐
+  /// [duration] 淡入时长，默认1秒
+  /// [onComplete] 淡入完成后的回调
+  Future<void> _fadeIn({
+    Duration duration = const Duration(milliseconds: 1000),
+    VoidCallback? onComplete,
+  }) async {
+    if (!_isMusicEnabled || _currentBackgroundMusic == null) {
+      onComplete?.call();
+      return;
+    }
+    
+    _cancelFade(); // 取消之前的淡化效果
+    _isFading = true;
+    _currentFadeVolume = 0.0;
+    await _updateMusicVolume(); // 先设置为0音量
+    
+    const steps = 20; // 分20步进行淡入
+    final stepDuration = Duration(milliseconds: duration.inMilliseconds ~/ steps);
+    final volumeStep = _musicVolume / steps;
+    
+    int currentStep = 0;
+    _fadeTimer = Timer.periodic(stepDuration, (timer) async {
+      currentStep++;
+      _currentFadeVolume = volumeStep * currentStep;
+      _currentFadeVolume = _currentFadeVolume.clamp(0.0, _musicVolume);
+      
+      await _updateMusicVolume();
+      
+      if (currentStep >= steps || _currentFadeVolume >= _musicVolume) {
+        timer.cancel();
+        _isFading = false;
+        _currentFadeVolume = _musicVolume;
+        await _updateMusicVolume();
+        onComplete?.call();
+      }
+    });
+  }
+  
+  /// 取消当前的淡化效果
+  void _cancelFade() {
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
+    _isFading = false;
   }
 
-  Future<void> playBackgroundMusic(String assetPath) async {
+  Future<void> playBackgroundMusic(String assetPath, {
+    bool fadeTransition = true,
+    Duration fadeDuration = const Duration(milliseconds: 1000),
+  }) async {
     try {
       if (_currentBackgroundMusic == assetPath && 
           _backgroundMusicPlayer.state == PlayerState.playing) {
         return;
       }
 
+      if (!_isMusicEnabled) {
+        _currentBackgroundMusic = assetPath;
+        return;
+      }
+
+      final oldMusicPath = _currentBackgroundMusic;
       _currentBackgroundMusic = assetPath;
       
-      if (_isMusicEnabled) {
+      if (oldMusicPath != null && fadeTransition) {
+        // 有旧音乐且需要淡入淡出过渡
+        if (kDebugMode) {
+          print('[MusicManager] 平滑切换音乐: $oldMusicPath -> $assetPath');
+        }
+        
+        // 先淡出旧音乐
+        await _fadeOut(
+          duration: Duration(milliseconds: fadeDuration.inMilliseconds ~/ 2),
+          onComplete: () async {
+            // 淡出完成后切换音乐并淡入
+            await _backgroundMusicPlayer.stop();
+            await _backgroundMusicPlayer.play(AssetSource(assetPath));
+            await _fadeIn(duration: Duration(milliseconds: fadeDuration.inMilliseconds ~/ 2));
+          },
+        );
+      } else {
+        // 没有旧音乐或不需要过渡，直接播放
         await _backgroundMusicPlayer.stop();
         await _backgroundMusicPlayer.play(AssetSource(assetPath));
-        await _updateMusicVolume();
+        
+        if (fadeTransition) {
+          // 淡入新音乐
+          await _fadeIn(duration: fadeDuration);
+        } else {
+          // 直接设置音量
+          await _updateMusicVolume();
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -106,10 +233,29 @@ class MusicManager extends ChangeNotifier {
     }
   }
 
-  Future<void> stopBackgroundMusic() async {
+  Future<void> stopBackgroundMusic({
+    bool fadeOut = true,
+    Duration fadeDuration = const Duration(milliseconds: 800),
+  }) async {
     try {
-      await _backgroundMusicPlayer.stop();
-      _currentBackgroundMusic = null;
+      if (_currentBackgroundMusic == null) return;
+      
+      if (fadeOut && _isMusicEnabled) {
+        if (kDebugMode) {
+          print('[MusicManager] 淡出停止音乐: $_currentBackgroundMusic');
+        }
+        
+        await _fadeOut(
+          duration: fadeDuration,
+          onComplete: () async {
+            await _backgroundMusicPlayer.stop();
+            _currentBackgroundMusic = null;
+          },
+        );
+      } else {
+        await _backgroundMusicPlayer.stop();
+        _currentBackgroundMusic = null;
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Error stopping background music: $e');
@@ -117,10 +263,30 @@ class MusicManager extends ChangeNotifier {
     }
   }
 
-  Future<void> clearBackgroundMusic() async {
+  Future<void> clearBackgroundMusic({
+    bool fadeOut = true,
+    Duration fadeDuration = const Duration(milliseconds: 800),
+  }) async {
     try {
-      await _backgroundMusicPlayer.stop();
-      _currentBackgroundMusic = null;
+      if (_currentBackgroundMusic == null) return;
+      
+      if (fadeOut && _isMusicEnabled) {
+        if (kDebugMode) {
+          print('[MusicManager] 淡出清除音乐: $_currentBackgroundMusic');
+        }
+        
+        await _fadeOut(
+          duration: fadeDuration,
+          onComplete: () async {
+            await _backgroundMusicPlayer.stop();
+            _currentBackgroundMusic = null;
+          },
+        );
+      } else {
+        _cancelFade(); // 取消任何正在进行的淡化
+        await _backgroundMusicPlayer.stop();
+        _currentBackgroundMusic = null;
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Error clearing background music: $e');
@@ -135,12 +301,32 @@ class MusicManager extends ChangeNotifier {
   }
   
   /// 强制停止背景音乐（用于音乐区间系统）
-  Future<void> forceStopBackgroundMusic() async {
+  Future<void> forceStopBackgroundMusic({
+    bool fadeOut = true,
+    Duration fadeDuration = const Duration(milliseconds: 600),
+  }) async {
     try {
-      await _backgroundMusicPlayer.stop();
-      _currentBackgroundMusic = null;
-      if (kDebugMode) {
-        print('[MusicManager] 强制停止背景音乐');
+      if (_currentBackgroundMusic == null) return;
+      
+      if (fadeOut && _isMusicEnabled) {
+        if (kDebugMode) {
+          print('[MusicManager] 淡出强制停止音乐: $_currentBackgroundMusic');
+        }
+        
+        await _fadeOut(
+          duration: fadeDuration,
+          onComplete: () async {
+            await _backgroundMusicPlayer.stop();
+            _currentBackgroundMusic = null;
+          },
+        );
+      } else {
+        _cancelFade(); // 取消任何正在进行的淡化
+        await _backgroundMusicPlayer.stop();
+        _currentBackgroundMusic = null;
+        if (kDebugMode) {
+          print('[MusicManager] 强制停止背景音乐');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -163,6 +349,8 @@ class MusicManager extends ChangeNotifier {
     try {
       if (_isMusicEnabled && _currentBackgroundMusic != null) {
         await _backgroundMusicPlayer.resume();
+        // 恢复播放时淡入
+        await _fadeIn(duration: const Duration(milliseconds: 500));
       }
     } catch (e) {
       if (kDebugMode) {
@@ -185,7 +373,9 @@ class MusicManager extends ChangeNotifier {
     }
   }
 
+  @override
   void dispose() {
+    _cancelFade(); // 取消任何正在进行的淡化
     _backgroundMusicPlayer.dispose();
     _soundEffectPlayer.dispose();
     super.dispose();

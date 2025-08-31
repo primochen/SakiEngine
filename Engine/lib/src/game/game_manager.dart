@@ -87,7 +87,7 @@ class GameManager {
   static const int maxHistoryEntries = 100;
   
   // 音乐区间管理
-  List<MusicRegion> _musicRegions = []; // 所有音乐区间的列表
+  final List<MusicRegion> _musicRegions = []; // 所有音乐区间的列表
 
   // Getters for accessing configurations
   Map<String, PoseConfig> get poseConfigs => _poseConfigs;
@@ -180,7 +180,10 @@ class GameManager {
         if (kDebugMode) {
           print('[MusicRegion] 当前位置($_scriptIndex)不在音乐区间内，停止音乐');
         }
-        await MusicManager().forceStopBackgroundMusic();
+        await MusicManager().forceStopBackgroundMusic(
+          fadeOut: true,
+          fadeDuration: const Duration(milliseconds: 800),
+        );
         _currentState = _currentState.copyWith(currentMusicRegion: null);
       } else {
         // 当前位置在音乐区间内
@@ -200,7 +203,11 @@ class GameManager {
             print('[MusicRegion] 当前位置($_scriptIndex)需要播放音乐: ${currentRegion.musicFile}');
           }
           
-          await MusicManager().playBackgroundMusic(fullMusicPath);
+          await MusicManager().playBackgroundMusic(
+            fullMusicPath,
+            fadeTransition: true,
+            fadeDuration: const Duration(milliseconds: 1200),
+          );
           _currentState = _currentState.copyWith(currentMusicRegion: currentRegion);
         }
       }
@@ -216,8 +223,11 @@ class GameManager {
   }
 
   Future<void> startGame(String scriptName) async {
-    // 清除主菜单音乐
-    await MusicManager().clearBackgroundMusic();
+    // 平滑清除主菜单音乐
+    await MusicManager().clearBackgroundMusic(
+      fadeOut: true,
+      fadeDuration: const Duration(milliseconds: 1000),
+    );
     
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
@@ -588,7 +598,11 @@ class GameManager {
             // 尝试 .ogg 扩展名（优先）
             musicFile = '$musicFile.ogg';
           }
-          await MusicManager().playBackgroundMusic('Assets/music/$musicFile');
+          await MusicManager().playBackgroundMusic(
+            'Assets/music/$musicFile',
+            fadeTransition: true,
+            fadeDuration: const Duration(milliseconds: 1000),
+          );
           _currentState = _currentState.copyWith(currentMusicRegion: musicRegion);
           
           if (kDebugMode) {
@@ -601,7 +615,10 @@ class GameManager {
 
       if (node is StopMusicNode) {
         // 使用音乐区间系统处理音乐停止
-        await MusicManager().stopBackgroundMusic();
+        await MusicManager().stopBackgroundMusic(
+          fadeOut: true,
+          fadeDuration: const Duration(milliseconds: 800),
+        );
         _currentState = _currentState.copyWith(currentMusicRegion: null);
         
         if (kDebugMode) {
