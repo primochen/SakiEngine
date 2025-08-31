@@ -81,6 +81,16 @@ class GameManager {
   BuildContext? _context;
   final Set<String> _everShownCharacters = {};
   
+  /// 查找具有相同resourceId的现有角色key
+  String? _findExistingCharacterKey(String resourceId) {
+    for (final entry in _currentState.characters.entries) {
+      if (entry.value.resourceId == resourceId) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+  
   GameStateSnapshot? _savedSnapshot;
   
   List<DialogueHistoryEntry> _dialogueHistory = [];
@@ -402,11 +412,21 @@ class GameManager {
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(node.character);
 
-        final currentCharacterState = _currentState.characters[node.character] ?? CharacterState(
-          resourceId: resourceId,
-          positionId: positionId,
-        );
         final newCharacters = Map.of(_currentState.characters);
+        
+        // 检查是否已存在相同resourceId的角色
+        final existingCharacterKey = _findExistingCharacterKey(resourceId);
+        if (existingCharacterKey != null && existingCharacterKey != node.character) {
+          // 移除旧的角色key，使用新的角色key
+          newCharacters.remove(existingCharacterKey);
+        }
+        
+        final currentCharacterState = _currentState.characters[node.character] ?? 
+            _currentState.characters[existingCharacterKey] ?? 
+            CharacterState(
+              resourceId: resourceId,
+              positionId: positionId,
+            );
 
         newCharacters[node.character] = currentCharacterState.copyWith(
           pose: node.pose,
@@ -436,15 +456,31 @@ class GameManager {
         if (node.character != null) {
           currentCharacterState = _currentState.characters[node.character!];
           if(currentCharacterState == null && characterConfig != null) {
-            currentCharacterState = CharacterState(
-              resourceId: characterConfig.resourceId,
-              positionId: characterConfig.defaultPoseId,
-            );
+            // 检查是否已存在相同resourceId的角色
+            final existingCharacterKey = _findExistingCharacterKey(characterConfig.resourceId);
+            if (existingCharacterKey != null) {
+              currentCharacterState = _currentState.characters[existingCharacterKey];
+            } else {
+              currentCharacterState = CharacterState(
+                resourceId: characterConfig.resourceId,
+                positionId: characterConfig.defaultPoseId,
+              );
+            }
           }
         }
 
         if (currentCharacterState != null) {
           final newCharacters = Map.of(_currentState.characters);
+          
+          // 检查是否需要移除旧的角色key（相同resourceId但不同角色名）
+          if (characterConfig != null) {
+            final existingCharacterKey = _findExistingCharacterKey(characterConfig.resourceId);
+            if (existingCharacterKey != null && existingCharacterKey != node.character!) {
+              // 移除旧的角色key，使用新的角色key
+              newCharacters.remove(existingCharacterKey);
+            }
+          }
+          
           newCharacters[node.character!] = currentCharacterState.copyWith(
             pose: node.pose,
             expression: node.expression,
