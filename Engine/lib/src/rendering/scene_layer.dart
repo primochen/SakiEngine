@@ -90,11 +90,11 @@ class MultiLayerRenderer {
   static Widget _buildLayer(SceneLayer layer, Size screenSize) {
     // The base widget is the Image, configured to fill its parent container.
     Widget imageContent = Image.asset(
-      'assets/Assets/images/backgrounds/${layer.assetName.replaceAll(' ', '-')}.png',
+      'assets/Assets/images/backgrounds/${layer.assetName.replaceAll(' ', '-')}.webp',
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
         return Image.asset(
-          'assets/Assets/gui/${layer.assetName}.png',
+          'assets/Assets/gui/${layer.assetName}.webp',
           errorBuilder: (context, error2, stackTrace2) {
             return Container(
               color: Colors.transparent,

@@ -199,7 +199,7 @@ class GameManager {
         // 当前位置在音乐区间内
         String musicFile = currentRegion.musicFile;
         if (!musicFile.contains('.')) {
-          musicFile = '$musicFile.ogg';
+          musicFile = '$musicFile.mp3';
         }
         final fullMusicPath = 'Assets/music/$musicFile';
         
@@ -637,7 +637,7 @@ class GameManager {
           String musicFile = node.musicFile;
           if (!musicFile.contains('.')) {
             // 尝试 .ogg 扩展名（优先）
-            musicFile = '$musicFile.ogg';
+            musicFile = '$musicFile.mp3';
           }
           await MusicManager().playBackgroundMusic(
             'Assets/music/$musicFile',
@@ -674,7 +674,7 @@ class GameManager {
         String soundFile = node.soundFile;
         if (!soundFile.contains('.')) {
           // 尝试 .ogg 扩展名（优先）
-          soundFile = '$soundFile.ogg';
+          soundFile = '$soundFile.mp3';
         }
         
         await MusicManager().playAudio(

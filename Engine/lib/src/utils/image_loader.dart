@@ -58,7 +58,7 @@ class ImageLoader {
       
       // 再尝试PNG版本（如果启用）
       if (config.preferPngOverAvif) {
-        final pngPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.png');
+        final pngPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.webp');
         try {
           final pngImage = await _loadStandardImage(pngPath);
           if (pngImage != null) {

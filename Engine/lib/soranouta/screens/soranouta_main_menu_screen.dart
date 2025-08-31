@@ -49,7 +49,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
 
   Future<void> _startBackgroundMusic() async {
     try {
-      await MusicManager().playBackgroundMusic('Assets/music/dream.ogg');
+      await MusicManager().playBackgroundMusic('Assets/music/dream.mp3');
     } catch (e) {
       // Silently handle music loading errors
     }
