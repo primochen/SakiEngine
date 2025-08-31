@@ -38,8 +38,8 @@ l "那我出门了。"
 lm "路上注意安全啊。"
 l "好。"
 "我缓缓走出家门。映入眼帘的是再熟悉不过的——"
-scene bamboo timer 1.0
-scene sky timer 1.0
+scene bamboo timer 1.0 
+scene sky timer 1.0 with diss
 "清幽的竹林。以及广袤无垠的天空。"
 "再......熟悉不过的......"
 "伴随着小鸟的鸣叫声，我缓缓沿着道路前进。"

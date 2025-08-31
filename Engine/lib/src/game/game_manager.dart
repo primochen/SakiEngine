@@ -9,6 +9,7 @@ import 'package:sakiengine/src/sks_parser/sks_parser.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
+import 'package:sakiengine/src/effects/scene_transition_effects.dart';
 
 class GameManager {
   final _gameStateController = StreamController<GameState>.broadcast();
@@ -171,7 +172,7 @@ class GameManager {
           _isWaitingForTimer = true;
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
-          _transitionToNewBackground(node.background, sceneFilter, node.layers).then((_) {
+          _transitionToNewBackground(node.background, sceneFilter, node.layers, node.transitionType).then((_) {
             // 转场完成后启动计时器
             _startSceneTimer(timerDuration);
           });
@@ -582,14 +583,30 @@ class GameManager {
   }
 
   /// 使用转场效果切换背景
-  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers]) async {
+  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType]) async {
     if (_context == null) return;
     
-    //print('[GameManager] 开始scene转场到背景: $newBackground');
+    //print('[GameManager] 开始scene转场到背景: $newBackground, 转场类型: ${transitionType ?? "fade"}');
     
-    await SceneTransitionManager.instance.transition(
-      context: _context!,
-      onMidTransition: () {
+    // 解析转场类型
+    final effectType = TransitionTypeParser.parseTransitionType(transitionType ?? 'fade');
+    
+    // 如果是diss转场，需要准备旧背景和新背景名称
+    String? oldBackgroundName;
+    String? newBackgroundName;
+    
+    if (effectType == TransitionType.diss) {
+      // 传递背景名称而不是Widget
+      oldBackgroundName = _currentState.background;
+      newBackgroundName = newBackground;
+    }
+    
+    // 根据转场类型选择转场管理器
+    if (effectType == TransitionType.fade) {
+      // 使用原有的黑屏转场
+      await SceneTransitionManager.instance.transition(
+        context: _context!,
+        onMidTransition: () {
         //print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
         // 在黑屏最深时切换背景，清除对话和所有角色（类似Renpy）
         final oldState = _currentState;
@@ -607,8 +624,36 @@ class GameManager {
         _gameStateController.add(_currentState);
         //print('[GameManager] 状态已发送到Stream');
       },
-      duration: const Duration(milliseconds: 800),
-    );
+        duration: const Duration(milliseconds: 800),
+      );
+    } else {
+      // 使用新的转场效果系统
+      await SceneTransitionEffectManager.instance.transition(
+        context: _context!,
+        transitionType: effectType,
+        oldBackground: oldBackgroundName,
+        newBackground: newBackgroundName,
+        onMidTransition: () {
+          //print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
+          // 在转场中点切换背景，清除对话和所有角色（类似Renpy）
+          final oldState = _currentState;
+          _currentState = _currentState.copyWith(
+            background: newBackground,
+            sceneFilter: sceneFilter,
+            clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
+            sceneLayers: layers,
+            clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
+            clearDialogueAndSpeaker: true,
+            clearCharacters: true,
+            everShownCharacters: _everShownCharacters,
+          );
+          //print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
+          _gameStateController.add(_currentState);
+          //print('[GameManager] 状态已发送到Stream');
+        },
+        duration: const Duration(milliseconds: 800),
+      );
+    }
     
     //print('[GameManager] scene转场完成，等待计时器结束');
     // 转场完成，等待计时器结束后自动执行后续脚本

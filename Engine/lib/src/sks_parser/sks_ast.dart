@@ -21,7 +21,8 @@ class BackgroundNode implements SksNode {
   final String background;
   final double? timer;
   final List<String>? layers; // 新增：多图层支持
-  BackgroundNode(this.background, {this.timer, this.layers});
+  final String? transitionType; // 新增：转场类型支持 (with语法)
+  BackgroundNode(this.background, {this.timer, this.layers, this.transitionType});
 }
 
 class SayNode implements SksNode {

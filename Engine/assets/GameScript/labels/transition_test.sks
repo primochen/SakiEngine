@@ -1,0 +1,28 @@
+label transition_test
+"测试转场效果 - 现在使用与角色相同的dissolve着色器！"
+
+// 默认的fade转场（黑屏转场）
+scene sky
+"这是使用默认fade转场的场景"
+
+// 使用with语法指定fade转场
+scene bamboo with fade
+"这是使用 with fade 的场景转场"
+
+// 使用diss转场（图片dissolve渐变 - 与角色动画相同算法）
+scene sky with diss
+"这是使用 with diss 的dissolve渐变转场，和角色切换一样平滑！"
+
+// 带计时器的转场
+scene bamboo with diss timer 2.0
+"这是带2.0秒计时器的dissolve转场，更慢更平滑"
+
+// 结合滤镜的转场
+scene sky with fade fx dreamy intensity:0.8
+"这是带梦幻滤镜的黑屏转场"
+
+scene bamboo with diss fx nostalgic intensity:0.5
+"这是带怀旧滤镜的dissolve转场"
+
+"转场效果测试完成！现在diss转场应该和角色切换一样完美了！"
+return
