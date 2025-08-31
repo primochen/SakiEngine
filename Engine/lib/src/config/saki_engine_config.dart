@@ -62,6 +62,11 @@ class SakiEngineConfig {
 
   double logicalWidth = 1920;
   double logicalHeight = 1080;
+  
+  // 图像格式处理配置
+  bool preferWebpOverAvif = true;  // 优先使用WebP而不是AVIF
+  bool preferPngOverAvif = true;  // 优先使用PNG而不是AVIF (WebP不存在时)
+  bool enableAvifTransparencyWorkaround = true;  // 启用AVIF透明通道修复
 
   // 主菜单背景配置
   String mainMenuBackground = 'sky';

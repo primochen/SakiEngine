@@ -370,9 +370,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
               children: [
                 GestureDetector(
                   onTap: gameState.currentNode is MenuNode ? null : () {
-                    print('🎯 点击事件触发');
-                    print('🎯 当前节点类型: ${gameState.currentNode.runtimeType}');
-                    print('🎯 调用 _dialogueProgressionManager.progressDialogue()');
                     _dialogueProgressionManager.progressDialogue();
                   },
                   child: _buildSceneWithFilter(gameState),

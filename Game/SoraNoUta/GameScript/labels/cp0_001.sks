@@ -106,7 +106,7 @@ scene sky
 "看着打在身上的清晨的阳光，我尝试抬头望向天空。"
 "但是刺眼的阳光不容许我这样做，便只能尝试用手遮挡一些锐利的太阳。"
 scene stone asa
-show xiayo1 pose1 happy at pose
+show xiayo1 pose1 happy at xiayo1pose
 play audio haneru
 play music heroine
 nan "早上好啊林澄！"
@@ -147,6 +147,7 @@ x akireta "不过算了，我给你讲一下剧情吧。"//无奈
 x happy "昨天那集，除了前天那集的冰箱金刚以外，又登场了一个新的金刚，叫微波炉金刚，这两个金刚还有合体形态呢。"//高兴的神情
 x "......"
 jump cp0_001_menuafter1
+label cp0_001_menuafter1
 x think "真好啊，微波炉和冰箱是什么呢？"//侧脸思考
 "我犹豫了一下。"
 l "一听就很现代的东西呢。"

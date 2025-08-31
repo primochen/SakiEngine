@@ -123,14 +123,14 @@ class GameManager {
           startScriptIndex: i,
         );
         if (kDebugMode) {
-          print('[MusicRegion] 开始新音乐区间: ${node.musicFile} at index $i');
+          //print('[MusicRegion] 开始新音乐区间: ${node.musicFile} at index $i');
         }
       } else if (node is StopMusicNode) {
         // 结束当前区间
         if (currentRegion != null) {
           _musicRegions.add(currentRegion.copyWithEndIndex(i));
           if (kDebugMode) {
-            print('[MusicRegion] 结束音乐区间: ${currentRegion.musicFile} at index $i');
+            //print('[MusicRegion] 结束音乐区间: ${currentRegion.musicFile} at index $i');
           }
           currentRegion = null;
         }
@@ -141,14 +141,14 @@ class GameManager {
     if (currentRegion != null) {
       _musicRegions.add(currentRegion);
       if (kDebugMode) {
-        print('[MusicRegion] 脚本结束，添加未结束的音乐区间: ${currentRegion.musicFile}');
+        //print('[MusicRegion] 脚本结束，添加未结束的音乐区间: ${currentRegion.musicFile}');
       }
     }
     
     if (kDebugMode) {
-      print('[MusicRegion] 总共构建了 ${_musicRegions.length} 个音乐区间');
+      //print('[MusicRegion] 总共构建了 ${_musicRegions.length} 个音乐区间');
       for (final region in _musicRegions) {
-        print('[MusicRegion] $region');
+        //print('[MusicRegion] $region');
       }
     }
   }
@@ -170,7 +170,7 @@ class GameManager {
     final stateRegion = _currentState.currentMusicRegion;
     
     if (kDebugMode) {
-      print('[MusicRegion] 检查位置($_scriptIndex): currentRegion=${currentRegion?.toString() ?? 'null'}, stateRegion=${stateRegion?.toString() ?? 'null'}');
+      //print('[MusicRegion] 检查位置($_scriptIndex): currentRegion=${currentRegion?.toString() ?? 'null'}, stateRegion=${stateRegion?.toString() ?? 'null'}');
     }
     
     // 强制检查时，即使区间相同也要验证音乐状态
@@ -178,7 +178,7 @@ class GameManager {
       if (currentRegion == null) {
         // 当前位置不在任何音乐区间内，应该停止音乐
         if (kDebugMode) {
-          print('[MusicRegion] 当前位置($_scriptIndex)不在音乐区间内，停止音乐');
+          //print('[MusicRegion] 当前位置($_scriptIndex)不在音乐区间内，停止音乐');
         }
         await MusicManager().forceStopBackgroundMusic(
           fadeOut: true,
@@ -200,7 +200,7 @@ class GameManager {
             forceCheck) {
           
           if (kDebugMode) {
-            print('[MusicRegion] 当前位置($_scriptIndex)需要播放音乐: ${currentRegion.musicFile}');
+            //print('[MusicRegion] 当前位置($_scriptIndex)需要播放音乐: ${currentRegion.musicFile}');
           }
           
           await MusicManager().playBackgroundMusic(
@@ -616,7 +616,7 @@ class GameManager {
           _currentState = _currentState.copyWith(currentMusicRegion: musicRegion);
           
           if (kDebugMode) {
-            print('[MusicRegion] 开始播放音乐区间: ${musicRegion.musicFile} at index $_scriptIndex');
+            //print('[MusicRegion] 开始播放音乐区间: ${musicRegion.musicFile} at index $_scriptIndex');
           }
         }
         _scriptIndex++;
@@ -632,7 +632,7 @@ class GameManager {
         _currentState = _currentState.copyWith(currentMusicRegion: null);
         
         if (kDebugMode) {
-          print('[MusicRegion] 停止音乐 at index $_scriptIndex');
+          //print('[MusicRegion] 停止音乐 at index $_scriptIndex');
         }
         _scriptIndex++;
         continue;
