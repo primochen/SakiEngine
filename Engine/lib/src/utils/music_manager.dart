@@ -127,6 +127,27 @@ class MusicManager extends ChangeNotifier {
       }
     }
   }
+  
+  /// 检查指定音乐是否正在播放
+  bool isPlayingMusic(String assetPath) {
+    return _currentBackgroundMusic == assetPath && 
+           _backgroundMusicPlayer.state == PlayerState.playing;
+  }
+  
+  /// 强制停止背景音乐（用于音乐区间系统）
+  Future<void> forceStopBackgroundMusic() async {
+    try {
+      await _backgroundMusicPlayer.stop();
+      _currentBackgroundMusic = null;
+      if (kDebugMode) {
+        print('[MusicManager] 强制停止背景音乐');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error force stopping background music: $e');
+      }
+    }
+  }
 
   Future<void> pauseBackgroundMusic() async {
     try {

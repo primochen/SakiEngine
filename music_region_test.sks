@@ -1,0 +1,47 @@
+// 音乐区间系统测试脚本
+label start
+"欢迎来到音乐区间系统测试"
+"现在开始播放音乐1"
+
+// 音乐区间1开始
+play music asa
+"现在播放着音乐1 - asa"
+"继续播放音乐1"
+"仍然在音乐区间1内"
+
+// 音乐区间1结束，开始音乐区间2
+play music dream
+"切换到音乐2 - dream"
+"现在播放着音乐2"
+
+// 停止音乐，结束音乐区间2
+stop music
+"音乐已停止"
+"现在没有背景音乐"
+
+// 这里应该没有音乐播放
+"跳转测试 - 这里仍然没有音乐"
+
+// 跳转到有音乐的标签
+menu
+"跳转到音乐区间" jump_to_music
+"跳转到无音乐区间" jump_to_silence
+"结束测试" end_test
+endmenu
+
+label jump_to_music
+// 新的音乐区间开始
+play music sizukanaasa
+"跳转后的音乐区间 - sizukanaasa"
+"音乐区间跳转测试成功"
+return
+
+label jump_to_silence
+"跳转到无音乐区间"
+"这里应该没有音乐"
+"测试成功 - 音乐区间系统工作正常"
+return
+
+label end_test
+"测试结束"
+return

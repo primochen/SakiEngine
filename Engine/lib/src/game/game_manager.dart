@@ -11,6 +11,55 @@ import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/effects/scene_transition_effects.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
 
+/// 音乐区间类
+/// 定义音乐播放的有效范围，从play music到下一个play music/stop music之间
+class MusicRegion {
+  final String musicFile; // 音乐文件名
+  final int startScriptIndex; // 区间开始的脚本索引
+  final int? endScriptIndex; // 区间结束的脚本索引（null表示区间还没结束）
+  
+  MusicRegion({
+    required this.musicFile,
+    required this.startScriptIndex,
+    this.endScriptIndex,
+  });
+  
+  /// 检查指定的脚本索引是否在音乐区间内
+  bool containsIndex(int scriptIndex) {
+    if (scriptIndex < startScriptIndex) return false;
+    if (endScriptIndex != null && scriptIndex >= endScriptIndex!) return false;
+    return true;
+  }
+  
+  /// 创建一个新的区间，设置结束索引
+  MusicRegion copyWithEndIndex(int endIndex) {
+    return MusicRegion(
+      musicFile: musicFile,
+      startScriptIndex: startScriptIndex,
+      endScriptIndex: endIndex,
+    );
+  }
+  
+  @override
+  String toString() {
+    return 'MusicRegion(musicFile: $musicFile, start: $startScriptIndex, end: $endScriptIndex)';
+  }
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MusicRegion) return false;
+    return musicFile == other.musicFile && 
+           startScriptIndex == other.startScriptIndex && 
+           endScriptIndex == other.endScriptIndex;
+  }
+  
+  @override
+  int get hashCode {
+    return Object.hash(musicFile, startScriptIndex, endScriptIndex);
+  }
+}
+
 class GameManager {
   final _gameStateController = StreamController<GameState>.broadcast();
   Stream<GameState> get gameStateStream => _gameStateController.stream;
@@ -36,6 +85,9 @@ class GameManager {
   
   List<DialogueHistoryEntry> _dialogueHistory = [];
   static const int maxHistoryEntries = 100;
+  
+  // 音乐区间管理
+  List<MusicRegion> _musicRegions = []; // 所有音乐区间的列表
 
   // Getters for accessing configurations
   Map<String, PoseConfig> get poseConfigs => _poseConfigs;
@@ -47,6 +99,112 @@ class GameManager {
   void setContext(BuildContext context) {
     //print('[GameManager] 设置上下文用于转场效果');
     _context = context;
+  }
+
+  /// 构建音乐区间列表
+  /// 遍历整个脚本，找出所有的play music和stop music节点，创建音乐区间
+  void _buildMusicRegions() {
+    _musicRegions.clear();
+    
+    MusicRegion? currentRegion;
+    
+    for (int i = 0; i < _script.children.length; i++) {
+      final node = _script.children[i];
+      
+      if (node is PlayMusicNode) {
+        // 结束当前区间（如果有的话）
+        if (currentRegion != null) {
+          _musicRegions.add(currentRegion.copyWithEndIndex(i));
+        }
+        
+        // 开始新的音乐区间
+        currentRegion = MusicRegion(
+          musicFile: node.musicFile,
+          startScriptIndex: i,
+        );
+        if (kDebugMode) {
+          print('[MusicRegion] 开始新音乐区间: ${node.musicFile} at index $i');
+        }
+      } else if (node is StopMusicNode) {
+        // 结束当前区间
+        if (currentRegion != null) {
+          _musicRegions.add(currentRegion.copyWithEndIndex(i));
+          if (kDebugMode) {
+            print('[MusicRegion] 结束音乐区间: ${currentRegion.musicFile} at index $i');
+          }
+          currentRegion = null;
+        }
+      }
+    }
+    
+    // 如果脚本结束时还有未结束的音乐区间，添加它
+    if (currentRegion != null) {
+      _musicRegions.add(currentRegion);
+      if (kDebugMode) {
+        print('[MusicRegion] 脚本结束，添加未结束的音乐区间: ${currentRegion.musicFile}');
+      }
+    }
+    
+    if (kDebugMode) {
+      print('[MusicRegion] 总共构建了 ${_musicRegions.length} 个音乐区间');
+      for (final region in _musicRegions) {
+        print('[MusicRegion] $region');
+      }
+    }
+  }
+
+  /// 获取指定脚本索引处应该播放的音乐区间
+  MusicRegion? _getMusicRegionForIndex(int scriptIndex) {
+    for (final region in _musicRegions) {
+      if (region.containsIndex(scriptIndex)) {
+        return region;
+      }
+    }
+    return null;
+  }
+
+  /// 检查当前位置是否应该播放音乐
+  /// 如果当前位置不在任何音乐区间内，则停止音乐
+  Future<void> _checkMusicRegionAtCurrentIndex({bool forceCheck = false}) async {
+    final currentRegion = _getMusicRegionForIndex(_scriptIndex);
+    final stateRegion = _currentState.currentMusicRegion;
+    
+    if (kDebugMode) {
+      print('[MusicRegion] 检查位置($_scriptIndex): currentRegion=${currentRegion?.toString() ?? 'null'}, stateRegion=${stateRegion?.toString() ?? 'null'}');
+    }
+    
+    // 强制检查时，即使区间相同也要验证音乐状态
+    if (forceCheck || currentRegion != stateRegion) {
+      if (currentRegion == null) {
+        // 当前位置不在任何音乐区间内，应该停止音乐
+        if (kDebugMode) {
+          print('[MusicRegion] 当前位置($_scriptIndex)不在音乐区间内，停止音乐');
+        }
+        await MusicManager().forceStopBackgroundMusic();
+        _currentState = _currentState.copyWith(currentMusicRegion: null);
+      } else {
+        // 当前位置在音乐区间内
+        String musicFile = currentRegion.musicFile;
+        if (!musicFile.contains('.')) {
+          musicFile = '$musicFile.ogg';
+        }
+        final fullMusicPath = 'Assets/music/$musicFile';
+        
+        // 检查是否需要开始播放或切换音乐
+        if (stateRegion == null || 
+            stateRegion.musicFile != currentRegion.musicFile || 
+            !MusicManager().isPlayingMusic(fullMusicPath) || 
+            forceCheck) {
+          
+          if (kDebugMode) {
+            print('[MusicRegion] 当前位置($_scriptIndex)需要播放音乐: ${currentRegion.musicFile}');
+          }
+          
+          await MusicManager().playBackgroundMusic(fullMusicPath);
+          _currentState = _currentState.copyWith(currentMusicRegion: currentRegion);
+        }
+      }
+    }
   }
 
   Future<void> _loadConfigs() async {
@@ -64,6 +222,7 @@ class GameManager {
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
+    _buildMusicRegions(); // 构建音乐区间
     _currentState = GameState.initial();
     _dialogueHistory = [];
     
@@ -74,6 +233,9 @@ class GameManager {
         _scriptIndex = startIndex;
       }
     }
+    
+    // 检查初始位置的音乐区间
+    await _checkMusicRegionAtCurrentIndex(forceCheck: true);
     
     await _executeScript();
   }
@@ -99,6 +261,9 @@ class GameManager {
       if (kDebugMode) {
         //print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
       }
+      
+      // 检查跳转后位置的音乐区间（强制检查）
+      await _checkMusicRegionAtCurrentIndex(forceCheck: true);
       await _executeScript();
     } else {
       if (kDebugMode) {
@@ -107,7 +272,9 @@ class GameManager {
     }
   }
 
-  void next() {
+  void next() async {
+    // 在用户点击继续时检查音乐区间
+    await _checkMusicRegionAtCurrentIndex();
     _executeScript();
   }
 
@@ -412,19 +579,34 @@ class GameManager {
       }
 
       if (node is PlayMusicNode) {
-        // 检查文件名是否已有扩展名，如果没有则尝试添加 .ogg 或 .mp3
-        String musicFile = node.musicFile;
-        if (!musicFile.contains('.')) {
-          // 尝试 .ogg 扩展名（优先）
-          musicFile = '$musicFile.ogg';
+        // 使用音乐区间系统处理音乐播放
+        final musicRegion = _getMusicRegionForIndex(_scriptIndex);
+        if (musicRegion != null) {
+          // 检查文件名是否已有扩展名，如果没有则尝试添加 .ogg 或 .mp3
+          String musicFile = node.musicFile;
+          if (!musicFile.contains('.')) {
+            // 尝试 .ogg 扩展名（优先）
+            musicFile = '$musicFile.ogg';
+          }
+          await MusicManager().playBackgroundMusic('Assets/music/$musicFile');
+          _currentState = _currentState.copyWith(currentMusicRegion: musicRegion);
+          
+          if (kDebugMode) {
+            print('[MusicRegion] 开始播放音乐区间: ${musicRegion.musicFile} at index $_scriptIndex');
+          }
         }
-        await MusicManager().playBackgroundMusic('Assets/music/$musicFile');
         _scriptIndex++;
         continue;
       }
 
       if (node is StopMusicNode) {
+        // 使用音乐区间系统处理音乐停止
         await MusicManager().stopBackgroundMusic();
+        _currentState = _currentState.copyWith(currentMusicRegion: null);
+        
+        if (kDebugMode) {
+          print('[MusicRegion] 停止音乐 at index $_scriptIndex');
+        }
         _scriptIndex++;
         continue;
       }
@@ -452,6 +634,7 @@ class GameManager {
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
+    _buildMusicRegions(); // 构建音乐区间
     //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
     
     _scriptIndex = snapshot.scriptIndex;
@@ -477,6 +660,9 @@ class GameManager {
       _dialogueHistory = List.from(snapshot.dialogueHistory);
     }
     
+    // 检查恢复位置的音乐区间（强制检查）
+    await _checkMusicRegionAtCurrentIndex(forceCheck: true);
+    
     if (shouldReExecute) {
       await _executeScript();
     } else {
@@ -496,6 +682,7 @@ class GameManager {
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
+    _buildMusicRegions(); // 构建音乐区间
     
     if (_savedSnapshot != null) {
       _scriptIndex = _savedSnapshot!.scriptIndex;
@@ -584,6 +771,9 @@ class GameManager {
     if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
       _scriptIndex++;
     }
+    
+    // 历史回退后强制检查音乐区间
+    await _checkMusicRegionAtCurrentIndex(forceCheck: true);
   }
 
   /// 启动场景计时器
@@ -700,6 +890,7 @@ class GameState {
   final Set<String> everShownCharacters;
   final SceneFilter? sceneFilter;
   final List<String>? sceneLayers; // 新增：多图层支持
+  final MusicRegion? currentMusicRegion; // 新增：当前音乐区间
 
   GameState({
     this.background,
@@ -714,6 +905,7 @@ class GameState {
     this.everShownCharacters = const {},
     this.sceneFilter,
     this.sceneLayers,
+    this.currentMusicRegion,
   });
 
   factory GameState.initial() {
@@ -740,6 +932,7 @@ class GameState {
     bool clearSceneFilter = false,
     List<String>? sceneLayers,
     bool clearSceneLayers = false,
+    MusicRegion? currentMusicRegion,
   }) {
     return GameState(
       background: background ?? this.background,
@@ -756,6 +949,7 @@ class GameState {
       everShownCharacters: everShownCharacters ?? this.everShownCharacters,
       sceneFilter: clearSceneFilter ? null : (sceneFilter ?? this.sceneFilter),
       sceneLayers: clearSceneLayers ? null : (sceneLayers ?? this.sceneLayers),
+      currentMusicRegion: currentMusicRegion ?? this.currentMusicRegion,
     );
   }
 }

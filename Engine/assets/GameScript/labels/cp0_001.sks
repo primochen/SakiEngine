@@ -31,7 +31,7 @@ nvlm
 //回到白天天空的背景，diss过渡，继续nvl模式
 "夏悠？想起来了什么。"
 endnvlm
-//stop music
+stop music
 scene home asa with diss
 //切换到白天的家门口，diss
 //准备上学时的日常音乐
