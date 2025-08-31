@@ -352,6 +352,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAudioSettings(SakiEngineConfig config, double scale) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = constraints.maxWidth > constraints.maxHeight;
+        
+        if (isWideLayout) {
+          return _buildAudioSettingsDualColumn(config, scale, constraints);
+        } else {
+          return _buildAudioSettingsSingleColumn(config, scale);
+        }
+      },
+    );
+  }
+
+  Widget _buildAudioSettingsSingleColumn(SakiEngineConfig config, double scale) {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
       child: SingleChildScrollView(
@@ -368,6 +382,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAudioSettingsDualColumn(SakiEngineConfig config, double scale, BoxConstraints constraints) {
+    return Stack(
+      children: [
+        // 主要内容区域
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start, // 确保顶对齐
+          children: [
+            // 左列 - 音乐设置
+            Expanded(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32 * scale,
+                    top: 32 * scale,
+                    bottom: 32 * scale,
+                    right: 32 * scale,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMusicEnabledToggle(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildMusicVolumeSlider(config, scale),
+                      SizedBox(height: 40 * scale), // 底部间距
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            // 右列间距
+            SizedBox(width: 0), // 移除间距，让分割线居中
+            
+            // 右列 - 音效设置
+            Expanded(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32 * scale,
+                    top: 32 * scale,
+                    bottom: 32 * scale,
+                    right: 32 * scale,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSoundVolumeSlider(config, scale),
+                      SizedBox(height: 40 * scale),
+                      // 可以在这里添加更多音效设置项
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        // 固定的中间分割线 - 简化居中定位
+        Positioned.fill(
+          child: Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: 1 * scale,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    config.themeColors.primary.withOpacity(0.3),
+                    config.themeColors.primary.withOpacity(0.6),
+                    config.themeColors.primary.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

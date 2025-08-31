@@ -1,7 +1,8 @@
 //label// SoraNoUta 主标签脚本文件
 label start
 // 背景设置为白天天空
-scene sky
+scene #000000
+play sound kazekage loop
 nvlm
 // 旁白文本（移除了xp前缀）
 "风吹动着。"

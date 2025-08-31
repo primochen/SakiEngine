@@ -85,3 +85,13 @@ class PlayMusicNode implements SksNode {
 class StopMusicNode implements SksNode {
   StopMusicNode();
 }
+
+class PlaySoundNode implements SksNode {
+  final String soundFile;
+  final bool loop;
+  PlaySoundNode(this.soundFile, {this.loop = false});
+}
+
+class StopSoundNode implements SksNode {
+  StopSoundNode();
+}

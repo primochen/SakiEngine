@@ -1,6 +1,7 @@
 //label// SoraNoUta Chapter 0 Part 1
 label cp0_001
 scene #000000
+stop sound
 nvlm
 play music sizukanaasa
 nan"该起床去上学了。"
@@ -45,5 +46,6 @@ scene bamboo timer 1.0
 scene sky timer 1.0 with diss
 "清幽的竹林。以及广袤无垠的天空。"
 "再......熟悉不过的......"
+play sound bird
 "伴随着小鸟的鸣叫声，我缓缓沿着道路前进。"
 return

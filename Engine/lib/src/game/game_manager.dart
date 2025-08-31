@@ -627,6 +627,44 @@ class GameManager {
         _scriptIndex++;
         continue;
       }
+
+      if (node is PlaySoundNode) {
+        // 播放音效
+        String soundFile = node.soundFile;
+        if (!soundFile.contains('.')) {
+          // 尝试 .ogg 扩展名（优先）
+          soundFile = '$soundFile.ogg';
+        }
+        
+        await MusicManager().playAudio(
+          'Assets/sound/$soundFile',
+          AudioTrackConfig.sound,
+          fadeTransition: true,
+          fadeDuration: const Duration(milliseconds: 300), // 音效淡入较快
+          loop: node.loop,
+        );
+        
+        if (kDebugMode) {
+          print('[SoundManager] 播放音效: ${node.soundFile}, loop: ${node.loop} at index $_scriptIndex');
+        }
+        _scriptIndex++;
+        continue;
+      }
+
+      if (node is StopSoundNode) {
+        // 停止音效
+        await MusicManager().stopAudio(
+          AudioTrackConfig.sound,
+          fadeOut: true,
+          fadeDuration: const Duration(milliseconds: 200),
+        );
+        
+        if (kDebugMode) {
+          print('[SoundManager] 停止音效 at index $_scriptIndex');
+        }
+        _scriptIndex++;
+        continue;
+      }
     }
     _isProcessing = false;
   }

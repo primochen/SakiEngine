@@ -160,11 +160,19 @@ class SksParser {
           if (parts.length >= 3 && parts[1] == 'music') {
             final musicFile = parts.sublist(2).join(' ');
             nodes.add(PlayMusicNode(musicFile));
+          } else if (parts.length >= 3 && parts[1] == 'sound') {
+            // play sound filename [loop]
+            final soundParts = parts.sublist(2);
+            final soundFile = soundParts[0];
+            final loop = soundParts.length > 1 && soundParts[1] == 'loop';
+            nodes.add(PlaySoundNode(soundFile, loop: loop));
           }
           break;
         case 'stop':
           if (parts.length >= 2 && parts[1] == 'music') {
             nodes.add(StopMusicNode());
+          } else if (parts.length >= 2 && parts[1] == 'sound') {
+            nodes.add(StopSoundNode());
           }
           break;
         default:
