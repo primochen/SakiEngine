@@ -1,8 +1,8 @@
 {
     "name": "sakiengine-syntax",
     "displayName": "SakiEngine Syntax",
-    "description": "Syntax highlighting for SakiEngine script files (.sks) with fx filter effects, timer keyword support, NVL mode keywords and first-line identifier support",
-    "version": "0.2.4",
+    "description": "Syntax highlighting for SakiEngine script files (.sks) with scene transition 'with' syntax, fx filter effects, timer keyword support, NVL mode keywords and first-line identifier support",
+    "version": "0.2.5",
     "engines": {
         "vscode": "^1.80.0"
     },

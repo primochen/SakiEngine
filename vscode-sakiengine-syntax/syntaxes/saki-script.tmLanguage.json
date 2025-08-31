@@ -112,7 +112,10 @@
             "patterns": [
                 {
                     "name": "keyword.control.sks",
-                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx)\\b"
+                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx|with)\\b"
+                },
+                {
+                    "include": "#scene-syntax"
                 },
                 {
                     "include": "#fx-syntax"
@@ -307,6 +310,44 @@
                 {
                     "name": "constant.other.animation.sks",
                     "match": "\\b(pulse|fade|wave|none)\\b"
+                }
+            ]
+        },
+        "scene-syntax": {
+            "patterns": [
+                {
+                    "name": "keyword.other.scene-command.sks",
+                    "match": "^\\s*(scene)\\s+([\\w\\-_#.]+)(?:\\s+(with)\\s+(fade|diss|dissolve|wipe|slide))?(?:\\s+(timer)\\s+(\\d+(?:\\.\\d+)?))?(?:\\s+(fx)\\s+(.+?))?\\s*$",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.sks"
+                        },
+                        "2": {
+                            "name": "entity.name.type.background.sks"
+                        },
+                        "3": {
+                            "name": "keyword.other.with.sks"
+                        },
+                        "4": {
+                            "name": "constant.other.transition-type.sks"
+                        },
+                        "5": {
+                            "name": "keyword.control.sks"
+                        },
+                        "6": {
+                            "name": "constant.numeric.timer.sks"
+                        },
+                        "7": {
+                            "name": "keyword.control.sks"
+                        },
+                        "8": {
+                            "name": "entity.name.type.filter.sks"
+                        }
+                    }
+                },
+                {
+                    "name": "constant.other.transition-type.sks",
+                    "match": "\\b(fade|diss|dissolve|wipe|slide)\\b"
                 }
             ]
         }
