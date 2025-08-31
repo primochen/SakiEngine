@@ -282,6 +282,8 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
   }
   
   Future<void> _loadImages() async {
+    bool shouldStartAnimation = true;
+    
     // 加载旧背景图片
     if (widget.oldBackgroundName != null) {
       final oldAssetPath = await AssetManager().findAsset(widget.oldBackgroundName!);
@@ -304,14 +306,18 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
           setState(() {
             _newImage = newImage;
           });
-          // 图片加载完成后开始动画
-          _controller.forward();
+        } else {
+          print('[DissTransition] 警告: 新背景图片加载失败: ${widget.newBackgroundName}');
+          shouldStartAnimation = true; // 即使图片加载失败也要开始动画
         }
+      } else {
+        print('[DissTransition] 警告: 找不到新背景资源: ${widget.newBackgroundName}');
+        shouldStartAnimation = true; // 即使找不到资源也要开始动画
       }
     }
     
-    // 如果没有图片要加载，直接开始动画
-    if (widget.oldBackgroundName == null && widget.newBackgroundName == null) {
+    // 无论图片是否加载成功，都要开始动画，避免转场卡住
+    if (shouldStartAnimation) {
       _controller.forward();
     }
   }
@@ -341,15 +347,25 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
   
   @override
   Widget build(BuildContext context) {
-    // 如果着色器或图片没有加载完成，返回空widget
-    if (_dissolveProgram == null || _newImage == null) {
-      return const SizedBox.shrink();
-    }
-    
     return AnimatedBuilder(
       animation: _dissAnimation,
       builder: (context, child) {
-        // 完全放弃dissolve着色器，使用Flutter原生的图片渐变
+        // 如果没有图片，使用黑色遮罩进行渐变过渡
+        if (_oldImage == null && _newImage == null) {
+          return Material(
+            color: Colors.black.withOpacity(
+              _dissAnimation.value > 0.5 
+                ? 2.0 * (1.0 - _dissAnimation.value) 
+                : 2.0 * _dissAnimation.value
+            ),
+            child: const SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          );
+        }
+        
+        // 使用Flutter原生的图片渐变
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -364,16 +380,17 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
                   height: double.infinity,
                 ),
               ),
-            // 新背景，逐渐淡入
-            Opacity(
-              opacity: _dissAnimation.value,
-              child: RawImage(
-                image: _newImage!,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
+            // 新背景，逐渐淡入（如果没有新图片，就不显示）
+            if (_newImage != null)
+              Opacity(
+                opacity: _dissAnimation.value,
+                child: RawImage(
+                  image: _newImage!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               ),
-            ),
           ],
         );
       },

@@ -32,7 +32,7 @@ nvlm
 "夏悠？想起来了什么。"
 endnvlm
 stop music
-scene home asa
+scene home asa with diss
 //切换到白天的家门口，diss
 //准备上学时的日常音乐
 "我遵循着母亲的嘱咐，背上了书包。"//正常对话模式，后面一样
