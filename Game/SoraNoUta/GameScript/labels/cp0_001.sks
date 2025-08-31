@@ -2,6 +2,7 @@
 label cp0_001
 scene #000000
 nvlm
+play music sizukanaasa
 nan"该起床去上学了。"
 endnvlm
 nvlm
@@ -30,7 +31,8 @@ nvlm
 //回到白天天空的背景，diss过渡，继续nvl模式
 "夏悠？想起来了什么。"
 endnvlm
-scene home 9
+stop music
+scene home asa
 //切换到白天的家门口，diss
 //准备上学时的日常音乐
 "我遵循着母亲的嘱咐，背上了书包。"//正常对话模式，后面一样
@@ -38,6 +40,7 @@ l "那我出门了。"
 lm "路上注意安全啊。"
 l "好。"
 "我缓缓走出家门。映入眼帘的是再熟悉不过的——"
+play music asa
 scene bamboo timer 1.0 
 scene sky timer 1.0 with diss
 "清幽的竹林。以及广袤无垠的天空。"

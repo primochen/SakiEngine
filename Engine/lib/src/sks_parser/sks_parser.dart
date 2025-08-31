@@ -156,6 +156,17 @@ class SksParser {
           final filterString = parts.sublist(1).join(' ');
           nodes.add(FxNode(filterString));
           break;
+        case 'play':
+          if (parts.length >= 3 && parts[1] == 'music') {
+            final musicFile = parts.sublist(2).join(' ');
+            nodes.add(PlayMusicNode(musicFile));
+          }
+          break;
+        case 'stop':
+          if (parts.length >= 2 && parts[1] == 'music') {
+            nodes.add(StopMusicNode());
+          }
+          break;
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {

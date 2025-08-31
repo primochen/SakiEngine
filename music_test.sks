@@ -1,0 +1,23 @@
+label music_test
+"测试音乐播放功能"
+
+// 播放背景音乐
+play music test_bgm.ogg
+"现在播放背景音乐"
+
+// 等待一段时间
+scene sky timer 3.0
+"音乐应该在播放中..."
+
+// 停止音乐
+stop music
+"音乐已停止"
+
+// 再次播放不同的音乐
+play music another_track.mp3
+"播放另一首音乐"
+
+scene bamboo timer 2.0
+"音乐测试完成"
+
+return

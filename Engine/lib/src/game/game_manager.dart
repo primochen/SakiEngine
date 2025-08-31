@@ -5,11 +5,11 @@ import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
-import 'package:sakiengine/src/sks_parser/sks_parser.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/effects/scene_transition_effects.dart';
+import 'package:sakiengine/src/utils/music_manager.dart';
 
 class GameManager {
   final _gameStateController = StreamController<GameState>.broadcast();
@@ -58,6 +58,9 @@ class GameManager {
   }
 
   Future<void> startGame(String scriptName) async {
+    // 清除主菜单音乐
+    await MusicManager().clearBackgroundMusic();
+    
     await _loadConfigs();
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
@@ -72,7 +75,7 @@ class GameManager {
       }
     }
     
-    _executeScript();
+    await _executeScript();
   }
   
   void _buildLabelIndexMap() {
@@ -96,7 +99,7 @@ class GameManager {
       if (kDebugMode) {
         //print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
       }
-      _executeScript();
+      await _executeScript();
     } else {
       if (kDebugMode) {
         //print('[GameManager] 错误: 标签 $label 未找到');
@@ -120,7 +123,7 @@ class GameManager {
     _executeScript();
   }
 
-  void _executeScript() {
+  Future<void> _executeScript() async {
     if (_isProcessing || _isWaitingForTimer) {
       return;
     }
@@ -407,6 +410,24 @@ class GameManager {
         _scriptIndex++;
         continue;
       }
+
+      if (node is PlayMusicNode) {
+        // 检查文件名是否已有扩展名，如果没有则尝试添加 .ogg 或 .mp3
+        String musicFile = node.musicFile;
+        if (!musicFile.contains('.')) {
+          // 尝试 .ogg 扩展名（优先）
+          musicFile = '$musicFile.ogg';
+        }
+        await MusicManager().playBackgroundMusic('Assets/music/$musicFile');
+        _scriptIndex++;
+        continue;
+      }
+
+      if (node is StopMusicNode) {
+        await MusicManager().stopBackgroundMusic();
+        _scriptIndex++;
+        continue;
+      }
     }
     _isProcessing = false;
   }
@@ -457,7 +478,7 @@ class GameManager {
     }
     
     if (shouldReExecute) {
-      _executeScript();
+      await _executeScript();
     } else {
       _gameStateController.add(_currentState);
     }
@@ -502,7 +523,7 @@ class GameManager {
       _currentTimer?.cancel();
       _currentTimer = null;
       
-      _executeScript();
+      await _executeScript();
     }
   }
 
@@ -572,12 +593,12 @@ class GameManager {
     
     final durationMs = (seconds * 1000).round();
     
-    _currentTimer = Timer(Duration(milliseconds: durationMs), () {
+    _currentTimer = Timer(Duration(milliseconds: durationMs), () async {
       // 检查计时器是否仍然有效（防止已被取消的计时器执行）
       if (_isWaitingForTimer && _currentTimer != null && _currentTimer!.isActive == false) {
         _isWaitingForTimer = false;
         _currentTimer = null;
-        _executeScript();
+        await _executeScript();
       }
     });
   }

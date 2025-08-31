@@ -76,3 +76,12 @@ class FxNode implements SksNode {
   final String filterString;
   FxNode(this.filterString);
 }
+
+class PlayMusicNode implements SksNode {
+  final String musicFile;
+  PlayMusicNode(this.musicFile);
+}
+
+class StopMusicNode implements SksNode {
+  StopMusicNode();
+}

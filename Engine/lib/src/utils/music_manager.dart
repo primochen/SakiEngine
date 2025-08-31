@@ -109,6 +109,7 @@ class MusicManager extends ChangeNotifier {
   Future<void> stopBackgroundMusic() async {
     try {
       await _backgroundMusicPlayer.stop();
+      _currentBackgroundMusic = null;
     } catch (e) {
       if (kDebugMode) {
         print('Error stopping background music: $e');
