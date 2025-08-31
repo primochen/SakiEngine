@@ -182,6 +182,7 @@ class GameManager {
           _currentState = _currentState.copyWith(
               background: node.background, 
               sceneFilter: sceneFilter,
+              clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
               sceneLayers: node.layers,
               clearSceneLayers: node.layers == null, // 如果是单图层，清除多图层数据
               clearDialogueAndSpeaker: true,
@@ -595,6 +596,7 @@ class GameManager {
         _currentState = _currentState.copyWith(
           background: newBackground,
           sceneFilter: sceneFilter,
+          clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
           sceneLayers: layers,
           clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
           clearDialogueAndSpeaker: true,
