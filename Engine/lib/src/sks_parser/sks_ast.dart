@@ -9,7 +9,8 @@ class ShowNode implements SksNode {
   final String character;
   final String? pose;
   final String? expression;
-  ShowNode(this.character, {this.pose, this.expression});
+  final String? position;
+  ShowNode(this.character, {this.pose, this.expression, this.position});
 }
 
 class HideNode implements SksNode {

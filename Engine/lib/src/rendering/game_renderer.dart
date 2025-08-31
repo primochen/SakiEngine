@@ -167,11 +167,15 @@ class GameRenderer {
   
   /// 在Canvas上绘制角色图层
   static void _drawCharacterLayer(Canvas canvas, ui.Image image, CharacterRenderParams params) {
+    final paint = Paint()
+      ..filterQuality = FilterQuality.high
+      ..isAntiAlias = true;
+    
     canvas.drawImageRect(
       image,
       Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
       Rect.fromLTWH(params.x, params.y, params.width, params.height),
-      Paint(),
+      paint,
     );
   }
   

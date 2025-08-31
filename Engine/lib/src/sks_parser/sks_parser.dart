@@ -7,7 +7,14 @@ class SksParser {
     final nodes = <SksNode>[];
     int i = 0;
     while (i < lines.length) {
-      final trimmedLine = lines[i].trim();
+      final originalLine = lines[i].trim();
+      // 处理行末注释，去掉//后面的内容
+      String trimmedLine = originalLine;
+      final commentIndex = originalLine.indexOf('//');
+      if (commentIndex >= 0) {
+        trimmedLine = originalLine.substring(0, commentIndex).trim();
+      }
+      
       if (trimmedLine.isEmpty || trimmedLine.startsWith('//')) {
         i++;
         continue;
@@ -125,17 +132,48 @@ class SksParser {
           }
           break;
         case 'show':
+          print('[SksParser] 解析show命令: $trimmedLine');
           final character = parts[1];
           String? pose;
           String? expression;
+          String? position;
+          
+          // 支持两种语法格式:
+          // 1. show character pose:xxx expression:xxx
+          // 2. show character pose1 happy at pose
+          
+          int atIndex = -1;
           for (int i = 2; i < parts.length; i++) {
-            if (parts[i].startsWith('pose:')) {
-              pose = parts[i].substring(5);
-            } else if (parts[i].startsWith('expression:')) {
-              expression = parts[i].substring(11);
+            if (parts[i] == 'at') {
+              atIndex = i;
+              break;
             }
           }
-          nodes.add(ShowNode(character, pose: pose, expression: expression));
+          
+          if (atIndex >= 0) {
+            // 新语法: show character pose1 happy at pose
+            final attributeParts = parts.sublist(2, atIndex);
+            if (attributeParts.isNotEmpty) {
+              pose = attributeParts[0]; // 第一个属性作为pose
+              if (attributeParts.length > 1) {
+                expression = attributeParts[1]; // 第二个属性作为expression
+              }
+            }
+            if (atIndex + 1 < parts.length) {
+              position = parts[atIndex + 1]; // at后面的参数作为位置
+            }
+          } else {
+            // 原语法: show character pose:xxx expression:xxx
+            for (int i = 2; i < parts.length; i++) {
+              if (parts[i].startsWith('pose:')) {
+                pose = parts[i].substring(5);
+              } else if (parts[i].startsWith('expression:')) {
+                expression = parts[i].substring(11);
+              }
+            }
+          }
+          
+          nodes.add(ShowNode(character, pose: pose, expression: expression, position: position));
           break;
         case 'hide':
           nodes.add(HideNode(parts[1]));
@@ -188,16 +226,23 @@ class SksParser {
   }
 
   SayNode? _parseSay(String line) {
+    // 先处理行末注释
+    String processedLine = line;
+    final commentIndex = line.indexOf('//');
+    if (commentIndex >= 0) {
+      processedLine = line.substring(0, commentIndex).trim();
+    }
+    
     // Improved regex to capture character, attributes and dialogue
     // 1: Optional character and attributes part
     // 2: Dialogue part
     final sayRegex = RegExp(r'^(.*?)\s*"([^"]*)"$');
-    final match = sayRegex.firstMatch(line);
+    final match = sayRegex.firstMatch(processedLine);
 
     if (match == null) {
       // Simple narration check for lines that are just "dialogue"
       final simpleNarrationRegex = RegExp(r'^"([^"]*)"$');
-      final simpleMatch = simpleNarrationRegex.firstMatch(line);
+      final simpleMatch = simpleNarrationRegex.firstMatch(processedLine);
       if (simpleMatch != null) {
         return SayNode(dialogue: simpleMatch.group(1)!);
       }

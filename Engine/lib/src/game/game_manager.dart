@@ -383,18 +383,28 @@ class GameManager {
       }
 
       if (node is ShowNode) {
+        print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}');
+        // 优先使用角色配置，如果没有配置则直接使用资源ID
         final characterConfig = _characterConfigs[node.character];
-        if (characterConfig == null) {
-          _scriptIndex++;
-          continue;
+        String resourceId;
+        String positionId;
+        
+        if (characterConfig != null) {
+          print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          resourceId = characterConfig.resourceId;
+          positionId = characterConfig.defaultPoseId ?? 'pose';  // 处理null情况
+        } else {
+          print('[GameManager] 直接使用资源ID: ${node.character}');
+          resourceId = node.character;  // 直接使用show命令中的角色名作为资源ID
+          positionId = node.position ?? 'pose';  // 使用指定位置或默认位置
         }
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(node.character);
 
         final currentCharacterState = _currentState.characters[node.character] ?? CharacterState(
-          resourceId: characterConfig.resourceId,
-          positionId: characterConfig.defaultPoseId,
+          resourceId: resourceId,
+          positionId: positionId,
         );
         final newCharacters = Map.of(_currentState.characters);
 

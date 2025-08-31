@@ -22,14 +22,23 @@ class SmartImage extends StatelessWidget {
   Widget build(BuildContext context) {
     // 检查文件扩展名
     if (assetPath.toLowerCase().endsWith('.avif')) {
-      return AvifImage.asset(
-        assetPath,
-        fit: fit ?? BoxFit.contain,
+      return Container(
         width: width,
         height: height,
-        errorBuilder: errorWidget != null 
-          ? (context, error, stackTrace) => errorWidget!
-          : null,
+        decoration: const BoxDecoration(
+          // 确保容器背景透明
+          color: Colors.transparent,
+        ),
+        child: AvifImage.asset(
+          assetPath,
+          fit: fit ?? BoxFit.contain,
+          isAntiAlias: true,
+          // 确保透明通道被保持
+          filterQuality: FilterQuality.high,
+          errorBuilder: errorWidget != null 
+            ? (context, error, stackTrace) => errorWidget!
+            : null,
+        ),
       );
     } else {
       return Image.asset(

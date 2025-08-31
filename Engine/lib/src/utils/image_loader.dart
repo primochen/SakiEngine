@@ -23,11 +23,22 @@ class ImageLoader {
   static Future<ui.Image?> _loadAvifImage(String assetPath) async {
     try {
       final data = await rootBundle.load(assetPath);
-      final frames = await decodeAvif(data.buffer.asUint8List());
+      final bytes = data.buffer.asUint8List();
       
-      if (frames.isNotEmpty) {
-        // 返回第一帧（静态图像或动画第一帧）
-        return frames.first.image;
+      // 直接使用标准图像解码器，让Flutter自动处理AVIF
+      // 这样可以保持与其他格式相同的透明通道处理方式
+      try {
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        return frame.image;
+      } catch (e) {
+        // 如果标准解码器失败，再尝试flutter_avif
+        print('标准AVIF解码失败，尝试flutter_avif解码器: $e');
+        final frames = await decodeAvif(bytes);
+        
+        if (frames.isNotEmpty) {
+          return frames.first.image;
+        }
       }
       
       return null;
