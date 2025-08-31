@@ -111,6 +111,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   void _returnToMainMenu() {
+    // 停止所有音效，保留音乐
+    _gameManager.stopAllSounds();
+    
     if (mounted && widget.onReturnToMenu != null) {
       widget.onReturnToMenu!();
     } else if (mounted) {

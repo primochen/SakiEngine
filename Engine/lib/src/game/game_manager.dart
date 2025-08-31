@@ -926,8 +926,14 @@ class GameManager {
     _isProcessing = false;
   }
 
+  /// 停止所有音效，但保留背景音乐
+  void stopAllSounds() {
+    MusicManager().stopAudio(AudioTrackConfig.sound);
+  }
+
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
+    stopAllSounds(); // 停止所有音效
     _gameStateController.close();
   }
 }
