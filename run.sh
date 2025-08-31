@@ -205,19 +205,6 @@ flutter clean
 echo -e "${YELLOW}正在获取依赖...${NC}"
 flutter pub get
 
-echo -e "${YELLOW}🤖 正在更新模块注册表...${NC}"
-# 检查并更新模块注册表
-if [ -f "tool/generate_modules.dart" ]; then
-    echo -e "${BLUE}扫描并注册项目模块...${NC}"
-    dart tool/generate_modules.dart
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ 模块注册表更新完成${NC}"
-    else
-        echo -e "${RED}⚠️ 模块注册表更新失败，继续启动...${NC}"
-    fi
-else
-    echo -e "${YELLOW}未找到模块生成工具，跳过模块更新${NC}"
-fi
 echo ""
 
 # 根据平台启动

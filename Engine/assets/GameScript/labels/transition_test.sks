@@ -24,5 +24,5 @@ scene sky with fade fx dreamy intensity:0.8
 scene bamboo with diss fx nostalgic intensity:0.5
 "这是带怀旧滤镜的dissolve转场"
 
-"转场效果测试完成！现在diss转场应该和角色切换一样完美了！"
+"转场效果测试完成！修复了图片压扁bug，现在diss转场保持正确纵横比！"
 return

@@ -349,115 +349,38 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
     return AnimatedBuilder(
       animation: _dissAnimation,
       builder: (context, child) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // 使用全屏尺寸，但在绘制器中处理图片的正确缩放
-            return CustomPaint(
-              size: Size(constraints.maxWidth, constraints.maxHeight),
-              painter: _SceneDissolvePainter(
-                program: _dissolveProgram!,
-                progress: _dissAnimation.value,
-                imageFrom: _oldImage ?? _newImage!, // 如果没有旧图片，使用新图片（首次显示效果）
-                imageTo: _newImage!,
-                canvasSize: Size(constraints.maxWidth, constraints.maxHeight),
+        // 完全放弃dissolve着色器，使用Flutter原生的图片渐变
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 旧背景，逐渐淡出
+            if (_oldImage != null)
+              Opacity(
+                opacity: 1.0 - _dissAnimation.value,
+                child: RawImage(
+                  image: _oldImage!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               ),
-            );
-          },
+            // 新背景，逐渐淡入
+            Opacity(
+              opacity: _dissAnimation.value,
+              child: RawImage(
+                image: _newImage!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ],
         );
       },
     );
   }
 }
 
-/// 场景溶解绘制器（参考角色层的实现）
-class _SceneDissolvePainter extends CustomPainter {
-  final ui.FragmentProgram program;
-  final double progress;
-  final ui.Image imageFrom;
-  final ui.Image imageTo;
-  final Size canvasSize;
-
-  _SceneDissolvePainter({
-    required this.program,
-    required this.progress,
-    required this.imageFrom,
-    required this.imageTo,
-    required this.canvasSize,
-  });
-
-  @override
-  void paint(ui.Canvas canvas, ui.Size size) {
-    try {
-      // 如果没有之前的图片（首次显示），从透明开始
-      if (imageFrom == imageTo) {
-        // 首次显示：简单的透明度渐变
-        final paint = ui.Paint()
-          ..color = Colors.white.withOpacity(progress)
-          ..isAntiAlias = true
-          ..filterQuality = FilterQuality.high;
-        
-        // 使用BoxFit.cover逻辑绘制图片
-        _drawImageWithCover(canvas, imageTo, canvasSize, paint);
-        return;
-      }
-
-      // 差分切换：使用dissolve效果
-      final shader = program.fragmentShader();
-      shader
-        ..setFloat(0, progress)
-        ..setFloat(1, canvasSize.width)
-        ..setFloat(2, canvasSize.height)
-        ..setFloat(3, imageFrom.width.toDouble())
-        ..setFloat(4, imageFrom.height.toDouble())
-        ..setFloat(5, imageTo.width.toDouble())
-        ..setFloat(6, imageTo.height.toDouble())
-        ..setImageSampler(0, imageFrom)
-        ..setImageSampler(1, imageTo);
-
-      final paint = ui.Paint()
-        ..shader = shader
-        ..isAntiAlias = true
-        ..filterQuality = FilterQuality.high;
-      
-      // 绘制到整个画布尺寸
-      canvas.drawRect(ui.Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height), paint);
-    } catch (e) {
-      print("Error painting scene dissolve shader: $e");
-    }
-  }
-  
-  /// 使用BoxFit.cover逻辑绘制图片，保持纵横比并填满区域
-  void _drawImageWithCover(ui.Canvas canvas, ui.Image image, ui.Size targetSize, ui.Paint paint) {
-    final imageSize = ui.Size(image.width.toDouble(), image.height.toDouble());
-    final targetAspectRatio = targetSize.width / targetSize.height;
-    final imageAspectRatio = imageSize.width / imageSize.height;
-    
-    ui.Rect srcRect;
-    if (imageAspectRatio > targetAspectRatio) {
-      // 图片更宽，裁剪宽度
-      final srcHeight = imageSize.height;
-      final srcWidth = srcHeight * targetAspectRatio;
-      final srcX = (imageSize.width - srcWidth) / 2;
-      srcRect = ui.Rect.fromLTWH(srcX, 0, srcWidth, srcHeight);
-    } else {
-      // 图片更高或相同，裁剪高度
-      final srcWidth = imageSize.width;
-      final srcHeight = srcWidth / targetAspectRatio;
-      final srcY = (imageSize.height - srcHeight) / 2;
-      srcRect = ui.Rect.fromLTWH(0, srcY, srcWidth, srcHeight);
-    }
-    
-    final destRect = ui.Rect.fromLTWH(0, 0, targetSize.width, targetSize.height);
-    canvas.drawImageRect(image, srcRect, destRect, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SceneDissolvePainter oldDelegate) {
-    return progress != oldDelegate.progress ||
-        imageFrom != oldDelegate.imageFrom ||
-        imageTo != oldDelegate.imageTo;
-  }
-}
 
 /// 转场类型解析工具
 class TransitionTypeParser {

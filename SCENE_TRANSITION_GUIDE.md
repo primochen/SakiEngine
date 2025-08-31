@@ -71,7 +71,12 @@ scene bamboo with diss fx nostalgic intensity:0.5
 - **图片加载**: 通过AssetManager和ImageLoader异步加载背景图片
 - **平滑过渡**: 150ms到2000ms可配置的dissolve动画时长
 - **内存管理**: 自动处理ui.Image的dispose和内存清理
-- **图片缩放**: 使用BoxFit.cover逻辑保持纵横比，避免图片压扁变形
+- **BoxFit.cover实现**: 使用手动裁剪确保图片保持纵横比并填满屏幕
+- **双层绘制**: 先绘制旧图片作为底层，再用dissolve着色器叠加新图片
+
+## Bug修复记录
+- **✅ 修复滤镜持续存在** - 场景切换时正确清理滤镜状态
+- **✅ 修复图片压扁变形** - 实现正确的BoxFit.cover逻辑，保持图片纵横比
 
 ## 测试
 可以使用 `assets/GameScript/labels/transition_test.sks` 文件测试各种转场效果。
