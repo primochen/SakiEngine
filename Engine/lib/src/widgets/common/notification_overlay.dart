@@ -61,7 +61,7 @@ class NotificationOverlayState extends State<NotificationOverlay> {
                   horizontal: 48 * widget.scale, vertical: 32 * widget.scale),
               decoration: BoxDecoration(
                 color: config.themeColors.background.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(8 * widget.scale),
+                borderRadius: BorderRadius.circular(config.baseWindowBorder * widget.scale),
                 border: Border.all(
                     color: config.themeColors.primary.withValues(alpha: 0.5)),
                 boxShadow: [

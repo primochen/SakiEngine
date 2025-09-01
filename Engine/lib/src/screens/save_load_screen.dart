@@ -11,6 +11,7 @@ import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/screenshot_thumbnail.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/widgets/common/square_icon_button.dart';
 
 enum SaveLoadMode { save, load }
 
@@ -118,6 +119,66 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       _notificationOverlayKey.currentState?.show('删除失败: $e');
     }
   }
+
+  Future<void> _handleMove(int fromSlotId, int direction) async {
+    int toSlotId;
+    String directionText;
+    
+    switch (direction) {
+      case 0: // 上
+        toSlotId = fromSlotId - 3;
+        directionText = '上方';
+        break;
+      case 1: // 下
+        toSlotId = fromSlotId + 3;
+        directionText = '下方';
+        break;
+      case 2: // 左
+        toSlotId = fromSlotId - 1;
+        directionText = '左侧';
+        break;
+      case 3: // 右
+        toSlotId = fromSlotId + 1;
+        directionText = '右侧';
+        break;
+      default:
+        return;
+    }
+    
+    if (toSlotId < 1 || toSlotId > 12) {
+      _notificationOverlayKey.currentState?.show('无法移动到档位 ${toSlotId.toString().padLeft(2, '0')}');
+      return;
+    }
+    
+    try {
+      final existingSlots = await _saveSlotsFuture;
+      final targetSlot = existingSlots.firstWhere(
+        (s) => s.id == toSlotId,
+        orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
+      );
+      
+      final bool success;
+      if (targetSlot.id == -1) {
+        success = await _saveLoadManager.moveSave(fromSlotId, toSlotId);
+        if (success) {
+          _notificationOverlayKey.currentState?.show('已移动到${directionText}档位');
+        }
+      } else {
+        success = await _saveLoadManager.swapSaves(fromSlotId, toSlotId);
+        if (success) {
+          _notificationOverlayKey.currentState?.show('已与${directionText}档位交换');
+        }
+      }
+      
+      if (success) {
+        _loadSaveSlots();
+      } else {
+        _notificationOverlayKey.currentState?.show('移动失败');
+      }
+    } catch (e) {
+      _notificationOverlayKey.currentState?.show('移动失败: $e');
+    }
+  }
   
   String _getTitleText() {
     return widget.mode == SaveLoadMode.save ? '保存进度' : '读取进度';
@@ -198,6 +259,9 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
                     await _handleDelete(slotId);
                   }
                 },
+                onMove: isSlotEmpty ? null : (direction) async {
+                  await _handleMove(slotId, direction);
+                },
               );
             },
           ),
@@ -239,6 +303,7 @@ class _SaveSlotCard extends StatefulWidget {
   final SaveSlot? saveSlot;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final Function(int)? onMove;
   final SakiEngineConfig config;
   final double uiScale;
   final double textScale;
@@ -248,6 +313,7 @@ class _SaveSlotCard extends StatefulWidget {
     this.saveSlot,
     required this.onTap,
     this.onDelete,
+    this.onMove,
     required this.config,
     required this.uiScale,
     required this.textScale,
@@ -259,7 +325,6 @@ class _SaveSlotCard extends StatefulWidget {
 
 class _SaveSlotCardState extends State<_SaveSlotCard> {
   bool _isHovered = false;
-  bool _isDeleteButtonHovered = false;
 
   @override
   void didUpdateWidget(covariant _SaveSlotCard oldWidget) {
@@ -321,11 +386,11 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
                     ? _buildDataCard(uiScale, widget.textScale, config)
                     : _buildEmptyCard(uiScale, widget.textScale, config),
               ),
-              if (widget.onDelete != null && widget.saveSlot != null)
+              if ((widget.onMove != null || widget.onDelete != null) && widget.saveSlot != null)
                 Positioned(
                   bottom: 8 * uiScale,
                   right: 8 * uiScale,
-                  child: _buildDeleteButton(uiScale, config),
+                  child: _buildActionButtons(uiScale, config),
                 ),
             ],
           ),
@@ -334,54 +399,48 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
     );
   }
 
-  Widget _buildDeleteButton(double uiScale, SakiEngineConfig config) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          if (widget.onDelete != null) {
-            widget.onDelete!();
-          }
-        },
-        onHover: (hovering) {
-          if (mounted) {
-            setState(() {
-              _isDeleteButtonHovered = hovering;
-            });
-          }
-        },
-        borderRadius: BorderRadius.circular(config.baseWindowBorder * uiScale * 0.5),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          width: 20 * uiScale,
-          height: 20 * uiScale,
-          decoration: BoxDecoration(
-            color: _isDeleteButtonHovered 
-                ? config.themeColors.primary.withOpacity(0.1)
-                : config.themeColors.background.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(config.baseWindowBorder * uiScale * 0.5),
-            border: Border.all(
-              color: _isDeleteButtonHovered 
-                  ? config.themeColors.primary.withOpacity(0.6)
-                  : config.themeColors.primary.withOpacity(0.3),
-              width: 1,
+  Widget _buildActionButtons(double uiScale, SakiEngineConfig config) {
+    final buttonSize = 26 * uiScale;
+    final buttonSpacing = 3 * uiScale;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.onMove != null) ...[
+          SquareIconButton(
+            icon: Icons.keyboard_arrow_up,
+            size: buttonSize,
+            onTap: () => widget.onMove!(0),
             ),
-          ),
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            scale: _isDeleteButtonHovered ? 1.1 : 1.0,
-            child: Icon(
-              Icons.close,
-              size: 12 * uiScale,
-              color: _isDeleteButtonHovered 
-                  ? config.themeColors.primary
-                  : config.themeColors.primary.withOpacity(0.7),
+          SizedBox(width: buttonSpacing),
+          SquareIconButton(
+            icon: Icons.keyboard_arrow_down,
+            size: buttonSize,
+            onTap: () => widget.onMove!(1),
             ),
+          SizedBox(width: buttonSpacing),
+          SquareIconButton(
+            icon: Icons.keyboard_arrow_left,
+            size: buttonSize,
+            onTap: () => widget.onMove!(2),
+            ),
+          SizedBox(width: buttonSpacing),
+          SquareIconButton(
+            icon: Icons.keyboard_arrow_right,
+            size: buttonSize,
+            onTap: () => widget.onMove!(3),
+            ),
+          if (widget.onDelete != null)
+            SizedBox(width: buttonSpacing),
+        ],
+        if (widget.onDelete != null)
+          SquareIconButton(
+            icon: Icons.close,
+            size: buttonSize,
+            onTap: () => widget.onDelete!(),
+              hoverBackgroundColor: config.themeColors.primary.withOpacity(0.1),
           ),
-        ),
-      ),
+      ],
     );
   }
 

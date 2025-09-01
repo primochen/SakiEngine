@@ -141,6 +141,100 @@ class SaveLoadManager {
       await file.delete();
     }
   }
+
+  Future<bool> moveSave(int fromSlotId, int toSlotId) async {
+    if (fromSlotId == toSlotId) return false;
+    
+    final directory = await getSavesDirectory();
+    final fromFile = File('$directory/save_$fromSlotId.sakisav');
+    final toFile = File('$directory/save_$toSlotId.sakisav');
+    
+    if (!await fromFile.exists()) {
+      return false;
+    }
+    
+    try {
+      final saveSlot = await loadGame(fromSlotId);
+      if (saveSlot == null) return false;
+      
+      final updatedSaveSlot = SaveSlot(
+        id: toSlotId,
+        saveTime: saveSlot.saveTime,
+        currentScript: saveSlot.currentScript,
+        dialoguePreview: saveSlot.dialoguePreview,
+        snapshot: saveSlot.snapshot,
+        screenshotData: saveSlot.screenshotData,
+      );
+      
+      final binaryData = updatedSaveSlot.toBinary();
+      await toFile.writeAsBytes(binaryData);
+      await fromFile.delete();
+      
+      return true;
+    } catch (e) {
+      print('Error moving save from slot $fromSlotId to $toSlotId: $e');
+      return false;
+    }
+  }
+
+  Future<bool> swapSaves(int slotId1, int slotId2) async {
+    if (slotId1 == slotId2) return false;
+    
+    final directory = await getSavesDirectory();
+    final file1 = File('$directory/save_$slotId1.sakisav');
+    final file2 = File('$directory/save_$slotId2.sakisav');
+    
+    final exists1 = await file1.exists();
+    final exists2 = await file2.exists();
+    
+    if (!exists1 && !exists2) return false;
+    
+    try {
+      SaveSlot? saveSlot1;
+      SaveSlot? saveSlot2;
+      
+      if (exists1) {
+        saveSlot1 = await loadGame(slotId1);
+      }
+      if (exists2) {
+        saveSlot2 = await loadGame(slotId2);
+      }
+      
+      if (exists1) await file1.delete();
+      if (exists2) await file2.delete();
+      
+      if (saveSlot1 != null) {
+        final updatedSaveSlot1 = SaveSlot(
+          id: slotId2,
+          saveTime: saveSlot1.saveTime,
+          currentScript: saveSlot1.currentScript,
+          dialoguePreview: saveSlot1.dialoguePreview,
+          snapshot: saveSlot1.snapshot,
+          screenshotData: saveSlot1.screenshotData,
+        );
+        final binaryData = updatedSaveSlot1.toBinary();
+        await file2.writeAsBytes(binaryData);
+      }
+      
+      if (saveSlot2 != null) {
+        final updatedSaveSlot2 = SaveSlot(
+          id: slotId1,
+          saveTime: saveSlot2.saveTime,
+          currentScript: saveSlot2.currentScript,
+          dialoguePreview: saveSlot2.dialoguePreview,
+          snapshot: saveSlot2.snapshot,
+          screenshotData: saveSlot2.screenshotData,
+        );
+        final binaryData = updatedSaveSlot2.toBinary();
+        await file1.writeAsBytes(binaryData);
+      }
+      
+      return true;
+    } catch (e) {
+      print('Error swapping saves between slot $slotId1 and $slotId2: $e');
+      return false;
+    }
+  }
 }
 
 class GameConfigManager {
