@@ -1,0 +1,4 @@
+label after_choice8
+show yuki pose1 happy at pose
+yk "你看到我的立绘了吗？"
+return

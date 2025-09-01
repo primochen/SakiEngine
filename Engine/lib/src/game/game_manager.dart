@@ -10,6 +10,7 @@ import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/effects/scene_transition_effects.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
+import 'package:sakiengine/src/utils/animation_manager.dart';
 
 /// 音乐区间类
 /// 定义音乐播放的有效范围，从play music到下一个play music/stop music之间
@@ -83,11 +84,15 @@ class GameManager {
   
   /// 查找具有相同resourceId的现有角色key
   String? _findExistingCharacterKey(String resourceId) {
+    print('[GameManager] 查找resourceId=$resourceId的角色，当前角色列表: ${_currentState.characters.keys}');
     for (final entry in _currentState.characters.entries) {
+      print('[GameManager] 检查角色 ${entry.key}, resourceId=${entry.value.resourceId}');
       if (entry.value.resourceId == resourceId) {
+        print('[GameManager] 找到匹配的角色: ${entry.key}');
         return entry.key;
       }
     }
+    print('[GameManager] 未找到resourceId=$resourceId的角色');
     return null;
   }
   
@@ -240,6 +245,7 @@ class GameManager {
     );
     
     await _loadConfigs();
+    await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
@@ -320,6 +326,7 @@ class GameManager {
     
     while (_scriptIndex < _script.children.length) {
       final node = _script.children[_scriptIndex];
+      print('[GameManager] 处理脚本索引 $_scriptIndex: ${node.runtimeType}');
       final currentNodeIndex = _scriptIndex; // 保存当前节点索引
       //print('🎮 处理节点[$_scriptIndex]: ${node.runtimeType} - $node');
 
@@ -393,39 +400,49 @@ class GameManager {
       }
 
       if (node is ShowNode) {
-        print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}');
+        print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
         // 优先使用角色配置，如果没有配置则直接使用资源ID
         final characterConfig = _characterConfigs[node.character];
         String resourceId;
         String positionId;
+        String finalCharacterKey; // 最终使用的角色key
         
         if (characterConfig != null) {
           print('[GameManager] 使用角色配置: ${characterConfig.id}');
           resourceId = characterConfig.resourceId;
-          positionId = characterConfig.defaultPoseId ?? 'pose';  // 处理null情况
+          positionId = characterConfig.defaultPoseId ?? 'pose';
+          finalCharacterKey = resourceId; // 使用resourceId作为key
         } else {
           print('[GameManager] 直接使用资源ID: ${node.character}');
-          resourceId = node.character;  // 直接使用show命令中的角色名作为资源ID
-          positionId = node.position ?? 'pose';  // 使用指定位置或默认位置
+          resourceId = node.character;
+          positionId = node.position ?? 'pose';
+          finalCharacterKey = node.character; // 使用原始名称作为key
         }
 
         // 跟踪角色是否曾经显示过
-        _everShownCharacters.add(node.character);
+        _everShownCharacters.add(finalCharacterKey);
 
         final newCharacters = Map.of(_currentState.characters);
         
-        final currentCharacterState = _currentState.characters[node.character] ?? CharacterState(
+        final currentCharacterState = _currentState.characters[finalCharacterKey] ?? CharacterState(
           resourceId: resourceId,
           positionId: positionId,
         );
 
-        newCharacters[node.character] = currentCharacterState.copyWith(
+        newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: node.pose,
           expression: node.expression,
         );
+        
         _currentState =
             _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
+        
+        // 如果有动画，播放动画
+        if (node.animation != null) {
+          await _playCharacterAnimation(finalCharacterKey, node.animation!);
+        }
+        
         _scriptIndex++;
         continue;
       }
@@ -441,46 +458,53 @@ class GameManager {
       }
 
       if (node is SayNode) {
+        print('[GameManager] 处理SayNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}');
         final characterConfig = _characterConfigs[node.character];
+        print('[GameManager] 角色配置: $characterConfig');
         CharacterState? currentCharacterState;
 
         if (node.character != null) {
-          currentCharacterState = _currentState.characters[node.character!];
-          if(currentCharacterState == null && characterConfig != null) {
-            // 检查是否已存在相同resourceId的角色
-            final existingCharacterKey = _findExistingCharacterKey(characterConfig.resourceId);
-            if (existingCharacterKey != null) {
-              // 找到了相同resourceId的角色，我们需要更新那个角色而不是创建新的
-              currentCharacterState = _currentState.characters[existingCharacterKey];
-              
-              final newCharacters = Map.of(_currentState.characters);
-              
-              // 移除旧的key，添加新的key（这样可以处理角色名变化的情况）
-              newCharacters.remove(existingCharacterKey);
-              newCharacters[node.character!] = currentCharacterState!.copyWith(
-                pose: node.pose,
-                expression: node.expression,
-              );
-              
-              _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
-              // 不要早期返回，继续处理对话显示逻辑
-            } else {
-              currentCharacterState = CharacterState(
-                resourceId: characterConfig.resourceId,
-                positionId: characterConfig.defaultPoseId,
-              );
-            }
+          // 确定最终的角色key
+          String finalCharacterKey;
+          if (characterConfig != null) {
+            finalCharacterKey = characterConfig.resourceId; // 使用resourceId作为key
+          } else {
+            finalCharacterKey = node.character!; // 使用原始名称作为key
           }
-        }
-
-        if (currentCharacterState != null) {
-          final newCharacters = Map.of(_currentState.characters);
           
-          newCharacters[node.character!] = currentCharacterState.copyWith(
-            pose: node.pose,
-            expression: node.expression,
-          );
-          _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+          currentCharacterState = _currentState.characters[finalCharacterKey];
+          print('[GameManager] 查找角色 $finalCharacterKey: ${currentCharacterState != null ? "找到" : "未找到"}');
+          
+          if (currentCharacterState != null) {
+            // 角色已存在，更新表情和姿势
+            print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}');
+            final newCharacters = Map.of(_currentState.characters);
+            final updatedCharacter = currentCharacterState.copyWith(
+              pose: node.pose,
+              expression: node.expression,
+            );
+            newCharacters[finalCharacterKey] = updatedCharacter;
+            print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}');
+            _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+            _gameStateController.add(_currentState);
+            print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+          } else if (characterConfig != null) {
+            // 角色不存在，创建新角色
+            print('[GameManager] 创建新角色 $finalCharacterKey');
+            currentCharacterState = CharacterState(
+              resourceId: characterConfig.resourceId,
+              positionId: characterConfig.defaultPoseId,
+            );
+            
+            final newCharacters = Map.of(_currentState.characters);
+            newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
+              pose: node.pose,
+              expression: node.expression,
+            );
+            _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+            _gameStateController.add(_currentState);
+            print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+          }
         }
 
         // 在 NVL 模式下的特殊处理
@@ -970,6 +994,42 @@ class GameManager {
   /// 停止所有音效，但保留背景音乐
   void stopAllSounds() {
     MusicManager().stopAudio(AudioTrackConfig.sound);
+  }
+
+  /// 播放角色动画
+  Future<void> _playCharacterAnimation(String characterId, String animationName) async {
+    final characterState = _currentState.characters[characterId];
+    if (characterState == null) return;
+    
+    final poseConfig = _poseConfigs[characterState.positionId];
+    if (poseConfig == null) return;
+    
+    // 获取基础属性
+    final baseProperties = {
+      'xcenter': poseConfig.xcenter,
+      'ycenter': poseConfig.ycenter,
+      'scale': poseConfig.scale,
+      'alpha': 1.0,
+    };
+    
+    // 创建动画控制器
+    final animController = CharacterAnimationController(
+      characterId: characterId,
+      onComplete: () {
+        print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
+      },
+    );
+    
+    // 播放动画
+    if (_context != null && _context!.mounted) {
+      await animController.playAnimation(
+        animationName,
+        _context! as TickerProvider,
+        baseProperties,
+      );
+    }
+    
+    animController.dispose();
   }
 
   void dispose() {

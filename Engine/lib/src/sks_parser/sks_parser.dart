@@ -137,33 +137,63 @@ class SksParser {
           String? pose;
           String? expression;
           String? position;
+          String? animation;
           
-          // 支持两种语法格式:
-          // 1. show character pose:xxx expression:xxx
-          // 2. show character pose1 happy at pose
+          // 支持an语法:
+          // show xiayo1 pose1 happy at pose an jump
+          // x happy an jump
           
           int atIndex = -1;
+          int anIndex = -1;
+          
           for (int i = 2; i < parts.length; i++) {
             if (parts[i] == 'at') {
               atIndex = i;
+            } else if (parts[i] == 'an') {
+              anIndex = i;
               break;
             }
           }
           
-          if (atIndex >= 0) {
-            // 新语法: show character pose1 happy at pose
+          if (anIndex >= 0) {
+            // 有an动画语法
+            if (anIndex + 1 < parts.length) {
+              animation = parts[anIndex + 1];
+            }
+            
+            if (atIndex >= 0 && atIndex < anIndex) {
+              // show character pose1 happy at pose an jump
+              final attributeParts = parts.sublist(2, atIndex);
+              if (attributeParts.isNotEmpty) {
+                pose = attributeParts[0];
+                if (attributeParts.length > 1) {
+                  expression = attributeParts[1];
+                }
+              }
+              if (atIndex + 1 < anIndex) {
+                position = parts[atIndex + 1];
+              }
+            } else {
+              // x happy an jump
+              final attributeParts = parts.sublist(2, anIndex);
+              if (attributeParts.isNotEmpty) {
+                expression = attributeParts[0];
+              }
+            }
+          } else if (atIndex >= 0) {
+            // 原有at语法，无动画
             final attributeParts = parts.sublist(2, atIndex);
             if (attributeParts.isNotEmpty) {
-              pose = attributeParts[0]; // 第一个属性作为pose
+              pose = attributeParts[0];
               if (attributeParts.length > 1) {
-                expression = attributeParts[1]; // 第二个属性作为expression
+                expression = attributeParts[1];
               }
             }
             if (atIndex + 1 < parts.length) {
-              position = parts[atIndex + 1]; // at后面的参数作为位置
+              position = parts[atIndex + 1];
             }
           } else {
-            // 原语法: show character pose:xxx expression:xxx
+            // 原有pose:语法
             for (int i = 2; i < parts.length; i++) {
               if (parts[i].startsWith('pose:')) {
                 pose = parts[i].substring(5);
@@ -173,7 +203,7 @@ class SksParser {
             }
           }
           
-          nodes.add(ShowNode(character, pose: pose, expression: expression, position: position));
+          nodes.add(ShowNode(character, pose: pose, expression: expression, position: position, animation: animation));
           break;
         case 'hide':
           nodes.add(HideNode(parts[1]));
@@ -216,7 +246,10 @@ class SksParser {
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {
+            print('[SksParser] 解析SayNode: character=${sayNode.character}, pose=${sayNode.pose}, expression=${sayNode.expression}, dialogue=${sayNode.dialogue}');
             nodes.add(sayNode);
+          } else {
+            print('[SksParser] 无法解析行: $trimmedLine');
           }
           break;
       }
@@ -264,17 +297,17 @@ class SksParser {
     String? pose;
     String? expression;
     
-    // This logic is a placeholder. You'll need a robust way to distinguish
-    // poses from expressions, likely by checking against loaded pose/expression configs.
+    // 解析pose和expression属性
     if (parts.length > 1) {
         final attrs = parts.sublist(1);
-        // A simple heuristic: if it contains 'pose', it's a pose.
-        // This is not robust. A better way would be to check against a list of valid poses.
-        pose = attrs.firstWhere((attr) => attr.contains('pose'), orElse: () => '');
-        expression = attrs.firstWhere((attr) => !attr.contains('pose'), orElse: () => '');
-
-        if(pose.isEmpty) pose = null;
-        if(expression.isEmpty) expression = null;
+        
+        for (final attr in attrs) {
+          if (attr.startsWith('pose') || attr.contains('pose')) {
+            pose = attr;
+          } else {
+            expression = attr;
+          }
+        }
     }
     
     return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression);

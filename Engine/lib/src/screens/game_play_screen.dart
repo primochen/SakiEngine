@@ -519,17 +519,26 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
-    return characters.entries.map((entry) {
+    // 按resourceId分组，保留最新的角色状态
+    final Map<String, MapEntry<String, CharacterState>> charactersByResourceId = {};
+    
+    for (final entry in characters.entries) {
+      final resourceId = entry.value.resourceId;
+      // 总是保留最新的状态（覆盖之前的）
+      charactersByResourceId[resourceId] = entry;
+    }
+    
+    return charactersByResourceId.values.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
-      // 使用resourceId作为主要key，确保相同资源的角色共享Widget（保持动画）
+      // 使用resourceId作为key，确保唯一性
       final widgetKey = '${characterState.resourceId}';
       final cacheKey = '$characterId:${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
       
       return FutureBuilder<List<CharacterLayerInfo>>(
-        key: ValueKey(widgetKey), // 使用resourceId作为key，相同资源共享Widget
+        key: ValueKey(widgetKey), // 使用resourceId作为key
         future: CharacterLayerParser.parseCharacterLayers(
           resourceId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
