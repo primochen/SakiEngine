@@ -1,0 +1,14 @@
+// 测试repeat动画语法
+scene test_bg
+
+// 测试show命令的repeat语法
+show xiayo1 happy an jump repeat 3
+
+// 测试对话中的repeat语法  
+x dame an ukeru repeat 3 "但是还是笑死了哈哈，还是粉的。"
+
+// 测试无限循环（不带数字）
+y cheerful an bounce repeat "一直在跳跃呢~"
+
+// 测试普通动画（无repeat）
+x sad an cry "不开心..."

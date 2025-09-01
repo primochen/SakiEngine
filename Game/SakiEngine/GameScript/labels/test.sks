@@ -1,4 +1,7 @@
 label after_choice8
-show yuki pose1 happy at pose
-yk "你看到我的立绘了吗？"
+show yuki pose1 sad at pose
+yk "你看到我的立绘了吗？1"
+yk pose2 happy "你看到我的立绘了吗？2"
+show yuki pose2 star at pose
+yk "你看到我的立绘了吗？3"
 return

@@ -100,9 +100,12 @@ jobs:
           mkdir -p Payload
           mv ios/iphoneos/*.app Payload/
           
+          # 从 default_game.txt 读取游戏名称
+          GAME_NAME=$(cat ../../default_game.txt | tr -d '\n\r' | xargs)
+          
           # 生成构件名称
           version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
-          artifact_name="SakiEngine-${version}-iOS-arm64.ipa"
+          artifact_name="${GAME_NAME}-${version}-iOS-arm64.ipa"
           
           zip -9 "$artifact_name" -r Payload
           

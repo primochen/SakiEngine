@@ -5,7 +5,8 @@
       "WebSearch",
       "Bash(npx:*)",
       "Bash(flutter pub get)",
-      "Bash(dart analyze:*)"
+      "Bash(dart analyze:*)",
+      "Bash(npm:*)"
     ],
     "deny": [],
     "ask": []

@@ -106,7 +106,7 @@ scene sky
 "看着打在身上的清晨的阳光，我尝试抬头望向天空。"
 "但是刺眼的阳光不容许我这样做，便只能尝试用手遮挡一些锐利的太阳。"
 scene stone asa
-show xiayo1 pose1 happy at xiayo1pose
+show xiayo1 pose1 happy at xiayo1pose an jump
 play audio haneru
 play music heroine
 nan "早上好啊林澄！"
@@ -121,7 +121,7 @@ x akireta "..."
 //一脸无语的表情
 x tameiki "不过算了。还记得昨天你穿个连衣裙就来了，下面还套着裤子，我还在想这是什么新潮的造型。"//唉声叹气
 x akireta "你还说是你妈从亲戚家要过来的衣服，你亲戚家小女孩长大了，旧衣服给你穿了。"
-x dame "但是还是笑死了哈哈，还是粉的。"//开始嘲笑，立绘舒缓的抖动表达很开心的神情
+x dame an ukeru repeat 3 "但是还是笑死了哈哈，还是粉的。"//开始嘲笑，立绘舒缓的抖动表达很开心的神情
 "如果是真的，我希望是假的。"
 "不过这事已经过去了。"
 x smile "对了，昨天晚上的《电器金刚》你看了吗？"//摆出正经的姿势，开始询问

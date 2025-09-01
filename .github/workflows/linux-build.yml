@@ -91,10 +91,20 @@ jobs:
         run: |
           cd Engine/build/linux/x64/release
           
+          # 从 default_game.txt 读取游戏名称
+          GAME_NAME=$(cat ../../../../../default_game.txt | tr -d '\n\r' | xargs)
+          
           # 生成构件名称
-          version=$(grep '^version:' ../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          version=$(grep '^version:' ../../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           arch="${{ inputs.architecture }}"
-          artifact_name="SakiEngine-${version}-Linux-${arch}.zip"
+          artifact_name="${GAME_NAME}-${version}-Linux-${arch}.zip"
+          
+          # 检查bundle目录是否存在
+          if [ ! -d "bundle" ]; then
+            echo "❌ 错误: 未找到 bundle 目录"
+            ls -la
+            exit 1
+          fi
           
           # 创建ZIP档案
           zip -r "$artifact_name" bundle

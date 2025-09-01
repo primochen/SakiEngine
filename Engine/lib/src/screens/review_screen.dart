@@ -5,6 +5,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 class ReviewOverlay extends StatefulWidget {
   final List<DialogueHistoryEntry> dialogueHistory;
@@ -215,7 +216,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
           Container(
             padding: EdgeInsets.only(left: entry.speaker != null ? 0 : 16 * uiScale),
             child: Text(
-              entry.dialogue,
+              RichTextParser.cleanText(entry.dialogue),
               style: config.reviewTitleTextStyle.copyWith(
                 fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _dialogueSizeRatio,
                 color: config.themeColors.onSurface,

@@ -94,11 +94,12 @@ class GameRenderer {
       
       if (sampleImage == null) return;
       
-      // 计算角色的绘制参数
+      // 计算角色的绘制参数，包含动画属性
       final renderParams = _calculateCharacterRenderParams(
         poseConfig, 
         canvasSize,
         sampleImage,
+        characterState.animationProperties,
       );
       
       // 按层级顺序绘制所有图层
@@ -115,15 +116,30 @@ class GameRenderer {
     PoseConfig poseConfig,
     Size canvasSize,
     ui.Image sampleImage,
+    Map<String, double>? animationProperties,
   ) {
+    // 从pose配置获取基础属性
+    double baseXCenter = poseConfig.xcenter;
+    double baseYCenter = poseConfig.ycenter;
+    double baseScale = poseConfig.scale;
+    double alpha = 1.0;
+    
+    // 如果有动画属性，应用动画偏移
+    if (animationProperties != null) {
+      baseXCenter = animationProperties['xcenter'] ?? baseXCenter;
+      baseYCenter = animationProperties['ycenter'] ?? baseYCenter;
+      baseScale = animationProperties['scale'] ?? baseScale;
+      alpha = animationProperties['alpha'] ?? alpha;
+    }
+    
     // 计算位置（复用 Positioned 的逻辑）
-    final centerX = poseConfig.xcenter * canvasSize.width;
-    final centerY = poseConfig.ycenter * canvasSize.height;
+    final centerX = baseXCenter * canvasSize.width;
+    final centerY = baseYCenter * canvasSize.height;
     
     // 计算约束高度（复用 SizedBox 的逻辑）
     double? constraintHeight;
-    if (poseConfig.scale > 0) {
-      constraintHeight = canvasSize.height * poseConfig.scale;
+    if (baseScale > 0) {
+      constraintHeight = canvasSize.height * baseScale;
     }
     
     // 计算实际绘制尺寸（复用 _CharacterLayer 的 LayoutBuilder 逻辑）
@@ -149,6 +165,7 @@ class GameRenderer {
       y: finalY,
       width: paintSize.width,
       height: paintSize.height,
+      alpha: alpha,
     );
   }
   
@@ -169,7 +186,8 @@ class GameRenderer {
   static void _drawCharacterLayer(Canvas canvas, ui.Image image, CharacterRenderParams params) {
     final paint = Paint()
       ..filterQuality = FilterQuality.high
-      ..isAntiAlias = true;
+      ..isAntiAlias = true
+      ..color = Color.fromRGBO(255, 255, 255, params.alpha);
     
     canvas.drawImageRect(
       image,
@@ -228,11 +246,13 @@ class CharacterRenderParams {
   final double y;
   final double width;
   final double height;
+  final double alpha;
   
   CharacterRenderParams({
     required this.x,
     required this.y,
     required this.width,
     required this.height,
+    this.alpha = 1.0,
   });
 }

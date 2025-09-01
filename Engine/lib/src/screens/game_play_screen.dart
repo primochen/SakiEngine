@@ -48,7 +48,7 @@ class GamePlayScreen extends StatefulWidget {
   State<GamePlayScreen> createState() => _GamePlayScreenState();
 }
 
-class _GamePlayScreenState extends State<GamePlayScreen> {
+class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
@@ -90,13 +90,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showNotificationMessage('读档成功');
         // 设置context用于转场效果
-        _gameManager.setContext(context);
+        _gameManager.setContext(context, this as TickerProvider);
       });
     } else {
       _gameManager.startGame(_currentScript);
       // 延迟设置context，确保组件已mounted
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _gameManager.setContext(context);
+        _gameManager.setContext(context, this as TickerProvider);
       });
     }
   }
@@ -519,17 +519,26 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
   }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
-    return characters.entries.map((entry) {
+    // 按resourceId分组，保留最新的角色状态
+    final Map<String, MapEntry<String, CharacterState>> charactersByResourceId = {};
+    
+    for (final entry in characters.entries) {
+      final resourceId = entry.value.resourceId;
+      // 总是保留最新的状态（覆盖之前的）
+      charactersByResourceId[resourceId] = entry;
+    }
+    
+    return charactersByResourceId.values.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
       final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
-      // 使用resourceId作为主要key，确保相同资源的角色共享Widget（保持动画）
+      // 使用resourceId作为key，确保唯一性
       final widgetKey = '${characterState.resourceId}';
       final cacheKey = '$characterId:${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
       
       return FutureBuilder<List<CharacterLayerInfo>>(
-        key: ValueKey(widgetKey), // 使用resourceId作为key，相同资源共享Widget
+        key: ValueKey(widgetKey), // 使用resourceId作为key
         future: CharacterLayerParser.parseCharacterLayers(
           resourceId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
@@ -553,17 +562,40 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
           final characterStack = Stack(children: layers);
           
           Widget finalWidget = characterStack;
-          if (poseConfig.scale > 0) {
+          
+          // 获取动画属性
+          final animProps = characterState.animationProperties;
+          double finalXCenter = poseConfig.xcenter;
+          double finalYCenter = poseConfig.ycenter;
+          double finalScale = poseConfig.scale;
+          double alpha = 1.0;
+          
+          if (animProps != null) {
+            finalXCenter = animProps['xcenter'] ?? finalXCenter;
+            finalYCenter = animProps['ycenter'] ?? finalYCenter;
+            finalScale = animProps['scale'] ?? finalScale;
+            alpha = animProps['alpha'] ?? alpha;
+          }
+          
+          if (finalScale > 0) {
             finalWidget = SizedBox(
-              height: MediaQuery.of(context).size.height * poseConfig.scale,
+              height: MediaQuery.of(context).size.height * finalScale,
               child: characterStack,
+            );
+          }
+          
+          // 应用透明度
+          if (alpha < 1.0) {
+            finalWidget = Opacity(
+              opacity: alpha,
+              child: finalWidget,
             );
           }
 
           return Positioned(
             key: ValueKey('positioned-$widgetKey'), // 使用resourceId作为key
-            left: poseConfig.xcenter * MediaQuery.of(context).size.width,
-            top: poseConfig.ycenter * MediaQuery.of(context).size.height,
+            left: finalXCenter * MediaQuery.of(context).size.width,
+            top: finalYCenter * MediaQuery.of(context).size.height,
             child: FractionalTranslation(
               translation: _anchorToTranslation(poseConfig.anchor),
               child: finalWidget,

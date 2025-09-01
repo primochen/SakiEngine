@@ -6,6 +6,7 @@ import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 class SoranoUtaDialogueBox extends StatefulWidget {
   final String? speaker;
@@ -345,13 +346,9 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
                                       child: RichText(
                                         text: TextSpan(
                                           children: [
-                                            TextSpan(
-                                              text: _enableTypewriter
-                                                  ? _typewriterController
-                                                      .displayedText
-                                                  : widget.dialogue,
-                                              style: dialogueStyle,
-                                            ),
+                                            ..._enableTypewriter
+                                                ? _typewriterController.getTextSpans(dialogueStyle)
+                                                : RichTextParser.createTextSpans(widget.dialogue, dialogueStyle),
                                             if (_isDialogueComplete)
                                               WidgetSpan(
                                                 alignment:

@@ -119,9 +119,12 @@ jobs:
             exit 1
           fi
           
+          # 从 default_game.txt 读取游戏名称
+          GAME_NAME=$(cat default_game.txt | tr -d '\n\r' | xargs)
+          
           # 生成构件名称并重命名APK
           version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
-          artifact_name="SakiEngine-${version}-Android-arm64-release.apk"
+          artifact_name="${GAME_NAME}-${version}-Android-arm64-release.apk"
           
           cd Engine/build/app/outputs/apk/release
           mv app-release.apk "$artifact_name"

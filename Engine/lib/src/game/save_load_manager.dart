@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/game/screenshot_generator.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 class SaveLoadManager {
   // 获取当前游戏项目名称
@@ -53,6 +54,12 @@ class SaveLoadManager {
   }
 
   Future<void> saveGame(int slotId, String currentScript, GameStateSnapshot snapshot) async {
+    // 检查目标位置是否有被锁定的存档
+    final existingSlot = await loadGame(slotId);
+    if (existingSlot?.isLocked == true) {
+      throw Exception('存档已锁定，无法覆盖');
+    }
+    
     final directory = await getSavesDirectory();
     final file = File('$directory/save_$slotId.sakisav');
     
@@ -64,16 +71,16 @@ class SaveLoadManager {
       // 使用最新的 NVL 对话作为预览
       final latestNvlDialogue = currentState.nvlDialogues.last;
       if (latestNvlDialogue.speaker != null && latestNvlDialogue.speaker!.isNotEmpty) {
-        dialoguePreview = '【${latestNvlDialogue.speaker}】${latestNvlDialogue.dialogue}';
+        dialoguePreview = '【${latestNvlDialogue.speaker}】${RichTextParser.cleanText(latestNvlDialogue.dialogue)}';
       } else {
-        dialoguePreview = latestNvlDialogue.dialogue;
+        dialoguePreview = RichTextParser.cleanText(latestNvlDialogue.dialogue);
       }
     } else if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
       // 普通模式的对话
       if (currentState.speaker != null && currentState.speaker!.isNotEmpty) {
-        dialoguePreview = '【${currentState.speaker}】${currentState.dialogue}';
+        dialoguePreview = '【${currentState.speaker}】${RichTextParser.cleanText(currentState.dialogue!)}';
       } else {
-        dialoguePreview = currentState.dialogue!;
+        dialoguePreview = RichTextParser.cleanText(currentState.dialogue!);
       }
     }
 
@@ -95,6 +102,7 @@ class SaveLoadManager {
       dialoguePreview: dialoguePreview,
       snapshot: snapshot,
       screenshotData: screenshotData,
+      isLocked: existingSlot?.isLocked ?? false, // 保持原有锁定状态
     );
 
     final binaryData = saveSlot.toBinary();
@@ -135,10 +143,147 @@ class SaveLoadManager {
   }
 
   Future<void> deleteSave(int slotId) async {
+    final saveSlot = await loadGame(slotId);
+    if (saveSlot?.isLocked == true) {
+      throw Exception('存档已锁定，无法删除');
+    }
+    
     final directory = await getSavesDirectory();
     final file = File('$directory/save_$slotId.sakisav');
     if (await file.exists()) {
       await file.delete();
+    }
+  }
+
+  Future<bool> moveSave(int fromSlotId, int toSlotId) async {
+    if (fromSlotId == toSlotId) return false;
+    
+    final directory = await getSavesDirectory();
+    final fromFile = File('$directory/save_$fromSlotId.sakisav');
+    final toFile = File('$directory/save_$toSlotId.sakisav');
+    
+    if (!await fromFile.exists()) {
+      return false;
+    }
+    
+    try {
+      final saveSlot = await loadGame(fromSlotId);
+      if (saveSlot == null) return false;
+      
+      // 检查源存档是否被锁定
+      if (saveSlot.isLocked) return false;
+      
+      // 检查目标位置是否有被锁定的存档
+      final targetSlot = await loadGame(toSlotId);
+      if (targetSlot?.isLocked == true) return false;
+      
+      final updatedSaveSlot = SaveSlot(
+        id: toSlotId,
+        saveTime: saveSlot.saveTime,
+        currentScript: saveSlot.currentScript,
+        dialoguePreview: saveSlot.dialoguePreview,
+        snapshot: saveSlot.snapshot,
+        screenshotData: saveSlot.screenshotData,
+        isLocked: saveSlot.isLocked,
+      );
+      
+      final binaryData = updatedSaveSlot.toBinary();
+      await toFile.writeAsBytes(binaryData);
+      await fromFile.delete();
+      
+      return true;
+    } catch (e) {
+      print('Error moving save from slot $fromSlotId to $toSlotId: $e');
+      return false;
+    }
+  }
+
+  Future<bool> swapSaves(int slotId1, int slotId2) async {
+    if (slotId1 == slotId2) return false;
+    
+    final directory = await getSavesDirectory();
+    final file1 = File('$directory/save_$slotId1.sakisav');
+    final file2 = File('$directory/save_$slotId2.sakisav');
+    
+    final exists1 = await file1.exists();
+    final exists2 = await file2.exists();
+    
+    if (!exists1 && !exists2) return false;
+    
+    try {
+      SaveSlot? saveSlot1;
+      SaveSlot? saveSlot2;
+      
+      if (exists1) {
+        saveSlot1 = await loadGame(slotId1);
+        if (saveSlot1?.isLocked == true) return false; // 检查锁定状态
+      }
+      if (exists2) {
+        saveSlot2 = await loadGame(slotId2);
+        if (saveSlot2?.isLocked == true) return false; // 检查锁定状态
+      }
+      
+      if (exists1) await file1.delete();
+      if (exists2) await file2.delete();
+      
+      if (saveSlot1 != null) {
+        final updatedSaveSlot1 = SaveSlot(
+          id: slotId2,
+          saveTime: saveSlot1.saveTime,
+          currentScript: saveSlot1.currentScript,
+          dialoguePreview: saveSlot1.dialoguePreview,
+          snapshot: saveSlot1.snapshot,
+          screenshotData: saveSlot1.screenshotData,
+          isLocked: saveSlot1.isLocked,
+        );
+        final binaryData = updatedSaveSlot1.toBinary();
+        await file2.writeAsBytes(binaryData);
+      }
+      
+      if (saveSlot2 != null) {
+        final updatedSaveSlot2 = SaveSlot(
+          id: slotId1,
+          saveTime: saveSlot2.saveTime,
+          currentScript: saveSlot2.currentScript,
+          dialoguePreview: saveSlot2.dialoguePreview,
+          snapshot: saveSlot2.snapshot,
+          screenshotData: saveSlot2.screenshotData,
+          isLocked: saveSlot2.isLocked,
+        );
+        final binaryData = updatedSaveSlot2.toBinary();
+        await file1.writeAsBytes(binaryData);
+      }
+      
+      return true;
+    } catch (e) {
+      print('Error swapping saves between slot $slotId1 and $slotId2: $e');
+      return false;
+    }
+  }
+
+  Future<bool> toggleSaveLock(int slotId) async {
+    final saveSlot = await loadGame(slotId);
+    if (saveSlot == null) return false;
+    
+    final updatedSlot = SaveSlot(
+      id: saveSlot.id,
+      saveTime: saveSlot.saveTime,
+      currentScript: saveSlot.currentScript,
+      dialoguePreview: saveSlot.dialoguePreview,
+      snapshot: saveSlot.snapshot,
+      screenshotData: saveSlot.screenshotData,
+      isLocked: !saveSlot.isLocked,
+    );
+    
+    try {
+      final directory = await getSavesDirectory();
+      final file = File('$directory/save_$slotId.sakisav');
+      final binaryData = updatedSlot.toBinary();
+      await file.writeAsBytes(binaryData);
+      return true;
+    } catch (e) {
+      print('Error toggling lock for slot $slotId: $e');
+      return false;
     }
   }
 }

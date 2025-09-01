@@ -117,6 +117,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
   }
 
+
   void _handleNewGame() {
     widget.onNewGame();
   }
