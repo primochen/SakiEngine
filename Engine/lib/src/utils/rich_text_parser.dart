@@ -7,30 +7,52 @@ class TextSpanWithSize {
   TextSpanWithSize(this.text, {this.sizeMultiplier});
 }
 
+class TextSegment {
+  final String text;
+  final double? sizeMultiplier;
+  final double? waitSeconds;
+  
+  TextSegment(this.text, {this.sizeMultiplier, this.waitSeconds});
+}
+
 class RichTextParser {
   static String cleanText(String text) {
-    return text.replaceAll(RegExp(r'\[size=[0-9.]+\]'), '').replaceAll('[/size]', '');
+    return text
+        .replaceAll(RegExp(r'\[size=[0-9.]+\]'), '')
+        .replaceAll('[/size]', '')
+        .replaceAll(RegExp(r'\[w=[0-9.]+\]'), '');
   }
   
-  static List<TextSpanWithSize> parseText(String text) {
-    final List<TextSpanWithSize> spans = [];
-    final sizeRegex = RegExp(r'\[size=([0-9.]+)\](.*?)\[/size\]');
+  static List<TextSegment> parseTextSegments(String text) {
+    final List<TextSegment> segments = [];
+    final combinedRegex = RegExp(r'\[size=([0-9.]+)\](.*?)\[/size\]|\[w=([0-9.]+)\]');
     
     int lastEnd = 0;
+    double? currentSizeMultiplier;
     
-    for (final match in sizeRegex.allMatches(text)) {
+    for (final match in combinedRegex.allMatches(text)) {
       // 添加匹配前的普通文本
       if (match.start > lastEnd) {
         final normalText = text.substring(lastEnd, match.start);
         if (normalText.isNotEmpty) {
-          spans.add(TextSpanWithSize(normalText));
+          segments.add(TextSegment(normalText, sizeMultiplier: currentSizeMultiplier));
         }
       }
       
-      // 添加带size标签的文本
-      final sizeValue = double.tryParse(match.group(1)!) ?? 1.0;
-      final taggedText = match.group(2)!;
-      spans.add(TextSpanWithSize(taggedText, sizeMultiplier: sizeValue));
+      if (match.group(1) != null) {
+        // 这是一个size标签
+        final sizeValue = double.tryParse(match.group(1)!) ?? 1.0;
+        final taggedText = match.group(2)!;
+        
+        // 在size标签内部可能还有w标签，需要递归解析
+        final innerSegments = _parseInnerSegments(taggedText, sizeValue);
+        segments.addAll(innerSegments);
+        currentSizeMultiplier = null; // 重置
+      } else if (match.group(3) != null) {
+        // 这是一个w标签
+        final waitValue = double.tryParse(match.group(3)!) ?? 0.0;
+        segments.add(TextSegment('', waitSeconds: waitValue, sizeMultiplier: currentSizeMultiplier));
+      }
       
       lastEnd = match.end;
     }
@@ -39,11 +61,52 @@ class RichTextParser {
     if (lastEnd < text.length) {
       final remainingText = text.substring(lastEnd);
       if (remainingText.isNotEmpty) {
-        spans.add(TextSpanWithSize(remainingText));
+        segments.add(TextSegment(remainingText, sizeMultiplier: currentSizeMultiplier));
       }
     }
     
-    return spans;
+    return segments;
+  }
+  
+  static List<TextSegment> _parseInnerSegments(String text, double sizeMultiplier) {
+    final List<TextSegment> segments = [];
+    final waitRegex = RegExp(r'\[w=([0-9.]+)\]');
+    
+    int lastEnd = 0;
+    
+    for (final match in waitRegex.allMatches(text)) {
+      // 添加匹配前的文本
+      if (match.start > lastEnd) {
+        final normalText = text.substring(lastEnd, match.start);
+        if (normalText.isNotEmpty) {
+          segments.add(TextSegment(normalText, sizeMultiplier: sizeMultiplier));
+        }
+      }
+      
+      // 添加等待段
+      final waitValue = double.tryParse(match.group(1)!) ?? 0.0;
+      segments.add(TextSegment('', waitSeconds: waitValue, sizeMultiplier: sizeMultiplier));
+      
+      lastEnd = match.end;
+    }
+    
+    // 添加剩余文本
+    if (lastEnd < text.length) {
+      final remainingText = text.substring(lastEnd);
+      if (remainingText.isNotEmpty) {
+        segments.add(TextSegment(remainingText, sizeMultiplier: sizeMultiplier));
+      }
+    }
+    
+    return segments;
+  }
+  
+  static List<TextSpanWithSize> parseText(String text) {
+    final segments = parseTextSegments(text);
+    return segments
+        .where((segment) => segment.text.isNotEmpty)
+        .map((segment) => TextSpanWithSize(segment.text, sizeMultiplier: segment.sizeMultiplier))
+        .toList();
   }
   
   static List<TextSpan> createTextSpans(String text, TextStyle baseStyle) {

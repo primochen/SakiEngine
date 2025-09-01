@@ -16,6 +16,9 @@ class TypewriterAnimationManager extends ChangeNotifier {
   String _displayedText = '';
   int _currentCharIndex = 0;
   TypewriterState _state = TypewriterState.idle;
+  List<TextSegment> _textSegments = [];
+  int _currentSegmentIndex = 0;
+  int _currentSegmentCharIndex = 0;
   
   // 动画控制
   AnimationController? _animationController;
@@ -90,8 +93,11 @@ class TypewriterAnimationManager extends ChangeNotifier {
 
     _originalText = text;
     _cleanedText = RichTextParser.cleanText(text);
+    _textSegments = RichTextParser.parseTextSegments(text);
     _displayedText = '';
     _currentCharIndex = 0;
+    _currentSegmentIndex = 0;
+    _currentSegmentCharIndex = 0;
     _state = TypewriterState.typing;
     
     // 如果滑块拉满(200字符/秒)，直接显示完整文本（瞬间模式）
@@ -110,13 +116,36 @@ class TypewriterAnimationManager extends ChangeNotifier {
   void _startTypewriterAnimation() {
     _typeTimer?.cancel();
     
-    if (_currentCharIndex >= _cleanedText.length) {
+    if (_currentSegmentIndex >= _textSegments.length) {
       _completeTyping();
       return;
     }
-
-    final currentChar = _cleanedText[_currentCharIndex];
     
+    final currentSegment = _textSegments[_currentSegmentIndex];
+    
+    // 如果是等待段
+    if (currentSegment.waitSeconds != null && currentSegment.waitSeconds! > 0) {
+      final waitMs = (currentSegment.waitSeconds! * 1000).round();
+      _typeTimer = Timer(Duration(milliseconds: waitMs), () {
+        if (_state != TypewriterState.typing) return;
+        _currentSegmentIndex++;
+        _currentSegmentCharIndex = 0;
+        _startTypewriterAnimation();
+      });
+      return;
+    }
+    
+    // 普通文本段
+    if (_currentSegmentCharIndex >= currentSegment.text.length) {
+      _currentSegmentIndex++;
+      _currentSegmentCharIndex = 0;
+      _startTypewriterAnimation();
+      return;
+    }
+
+    final currentChar = currentSegment.text[_currentSegmentCharIndex];
+    
+    _currentSegmentCharIndex++;
     _currentCharIndex++;
     _displayedText = _cleanedText.substring(0, _currentCharIndex);
     
@@ -205,6 +234,9 @@ class TypewriterAnimationManager extends ChangeNotifier {
     _cleanedText = '';
     _displayedText = '';
     _currentCharIndex = 0;
+    _textSegments = [];
+    _currentSegmentIndex = 0;
+    _currentSegmentCharIndex = 0;
     _state = TypewriterState.idle;
     notifyListeners();
   }
