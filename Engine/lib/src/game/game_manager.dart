@@ -767,6 +767,7 @@ class GameManager {
     //print('📚 restoreFromSnapshot: nvlDialogues count = ${snapshot.nvlDialogues.length}');
     
     await _loadConfigs();
+    await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
@@ -815,6 +816,7 @@ class GameManager {
     // 清理缓存并重新合并脚本
     _scriptMerger.clearCache();
     await _loadConfigs();
+    await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
