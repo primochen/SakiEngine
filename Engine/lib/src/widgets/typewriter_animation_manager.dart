@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 enum TypewriterState {
   idle,
@@ -11,6 +12,7 @@ enum TypewriterState {
 
 class TypewriterAnimationManager extends ChangeNotifier {
   String _originalText = '';
+  String _cleanedText = '';
   String _displayedText = '';
   int _currentCharIndex = 0;
   TypewriterState _state = TypewriterState.idle;
@@ -29,10 +31,15 @@ class TypewriterAnimationManager extends ChangeNotifier {
   // Getters
   String get displayedText => _displayedText;
   String get originalText => _originalText;
+  String get cleanedText => _cleanedText;
   TypewriterState get state => _state;
   bool get isCompleted => _state == TypewriterState.completed || _state == TypewriterState.skipped;
   bool get isTyping => _state == TypewriterState.typing;
-  double get progress => _originalText.isEmpty ? 0.0 : _currentCharIndex / _originalText.length;
+  double get progress => _cleanedText.isEmpty ? 0.0 : _currentCharIndex / _cleanedText.length;
+  
+  List<TextSpan> getTextSpans(TextStyle baseStyle) {
+    return RichTextParser.createPartialTextSpans(_originalText, _displayedText, baseStyle);
+  }
 
   TypewriterAnimationManager() {
     // 注册实例到静态列表
@@ -82,14 +89,15 @@ class TypewriterAnimationManager extends ChangeNotifier {
     }
 
     _originalText = text;
+    _cleanedText = RichTextParser.cleanText(text);
     _displayedText = '';
     _currentCharIndex = 0;
     _state = TypewriterState.typing;
     
     // 如果滑块拉满(200字符/秒)，直接显示完整文本（瞬间模式）
     if (_charsPerSecond >= 200.0) {
-      _displayedText = _originalText;
-      _currentCharIndex = _originalText.length;
+      _displayedText = _cleanedText;
+      _currentCharIndex = _cleanedText.length;
       _state = TypewriterState.completed;
       notifyListeners();
       return;
@@ -102,17 +110,17 @@ class TypewriterAnimationManager extends ChangeNotifier {
   void _startTypewriterAnimation() {
     _typeTimer?.cancel();
     
-    if (_currentCharIndex >= _originalText.length) {
+    if (_currentCharIndex >= _cleanedText.length) {
       _completeTyping();
       return;
     }
 
-    final currentChar = _originalText[_currentCharIndex];
+    final currentChar = _cleanedText[_currentCharIndex];
     
     _currentCharIndex++;
-    _displayedText = _originalText.substring(0, _currentCharIndex);
+    _displayedText = _cleanedText.substring(0, _currentCharIndex);
     
-    if (_currentCharIndex >= _originalText.length) {
+    if (_currentCharIndex >= _cleanedText.length) {
       _completeTyping();
       notifyListeners();
       return;
@@ -175,8 +183,8 @@ class TypewriterAnimationManager extends ChangeNotifier {
 
   void _completeTyping() {
     _state = TypewriterState.completed;
-    _displayedText = _originalText;
-    _currentCharIndex = _originalText.length;
+    _displayedText = _cleanedText;
+    _currentCharIndex = _cleanedText.length;
     _typeTimer?.cancel();
     notifyListeners();
   }
@@ -185,8 +193,8 @@ class TypewriterAnimationManager extends ChangeNotifier {
     if (_state != TypewriterState.typing) return;
     
     _state = TypewriterState.skipped;
-    _displayedText = _originalText;
-    _currentCharIndex = _originalText.length;
+    _displayedText = _cleanedText;
+    _currentCharIndex = _cleanedText.length;
     _typeTimer?.cancel();
     notifyListeners();
   }
@@ -194,6 +202,7 @@ class TypewriterAnimationManager extends ChangeNotifier {
   void reset() {
     _typeTimer?.cancel();
     _originalText = '';
+    _cleanedText = '';
     _displayedText = '';
     _currentCharIndex = 0;
     _state = TypewriterState.idle;
@@ -288,9 +297,10 @@ class _TypewriterTextState extends State<TypewriterText>
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      _typewriterController.displayedText,
-      style: widget.style,
+    return RichText(
+      text: TextSpan(
+        children: _typewriterController.getTextSpans(widget.style ?? const TextStyle()),
+      ),
     );
   }
 }

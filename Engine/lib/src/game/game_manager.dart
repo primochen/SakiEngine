@@ -11,6 +11,7 @@ import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/effects/scene_transition_effects.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/utils/animation_manager.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 /// 音乐区间类
 /// 定义音乐播放的有效范围，从play music到下一个play music/stop music之间
@@ -879,7 +880,7 @@ class GameManager {
     
     _dialogueHistory.add(DialogueHistoryEntry(
       speaker: speaker,
-      dialogue: dialogue,
+      dialogue: RichTextParser.cleanText(dialogue),
       timestamp: timestamp,
       scriptIndex: currentNodeIndex,
       stateSnapshot: snapshot,

@@ -5,6 +5,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
@@ -237,13 +238,17 @@ class _NvlScreenState extends State<NvlScreen>
                     });
                   },
                 )
-              : Text(
-                  displayText,
-                  style: config.dialogueTextStyle.copyWith(
-                    fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                    color: Colors.white,
-                    height: 1.6,
-                    letterSpacing: 0.3,
+              : RichText(
+                  text: TextSpan(
+                    children: RichTextParser.createTextSpans(
+                      displayText,
+                      config.dialogueTextStyle.copyWith(
+                        fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                        color: Colors.white,
+                        height: 1.6,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
                   ),
                 ),
             // 箭头紧跟在文本后面
