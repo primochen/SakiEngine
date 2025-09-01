@@ -7,6 +7,9 @@
             "include": "#first-line-identifier"
         },
         {
+            "include": "#animation-content"
+        },
+        {
             "include": "#label-content"
         },
         {
@@ -39,6 +42,19 @@
                 }
             ]
         },
+        "animation-content": {
+            "patterns": [
+                {
+                    "include": "#animation-definitions"
+                },
+                {
+                    "include": "#animation-keyframes"
+                },
+                {
+                    "include": "#comments"
+                }
+            ]
+        },
         "label-content": {
             "patterns": [
                 {
@@ -58,6 +74,9 @@
                 },
                 {
                     "include": "#menu-choices"
+                },
+                {
+                    "include": "#animation-syntax"
                 }
             ]
         },
@@ -112,13 +131,16 @@
             "patterns": [
                 {
                     "name": "keyword.control.sks",
-                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx|with)\\b"
+                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx|with|an|play|stop)\\b"
                 },
                 {
                     "include": "#scene-syntax"
                 },
                 {
                     "include": "#fx-syntax"
+                },
+                {
+                    "include": "#animation-syntax"
                 }
             ]
         },
@@ -348,6 +370,71 @@
                 {
                     "name": "constant.other.transition-type.sks",
                     "match": "\\b(fade|diss|dissolve|wipe|slide)\\b"
+                }
+            ]
+        },
+        "animation-definitions": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.animation-definition.sks",
+                    "match": "^\\s*(\\w+)\\s*$",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.animation-definition.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "animation-keyframes": {
+            "patterns": [
+                {
+                    "name": "meta.animation.keyframe.sks",
+                    "match": "^\\s*(ease|linear)\\s+(\\d+(?:\\.\\d+)?)\\s+(.+)$",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.animation-type.sks"
+                        },
+                        "2": {
+                            "name": "constant.numeric.duration.sks"
+                        },
+                        "3": {
+                            "name": "meta.animation.properties.sks",
+                            "patterns": [
+                                {
+                                    "name": "variable.parameter.animation-property.sks",
+                                    "match": "\\b(xcenter|ycenter|scale|alpha)([+-])(\\d+(?:\\.\\d+)?)\\b",
+                                    "captures": {
+                                        "1": {
+                                            "name": "variable.parameter.animation-property.sks"
+                                        },
+                                        "2": {
+                                            "name": "keyword.operator.sks"
+                                        },
+                                        "3": {
+                                            "name": "constant.numeric.sks"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "animation-syntax": {
+            "patterns": [
+                {
+                    "name": "meta.character.animation.sks",
+                    "match": "\\b(an)\\s+(\\w+)\\b",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.animation.sks"
+                        },
+                        "2": {
+                            "name": "entity.name.function.animation.sks"
+                        }
+                    }
                 }
             ]
         }

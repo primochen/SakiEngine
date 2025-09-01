@@ -19,8 +19,7 @@
 // ease 0.2 ycenter+0.45
 
 jump
-ease 0.2 ycenter-0.5
-ease 0.2 ycenter+0.45
+ease 0.1 ycenter-0.05
 
 fadein
 linear 0.5 alpha+1.0
