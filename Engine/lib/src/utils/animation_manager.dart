@@ -228,16 +228,17 @@ class CharacterAnimationController {
       vsync: vsync,
     );
 
-    final startProperties = Map<String, double>.from(_currentProperties);
-    final endProperties = Map<String, double>.from(_currentProperties);
+    final startProperties = Map<String, double>.from(_baseProperties); // 每个关键帧都从基础位置开始
+    final endProperties = Map<String, double>.from(_baseProperties);
     
     if (isReturnAnimation) {
-      // 复原动画：回到基础属性值
+      // 复原动画：从当前位置回到基础属性值
       for (final key in _currentProperties.keys) {
-        endProperties[key] = _baseProperties[key] ?? 0.0;
+        startProperties[key] = _currentProperties[key] ?? 0.0; // 从当前位置开始
+        endProperties[key] = _baseProperties[key] ?? 0.0; // 回到基础位置
       }
     } else {
-      // 正常动画：计算结束属性值
+      // 正常动画：从基础位置开始，移动到基础位置+偏移量
       for (final entry in keyframe.properties.entries) {
         final propName = entry.key;
         final offset = entry.value;
@@ -272,11 +273,18 @@ class CharacterAnimationController {
           _currentProperties[propName] = startValue + (endValue - startValue) * progress;
         }
       } else {
-        // 正常动画：使用关键帧定义的属性
-        for (final propName in keyframe.properties.keys) {
+        // 正常动画：从基础位置插值到目标位置，更新相关属性的当前值
+        for (final entry in keyframe.properties.entries) {
+          final propName = entry.key;
           final startValue = startProperties[propName] ?? 0.0;
           final endValue = endProperties[propName] ?? 0.0;
           _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+        }
+        // 对于没有在关键帧中定义的属性，保持基础值
+        for (final propName in _baseProperties.keys) {
+          if (!keyframe.properties.containsKey(propName)) {
+            _currentProperties[propName] = _baseProperties[propName] ?? 0.0;
+          }
         }
       }
       
