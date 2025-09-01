@@ -18,7 +18,9 @@ menu
 endmenu
 //就是这样，选择之后会跳转到after_choice1，after_choice2，after_choice3
 label after_choice1
-yk an jump "呀，谢谢！"
+yk an jump "这是跳。"
+yk an shake "这是抖动。"
+yk an bounce "这是弹跳。"
 "嘿嘿，喜欢吗？"
 "那我以后每天都给你带巧克力哦！"
 yk "嗯嗯！"

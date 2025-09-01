@@ -562,17 +562,40 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           final characterStack = Stack(children: layers);
           
           Widget finalWidget = characterStack;
-          if (poseConfig.scale > 0) {
+          
+          // 获取动画属性
+          final animProps = characterState.animationProperties;
+          double finalXCenter = poseConfig.xcenter;
+          double finalYCenter = poseConfig.ycenter;
+          double finalScale = poseConfig.scale;
+          double alpha = 1.0;
+          
+          if (animProps != null) {
+            finalXCenter = animProps['xcenter'] ?? finalXCenter;
+            finalYCenter = animProps['ycenter'] ?? finalYCenter;
+            finalScale = animProps['scale'] ?? finalScale;
+            alpha = animProps['alpha'] ?? alpha;
+          }
+          
+          if (finalScale > 0) {
             finalWidget = SizedBox(
-              height: MediaQuery.of(context).size.height * poseConfig.scale,
+              height: MediaQuery.of(context).size.height * finalScale,
               child: characterStack,
+            );
+          }
+          
+          // 应用透明度
+          if (alpha < 1.0) {
+            finalWidget = Opacity(
+              opacity: alpha,
+              child: finalWidget,
             );
           }
 
           return Positioned(
             key: ValueKey('positioned-$widgetKey'), // 使用resourceId作为key
-            left: poseConfig.xcenter * MediaQuery.of(context).size.width,
-            top: poseConfig.ycenter * MediaQuery.of(context).size.height,
+            left: finalXCenter * MediaQuery.of(context).size.width,
+            top: finalYCenter * MediaQuery.of(context).size.height,
             child: FractionalTranslation(
               translation: _anchorToTranslation(poseConfig.anchor),
               child: finalWidget,

@@ -132,7 +132,7 @@ class SksParser {
           }
           break;
         case 'show':
-          print('[SksParser] 解析show命令: $trimmedLine');
+          //print('[SksParser] 解析show命令: $trimmedLine');
           final character = parts[1];
           String? pose;
           String? expression;
@@ -246,10 +246,10 @@ class SksParser {
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {
-            print('[SksParser] 解析SayNode: character=${sayNode.character}, pose=${sayNode.pose}, expression=${sayNode.expression}, dialogue=${sayNode.dialogue}');
+            //print('[SksParser] 解析SayNode: character=${sayNode.character}, pose=${sayNode.pose}, expression=${sayNode.expression}, dialogue=${sayNode.dialogue}');
             nodes.add(sayNode);
           } else {
-            print('[SksParser] 无法解析行: $trimmedLine');
+            //print('[SksParser] 无法解析行: $trimmedLine');
           }
           break;
       }

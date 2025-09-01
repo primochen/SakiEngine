@@ -122,6 +122,7 @@ class AnimationManager {
 class CharacterAnimationController {
   final String characterId;
   final VoidCallback? onComplete;
+  final void Function(Map<String, double>)? onAnimationUpdate;
   
   AnimationController? _controller;
   Animation<double>? _animation;
@@ -131,6 +132,7 @@ class CharacterAnimationController {
   CharacterAnimationController({
     required this.characterId,
     this.onComplete,
+    this.onAnimationUpdate,
   });
 
   /// 播放角色动画
@@ -150,9 +152,37 @@ class CharacterAnimationController {
     _baseProperties = Map.from(baseProperties);
     _currentProperties = Map.from(baseProperties);
     
+    // 播放原始关键帧
     await _playKeyframes(animDef.keyframes, vsync);
+    
+    // 自动添加平滑复原到基础位置
+    await _playReturnToBaseAnimation(vsync);
+    
     print('[CharacterAnimationController] 动画播放完成: $animationName');
     onComplete?.call();
+  }
+
+  /// 播放回到基础位置的平滑动画
+  Future<void> _playReturnToBaseAnimation(TickerProvider vsync) async {
+    // 检查当前属性是否与基础属性不同
+    bool needsReturn = false;
+    for (final key in _currentProperties.keys) {
+      if ((_currentProperties[key] ?? 0.0) != (_baseProperties[key] ?? 0.0)) {
+        needsReturn = true;
+        break;
+      }
+    }
+    
+    if (!needsReturn) return;
+    
+    // 创建回到基础位置的关键帧（0.3秒平滑过渡）
+    final returnKeyframe = AnimationKeyframe(
+      type: 'ease',
+      duration: 0.3,
+      properties: {}, // 空属性表示回到基础值
+    );
+    
+    await _playKeyframe(returnKeyframe, vsync, isReturnAnimation: true);
   }
 
   Future<void> _playKeyframes(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
@@ -161,7 +191,7 @@ class CharacterAnimationController {
     }
   }
 
-  Future<void> _playKeyframe(AnimationKeyframe keyframe, TickerProvider vsync) async {
+  Future<void> _playKeyframe(AnimationKeyframe keyframe, TickerProvider vsync, {bool isReturnAnimation = false}) async {
     _controller?.dispose();
     _controller = AnimationController(
       duration: Duration(milliseconds: (keyframe.duration * 1000).round()),
@@ -171,11 +201,18 @@ class CharacterAnimationController {
     final startProperties = Map<String, double>.from(_currentProperties);
     final endProperties = Map<String, double>.from(_currentProperties);
     
-    // 计算结束属性值
-    for (final entry in keyframe.properties.entries) {
-      final propName = entry.key;
-      final offset = entry.value;
-      endProperties[propName] = (_baseProperties[propName] ?? 0.0) + offset;
+    if (isReturnAnimation) {
+      // 复原动画：回到基础属性值
+      for (final key in _currentProperties.keys) {
+        endProperties[key] = _baseProperties[key] ?? 0.0;
+      }
+    } else {
+      // 正常动画：计算结束属性值
+      for (final entry in keyframe.properties.entries) {
+        final propName = entry.key;
+        final offset = entry.value;
+        endProperties[propName] = (_baseProperties[propName] ?? 0.0) + offset;
+      }
     }
 
     // 创建动画
@@ -196,11 +233,25 @@ class CharacterAnimationController {
     
     _animation!.addListener(() {
       final progress = _animation!.value;
-      for (final propName in keyframe.properties.keys) {
-        final startValue = startProperties[propName] ?? 0.0;
-        final endValue = endProperties[propName] ?? 0.0;
-        _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+      
+      if (isReturnAnimation) {
+        // 复原动画：插值到基础位置
+        for (final propName in _currentProperties.keys) {
+          final startValue = startProperties[propName] ?? 0.0;
+          final endValue = endProperties[propName] ?? 0.0;
+          _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+        }
+      } else {
+        // 正常动画：使用关键帧定义的属性
+        for (final propName in keyframe.properties.keys) {
+          final startValue = startProperties[propName] ?? 0.0;
+          final endValue = endProperties[propName] ?? 0.0;
+          _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+        }
       }
+      
+      // 调用实时更新回调
+      onAnimationUpdate?.call(Map.from(_currentProperties));
     });
 
     final completer = Completer<void>();
