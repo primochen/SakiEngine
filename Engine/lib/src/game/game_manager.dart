@@ -908,6 +908,10 @@ class GameManager {
     if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
       _scriptIndex++;
     }
+    // 修复普通对话模式回退bug：对于普通对话也需要推进到下一个节点，避免重复执行
+    else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+      _scriptIndex++;
+    }
     
     // 历史回退后强制检查音乐区间
     await _checkMusicRegionAtCurrentIndex(forceCheck: true);
