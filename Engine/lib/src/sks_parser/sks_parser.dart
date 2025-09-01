@@ -297,17 +297,42 @@ class SksParser {
     String? pose;
     String? expression;
     
-    // 解析pose和expression属性
+    // 解析pose、expression和animation属性
     if (parts.length > 1) {
         final attrs = parts.sublist(1);
         
-        for (final attr in attrs) {
+        // 查找an关键字位置
+        int anIndex = -1;
+        for (int i = 0; i < attrs.length; i++) {
+          if (attrs[i] == 'an') {
+            anIndex = i;
+            break;
+          }
+        }
+        
+        String? animation;
+        List<String> regularAttrs;
+        
+        if (anIndex >= 0) {
+          // 有an动画语法
+          if (anIndex + 1 < attrs.length) {
+            animation = attrs[anIndex + 1];
+          }
+          regularAttrs = attrs.sublist(0, anIndex);
+        } else {
+          regularAttrs = attrs;
+        }
+        
+        // 解析普通属性
+        for (final attr in regularAttrs) {
           if (attr.startsWith('pose') || attr.contains('pose')) {
             pose = attr;
           } else {
             expression = attr;
           }
         }
+        
+        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, animation: animation);
     }
     
     return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression);

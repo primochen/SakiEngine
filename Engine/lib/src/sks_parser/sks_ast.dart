@@ -32,7 +32,8 @@ class SayNode implements SksNode {
   final String dialogue;
   final String? pose;
   final String? expression;
-  SayNode({this.character, required this.dialogue, this.pose, this.expression});
+  final String? animation;
+  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.animation});
 }
 
 class ChoiceOptionNode {

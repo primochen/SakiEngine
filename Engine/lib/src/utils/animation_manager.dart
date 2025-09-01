@@ -133,6 +133,7 @@ class CharacterAnimationController {
     this.onComplete,
   });
 
+  /// 播放角色动画
   Future<void> playAnimation(
     String animationName,
     TickerProvider vsync,
@@ -145,10 +146,12 @@ class CharacterAnimationController {
       return;
     }
 
+    print('[CharacterAnimationController] 开始播放动画: $animationName');
     _baseProperties = Map.from(baseProperties);
     _currentProperties = Map.from(baseProperties);
     
     await _playKeyframes(animDef.keyframes, vsync);
+    print('[CharacterAnimationController] 动画播放完成: $animationName');
     onComplete?.call();
   }
 

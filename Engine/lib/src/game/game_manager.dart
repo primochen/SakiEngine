@@ -80,6 +80,7 @@ class GameManager {
   Map<String, PoseConfig> _poseConfigs = {};
   VoidCallback? onReturn;
   BuildContext? _context;
+  TickerProvider? _tickerProvider;
   final Set<String> _everShownCharacters = {};
   
   /// 查找具有相同resourceId的现有角色key
@@ -111,9 +112,10 @@ class GameManager {
   GameManager({this.onReturn});
 
   /// 设置BuildContext用于转场效果
-  void setContext(BuildContext context) {
+  void setContext(BuildContext context, [TickerProvider? tickerProvider]) {
     //print('[GameManager] 设置上下文用于转场效果');
     _context = context;
+    _tickerProvider = tickerProvider;
   }
 
   /// 构建音乐区间列表
@@ -458,7 +460,7 @@ class GameManager {
       }
 
       if (node is SayNode) {
-        print('[GameManager] 处理SayNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}');
+        print('[GameManager] 处理SayNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, animation=${node.animation}');
         final characterConfig = _characterConfigs[node.character];
         print('[GameManager] 角色配置: $characterConfig');
         CharacterState? currentCharacterState;
@@ -488,6 +490,12 @@ class GameManager {
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
             print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+            
+            // 如果有动画，播放动画
+            if (node.animation != null) {
+              print('[GameManager] 播放SayNode动画: ${node.animation}');
+              await _playCharacterAnimation(finalCharacterKey, node.animation!);
+            }
           } else if (characterConfig != null) {
             // 角色不存在，创建新角色
             print('[GameManager] 创建新角色 $finalCharacterKey');
@@ -504,6 +512,12 @@ class GameManager {
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
             print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+            
+            // 如果有动画，播放动画
+            if (node.animation != null) {
+              print('[GameManager] 播放新角色动画: ${node.animation}');
+              await _playCharacterAnimation(finalCharacterKey, node.animation!);
+            }
           }
         }
 
@@ -1021,12 +1035,14 @@ class GameManager {
     );
     
     // 播放动画
-    if (_context != null && _context!.mounted) {
+    if (_tickerProvider != null) {
       await animController.playAnimation(
         animationName,
-        _context! as TickerProvider,
+        _tickerProvider!,
         baseProperties,
       );
+    } else {
+      print('[GameManager] 无TickerProvider，跳过动画播放');
     }
     
     animController.dispose();

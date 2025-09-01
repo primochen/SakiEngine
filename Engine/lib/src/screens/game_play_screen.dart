@@ -48,7 +48,7 @@ class GamePlayScreen extends StatefulWidget {
   State<GamePlayScreen> createState() => _GamePlayScreenState();
 }
 
-class _GamePlayScreenState extends State<GamePlayScreen> {
+class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
@@ -90,13 +90,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showNotificationMessage('读档成功');
         // 设置context用于转场效果
-        _gameManager.setContext(context);
+        _gameManager.setContext(context, this as TickerProvider);
       });
     } else {
       _gameManager.startGame(_currentScript);
       // 延迟设置context，确保组件已mounted
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _gameManager.setContext(context);
+        _gameManager.setContext(context, this as TickerProvider);
       });
     }
   }
