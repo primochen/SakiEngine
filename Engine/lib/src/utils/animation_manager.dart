@@ -32,12 +32,18 @@ class AnimationManager {
     if (_isLoaded) return;
     
     try {
-      final content = await AssetManager().loadString('GameScript/configs/animation.sks');
+      final content = await AssetManager().loadString('assets/GameScript/configs/animation.sks');
       _parseAnimations(content);
       _isLoaded = true;
     } catch (e) {
       print('[AnimationManager] 无法加载动画文件: $e');
     }
+  }
+
+  /// 清除动画缓存，用于热更新
+  static void clearCache() {
+    _animations.clear();
+    _isLoaded = false;
   }
 
   static void _parseAnimations(String content) {

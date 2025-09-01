@@ -815,6 +815,7 @@ class GameManager {
     
     // 清理缓存并重新合并脚本
     _scriptMerger.clearCache();
+    AnimationManager.clearCache(); // 清除动画缓存
     await _loadConfigs();
     await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
