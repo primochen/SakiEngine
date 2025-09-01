@@ -53,6 +53,12 @@ class SaveLoadManager {
   }
 
   Future<void> saveGame(int slotId, String currentScript, GameStateSnapshot snapshot) async {
+    // 检查目标位置是否有被锁定的存档
+    final existingSlot = await loadGame(slotId);
+    if (existingSlot?.isLocked == true) {
+      throw Exception('存档已锁定，无法覆盖');
+    }
+    
     final directory = await getSavesDirectory();
     final file = File('$directory/save_$slotId.sakisav');
     
@@ -95,6 +101,7 @@ class SaveLoadManager {
       dialoguePreview: dialoguePreview,
       snapshot: snapshot,
       screenshotData: screenshotData,
+      isLocked: existingSlot?.isLocked ?? false, // 保持原有锁定状态
     );
 
     final binaryData = saveSlot.toBinary();
@@ -135,6 +142,11 @@ class SaveLoadManager {
   }
 
   Future<void> deleteSave(int slotId) async {
+    final saveSlot = await loadGame(slotId);
+    if (saveSlot?.isLocked == true) {
+      throw Exception('存档已锁定，无法删除');
+    }
+    
     final directory = await getSavesDirectory();
     final file = File('$directory/save_$slotId.sakisav');
     if (await file.exists()) {
@@ -157,6 +169,13 @@ class SaveLoadManager {
       final saveSlot = await loadGame(fromSlotId);
       if (saveSlot == null) return false;
       
+      // 检查源存档是否被锁定
+      if (saveSlot.isLocked) return false;
+      
+      // 检查目标位置是否有被锁定的存档
+      final targetSlot = await loadGame(toSlotId);
+      if (targetSlot?.isLocked == true) return false;
+      
       final updatedSaveSlot = SaveSlot(
         id: toSlotId,
         saveTime: saveSlot.saveTime,
@@ -164,6 +183,7 @@ class SaveLoadManager {
         dialoguePreview: saveSlot.dialoguePreview,
         snapshot: saveSlot.snapshot,
         screenshotData: saveSlot.screenshotData,
+        isLocked: saveSlot.isLocked,
       );
       
       final binaryData = updatedSaveSlot.toBinary();
@@ -195,9 +215,11 @@ class SaveLoadManager {
       
       if (exists1) {
         saveSlot1 = await loadGame(slotId1);
+        if (saveSlot1?.isLocked == true) return false; // 检查锁定状态
       }
       if (exists2) {
         saveSlot2 = await loadGame(slotId2);
+        if (saveSlot2?.isLocked == true) return false; // 检查锁定状态
       }
       
       if (exists1) await file1.delete();
@@ -211,6 +233,7 @@ class SaveLoadManager {
           dialoguePreview: saveSlot1.dialoguePreview,
           snapshot: saveSlot1.snapshot,
           screenshotData: saveSlot1.screenshotData,
+          isLocked: saveSlot1.isLocked,
         );
         final binaryData = updatedSaveSlot1.toBinary();
         await file2.writeAsBytes(binaryData);
@@ -224,6 +247,7 @@ class SaveLoadManager {
           dialoguePreview: saveSlot2.dialoguePreview,
           snapshot: saveSlot2.snapshot,
           screenshotData: saveSlot2.screenshotData,
+          isLocked: saveSlot2.isLocked,
         );
         final binaryData = updatedSaveSlot2.toBinary();
         await file1.writeAsBytes(binaryData);
@@ -232,6 +256,32 @@ class SaveLoadManager {
       return true;
     } catch (e) {
       print('Error swapping saves between slot $slotId1 and $slotId2: $e');
+      return false;
+    }
+  }
+
+  Future<bool> toggleSaveLock(int slotId) async {
+    final saveSlot = await loadGame(slotId);
+    if (saveSlot == null) return false;
+    
+    final updatedSlot = SaveSlot(
+      id: saveSlot.id,
+      saveTime: saveSlot.saveTime,
+      currentScript: saveSlot.currentScript,
+      dialoguePreview: saveSlot.dialoguePreview,
+      snapshot: saveSlot.snapshot,
+      screenshotData: saveSlot.screenshotData,
+      isLocked: !saveSlot.isLocked,
+    );
+    
+    try {
+      final directory = await getSavesDirectory();
+      final file = File('$directory/save_$slotId.sakisav');
+      final binaryData = updatedSlot.toBinary();
+      await file.writeAsBytes(binaryData);
+      return true;
+    } catch (e) {
+      print('Error toggling lock for slot $slotId: $e');
       return false;
     }
   }

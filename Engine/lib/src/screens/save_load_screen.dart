@@ -57,24 +57,22 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   Future<void> _handleSave(int slotId) async {
     if (widget.gameManager == null || !mounted) return;
 
-    final existingSlots = await _saveSlotsFuture;
-    final existingSlot = existingSlots.firstWhere(
-      (s) => s.id == slotId,
-      orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
-    );
+    try {
+      final snapshot = widget.gameManager!.saveStateSnapshot();
+      await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot);
+      
+      _notificationOverlayKey.currentState?.show('保存成功');
+      
+      _loadSaveSlots();
 
-    final snapshot = widget.gameManager!.saveStateSnapshot();
-    await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot);
-    
-    _notificationOverlayKey.currentState?.show('保存成功');
-    
-    _loadSaveSlots();
-
-    Timer(const Duration(milliseconds: 550), () {
-      if (mounted) {
-        widget.onClose();
-      }
-    });
+      Timer(const Duration(milliseconds: 550), () {
+        if (mounted) {
+          widget.onClose();
+        }
+      });
+    } catch (e) {
+      _notificationOverlayKey.currentState?.show('保存失败: $e');
+    }
   }
 
   Future<void> _handleLoad(SaveSlot slot) async {
@@ -120,6 +118,23 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     }
   }
 
+  Future<void> _handleToggleLock(int slotId) async {
+    try {
+      final success = await _saveLoadManager.toggleSaveLock(slotId);
+      if (success) {
+        final existingSlots = await _saveSlotsFuture;
+        final slot = existingSlots.firstWhere((s) => s.id == slotId);
+        final isNowLocked = !slot.isLocked;
+        _notificationOverlayKey.currentState?.show(isNowLocked ? '存档已锁定' : '存档已解锁');
+        _loadSaveSlots();
+      } else {
+        _notificationOverlayKey.currentState?.show('操作失败');
+      }
+    } catch (e) {
+      _notificationOverlayKey.currentState?.show('操作失败: $e');
+    }
+  }
+
   Future<void> _handleMove(int fromSlotId, int direction) async {
     int toSlotId;
     String directionText;
@@ -162,18 +177,20 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         success = await _saveLoadManager.moveSave(fromSlotId, toSlotId);
         if (success) {
           _notificationOverlayKey.currentState?.show('已移动到${directionText}档位');
+        } else {
+          _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
       } else {
         success = await _saveLoadManager.swapSaves(fromSlotId, toSlotId);
         if (success) {
           _notificationOverlayKey.currentState?.show('已与${directionText}档位交换');
+        } else {
+          _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
       }
       
       if (success) {
         _loadSaveSlots();
-      } else {
-        _notificationOverlayKey.currentState?.show('移动失败');
       }
     } catch (e) {
       _notificationOverlayKey.currentState?.show('移动失败: $e');
@@ -259,6 +276,9 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
                     await _handleDelete(slotId);
                   }
                 },
+                onToggleLock: isSlotEmpty ? null : () async {
+                  await _handleToggleLock(slotId);
+                },
                 onMove: isSlotEmpty ? null : (direction) async {
                   await _handleMove(slotId, direction);
                 },
@@ -303,6 +323,7 @@ class _SaveSlotCard extends StatefulWidget {
   final SaveSlot? saveSlot;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onToggleLock;
   final Function(int)? onMove;
   final SakiEngineConfig config;
   final double uiScale;
@@ -313,6 +334,7 @@ class _SaveSlotCard extends StatefulWidget {
     this.saveSlot,
     required this.onTap,
     this.onDelete,
+    this.onToggleLock,
     this.onMove,
     required this.config,
     required this.uiScale,
@@ -386,7 +408,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
                     ? _buildDataCard(uiScale, widget.textScale, config)
                     : _buildEmptyCard(uiScale, widget.textScale, config),
               ),
-              if ((widget.onMove != null || widget.onDelete != null) && widget.saveSlot != null)
+              if ((widget.onMove != null || widget.onDelete != null || widget.onToggleLock != null) && widget.saveSlot != null)
                 Positioned(
                   bottom: 8 * uiScale,
                   right: 8 * uiScale,
@@ -402,11 +424,12 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
   Widget _buildActionButtons(double uiScale, SakiEngineConfig config) {
     final buttonSize = 26 * uiScale;
     final buttonSpacing = 3 * uiScale;
+    final isLocked = widget.saveSlot?.isLocked ?? false;
     
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.onMove != null) ...[
+        if (widget.onMove != null && !isLocked) ...[
           SquareIconButton(
             icon: Icons.keyboard_arrow_up,
             size: buttonSize,
@@ -430,21 +453,32 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
             size: buttonSize,
             onTap: () => widget.onMove!(3),
             ),
-          if (widget.onDelete != null)
-            SizedBox(width: buttonSpacing),
+          SizedBox(width: buttonSpacing),
         ],
-        if (widget.onDelete != null)
+        if (widget.onToggleLock != null)
+          SquareIconButton(
+            icon: isLocked ? Icons.lock : Icons.lock_open,
+            size: buttonSize,
+            onTap: () => widget.onToggleLock!(),
+            hoverBackgroundColor: config.themeColors.primary.withOpacity(0.1),
+          ),
+        if (widget.onDelete != null && !isLocked) ...[
+          SizedBox(width: buttonSpacing),
           SquareIconButton(
             icon: Icons.close,
             size: buttonSize,
             onTap: () => widget.onDelete!(),
               hoverBackgroundColor: config.themeColors.primary.withOpacity(0.1),
           ),
+        ],
       ],
     );
   }
 
   Widget _buildDataCard(double uiScale, double textScale, SakiEngineConfig config) {
+    final isLocked = widget.saveSlot?.isLocked ?? false;
+    final opacity = isLocked ? 0.6 : 1.0;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -455,7 +489,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
               '档位 ${widget.slotId.toString().padLeft(2, '0')}',
               style: config.reviewTitleTextStyle.copyWith(
                 fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.5,
-                color: config.themeColors.primary,
+                color: config.themeColors.primary.withOpacity(opacity),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -464,7 +498,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
                 DateFormat('yyyy-MM-dd HH:mm').format(widget.saveSlot!.saveTime),
                 style: config.reviewTitleTextStyle.copyWith(
                   fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.35,
-                  color: config.themeColors.primary.withOpacity(0.6),
+                  color: config.themeColors.primary.withOpacity(0.6 * opacity),
                   fontWeight: FontWeight.normal,
                 ),
               ),
@@ -480,7 +514,10 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
                 borderRadius: BorderRadius.circular(0 * uiScale),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: _buildScreenshot(),
+                  child: Opacity(
+                    opacity: opacity,
+                    child: _buildScreenshot(),
+                  ),
                 ),
               ),
             ),
@@ -493,7 +530,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
                 overflow: TextOverflow.ellipsis,
                 style: config.reviewTitleTextStyle.copyWith(
                   fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.4,
-                  color: config.themeColors.onSurface.withOpacity(0.8),
+                  color: config.themeColors.onSurface.withOpacity(0.8 * opacity),
                   fontWeight: FontWeight.normal,
                   height: 1.4,
                 ),

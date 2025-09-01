@@ -21,6 +21,7 @@ class BinarySerializer {
     buffer.addAll(_writeString(saveSlot.currentScript));
     buffer.addAll(_writeString(saveSlot.dialoguePreview));
     buffer.addAll(_writeNullableBytes(saveSlot.screenshotData));
+    buffer.add(saveSlot.isLocked ? 1 : 0); // 写入锁定状态
     
     // 写入游戏状态快照
     buffer.addAll(_serializeGameStateSnapshot(saveSlot.snapshot));
@@ -50,6 +51,17 @@ class BinarySerializer {
     final dialoguePreview = reader.readString();
     final screenshotData = reader.readNullableBytes();
     
+    // 读取锁定状态（向后兼容旧版本存档）
+    bool isLocked = false;
+    if (reader.hasMoreData()) {
+      try {
+        isLocked = reader.readByte() == 1;
+      } catch (e) {
+        // 如果读取失败，默认为未锁定
+        isLocked = false;
+      }
+    }
+    
     // 读取游戏状态快照
     final snapshot = _deserializeGameStateSnapshot(reader);
     
@@ -60,6 +72,7 @@ class BinarySerializer {
       dialoguePreview: dialoguePreview,
       snapshot: snapshot,
       screenshotData: screenshotData,
+      isLocked: isLocked,
     );
   }
 
@@ -304,6 +317,10 @@ class _BinaryReader {
 
   _BinaryReader(this._data);
 
+  bool hasMoreData() {
+    return _position < _data.length;
+  }
+
   Uint8List readBytes(int length) {
     if (_position + length > _data.length) {
       throw RangeError('Not enough data to read $length bytes');
@@ -371,6 +388,7 @@ class SaveSlot {
   final String dialoguePreview;
   final GameStateSnapshot snapshot;
   final Uint8List? screenshotData; // 内嵌的截图数据
+  final bool isLocked; // 存档是否被锁定
 
   SaveSlot({
     required this.id,
@@ -379,6 +397,7 @@ class SaveSlot {
     required this.dialoguePreview,
     required this.snapshot,
     this.screenshotData,
+    this.isLocked = false,
   });
 
   /// 从二进制数据创建SaveSlot
