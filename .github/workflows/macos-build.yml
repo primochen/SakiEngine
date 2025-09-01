@@ -80,7 +80,7 @@ jobs:
           cd Engine/build/macos/Build/Products/Release
           
           # 从 default_game.txt 读取游戏名称
-          GAME_NAME=$(cat ../../../../../default_game.txt | tr -d '\n\r' | xargs)
+          GAME_NAME=$(cat ../../../../../../default_game.txt | tr -d '\n\r' | xargs)
           APP_NAME="$GAME_NAME.app"
 
           # 检查 .app 文件是否存在
@@ -90,7 +90,7 @@ jobs:
           fi
           
           # 生成构件名称
-          version=$(grep '^version:' ../../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          version=$(grep '^version:' ../../../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           
           if [ "${{ inputs.create_dmg }}" = "true" ]; then
             # 创建DMG

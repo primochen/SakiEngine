@@ -113,15 +113,16 @@ jobs:
         run: |
           $arch = "${{ inputs.architecture }}"
           $version = (Get-Content Engine/pubspec.yaml | Select-String '^version:' | ForEach-Object { ($_ -split ' ')[1] } | ForEach-Object { ($_ -split '\+')[0] })
+          $gameName = (Get-Content default_game.txt | ForEach-Object { $_.Trim() })
           
           if ($arch -eq "arm64") {
-            $DestDir = "Engine\build\windows\SakiEngine-${version}-Windows-arm64"
+            $DestDir = "Engine\build\windows\${gameName}-${version}-Windows-arm64"
             $SrcDir = "Engine\build\windows\arm64\runner\Release"
-            $ZipName = "SakiEngine-${version}-Windows-arm64.zip"
+            $ZipName = "${gameName}-${version}-Windows-arm64.zip"
           } else {
-            $DestDir = "Engine\build\windows\SakiEngine-${version}-Windows-x64"
+            $DestDir = "Engine\build\windows\${gameName}-${version}-Windows-x64"
             $SrcDir = "Engine\build\windows\x64\runner\Release"
-            $ZipName = "SakiEngine-${version}-Windows-x64.zip"
+            $ZipName = "${gameName}-${version}-Windows-x64.zip"
           }
           
           # 创建目标目录
