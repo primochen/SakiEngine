@@ -139,8 +139,9 @@ class CharacterAnimationController {
   Future<void> playAnimation(
     String animationName,
     TickerProvider vsync,
-    Map<String, double> baseProperties,
-  ) async {
+    Map<String, double> baseProperties, {
+    int? repeatCount,
+  }) async {
     final animDef = AnimationManager.getAnimation(animationName);
     if (animDef == null) {
       print('[CharacterAnimationController] 动画不存在: $animationName');
@@ -148,15 +149,30 @@ class CharacterAnimationController {
       return;
     }
 
-    print('[CharacterAnimationController] 开始播放动画: $animationName');
+    print('[CharacterAnimationController] 开始播放动画: $animationName, repeat: ${repeatCount ?? "无限"}');
     _baseProperties = Map.from(baseProperties);
     _currentProperties = Map.from(baseProperties);
     
-    // 播放原始关键帧
-    await _playKeyframes(animDef.keyframes, vsync);
-    
-    // 自动添加平滑复原到基础位置
-    await _playReturnToBaseAnimation(vsync);
+    // 根据repeatCount决定播放次数
+    if (repeatCount == null) {
+      // 无限循环播放
+      await _playInfiniteLoop(animDef.keyframes, vsync);
+    } else if (repeatCount > 0) {
+      // 循环播放指定次数
+      for (int i = 0; i < repeatCount; i++) {
+        await _playKeyframes(animDef.keyframes, vsync);
+        // 重置位置以便下一次循环
+        _currentProperties = Map.from(_baseProperties);
+        onAnimationUpdate?.call(Map.from(_currentProperties));
+      }
+      // 播放完所有循环后，自动添加平滑复原到基础位置
+      await _playReturnToBaseAnimation(vsync);
+    } else {
+      // repeatCount为0，播放一次
+      await _playKeyframes(animDef.keyframes, vsync);
+      // 自动添加平滑复原到基础位置
+      await _playReturnToBaseAnimation(vsync);
+    }
     
     print('[CharacterAnimationController] 动画播放完成: $animationName');
     onComplete?.call();
@@ -183,6 +199,20 @@ class CharacterAnimationController {
     );
     
     await _playKeyframe(returnKeyframe, vsync, isReturnAnimation: true);
+  }
+
+  /// 无限循环播放动画
+  Future<void> _playInfiniteLoop(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
+    // 注意：这里实际上不是真正的无限循环，因为那会阻塞UI
+    // 我们播放一次后就停止，让游戏管理器决定是否继续
+    // 真正的无限循环需要在游戏管理器层面处理
+    await _playKeyframes(keyframes, vsync);
+    
+    // 重置位置以便可能的下一次循环
+    _currentProperties = Map.from(_baseProperties);
+    onAnimationUpdate?.call(Map.from(_currentProperties));
+    
+    // 对于无限循环，我们不添加复原动画，保持在基础位置
   }
 
   Future<void> _playKeyframes(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {

@@ -443,7 +443,7 @@ class GameManager {
         
         // 如果有动画，启动动画播放（非阻塞）
         if (node.animation != null) {
-          _playCharacterAnimation(finalCharacterKey, node.animation!);
+          _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
         }
         
         _scriptIndex++;
@@ -495,7 +495,7 @@ class GameManager {
             
             // 如果有动画，启动动画播放（非阻塞）
             if (node.animation != null) {
-              _playCharacterAnimation(finalCharacterKey, node.animation!);
+              _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
             }
           } else if (characterConfig != null) {
             // 角色不存在，创建新角色
@@ -517,7 +517,7 @@ class GameManager {
             
             // 如果有动画，启动动画播放（非阻塞）
             if (node.animation != null) {
-              _playCharacterAnimation(finalCharacterKey, node.animation!);
+              _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
             }
           }
         }
@@ -1012,7 +1012,7 @@ class GameManager {
   }
 
   /// 播放角色动画
-  Future<void> _playCharacterAnimation(String characterId, String animationName) async {
+  Future<void> _playCharacterAnimation(String characterId, String animationName, {int? repeatCount}) async {
     final characterState = _currentState.characters[characterId];
     if (characterState == null) return;
     
@@ -1060,12 +1060,13 @@ class GameManager {
       },
     );
     
-    // 播放动画
+    // 播放动画，传递repeatCount参数
     if (_tickerProvider != null) {
       await animController.playAnimation(
         animationName,
         _tickerProvider!,
         baseProperties,
+        repeatCount: repeatCount,
       );
     } else {
       //print('[GameManager] 无TickerProvider，跳过动画播放');

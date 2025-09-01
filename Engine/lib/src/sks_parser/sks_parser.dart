@@ -138,31 +138,42 @@ class SksParser {
           String? expression;
           String? position;
           String? animation;
+          int? repeatCount;
           
-          // 支持an语法:
-          // show xiayo1 pose1 happy at pose an jump
-          // x happy an jump
+          // 支持an语法和repeat语法:
+          // show xiayo1 pose1 happy at pose an jump repeat 3
+          // x happy an jump repeat 3
           
           int atIndex = -1;
           int anIndex = -1;
+          int repeatIndex = -1;
           
           for (int i = 2; i < parts.length; i++) {
             if (parts[i] == 'at') {
               atIndex = i;
             } else if (parts[i] == 'an') {
               anIndex = i;
+            } else if (parts[i] == 'repeat') {
+              repeatIndex = i;
               break;
             }
           }
           
-          if (anIndex >= 0) {
+          // 解析repeat参数
+          if (repeatIndex >= 0 && repeatIndex + 1 < parts.length) {
+            repeatCount = int.tryParse(parts[repeatIndex + 1]);
+          }
+          
+          int endIndex = repeatIndex >= 0 ? repeatIndex : parts.length;
+          
+          if (anIndex >= 0 && anIndex < endIndex) {
             // 有an动画语法
-            if (anIndex + 1 < parts.length) {
+            if (anIndex + 1 < endIndex) {
               animation = parts[anIndex + 1];
             }
             
             if (atIndex >= 0 && atIndex < anIndex) {
-              // show character pose1 happy at pose an jump
+              // show character pose1 happy at pose an jump repeat 3
               final attributeParts = parts.sublist(2, atIndex);
               if (attributeParts.isNotEmpty) {
                 pose = attributeParts[0];
@@ -174,13 +185,13 @@ class SksParser {
                 position = parts[atIndex + 1];
               }
             } else {
-              // x happy an jump
+              // x happy an jump repeat 3
               final attributeParts = parts.sublist(2, anIndex);
               if (attributeParts.isNotEmpty) {
                 expression = attributeParts[0];
               }
             }
-          } else if (atIndex >= 0) {
+          } else if (atIndex >= 0 && atIndex < endIndex) {
             // 原有at语法，无动画
             final attributeParts = parts.sublist(2, atIndex);
             if (attributeParts.isNotEmpty) {
@@ -189,12 +200,12 @@ class SksParser {
                 expression = attributeParts[1];
               }
             }
-            if (atIndex + 1 < parts.length) {
+            if (atIndex + 1 < endIndex) {
               position = parts[atIndex + 1];
             }
           } else {
             // 原有pose:语法
-            for (int i = 2; i < parts.length; i++) {
+            for (int i = 2; i < endIndex; i++) {
               if (parts[i].startsWith('pose:')) {
                 pose = parts[i].substring(5);
               } else if (parts[i].startsWith('expression:')) {
@@ -203,7 +214,7 @@ class SksParser {
             }
           }
           
-          nodes.add(ShowNode(character, pose: pose, expression: expression, position: position, animation: animation));
+          nodes.add(ShowNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
           break;
         case 'hide':
           nodes.add(HideNode(parts[1]));
@@ -296,31 +307,42 @@ class SksParser {
     final character = parts[0];
     String? pose;
     String? expression;
+    int? repeatCount;
     
-    // 解析pose、expression和animation属性
+    // 解析pose、expression、animation和repeat属性
     if (parts.length > 1) {
         final attrs = parts.sublist(1);
         
-        // 查找an关键字位置
+        // 查找an和repeat关键字位置
         int anIndex = -1;
+        int repeatIndex = -1;
         for (int i = 0; i < attrs.length; i++) {
           if (attrs[i] == 'an') {
             anIndex = i;
+          } else if (attrs[i] == 'repeat') {
+            repeatIndex = i;
             break;
           }
         }
         
+        // 解析repeat参数
+        if (repeatIndex >= 0 && repeatIndex + 1 < attrs.length) {
+          repeatCount = int.tryParse(attrs[repeatIndex + 1]);
+        }
+        
+        int endIndex = repeatIndex >= 0 ? repeatIndex : attrs.length;
+        
         String? animation;
         List<String> regularAttrs;
         
-        if (anIndex >= 0) {
+        if (anIndex >= 0 && anIndex < endIndex) {
           // 有an动画语法
-          if (anIndex + 1 < attrs.length) {
+          if (anIndex + 1 < endIndex) {
             animation = attrs[anIndex + 1];
           }
           regularAttrs = attrs.sublist(0, anIndex);
         } else {
-          regularAttrs = attrs;
+          regularAttrs = attrs.sublist(0, endIndex);
         }
         
         // 解析普通属性
@@ -332,7 +354,7 @@ class SksParser {
           }
         }
         
-        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, animation: animation);
+        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, animation: animation, repeatCount: repeatCount);
     }
     
     return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression);

@@ -25,6 +25,7 @@ class GameContainer extends StatefulWidget {
 class _GameContainerState extends State<GameContainer> with WindowListener {
   AppState _currentState = AppState.mainMenu;
   SaveSlot? _saveSlotToLoad;
+  bool _isReturningFromGame = false;
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
         setState(() {
           _currentState = AppState.inGame;
           _saveSlotToLoad = saveSlot;
+          _isReturningFromGame = false;
         });
       },
     );
@@ -69,6 +71,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
         setState(() {
           _currentState = AppState.mainMenu;
           _saveSlotToLoad = null;
+          _isReturningFromGame = true;
         });
       },
     );
@@ -96,7 +99,16 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
                 // 这个回调现在只是个占位符，实际的load逻辑在MainMenuScreen内部处理
               },
               onLoadGameWithSave: (saveSlot) => _enterGame(saveSlot: saveSlot),
+              skipMusicDelay: _isReturningFromGame,
             );
+            // 重置标记，确保下次进入主菜单时正常延迟
+            if (_isReturningFromGame) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                setState(() {
+                  _isReturningFromGame = false;
+                });
+              });
+            }
             break;
           case AppState.inGame:
             currentScreen = gameModule.createGamePlayScreen(

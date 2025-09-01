@@ -21,12 +21,14 @@ class SoranoutaModule extends DefaultGameModule {
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
+    bool skipMusicDelay = false,
   }) {
     // 使用专门的 SoraNoUta 主菜单，继承标题但使用专用按钮
     return SoraNoutaMainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
+      skipMusicDelay: skipMusicDelay,
     );
   }
 

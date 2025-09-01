@@ -11,7 +11,8 @@ class ShowNode implements SksNode {
   final String? expression;
   final String? position;
   final String? animation;
-  ShowNode(this.character, {this.pose, this.expression, this.position, this.animation});
+  final int? repeatCount;
+  ShowNode(this.character, {this.pose, this.expression, this.position, this.animation, this.repeatCount});
 }
 
 class HideNode implements SksNode {
@@ -33,7 +34,8 @@ class SayNode implements SksNode {
   final String? pose;
   final String? expression;
   final String? animation;
-  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.animation});
+  final int? repeatCount;
+  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.animation, this.repeatCount});
 }
 
 class ChoiceOptionNode {

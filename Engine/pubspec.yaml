@@ -87,6 +87,9 @@ flutter:
     - assets/Assets/images/backgrounds/
     - assets/Assets/images/items/
     - assets/Assets/images/characters/
+    - assets/Assets/images/characters/story1/
+    - assets/Assets/images/characters/story1/emoji/
+    - assets/Assets/images/characters/story1/pose/
     - assets/Assets/voice/
     - assets/Assets/gui/
     - assets/Assets/fonts/
@@ -113,6 +116,9 @@ flutter:
       fonts:
         - asset: assets/fonts/SourceHanSansCN-Bold.ttf
           weight: 700
+    - family: ChillJinshuSongPro_Soft
+      fonts:
+        - asset: assets/Assets/fonts/ChillJinshuSongPro_Soft.otf
   #   - family: Schyler
   #     fonts:
   #       - asset: fonts/Schyler-Regular.ttf

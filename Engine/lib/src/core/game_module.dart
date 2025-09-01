@@ -19,6 +19,7 @@ abstract class GameModule {
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
+    bool skipMusicDelay = false,
   });
 
   /// 游戏界面屏幕工厂
@@ -97,6 +98,7 @@ class DefaultGameModule implements GameModule {
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
+    bool skipMusicDelay = false,
   }) {
     return MainMenuScreen(
       onNewGame: onNewGame,
