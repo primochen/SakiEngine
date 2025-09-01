@@ -12,6 +12,7 @@ import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/screenshot_thumbnail.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/square_icon_button.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 enum SaveLoadMode { save, load }
 
@@ -525,7 +526,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
             Expanded(
               flex: 11,
               child: Text(
-                widget.saveSlot!.dialoguePreview,
+                RichTextParser.cleanText(widget.saveSlot!.dialoguePreview),
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 style: config.reviewTitleTextStyle.copyWith(

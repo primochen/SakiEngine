@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/game/screenshot_generator.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 class SaveLoadManager {
   // 获取当前游戏项目名称
@@ -70,16 +71,16 @@ class SaveLoadManager {
       // 使用最新的 NVL 对话作为预览
       final latestNvlDialogue = currentState.nvlDialogues.last;
       if (latestNvlDialogue.speaker != null && latestNvlDialogue.speaker!.isNotEmpty) {
-        dialoguePreview = '【${latestNvlDialogue.speaker}】${latestNvlDialogue.dialogue}';
+        dialoguePreview = '【${latestNvlDialogue.speaker}】${RichTextParser.cleanText(latestNvlDialogue.dialogue)}';
       } else {
-        dialoguePreview = latestNvlDialogue.dialogue;
+        dialoguePreview = RichTextParser.cleanText(latestNvlDialogue.dialogue);
       }
     } else if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
       // 普通模式的对话
       if (currentState.speaker != null && currentState.speaker!.isNotEmpty) {
-        dialoguePreview = '【${currentState.speaker}】${currentState.dialogue}';
+        dialoguePreview = '【${currentState.speaker}】${RichTextParser.cleanText(currentState.dialogue!)}';
       } else {
-        dialoguePreview = currentState.dialogue!;
+        dialoguePreview = RichTextParser.cleanText(currentState.dialogue!);
       }
     }
 
