@@ -17,93 +17,26 @@ class TransitionPrewarmingManager {
   bool _isPrewarmed = false;
   
   /// 执行预热
-  /// 创建纯黑色遮罩，在遮罩下预热主菜单和转场效果
+  /// 预热dissolve着色器和图片加载流程
   Future<void> prewarm(BuildContext context) async {
     if (_isPrewarming || _isPrewarmed) return;
     
     _isPrewarming = true;
-    print('[TransitionPrewarming] 开始预热转场效果');
+    print('[TransitionPrewarming] 开始转场预热');
     
-    final completer = Completer<void>();
-    
-    // 创建预热覆盖层
-    final overlayEntry = OverlayEntry(
-      builder: (context) => _PrewarmingOverlay(
-        onComplete: () {
-          _isPrewarming = false;
-          _isPrewarmed = true;
-          print('[TransitionPrewarming] 预热完成');
-          completer.complete();
-        },
-      ),
-    );
-    
-    // 插入覆盖层
-    Overlay.of(context).insert(overlayEntry);
-    
-    // 等待预热完成后移除覆盖层
-    await completer.future;
-    overlayEntry.remove();
-  }
-  
-  bool get isPrewarmed => _isPrewarmed;
-}
-
-/// 预热覆盖层
-/// 创建纯黑色遮罩，持续100ms然后淡出
-class _PrewarmingOverlay extends StatefulWidget {
-  final VoidCallback onComplete;
-  
-  const _PrewarmingOverlay({
-    required this.onComplete,
-  });
-  
-  @override
-  State<_PrewarmingOverlay> createState() => _PrewarmingOverlayState();
-}
-
-class _PrewarmingOverlayState extends State<_PrewarmingOverlay>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeOutAnimation;
-  
-  @override
-  void initState() {
-    super.initState();
-    
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 200), // 总时长200ms
-      vsync: this,
-    );
-    
-    // 淡出动画：从不透明到透明
-    _fadeOutAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.5, 1.0, curve: Curves.easeOut), // 后半段淡出
-    ));
-    
-    _controller.addStatusListener(_onAnimationStatus);
-    
-    // 开始预热流程
-    _startPrewarming();
-  }
-  
-  Future<void> _startPrewarming() async {
-    // 预热dissolve着色器
-    await _prewarmDissolveShader();
-    
-    // 预热图片加载
-    await _prewarmImageLoading();
-    
-    // 等待100ms保持黑屏
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    // 开始淡出动画
-    if (mounted) {
-      _controller.forward();
+    try {
+      // 预热dissolve着色器
+      await _prewarmDissolveShader();
+      
+      // 预热图片加载流程
+      await _prewarmImageLoading();
+      
+      _isPrewarmed = true;
+      print('[TransitionPrewarming] 转场预热完成');
+    } catch (e) {
+      print('[TransitionPrewarming] 转场预热失败: $e');
+    } finally {
+      _isPrewarming = false;
     }
   }
   
@@ -143,41 +76,6 @@ class _PrewarmingOverlayState extends State<_PrewarmingOverlay>
     }
   }
   
-  void _onAnimationStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      widget.onComplete();
-    }
-  }
-  
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        // 计算黑屏不透明度
-        double opacity;
-        if (_controller.value <= 0.5) {
-          // 前半段：保持完全不透明
-          opacity = 1.0;
-        } else {
-          // 后半段：淡出
-          opacity = _fadeOutAnimation.value;
-        }
-        
-        return Material(
-          color: Colors.black.withOpacity(opacity),
-          child: const SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-          ),
-        );
-      },
-    );
-  }
+  bool get isPrewarmed => _isPrewarmed;
 }
+

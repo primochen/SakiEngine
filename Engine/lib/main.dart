@@ -11,6 +11,7 @@ import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
+import 'package:sakiengine/src/utils/transition_prewarming.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -201,13 +202,113 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
                     primarySwatch: Colors.blue,
                     fontFamily: 'SourceHanSansCN',
                   ),
-                  home: const GameContainer(),
+                  home: const StartupMaskWrapper(),
                 );
               },
             );
           },
         );
       },
+    );
+  }
+}
+
+/// 启动遮罩包装器
+/// 在应用启动时立即显示黑屏遮罩，遮盖界面闪烁
+class StartupMaskWrapper extends StatefulWidget {
+  const StartupMaskWrapper({super.key});
+
+  @override
+  State<StartupMaskWrapper> createState() => _StartupMaskWrapperState();
+}
+
+class _StartupMaskWrapperState extends State<StartupMaskWrapper> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  bool _prewarmingComplete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // 创建淡出动画控制器
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    ));
+    
+    // 启动遮罩和预热
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startMaskAndPrewarm();
+    });
+  }
+
+  Future<void> _startMaskAndPrewarm() async {
+    if (mounted) {
+      try {
+        // 等待1秒保持黑屏，然后预热
+        await Future.delayed(const Duration(milliseconds: 1000));
+        
+        // 在后台预热
+        await TransitionPrewarmingManager.instance.prewarm(context);
+        
+        if (mounted) {
+          _prewarmingComplete = true;
+          // 开始淡出动画
+          _fadeController.forward();
+        }
+        print('[StartupMask] 启动遮罩和预热完成，开始淡出');
+      } catch (e) {
+        print('[StartupMask] 启动遮罩和预热失败: $e');
+        // 即使失败也要开始淡出，避免永远黑屏
+        if (mounted) {
+          _prewarmingComplete = true;
+          _fadeController.forward();
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // 实际的游戏内容
+        const GameContainer(),
+        
+        // 启动遮罩 - 使用动画淡出
+        AnimatedBuilder(
+          animation: _fadeAnimation,
+          builder: (context, child) {
+            // 如果预热还未完成，或者动画值大于0，则显示遮罩
+            if (!_prewarmingComplete || _fadeAnimation.value > 0) {
+              return Material(
+                color: Colors.black.withOpacity(_prewarmingComplete ? _fadeAnimation.value : 1.0),
+                child: const SizedBox(
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ],
     );
   }
 }

@@ -14,7 +14,6 @@ import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/src/widgets/common/default_menu_buttons.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
-import 'package:sakiengine/src/utils/transition_prewarming.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -103,11 +102,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   void initState() {
     super.initState();
     _loadAppTitle();
-    
-    // 在主菜单显示后预热转场效果
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _prewarmTransitions();
-    });
   }
 
   Future<void> _loadAppTitle() async {
@@ -123,17 +117,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
   }
 
-  /// 预热转场效果
-  Future<void> _prewarmTransitions() async {
-    if (mounted) {
-      try {
-        await TransitionPrewarmingManager.instance.prewarm(context);
-        print('[MainMenu] 转场效果预热完成');
-      } catch (e) {
-        print('[MainMenu] 转场效果预热失败: $e');
-      }
-    }
-  }
 
   void _handleNewGame() {
     widget.onNewGame();
