@@ -10,6 +10,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/screenshot_thumbnail.dart';
+import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
 enum SaveLoadMode { save, load }
 
@@ -93,6 +94,30 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       );
     }
   }
+
+  Future<bool?> _showDeleteConfirmDialog(int slotId) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => ConfirmDialog(
+        title: '确认删除',
+        content: '确定要删除档位 ${slotId.toString().padLeft(2, '0')} 的存档吗？\n此操作不可撤销。',
+        onConfirm: () {},
+        onCancel: () {},
+        confirmResult: true,
+        cancelResult: false,
+      ),
+    );
+  }
+
+  Future<void> _handleDelete(int slotId) async {
+    try {
+      await _saveLoadManager.deleteSave(slotId);
+      _notificationOverlayKey.currentState?.show('存档已删除');
+      _loadSaveSlots(); // 刷新存档列表
+    } catch (e) {
+      _notificationOverlayKey.currentState?.show('删除失败: $e');
+    }
+  }
   
   String _getTitleText() {
     return widget.mode == SaveLoadMode.save ? '保存进度' : '读取进度';
@@ -167,6 +192,12 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
                     _handleLoad(saveSlot);
                   }
                 },
+                onDelete: isSlotEmpty ? null : () async {
+                  final shouldDelete = await _showDeleteConfirmDialog(slotId);
+                  if (shouldDelete == true) {
+                    await _handleDelete(slotId);
+                  }
+                },
               );
             },
           ),
@@ -207,6 +238,7 @@ class _SaveSlotCard extends StatefulWidget {
   final int slotId;
   final SaveSlot? saveSlot;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
   final SakiEngineConfig config;
   final double uiScale;
   final double textScale;
@@ -215,6 +247,7 @@ class _SaveSlotCard extends StatefulWidget {
     required this.slotId,
     this.saveSlot,
     required this.onTap,
+    this.onDelete,
     required this.config,
     required this.uiScale,
     required this.textScale,
@@ -226,6 +259,7 @@ class _SaveSlotCard extends StatefulWidget {
 
 class _SaveSlotCardState extends State<_SaveSlotCard> {
   bool _isHovered = false;
+  bool _isDeleteButtonHovered = false;
 
   @override
   void didUpdateWidget(covariant _SaveSlotCard oldWidget) {
@@ -279,11 +313,72 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
             ),
             borderRadius: BorderRadius.circular(0 * uiScale),
           ),
-          child: Padding(
-            padding: EdgeInsets.all(12.0 * uiScale),
-            child: widget.saveSlot != null
-                ? _buildDataCard(uiScale, widget.textScale, config)
-                : _buildEmptyCard(uiScale, widget.textScale, config),
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(12.0 * uiScale),
+                child: widget.saveSlot != null
+                    ? _buildDataCard(uiScale, widget.textScale, config)
+                    : _buildEmptyCard(uiScale, widget.textScale, config),
+              ),
+              if (widget.onDelete != null && widget.saveSlot != null)
+                Positioned(
+                  bottom: 8 * uiScale,
+                  right: 8 * uiScale,
+                  child: _buildDeleteButton(uiScale, config),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(double uiScale, SakiEngineConfig config) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          if (widget.onDelete != null) {
+            widget.onDelete!();
+          }
+        },
+        onHover: (hovering) {
+          if (mounted) {
+            setState(() {
+              _isDeleteButtonHovered = hovering;
+            });
+          }
+        },
+        borderRadius: BorderRadius.circular(config.baseWindowBorder * uiScale * 0.5),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          width: 20 * uiScale,
+          height: 20 * uiScale,
+          decoration: BoxDecoration(
+            color: _isDeleteButtonHovered 
+                ? config.themeColors.primary.withOpacity(0.1)
+                : config.themeColors.background.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(config.baseWindowBorder * uiScale * 0.5),
+            border: Border.all(
+              color: _isDeleteButtonHovered 
+                  ? config.themeColors.primary.withOpacity(0.6)
+                  : config.themeColors.primary.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            scale: _isDeleteButtonHovered ? 1.1 : 1.0,
+            child: Icon(
+              Icons.close,
+              size: 12 * uiScale,
+              color: _isDeleteButtonHovered 
+                  ? config.themeColors.primary
+                  : config.themeColors.primary.withOpacity(0.7),
+            ),
           ),
         ),
       ),
