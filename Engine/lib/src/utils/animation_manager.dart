@@ -234,8 +234,8 @@ class CharacterAnimationController {
       vsync: vsync,
     );
 
-    final startProperties = Map<String, double>.from(_baseProperties); // 每个关键帧都从基础位置开始
-    final endProperties = Map<String, double>.from(_baseProperties);
+    final startProperties = Map<String, double>.from(_currentProperties); // 从当前位置开始
+    final endProperties = Map<String, double>.from(_currentProperties);
     
     if (isReturnAnimation) {
       // 复原动画：从当前位置回到基础属性值
@@ -279,18 +279,12 @@ class CharacterAnimationController {
           _currentProperties[propName] = startValue + (endValue - startValue) * progress;
         }
       } else {
-        // 正常动画：从基础位置插值到目标位置，更新相关属性的当前值
+        // 正常动画：只更新关键帧中定义的属性
         for (final entry in keyframe.properties.entries) {
           final propName = entry.key;
           final startValue = startProperties[propName] ?? 0.0;
           final endValue = endProperties[propName] ?? 0.0;
           _currentProperties[propName] = startValue + (endValue - startValue) * progress;
-        }
-        // 对于没有在关键帧中定义的属性，保持基础值
-        for (final propName in _baseProperties.keys) {
-          if (!keyframe.properties.containsKey(propName)) {
-            _currentProperties[propName] = _baseProperties[propName] ?? 0.0;
-          }
         }
       }
       

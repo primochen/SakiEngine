@@ -69,7 +69,7 @@ class AssetManager {
       final fileSystemPath = p.normalize(p.join(gamePath, assetPath));
       
       try {
-        print("Attempting to load from file system: $fileSystemPath");
+        //print("Attempting to load from file system: $fileSystemPath");
         return await File(fileSystemPath).readAsString();
       } catch (e) {
         print("Failed to load asset from file system: $e");
