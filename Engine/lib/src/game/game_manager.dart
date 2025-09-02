@@ -469,7 +469,7 @@ class GameManager {
         final newCharacters = Map.of(_currentState.characters);
         newCharacters.remove(node.character);
         _currentState =
-            _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
+            _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: false, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
         _scriptIndex++;
         continue;
