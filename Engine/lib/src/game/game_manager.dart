@@ -363,9 +363,10 @@ class GameManager {
         
         // 检查是否是游戏开始时的初始背景设置
         final isInitialBackground = _currentState.background == null;
+        final isSameBackground = _currentState.background == node.background;
         
-        if (_context != null && !isInitialBackground) {
-          // 只有在非初始背景时才使用转场效果
+        if (_context != null && !isInitialBackground && !isSameBackground) {
+          // 只有在非初始背景且背景确实发生变化时才使用转场效果
           // 立即递增索引，如果有fx节点也跳过
           _scriptIndex += sceneFilter != null ? 2 : 1;
           
@@ -382,18 +383,18 @@ class GameManager {
           });
           return; // 转场过程中暂停脚本执行，将在转场完成后自动恢复
         } else {
-          ////print('[GameManager] 直接设置背景（${isInitialBackground ? "初始背景" : "无转场"}）');
-          // 直接切换背景 - 初始背景或无context时
+          print('[GameManager] 跳过转场：${isInitialBackground ? "初始背景" : (isSameBackground ? "相同背景" : "无context")}');
+          // 直接切换背景 - 初始背景、相同背景或无context时
           _currentState = _currentState.copyWith(
               background: node.background, 
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
               sceneLayers: node.layers,
               clearSceneLayers: node.layers == null, // 如果是单图层，清除多图层数据
-              clearDialogueAndSpeaker: true,
+              clearDialogueAndSpeaker: !isSameBackground, // 相同背景时不清除对话，避免闪烁
               sceneAnimation: node.animation,
               sceneAnimationRepeat: node.repeatCount,
-              sceneAnimationProperties: node.animation != null ? <String, double>{} : null,
+              sceneAnimationProperties: (node.animation != null && !isSameBackground) ? <String, double>{} : null,
               clearSceneAnimation: node.animation == null,
               everShownCharacters: _everShownCharacters);
           _gameStateController.add(_currentState);
@@ -957,6 +958,7 @@ class GameManager {
     
     // 解析转场类型
     final effectType = TransitionTypeParser.parseTransitionType(transitionType ?? 'fade');
+    print('[GameManager] 转场类型解析: 输入="$transitionType" -> 解析结果=${effectType.name}');
     
     // 如果是diss转场，需要准备旧背景和新背景名称
     String? oldBackgroundName;
@@ -966,6 +968,7 @@ class GameManager {
       // 传递背景名称而不是Widget
       oldBackgroundName = _currentState.background;
       newBackgroundName = newBackground;
+      print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
     }
     
     // 根据转场类型选择转场管理器

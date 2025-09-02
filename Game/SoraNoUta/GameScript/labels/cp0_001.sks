@@ -184,8 +184,10 @@ stop music
 "公路两旁的风景缓慢发生着变化。"
 "我观察着风景以及路面，突然想到了什么。"
 play music goodday
-scene to school an backjump with diss 
+scene to school an backjump
+play sound sagasu
 "原地停了下来，解开了书包，就开始翻找东西。"
+play sound haneru
 x pose5 an zoomjumpin "你在找什么？"////立绘弹跳出来，一脸微笑的神情
 x wakuwaku3 an jump repeat 2 "是你上次说过的装甲勇士的变身腰带吗？你带过来了？"////侧脸思考，0.5s以后眼睛转过来
 "别说了别说了，我不由得感到了面红耳赤。"
@@ -198,6 +200,7 @@ show zao an jump
 "一大把青色的枣子。"//////弹出窗口，装满青涩枣子的袋子特写
 l "给你吃。"
 "我在夏悠面前晃了晃。"
+play sound haneru
 x star an zoomjumpout "哇哦！有零食吃了！谢谢。"////双眼放光的动作
 play sound kamu
 nvlm

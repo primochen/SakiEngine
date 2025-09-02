@@ -106,7 +106,25 @@ class SksParser {
               }
             }
           } else {
-            // 单图层模式（原有逻辑 + 新的动画参数）
+            // 单图层模式 - 改进解析逻辑
+            // 首先找到所有关键字的位置
+            final timerIndex = allParams.indexOf('timer');
+            final withIndex = allParams.indexOf('with');
+            final anIndex = allParams.indexOf('an');
+            final repeatIndex = allParams.indexOf('repeat');
+            final fxIndex = allParams.indexOf('fx');
+            
+            // 找到第一个关键字的位置，背景名称在这之前
+            final keywordIndices = [timerIndex, withIndex, anIndex, repeatIndex, fxIndex]
+                .where((index) => index >= 0)
+                .toList();
+            
+            final firstKeywordIndex = keywordIndices.isEmpty ? allParams.length : keywordIndices.reduce((a, b) => a < b ? a : b);
+            
+            // 背景名称是第一个关键字之前的所有参数
+            backgroundName = allParams.sublist(0, firstKeywordIndex).join(' ');
+            
+            // 解析各个参数
             int i = 0;
             while (i < allParams.length) {
               if (allParams[i] == 'timer' && i + 1 < allParams.length) {
@@ -127,11 +145,13 @@ class SksParser {
                 }
                 break;
               } else {
-                backgroundName += (backgroundName.isEmpty ? '' : ' ') + allParams[i];
                 i++;
               }
             }
           }
+          
+          // 调试输出
+          print('[SksParser] scene解析结果: background="$backgroundName", transition="$transitionType", animation="$animation", repeat=$repeatCount');
           
           // 检查是否为十六进制颜色格式
           if (ColorBackgroundRenderer.isValidHexColor(backgroundName.trim())) {
