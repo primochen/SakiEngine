@@ -32,6 +32,25 @@ class CharacterLayerParser {
     
     final layers = <CharacterLayerInfo>[];
     
+    // 首先检查是否为物件（在items文件夹中查找）
+    final itemAssetName = 'items/$resourceId';
+    final itemExists = await AssetManager().findAsset(itemAssetName) != null;
+    
+    if (itemExists) {
+      // 这是一个物件，使用简化的图层结构
+      print('[CharacterLayerParser] 检测到物件: $resourceId，使用items文件夹');
+      layers.add(CharacterLayerInfo(
+        assetName: itemAssetName,
+        layerLevel: 0,
+        layerType: 'item',
+      ));
+      
+      // 缓存结果
+      _layerCache[cacheKey] = layers;
+      return layers;
+    }
+    
+    // 不是物件，按原有逻辑处理角色
     // 1. 底层：pose（姿势）- 如果找不到指定pose，使用字母顺序第一个可用的pose
     String actualPose = pose;
     final poseAssetName = 'characters/$resourceId-$actualPose';

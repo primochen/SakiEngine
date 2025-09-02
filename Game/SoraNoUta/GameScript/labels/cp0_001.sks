@@ -196,10 +196,11 @@ stop sound
 "//s找到了！！"////对话框震动
 "我拿出来一个塑料袋。"
 "塑料袋内的是——"
-show zao an jump
+show zao at items an jump
 "一大把青色的枣子。"//////弹出窗口，装满青涩枣子的袋子特写
 l "给你吃。"
 "我在夏悠面前晃了晃。"
+hide zao
 play sound haneru
 x star an zoomjumpout "哇哦！有零食吃了！谢谢。"////双眼放光的动作
 play sound kamu
