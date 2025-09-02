@@ -1094,10 +1094,10 @@ class GameManager {
             anchor: currentPoseConfig.anchor,
           );
         }
-        // 清除临时动画属性，因为现在已经应用到基础配置了
+        // 保持动画属性，不清除
         final newCharacters = Map.of(_currentState.characters);
         newCharacters[characterId] = characterState.copyWith(
-          clearAnimationProperties: true,
+          animationProperties: finalProperties,
         );
         _currentState = _currentState.copyWith(
           characters: newCharacters,

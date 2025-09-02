@@ -184,7 +184,7 @@ stop music
 "公路两旁的风景缓慢发生着变化。"
 "我观察着风景以及路面，突然想到了什么。"
 play music goodday
-scene to school with diss an backjump
+scene to school an backjump with diss 
 "原地停了下来，解开了书包，就开始翻找东西。"
 x pose5 an zoomjumpin "你在找什么？"////立绘弹跳出来，一脸微笑的神情
 x wakuwaku3 an jump repeat 2 "是你上次说过的装甲勇士的变身腰带吗？你带过来了？"////侧脸思考，0.5s以后眼睛转过来
