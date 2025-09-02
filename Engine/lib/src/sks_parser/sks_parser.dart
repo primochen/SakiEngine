@@ -61,6 +61,8 @@ class SksParser {
           String? fxString;
           List<String>? layers;
           String? transitionType; // 新增：转场类型
+          String? animation; // 新增：动画类型
+          int? repeatCount; // 新增：重复次数
           
           // 检查是否为多图层语法 [layer1,layer2:params,...]
           if (allParams.isNotEmpty && allParams[0].startsWith('[') && allParams.join(' ').contains(']')) {
@@ -77,7 +79,7 @@ class SksParser {
                 backgroundName = layers[0].split(':')[0]; // 去掉可能的位置参数
               }
               
-              // 解析后续参数（timer, fx, with等）
+              // 解析后续参数（timer, fx, with, an, repeat等）
               final remainingParams = layerContent.substring(endBracket + 1).trim().split(' ').where((s) => s.isNotEmpty).toList();
               int i = 0;
               while (i < remainingParams.length) {
@@ -86,6 +88,12 @@ class SksParser {
                   i += 2;
                 } else if (remainingParams[i] == 'with' && i + 1 < remainingParams.length) {
                   transitionType = remainingParams[i + 1];
+                  i += 2;
+                } else if (remainingParams[i] == 'an' && i + 1 < remainingParams.length) {
+                  animation = remainingParams[i + 1];
+                  i += 2;
+                } else if (remainingParams[i] == 'repeat' && i + 1 < remainingParams.length) {
+                  repeatCount = int.tryParse(remainingParams[i + 1]);
                   i += 2;
                 } else if (remainingParams[i] == 'fx') {
                   if (i + 1 < remainingParams.length) {
@@ -98,7 +106,7 @@ class SksParser {
               }
             }
           } else {
-            // 单图层模式（原有逻辑）
+            // 单图层模式（原有逻辑 + 新的动画参数）
             int i = 0;
             while (i < allParams.length) {
               if (allParams[i] == 'timer' && i + 1 < allParams.length) {
@@ -106,6 +114,12 @@ class SksParser {
                 i += 2;
               } else if (allParams[i] == 'with' && i + 1 < allParams.length) {
                 transitionType = allParams[i + 1];
+                i += 2;
+              } else if (allParams[i] == 'an' && i + 1 < allParams.length) {
+                animation = allParams[i + 1];
+                i += 2;
+              } else if (allParams[i] == 'repeat' && i + 1 < allParams.length) {
+                repeatCount = int.tryParse(allParams[i + 1]);
                 i += 2;
               } else if (allParams[i] == 'fx') {
                 if (i + 1 < allParams.length) {
@@ -121,9 +135,9 @@ class SksParser {
           
           // 检查是否为十六进制颜色格式
           if (ColorBackgroundRenderer.isValidHexColor(backgroundName.trim())) {
-            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue, layers: layers, transitionType: transitionType));
+            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue, layers: layers, transitionType: transitionType, animation: animation, repeatCount: repeatCount));
           } else {
-            nodes.add(BackgroundNode(backgroundName, timer: timerValue, layers: layers, transitionType: transitionType));
+            nodes.add(BackgroundNode(backgroundName, timer: timerValue, layers: layers, transitionType: transitionType, animation: animation, repeatCount: repeatCount));
           }
           
           // 如果有fx参数，添加FxNode

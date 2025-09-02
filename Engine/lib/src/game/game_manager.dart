@@ -11,6 +11,7 @@ import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/effects/scene_transition_effects.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/utils/animation_manager.dart';
+import 'package:sakiengine/src/utils/scene_animation_controller.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
 /// 音乐区间类
@@ -83,6 +84,9 @@ class GameManager {
   BuildContext? _context;
   TickerProvider? _tickerProvider;
   final Set<String> _everShownCharacters = {};
+  
+  // 场景动画控制器
+  SceneAnimationController? _sceneAnimationController;
   
   /// 查找具有相同resourceId的现有角色key
   String? _findExistingCharacterKey(String resourceId) {
@@ -372,7 +376,7 @@ class GameManager {
           _isWaitingForTimer = true;
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
-          _transitionToNewBackground(node.background, sceneFilter, node.layers, node.transitionType).then((_) {
+          _transitionToNewBackground(node.background, sceneFilter, node.layers, node.transitionType, node.animation, node.repeatCount).then((_) {
             // 转场完成后启动计时器
             _startSceneTimer(timerDuration);
           });
@@ -387,8 +391,17 @@ class GameManager {
               sceneLayers: node.layers,
               clearSceneLayers: node.layers == null, // 如果是单图层，清除多图层数据
               clearDialogueAndSpeaker: true,
+              sceneAnimation: node.animation,
+              sceneAnimationRepeat: node.repeatCount,
+              sceneAnimationProperties: node.animation != null ? <String, double>{} : null,
+              clearSceneAnimation: node.animation == null,
               everShownCharacters: _everShownCharacters);
           _gameStateController.add(_currentState);
+          
+          // 如果有场景动画，启动动画
+          if (node.animation != null && _tickerProvider != null) {
+            _startSceneAnimation(node.animation!, node.repeatCount);
+          }
           
           // 如果有计时器，启动计时器
           if (node.timer != null && node.timer! > 0) {
@@ -937,7 +950,7 @@ class GameManager {
   }
 
   /// 使用转场效果切换背景
-  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType]) async {
+  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount]) async {
     if (_context == null) return;
     
     ////print('[GameManager] 开始scene转场到背景: $newBackground, 转场类型: ${transitionType ?? "fade"}');
@@ -972,6 +985,10 @@ class GameManager {
           clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
           clearDialogueAndSpeaker: true,
           clearCharacters: true,
+          sceneAnimation: animation,
+          sceneAnimationRepeat: repeatCount,
+          sceneAnimationProperties: animation != null ? <String, double>{} : null,
+          clearSceneAnimation: animation == null,
           everShownCharacters: _everShownCharacters,
         );
         ////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
@@ -999,6 +1016,10 @@ class GameManager {
             clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
             clearDialogueAndSpeaker: true,
             clearCharacters: true,
+            sceneAnimation: animation,
+            sceneAnimationRepeat: repeatCount,
+            sceneAnimationProperties: animation != null ? <String, double>{} : null,
+            clearSceneAnimation: animation == null,
             everShownCharacters: _everShownCharacters,
           );
           ////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
@@ -1012,6 +1033,11 @@ class GameManager {
     ////print('[GameManager] scene转场完成，等待计时器结束');
     // 转场完成，等待计时器结束后自动执行后续脚本
     _isProcessing = false;
+    
+    // 如果有场景动画，启动动画
+    if (animation != null && _tickerProvider != null) {
+      _startSceneAnimation(animation, repeatCount);
+    }
   }
 
   /// 停止所有音效，但保留背景音乐
@@ -1083,8 +1109,60 @@ class GameManager {
     animController.dispose();
   }
 
+  /// 播放场景动画
+  Future<void> _startSceneAnimation(String animationName, int? repeatCount) async {
+    print('[GameManager] 开始播放场景动画: $animationName, repeat: $repeatCount');
+    
+    // 停止之前的场景动画
+    _sceneAnimationController?.dispose();
+    
+    // 获取基础属性（场景的默认位置）
+    final baseProperties = <String, double>{
+      'xcenter': 0.0,
+      'ycenter': 0.0,
+      'scale': 1.0,
+      'alpha': 1.0,
+      'rotation': 0.0,
+    };
+    
+    // 创建场景动画控制器
+    _sceneAnimationController = SceneAnimationController(
+      sceneId: 'scene_background',
+      onAnimationUpdate: (properties) {
+        // 实时更新场景动画属性
+        _currentState = _currentState.copyWith(
+          sceneAnimationProperties: properties,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+      },
+      onComplete: () {
+        print('[GameManager] 场景动画 $animationName 播放完成');
+        // 动画完成后清除动画属性
+        _currentState = _currentState.copyWith(
+          clearSceneAnimation: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        _sceneAnimationController?.dispose();
+        _sceneAnimationController = null;
+      },
+    );
+    
+    // 播放动画
+    if (_tickerProvider != null) {
+      await _sceneAnimationController!.playAnimation(
+        animationName,
+        _tickerProvider!,
+        baseProperties,
+        repeatCount: repeatCount,
+      );
+    }
+  }
+
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
+    _sceneAnimationController?.dispose(); // 清理场景动画控制器
     stopAllSounds(); // 停止所有音效
     _gameStateController.close();
   }
@@ -1104,6 +1182,9 @@ class GameState {
   final SceneFilter? sceneFilter;
   final List<String>? sceneLayers; // 新增：多图层支持
   final MusicRegion? currentMusicRegion; // 新增：当前音乐区间
+  final Map<String, double>? sceneAnimationProperties; // 新增：场景动画属性
+  final String? sceneAnimation; // 新增：当前场景动画名称
+  final int? sceneAnimationRepeat; // 新增：场景动画重复次数
 
   GameState({
     this.background,
@@ -1119,6 +1200,9 @@ class GameState {
     this.sceneFilter,
     this.sceneLayers,
     this.currentMusicRegion,
+    this.sceneAnimationProperties,
+    this.sceneAnimation,
+    this.sceneAnimationRepeat,
   });
 
   factory GameState.initial() {
@@ -1146,6 +1230,10 @@ class GameState {
     List<String>? sceneLayers,
     bool clearSceneLayers = false,
     MusicRegion? currentMusicRegion,
+    Map<String, double>? sceneAnimationProperties,
+    bool clearSceneAnimation = false,
+    String? sceneAnimation,
+    int? sceneAnimationRepeat,
   }) {
     return GameState(
       background: background ?? this.background,
@@ -1163,6 +1251,9 @@ class GameState {
       sceneFilter: clearSceneFilter ? null : (sceneFilter ?? this.sceneFilter),
       sceneLayers: clearSceneLayers ? null : (sceneLayers ?? this.sceneLayers),
       currentMusicRegion: currentMusicRegion ?? this.currentMusicRegion,
+      sceneAnimationProperties: clearSceneAnimation ? null : (sceneAnimationProperties ?? this.sceneAnimationProperties),
+      sceneAnimation: clearSceneAnimation ? null : (sceneAnimation ?? this.sceneAnimation),
+      sceneAnimationRepeat: clearSceneAnimation ? null : (sceneAnimationRepeat ?? this.sceneAnimationRepeat),
     );
   }
 }

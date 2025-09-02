@@ -437,7 +437,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     return Stack(
       children: [
         if (gameState.background != null)
-          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers),
+          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
         ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
         if (gameState.dialogue != null && !gameState.isNvlMode)
           _createDialogueBox(
@@ -455,8 +455,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
   }
 
-  /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景
-  Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers]) {
+  /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画
+  Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers, Map<String, double>? animationProperties]) {
+    Widget backgroundWidget;
+    
     // 如果有多图层数据，使用多图层渲染器
     if (sceneLayers != null && sceneLayers.isNotEmpty) {
       final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
@@ -465,57 +467,64 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           .toList();
       
       if (layers.isNotEmpty) {
-        final multiLayerWidget = MultiLayerRenderer.buildMultiLayerScene(
+        backgroundWidget = MultiLayerRenderer.buildMultiLayerScene(
           layers: layers,
           screenSize: MediaQuery.of(context).size,
         );
-        
-        if (sceneFilter != null) {
-          return _FilteredBackground(
-            filter: sceneFilter,
-            child: multiLayerWidget,
-          );
-        }
-        return multiLayerWidget;
+      } else {
+        backgroundWidget = Container(color: Colors.black);
       }
-    }
-    
-    // 单图层模式（原有逻辑）
-    // 检查是否为十六进制颜色格式
-    if (ColorBackgroundRenderer.isValidHexColor(background)) {
-      final colorWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
-      if (sceneFilter != null) {
-        return _FilteredBackground(
-          filter: sceneFilter,
-          child: colorWidget,
+    } else {
+      // 单图层模式（原有逻辑）
+      // 检查是否为十六进制颜色格式
+      if (ColorBackgroundRenderer.isValidHexColor(background)) {
+        backgroundWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
+      } else {
+        // 处理图片背景
+        backgroundWidget = FutureBuilder<String?>(
+          future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data != null) {
+              return Image.asset(
+                snapshot.data!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              );
+            }
+            return Container(color: Colors.black);
+          },
         );
       }
-      return colorWidget;
     }
     
-    // 处理图片背景
-    return FutureBuilder<String?>(
-      future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          final imageWidget = Image.asset(
-            snapshot.data!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          );
-          
-          if (sceneFilter != null) {
-            return _FilteredBackground(
-              filter: sceneFilter,
-              child: imageWidget,
-            );
-          }
-          return imageWidget;
-        }
-        return Container(color: Colors.black);
-      },
-    );
+    // 应用动画变换
+    if (animationProperties != null && animationProperties.isNotEmpty) {
+      backgroundWidget = Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..translate(
+            (animationProperties['xcenter'] ?? 0.0) * MediaQuery.of(context).size.width,
+            (animationProperties['ycenter'] ?? 0.0) * MediaQuery.of(context).size.height,
+          )
+          ..scale(animationProperties['scale'] ?? 1.0)
+          ..rotateZ(animationProperties['rotation'] ?? 0.0),
+        child: Opacity(
+          opacity: (animationProperties['alpha'] ?? 1.0).clamp(0.0, 1.0),
+          child: backgroundWidget,
+        ),
+      );
+    }
+    
+    // 应用场景滤镜
+    if (sceneFilter != null) {
+      backgroundWidget = _FilteredBackground(
+        filter: sceneFilter,
+        child: backgroundWidget,
+      );
+    }
+    
+    return backgroundWidget;
   }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
