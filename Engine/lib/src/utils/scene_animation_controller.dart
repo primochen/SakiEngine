@@ -48,13 +48,9 @@ class SceneAnimationController {
         _currentProperties = Map.from(_baseProperties);
         onAnimationUpdate?.call(Map.from(_currentProperties));
       }
-      // 播放完所有循环后，自动添加平滑复原到基础位置
-      await _playReturnToBaseAnimation(vsync);
     } else {
       // repeatCount为0，播放一次
       await _playKeyframes(animDef.keyframes, vsync);
-      // 自动添加平滑复原到基础位置
-      await _playReturnToBaseAnimation(vsync);
     }
     
     print('[SceneAnimationController] 场景动画播放完成: $animationName');

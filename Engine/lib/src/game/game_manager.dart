@@ -448,7 +448,7 @@ class GameManager {
         newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: node.pose,
           expression: node.expression,
-          clearAnimationProperties: true, // 清除之前的动画属性
+          clearAnimationProperties: false,
         );
         
         _currentState =
@@ -499,7 +499,7 @@ class GameManager {
             final updatedCharacter = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
-              clearAnimationProperties: true, // 清除之前的动画属性
+              clearAnimationProperties: false,
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
             //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}');
@@ -523,7 +523,7 @@ class GameManager {
             newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
-              clearAnimationProperties: true, // 清除之前的动画属性
+              clearAnimationProperties: false,
             );
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
@@ -1061,8 +1061,11 @@ class GameManager {
       'alpha': 1.0,
     };
     
+    // 声明动画控制器变量
+    late final CharacterAnimationController animController;
+    
     // 创建动画控制器
-    final animController = CharacterAnimationController(
+    animController = CharacterAnimationController(
       characterId: characterId,
       onAnimationUpdate: (properties) {
         // 实时更新角色状态
@@ -1077,20 +1080,30 @@ class GameManager {
         _gameStateController.add(_currentState);
       },
       onComplete: () {
-        //print('[GameManager] 角色 $characterId 动画 $animationName 播放完成，已自动平滑复原');
-        // 动画完成后清除动画属性（复原已完成）
-        final newCharacters = Map.of(_currentState.characters);
-        final currentCharacterState = newCharacters[characterId];
-        if (currentCharacterState != null) {
-          newCharacters[characterId] = currentCharacterState.copyWith(
-            clearAnimationProperties: true,
+        print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
+        // 将动画最终状态应用到角色的基础配置
+        final finalProperties = animController.currentProperties;
+        final positionId = characterState.positionId;
+        if (positionId != null && _poseConfigs.containsKey(positionId)) {
+          final currentPoseConfig = _poseConfigs[positionId]!;
+          _poseConfigs[positionId] = PoseConfig(
+            id: currentPoseConfig.id,
+            xcenter: finalProperties['xcenter'] ?? currentPoseConfig.xcenter,
+            ycenter: finalProperties['ycenter'] ?? currentPoseConfig.ycenter,
+            scale: finalProperties['scale'] ?? currentPoseConfig.scale,
+            anchor: currentPoseConfig.anchor,
           );
-          _currentState = _currentState.copyWith(
-            characters: newCharacters,
-            everShownCharacters: _everShownCharacters,
-          );
-          _gameStateController.add(_currentState);
         }
+        // 清除临时动画属性，因为现在已经应用到基础配置了
+        final newCharacters = Map.of(_currentState.characters);
+        newCharacters[characterId] = characterState.copyWith(
+          clearAnimationProperties: true,
+        );
+        _currentState = _currentState.copyWith(
+          characters: newCharacters,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
       },
     );
     
@@ -1138,12 +1151,15 @@ class GameManager {
       },
       onComplete: () {
         print('[GameManager] 场景动画 $animationName 播放完成');
-        // 动画完成后清除动画属性
-        _currentState = _currentState.copyWith(
-          clearSceneAnimation: true,
-          everShownCharacters: _everShownCharacters,
-        );
-        _gameStateController.add(_currentState);
+        // 保持动画的最终状态，不清除动画属性
+        final finalProperties = _sceneAnimationController?.currentProperties;
+        if (finalProperties != null) {
+          _currentState = _currentState.copyWith(
+            sceneAnimationProperties: finalProperties,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        }
         _sceneAnimationController?.dispose();
         _sceneAnimationController = null;
       },
