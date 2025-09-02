@@ -288,6 +288,13 @@ class SksParser {
             nodes.add(StopSoundNode());
           }
           break;
+        case 'bool':
+          if (parts.length >= 3) {
+            final variableName = parts[1];
+            final value = parts[2].toLowerCase() == 'true';
+            nodes.add(BoolNode(variableName, value));
+          }
+          break;
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {
@@ -303,13 +310,96 @@ class SksParser {
     return ScriptNode(nodes);
   }
 
-  SayNode? _parseSay(String line) {
+  SksNode? _parseSay(String line) {
     // 先处理行末注释
     String processedLine = line;
     final commentIndex = line.indexOf('//');
     if (commentIndex >= 0) {
       processedLine = line.substring(0, commentIndex).trim();
     }
+    
+    // 检查是否是条件对话 "dialogue" if variable true/false
+    final conditionalRegex = RegExp(r'^(.*?)\s*"([^"]+)"\s+if\s+(\w+)\s+(true|false)\s*$');
+    final conditionalMatch = conditionalRegex.firstMatch(processedLine);
+    
+    if (conditionalMatch != null) {
+      final beforeQuote = conditionalMatch.group(1)!.trim();
+      final dialogue = conditionalMatch.group(2)!;
+      final variableName = conditionalMatch.group(3)!;
+      final conditionValue = conditionalMatch.group(4)! == 'true';
+      
+      String? character;
+      String? pose;
+      String? expression;
+      String? animation;
+      int? repeatCount;
+      
+      // 解析角色和属性（如果存在）
+      if (beforeQuote.isNotEmpty) {
+        final parts = beforeQuote.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+        if (parts.isNotEmpty) {
+          character = parts[0];
+          
+          // 解析其他属性
+          if (parts.length > 1) {
+            final attrs = parts.sublist(1);
+            
+            // 查找an和repeat关键字位置
+            int anIndex = -1;
+            int repeatIndex = -1;
+            for (int i = 0; i < attrs.length; i++) {
+              if (attrs[i] == 'an') {
+                anIndex = i;
+              } else if (attrs[i] == 'repeat') {
+                repeatIndex = i;
+                break;
+              }
+            }
+            
+            // 解析repeat参数
+            if (repeatIndex >= 0 && repeatIndex + 1 < attrs.length) {
+              repeatCount = int.tryParse(attrs[repeatIndex + 1]);
+            }
+            
+            int endIndex = repeatIndex >= 0 ? repeatIndex : attrs.length;
+            
+            List<String> regularAttrs;
+            
+            if (anIndex >= 0 && anIndex < endIndex) {
+              // 有an动画语法
+              if (anIndex + 1 < endIndex) {
+                animation = attrs[anIndex + 1];
+              }
+              regularAttrs = attrs.sublist(0, anIndex);
+            } else {
+              regularAttrs = attrs.sublist(0, endIndex);
+            }
+            
+            // 解析普通属性
+            for (final attr in regularAttrs) {
+              if (attr.startsWith('pose') || attr.contains('pose')) {
+                pose = attr;
+              } else {
+                expression = attr;
+              }
+            }
+          }
+        }
+      }
+      
+      return ConditionalSayNode(
+        dialogue: dialogue,
+        character: character,
+        conditionVariable: variableName,
+        conditionValue: conditionValue,
+        pose: pose,
+        expression: expression,
+        animation: animation,
+        repeatCount: repeatCount,
+      );
+    }
+    
+    // 继续原有的解析逻辑
     
     // Improved regex to capture character, attributes and dialogue
     // 1: Optional character and attributes part

@@ -13,6 +13,7 @@ import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/utils/animation_manager.dart';
 import 'package:sakiengine/src/utils/scene_animation_controller.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
+import 'package:sakiengine/src/utils/global_variable_manager.dart';
 
 /// 音乐区间类
 /// 定义音乐播放的有效范围，从play music到下一个play music/stop music之间
@@ -252,6 +253,20 @@ class GameManager {
     );
     
     await _loadConfigs();
+    await GlobalVariableManager().init(); // 初始化全局变量管理器
+    
+    // 打印所有全局变量的值
+    final allVars = GlobalVariableManager().getAllVariables();
+    print('=== 游戏启动 - 全局变量状态 ===');
+    if (allVars.isEmpty) {
+      print('暂无全局变量');
+    } else {
+      allVars.forEach((name, value) {
+        print('全局变量: $name = $value');
+      });
+    }
+    print('=== 全局变量状态结束 ===');
+    
     await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
@@ -473,6 +488,138 @@ class GameManager {
         _gameStateController.add(_currentState);
         _scriptIndex++;
         continue;
+      }
+
+      if (node is ConditionalSayNode) {
+        // 检查条件是否满足
+        final currentValue = GlobalVariableManager().getBoolVariableSync(
+          node.conditionVariable, 
+          defaultValue: false
+        );
+        
+        if (currentValue != node.conditionValue) {
+          // 条件不满足，跳过这个节点
+          if (kDebugMode) {
+            print('[ConditionalSay] 条件不满足，跳过对话: ${node.dialogue}');
+            print('[ConditionalSay] 变量 ${node.conditionVariable} = $currentValue, 需要 ${node.conditionValue}');
+          }
+          _scriptIndex++;
+          continue;
+        }
+        
+        if (kDebugMode) {
+          print('[ConditionalSay] 条件满足，显示对话: ${node.dialogue}');
+        }
+        
+        // 条件满足，按照正常SayNode处理
+        final characterConfig = _characterConfigs[node.character];
+        CharacterState? currentCharacterState;
+
+        if (node.character != null) {
+          // 确定最终的角色key
+          String finalCharacterKey;
+          if (characterConfig != null) {
+            finalCharacterKey = characterConfig.resourceId; // 使用resourceId作为key
+          } else {
+            finalCharacterKey = node.character!; // 使用原始名称作为key
+          }
+          
+          currentCharacterState = _currentState.characters[finalCharacterKey];
+          
+          if (currentCharacterState != null) {
+            // 角色已存在，更新表情和姿势
+            final newCharacters = Map.of(_currentState.characters);
+            final updatedCharacter = currentCharacterState.copyWith(
+              pose: node.pose,
+              expression: node.expression,
+              clearAnimationProperties: false,
+            );
+            newCharacters[finalCharacterKey] = updatedCharacter;
+            _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+            _gameStateController.add(_currentState);
+            
+            // 如果有动画，启动动画播放（非阻塞）
+            if (node.animation != null) {
+              _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
+            }
+          } else if (characterConfig != null) {
+            // 角色不存在，创建新角色
+            currentCharacterState = CharacterState(
+              resourceId: characterConfig.resourceId,
+              positionId: characterConfig.defaultPoseId,
+            );
+            
+            final newCharacters = Map.of(_currentState.characters);
+            newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
+              pose: node.pose,
+              expression: node.expression,
+              clearAnimationProperties: false,
+            );
+            _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+            _gameStateController.add(_currentState);
+            
+            // 如果有动画，启动动画播放（非阻塞）
+            if (node.animation != null) {
+              _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
+            }
+          }
+        }
+
+        // 在 NVL 模式下的特殊处理
+        if (_currentState.isNvlMode) {
+          final newNvlDialogue = NvlDialogue(
+            speaker: characterConfig?.name,
+            dialogue: node.dialogue,
+            timestamp: DateTime.now(),
+          );
+          
+          final updatedNvlDialogues = List<NvlDialogue>.from(_currentState.nvlDialogues);
+          updatedNvlDialogues.add(newNvlDialogue);
+          
+          _currentState = _currentState.copyWith(
+            nvlDialogues: updatedNvlDialogues,
+            clearDialogueAndSpeaker: true,
+            everShownCharacters: _everShownCharacters,
+          );
+          
+          // 也添加到对话历史
+          _addToDialogueHistory(
+            speaker: characterConfig?.name,
+            dialogue: node.dialogue,
+            timestamp: DateTime.now(),
+            currentNodeIndex: currentNodeIndex,
+          );
+          
+          _gameStateController.add(_currentState);
+          
+          // NVL 模式下每句话都要停下来等待点击
+          _scriptIndex++;
+          _isProcessing = false;
+          return;
+        } else {
+          // 普通对话模式
+          _currentState = _currentState.copyWith(
+            dialogue: node.dialogue,
+            speaker: characterConfig?.name,
+            poseConfigs: _poseConfigs,
+            currentNode: null,
+            clearDialogueAndSpeaker: false,
+            forceNullSpeaker: node.character == null,
+            everShownCharacters: _everShownCharacters,
+          );
+
+          _addToDialogueHistory(
+            speaker: characterConfig?.name,
+            dialogue: node.dialogue,
+            timestamp: DateTime.now(),
+            currentNodeIndex: currentNodeIndex,
+          );
+
+          _gameStateController.add(_currentState);
+          _scriptIndex++;
+          _isProcessing = false;
+          return;
+        }
       }
 
       if (node is SayNode) {
@@ -760,6 +907,16 @@ class GameManager {
         _scriptIndex++;
         continue;
       }
+
+      if (node is BoolNode) {
+        // 设置全局bool变量
+        await GlobalVariableManager().setBoolVariable(node.variableName, node.value);
+        if (kDebugMode) {
+          print('[GlobalVariable] 设置变量 ${node.variableName} = ${node.value}');
+        }
+        _scriptIndex++;
+        continue;
+      }
     }
     _isProcessing = false;
   }
@@ -782,6 +939,7 @@ class GameManager {
     //print('📚 restoreFromSnapshot: nvlDialogues count = ${snapshot.nvlDialogues.length}');
     
     await _loadConfigs();
+    await GlobalVariableManager().init(); // 初始化全局变量管理器
     await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
@@ -832,6 +990,7 @@ class GameManager {
     _scriptMerger.clearCache();
     AnimationManager.clearCache(); // 清除动画缓存
     await _loadConfigs();
+    await GlobalVariableManager().init(); // 初始化全局变量管理器
     await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
@@ -1184,6 +1343,19 @@ class GameManager {
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
     stopAllSounds(); // 停止所有音效
     _gameStateController.close();
+  }
+
+  // 全局变量管理方法
+  Future<bool> getBoolVariable(String name, {bool defaultValue = false}) async {
+    return await GlobalVariableManager().getBoolVariable(name, defaultValue: defaultValue);
+  }
+
+  bool getBoolVariableSync(String name, {bool defaultValue = false}) {
+    return GlobalVariableManager().getBoolVariableSync(name, defaultValue: defaultValue);
+  }
+
+  Future<void> setBoolVariable(String name, bool value) async {
+    await GlobalVariableManager().setBoolVariable(name, value);
   }
 }
 

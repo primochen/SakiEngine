@@ -9,6 +9,7 @@ import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
@@ -147,6 +148,19 @@ void main() async {
     
     // 初始化设置管理器
     await SettingsManager().init();
+    
+    // 初始化全局变量管理器并打印变量状态
+    await GlobalVariableManager().init();
+    final allVars = GlobalVariableManager().getAllVariables();
+    print('=== 应用启动 - 全局变量状态 ===');
+    if (allVars.isEmpty) {
+      print('暂无全局变量');
+    } else {
+      allVars.forEach((name, value) {
+        print('全局变量: $name = $value');
+      });
+    }
+    print('=== 全局变量状态结束 ===');
     
     // 应用深色模式设置
     SakiEngineConfig().updateThemeForDarkMode();

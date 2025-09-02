@@ -102,3 +102,31 @@ class PlaySoundNode implements SksNode {
 class StopSoundNode implements SksNode {
   StopSoundNode();
 }
+
+class BoolNode implements SksNode {
+  final String variableName;
+  final bool value;
+  BoolNode(this.variableName, this.value);
+}
+
+class ConditionalSayNode implements SksNode {
+  final String dialogue;
+  final String? character;
+  final String conditionVariable;
+  final bool conditionValue;
+  final String? pose;
+  final String? expression;
+  final String? animation;
+  final int? repeatCount;
+  
+  ConditionalSayNode({
+    required this.dialogue,
+    this.character,
+    required this.conditionVariable,
+    required this.conditionValue,
+    this.pose,
+    this.expression,
+    this.animation,
+    this.repeatCount,
+  });
+}
