@@ -20,7 +20,15 @@
 
 jump
 ease 0.3 ycenter-0.05
-ease 2.0 ycenter-0
+ease 0.3 ycenter+0
+
+zoomjumpin
+ease 0.3 ycenter-0.05 scale+0.3
+ease 0.3 ycenter+0
+
+zoomjumpout
+ease 0.3 ycenter-0.05 scale-0.3
+ease 0.3 ycenter+0
 
 fadein
 linear 0.5 alpha+1.0
@@ -39,4 +47,9 @@ ease 0.15 ycenter-0.08
 ease 0.15 ycenter+0.08
 
 ukeru
-ease 0.2 ycenter-0.01
+ease 0.15 ycenter-0.01
+ease 0.15 ycenter+0
+
+fururu
+ease 0.07 ycenter-0.01
+ease 0.1 ycenter-0
