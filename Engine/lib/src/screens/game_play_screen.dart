@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +32,7 @@ import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
+import 'package:sakiengine/src/widgets/developer_panel.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -58,7 +60,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   bool _showLoadOverlay = false;
   bool _showSettings = false;
   bool _isShowingMenu = false;
+  bool _showDeveloperPanel = false; // 开发者面板显示状态
   HotKey? _reloadHotKey;
+  HotKey? _developerPanelHotKey; // Shift+D快捷键
   String? _projectName;
 
   @override
@@ -193,6 +197,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     if (_reloadHotKey != null) {
       hotKeyManager.unregister(_reloadHotKey!);
     }
+    // 取消注册开发者面板热键
+    if (_developerPanelHotKey != null) {
+      hotKeyManager.unregister(_developerPanelHotKey!);
+    }
     _gameManager.dispose();
     super.dispose();
   }
@@ -237,6 +245,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         print('应用内快捷键 Shift+R 注册成功');
       } catch (e2) {
         print('应用内快捷键注册也失败: $e2');
+      }
+    }
+
+    // 注册开发者面板快捷键 Shift+D (仅在Debug模式下)
+    if (kDebugMode) {
+      _developerPanelHotKey = HotKey(
+        key: PhysicalKeyboardKey.keyD,
+        modifiers: [HotKeyModifier.shift],
+        scope: HotKeyScope.inapp,
+      );
+      
+      try {
+        await hotKeyManager.register(
+          _developerPanelHotKey!,
+          keyDownHandler: (hotKey) {
+            print('开发者面板热键触发: ${hotKey.toJson()}');
+            if (mounted) {
+              setState(() {
+                _showDeveloperPanel = !_showDeveloperPanel;
+              });
+            }
+          },
+        );
+        print('快捷键 Shift+D 注册成功 (开发者面板)');
+      } catch (e) {
+        print('开发者面板快捷键注册失败: $e');
       }
     }
 
@@ -341,7 +375,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showSaveOverlay || 
                     _showLoadOverlay || 
                     _showReviewOverlay ||
-                    _showSettings;
+                    _showSettings ||
+                    _showDeveloperPanel; // 添加开发者面板检查
                 
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
                 if (pointerSignal is PointerScrollEvent) {
@@ -369,7 +404,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               child: Stack(
               children: [
                 GestureDetector(
-                  onTap: gameState.currentNode is MenuNode ? null : () {
+                  onTap: (gameState.currentNode is MenuNode || _showDeveloperPanel) ? null : () {
                     _dialogueProgressionManager.progressDialogue();
                   },
                   child: _buildSceneWithFilter(gameState),
@@ -418,6 +453,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                 if (_showSettings)
                   SettingsScreen(
                     onClose: () => setState(() => _showSettings = false),
+                  ),
+                // 开发者面板 (仅Debug模式)
+                if (kDebugMode && _showDeveloperPanel)
+                  DeveloperPanel(
+                    onClose: () => setState(() => _showDeveloperPanel = false),
+                    gameManager: _gameManager,
+                    onReload: () => _gameManager.hotReload(_currentScript),
                   ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,
