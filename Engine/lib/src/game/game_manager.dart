@@ -115,6 +115,12 @@ class GameManager {
   // Getters for accessing configurations
   Map<String, PoseConfig> get poseConfigs => _poseConfigs;
   String get currentScriptFile => _scriptMerger.getFileNameByIndex(_scriptIndex) ?? 'start';
+  
+  // 获取当前脚本执行索引（用于开发者面板定位）
+  int get currentScriptIndex => _scriptIndex;
+  
+  // 获取当前对话文本（用于开发者面板定位）
+  String get currentDialogueText => _dialogueHistory.isNotEmpty ? _dialogueHistory.last.dialogue : '';
 
   GameManager({this.onReturn});
 

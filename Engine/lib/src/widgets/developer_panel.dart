@@ -31,6 +31,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   String _currentScriptContent = '';
   String _currentScriptPath = '';
   final TextEditingController _scriptController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
@@ -70,6 +71,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   void dispose() {
     _animationController.dispose();
     _scriptController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -96,6 +98,11 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               _currentScriptContent = content;
               _currentScriptPath = scriptPath;
               _scriptController.text = content;
+              
+              // 自动跳转到当前执行位置
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _scrollToCurrentPosition();
+              });
               
               if (kDebugMode) {
                 print('开发者面板: 成功加载脚本 $scriptPath');
@@ -143,6 +150,137 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       _scriptController.text = _currentScriptContent;
     }
     setState(() {});
+  }
+  
+  void _scrollToCurrentPosition() {
+    try {
+      if (_currentScriptContent.isEmpty) {
+        if (kDebugMode) {
+          print('开发者面板: 脚本内容为空，跳过滚动');
+        }
+        return;
+      }
+      
+      // 获取当前对话文本
+      final currentDialogue = widget.gameManager.currentDialogueText;
+      if (currentDialogue.isEmpty) {
+        if (kDebugMode) {
+          print('开发者面板: 当前对话文本为空，跳过滚动');
+        }
+        return;
+      }
+      
+      final lines = _currentScriptContent.split('\n');
+      if (lines.isEmpty) return;
+      
+      if (kDebugMode) {
+        print('开发者面板: 搜索对话文本: "$currentDialogue"');
+      }
+      
+      // 在脚本中搜索当前对话文本
+      int targetLine = _findLineByDialogueText(lines, currentDialogue);
+      
+      if (targetLine >= 0) {
+        if (kDebugMode) {
+          print('开发者面板: 找到对话文本位置，行号=$targetLine');
+        }
+      } else {
+        // 如果找不到完全匹配，尝试模糊搜索
+        targetLine = _findLineByPartialText(lines, currentDialogue);
+        if (targetLine >= 0) {
+          if (kDebugMode) {
+            print('开发者面板: 通过模糊搜索找到位置，行号=$targetLine');
+          }
+        } else {
+          if (kDebugMode) {
+            print('开发者面板: 未找到对话文本，跳过滚动');
+          }
+          return;
+        }
+      }
+      
+      // 计算滚动位置，稍微向上偏移几行以提供上下文
+      const lineHeight = 21.0;
+      final contextOffset = 3; // 向上偏移3行显示上下文
+      final adjustedLine = (targetLine - contextOffset).clamp(0, lines.length - 1);
+      final targetOffset = adjustedLine * lineHeight;
+      
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOut,
+        );
+        
+        if (kDebugMode) {
+          print('开发者面板: 滚动到位置 $targetOffset (行 $adjustedLine, 原始行 $targetLine)');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('开发者面板: 滚动到当前位置失败: $e');
+      }
+    }
+  }
+  
+  int _findLineByDialogueText(List<String> lines, String dialogueText) {
+    // 精确搜索：寻找包含对话文本的行
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      
+      // 检查多种对话格式
+      String? lineDialogue;
+      
+      if (line.startsWith('"') && line.endsWith('"')) {
+        // 格式1: "对话文本"
+        lineDialogue = line.substring(1, line.length - 1);
+      } else if (line.contains('"') && line.endsWith('"')) {
+        // 格式2: l "对话文本" 或 character "对话文本"
+        final quoteStart = line.indexOf('"');
+        if (quoteStart >= 0) {
+          lineDialogue = line.substring(quoteStart + 1, line.length - 1);
+        }
+      }
+      
+      // 检查是否匹配
+      if (lineDialogue != null) {
+        if (lineDialogue.contains(dialogueText) || dialogueText.contains(lineDialogue)) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+  
+  int _findLineByPartialText(List<String> lines, String dialogueText) {
+    // 模糊搜索：寻找包含部分对话文本的行
+    final searchText = dialogueText.trim();
+    if (searchText.length < 3) return -1; // 太短的文本不进行模糊搜索
+    
+    // 取对话文本的前几个字符进行搜索
+    final searchPrefix = searchText.substring(0, (searchText.length / 2).round());
+    
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      
+      // 在整行中搜索包含搜索前缀的内容
+      if (line.contains(searchPrefix)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+  
+  int _getCurrentScriptIndex() {
+    try {
+      // 从GameManager获取当前脚本执行索引
+      return widget.gameManager.currentScriptIndex;
+    } catch (e) {
+      if (kDebugMode) {
+        print('开发者面板: 无法获取当前脚本索引: $e');
+      }
+      return 0;
+    }
   }
 
   String _getCurrentScriptName() {
@@ -529,54 +667,6 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     }
   }
 
-  Future<bool> _showSaveConfirmation() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        final config = SakiEngineConfig();
-        final textScale = context.scaleFor(ComponentType.text);
-        
-        return AlertDialog(
-          backgroundColor: config.themeColors.background,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(config.baseWindowBorder),
-          ),
-          title: Text(
-            '确认保存',
-            style: config.reviewTitleTextStyle.copyWith(
-              fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.8,
-              color: config.themeColors.primary,
-            ),
-          ),
-          content: Text(
-            '确定要覆盖保存脚本文件吗？\n这将直接修改源文件，更改会立即生效。',
-            style: config.dialogueTextStyle.copyWith(
-              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.7,
-              color: config.themeColors.onSurface,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                '取消',
-                style: TextStyle(color: config.themeColors.primary.withOpacity(0.7)),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(
-                '保存',
-                style: TextStyle(color: config.themeColors.primary),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-    return result ?? false;
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -800,6 +890,112 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     );
   }
 
+  Widget _buildLineNumbers(double uiScale, double textScale) {
+    final lines = _scriptController.text.split('\n');
+    final lineCount = lines.length;
+    
+    return Container(
+      padding: EdgeInsets.symmetric(
+        vertical: 12 * uiScale,
+        horizontal: 8 * uiScale,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (int i = 1; i <= lineCount; i++)
+            Container(
+              height: 21 * textScale, // 与文字行高匹配
+              alignment: Alignment.centerRight,
+              child: Text(
+                '$i',
+                style: TextStyle(
+                  color: const Color(0xFF858585), // 行号颜色
+                  fontSize: 12 * textScale,
+                  fontFamily: 'Courier New',
+                  height: 1.5,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  TextSpan _buildHighlightedText(String text, double textScale) {
+    final lines = text.split('\n');
+    final spans = <TextSpan>[];
+    
+    for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      final line = lines[lineIndex];
+      final lineSpans = <TextSpan>[];
+      
+      if (line.trim().startsWith('//')) {
+        // 注释行 - 绿色
+        lineSpans.add(TextSpan(
+          text: line,
+          style: TextStyle(
+            color: const Color(0xFF6A9955),
+            fontSize: 14 * textScale,
+            fontFamily: 'Courier New',
+          ),
+        ));
+      } else if (line.trim().startsWith('[') && line.trim().endsWith(']')) {
+        // 标签行 - 蓝色
+        lineSpans.add(TextSpan(
+          text: line,
+          style: TextStyle(
+            color: const Color(0xFF569CD6),
+            fontSize: 14 * textScale,
+            fontFamily: 'Courier New',
+          ),
+        ));
+      } else if (line.trim().startsWith('"') && line.trim().endsWith('"')) {
+        // 对话文本 - 浅绿色
+        lineSpans.add(TextSpan(
+          text: line,
+          style: TextStyle(
+            color: const Color(0xFFCE9178),
+            fontSize: 14 * textScale,
+            fontFamily: 'Courier New',
+          ),
+        ));
+      } else if (RegExp(r'^(scene|show|hide|nvlm|endnvlm|music|sound|fx)\s').hasMatch(line.trim())) {
+        // 命令关键词 - 紫色
+        lineSpans.add(TextSpan(
+          text: line,
+          style: TextStyle(
+            color: const Color(0xFFC586C0),
+            fontSize: 14 * textScale,
+            fontFamily: 'Courier New',
+          ),
+        ));
+      } else {
+        // 普通文本 - 默认颜色
+        lineSpans.add(TextSpan(
+          text: line,
+          style: TextStyle(
+            color: const Color(0xFFD4D4D4),
+            fontSize: 14 * textScale,
+            fontFamily: 'Courier New',
+          ),
+        ));
+      }
+      
+      spans.addAll(lineSpans);
+      if (lineIndex < lines.length - 1) {
+        spans.add(TextSpan(
+          text: '\n',
+          style: TextStyle(
+            fontSize: 14 * textScale,
+            fontFamily: 'Courier New',
+          ),
+        ));
+      }
+    }
+    
+    return TextSpan(children: spans);
+  }
+
   Widget _buildScriptPreview(double uiScale, double textScale, SakiEngineConfig config) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -834,31 +1030,61 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: config.themeColors.background.withOpacity(0.3),
+              color: const Color(0xFF1E1E1E), // VS Code深色背景
               borderRadius: BorderRadius.circular(config.baseWindowBorder),
               border: Border.all(
-                color: config.themeColors.primary.withOpacity(0.3),
+                color: const Color(0xFF3E3E42), // 深色边框
                 width: 1,
               ),
             ),
-            child: TextField(
-              controller: _scriptController,
-              maxLines: null,
-              expands: true,
-              style: TextStyle(
-                color: config.themeColors.onSurface,
-                fontSize: 10 * textScale,
-                fontFamily: 'monospace',
-                height: 1.4,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.all(12 * uiScale),
-                hintText: '脚本内容...',
-                hintStyle: TextStyle(
-                  color: config.themeColors.onSurface.withOpacity(0.5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 行号区域
+                Container(
+                  width: 50 * uiScale,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF252526), // 行号背景
+                    border: Border(
+                      right: BorderSide(
+                        color: Color(0xFF3E3E42),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: _buildLineNumbers(uiScale, textScale),
                 ),
-              ),
+                // 代码编辑区域
+                Expanded(
+                  child: TextField(
+                    controller: _scriptController,
+                    scrollController: _scrollController,
+                    maxLines: null,
+                    expands: true,
+                    style: TextStyle(
+                      color: const Color(0xFFD4D4D4), // 浅灰色文字
+                      fontSize: 14 * textScale,
+                      fontFamily: 'Courier New',
+                      height: 1.5,
+                      letterSpacing: 0.5,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(12 * uiScale),
+                      hintText: '脚本内容...',
+                      hintStyle: TextStyle(
+                        color: const Color(0xFF6A9955), // 绿色注释色
+                        fontSize: 14 * textScale,
+                        fontFamily: 'Courier New',
+                      ),
+                    ),
+                    onChanged: (value) {
+                      // 实时更新行号
+                      setState(() {});
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
