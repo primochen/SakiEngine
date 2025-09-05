@@ -84,6 +84,7 @@ flutter:
     - assets/Assets/
     - assets/Assets/music/
     - assets/Assets/images/
+    - assets/Assets/images/cg/
     - assets/Assets/images/backgrounds/
     - assets/Assets/images/items/
     - assets/Assets/images/characters/
