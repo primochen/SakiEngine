@@ -1037,54 +1037,58 @@ class _DeveloperPanelState extends State<DeveloperPanel>
                 width: 1,
               ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 行号区域
-                Container(
-                  width: 50 * uiScale,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF252526), // 行号背景
-                    border: Border(
-                      right: BorderSide(
-                        color: Color(0xFF3E3E42),
-                        width: 1,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.vertical,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 行号区域
+                  Container(
+                    width: 50 * uiScale,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF252526), // 行号背景
+                      border: Border(
+                        right: BorderSide(
+                          color: Color(0xFF3E3E42),
+                          width: 1,
+                        ),
                       ),
                     ),
+                    child: _buildLineNumbers(uiScale, textScale),
                   ),
-                  child: _buildLineNumbers(uiScale, textScale),
-                ),
-                // 代码编辑区域
-                Expanded(
-                  child: TextField(
-                    controller: _scriptController,
-                    scrollController: _scrollController,
-                    maxLines: null,
-                    expands: true,
-                    style: TextStyle(
-                      color: const Color(0xFFD4D4D4), // 浅灰色文字
-                      fontSize: 14 * textScale,
-                      fontFamily: 'Courier New',
-                      height: 1.5,
-                      letterSpacing: 0.5,
-                    ),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(12 * uiScale),
-                      hintText: '脚本内容...',
-                      hintStyle: TextStyle(
-                        color: const Color(0xFF6A9955), // 绿色注释色
+                  // 代码编辑区域
+                  Expanded(
+                    child: TextField(
+                      controller: _scriptController,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      style: TextStyle(
+                        color: const Color(0xFFD4D4D4), // 浅灰色文字
                         fontSize: 14 * textScale,
                         fontFamily: 'Courier New',
+                        height: 1.5,
+                        letterSpacing: 0.5,
                       ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(12 * uiScale),
+                        hintText: '脚本内容...',
+                        hintStyle: TextStyle(
+                          color: const Color(0xFF6A9955), // 绿色注释色
+                          fontSize: 14 * textScale,
+                          fontFamily: 'Courier New',
+                        ),
+                        isDense: true,
+                      ),
+                      onChanged: (value) {
+                        // 实时更新行号
+                        setState(() {});
+                      },
                     ),
-                    onChanged: (value) {
-                      // 实时更新行号
-                      setState(() {});
-                    },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
