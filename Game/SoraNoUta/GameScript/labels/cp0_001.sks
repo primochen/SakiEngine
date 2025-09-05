@@ -308,7 +308,7 @@ l "诶诶？"
 scene sky
 nvlm
 "只跑了十几秒钟不到，便到达了目的地。"
-endnvlm
+endnvlmR
 play audio bird
 scene kichi
 nvlm

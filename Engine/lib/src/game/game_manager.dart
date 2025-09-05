@@ -14,6 +14,7 @@ import 'package:sakiengine/src/utils/animation_manager.dart';
 import 'package:sakiengine/src/utils/scene_animation_controller.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
+import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 /// 音乐区间类
 /// 定义音乐播放的有效范围，从play music到下一个play music/stop music之间
@@ -1115,6 +1116,20 @@ class GameManager {
     
     ////print('[GameManager] 开始scene转场到背景: $newBackground, 转场类型: ${transitionType ?? "fade"}');
     
+    // 预加载背景图片以避免动画闪烁
+    if (!ColorBackgroundRenderer.isValidHexColor(newBackground)) {
+      try {
+        final assetPath = await AssetManager().findAsset('backgrounds/${newBackground.replaceAll(' ', '-')}');
+        if (assetPath != null && _context != null) {
+          // 预加载图片到缓存
+          await precacheImage(AssetImage(assetPath), _context!);
+          print('[GameManager] 预加载背景图片完成: $newBackground');
+        }
+      } catch (e) {
+        print('[GameManager] 预加载背景图片失败: $e');
+      }
+    }
+    
     // 解析转场类型
     final effectType = TransitionTypeParser.parseTransitionType(transitionType ?? 'fade');
     print('[GameManager] 转场类型解析: 输入="$transitionType" -> 解析结果=${effectType.name}');
@@ -1149,7 +1164,7 @@ class GameManager {
           clearCharacters: true,
           sceneAnimation: animation,
           sceneAnimationRepeat: repeatCount,
-          sceneAnimationProperties: animation != null ? <String, double>{} : null,
+          sceneAnimationProperties: null, // 不设置空对象，避免闪烁
           clearSceneAnimation: animation == null,
           everShownCharacters: _everShownCharacters,
         );
@@ -1180,7 +1195,7 @@ class GameManager {
             clearCharacters: true,
             sceneAnimation: animation,
             sceneAnimationRepeat: repeatCount,
-            sceneAnimationProperties: animation != null ? <String, double>{} : null,
+            sceneAnimationProperties: null, // 不设置空对象，避免闪烁
             clearSceneAnimation: animation == null,
             everShownCharacters: _everShownCharacters,
           );
@@ -1196,9 +1211,14 @@ class GameManager {
     // 转场完成，等待计时器结束后自动执行后续脚本
     _isProcessing = false;
     
-    // 如果有场景动画，启动动画
+    // 如果有场景动画，延迟启动动画以确保背景图片完全加载
     if (animation != null && _tickerProvider != null) {
-      _startSceneAnimation(animation, repeatCount);
+      // 等待足够的时间让背景图片完全加载和渲染
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_tickerProvider != null) {
+          _startSceneAnimation(animation, repeatCount);
+        }
+      });
     }
   }
 

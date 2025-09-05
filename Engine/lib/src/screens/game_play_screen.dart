@@ -482,14 +482,24 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       } else {
         // 处理图片背景
         backgroundWidget = FutureBuilder<String?>(
+          key: ValueKey('bg_$background'), // 添加key避免重建
           future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
           builder: (context, snapshot) {
             if (snapshot.hasData && snapshot.data != null) {
               return Image.asset(
                 snapshot.data!,
+                key: ValueKey(snapshot.data!), // 为图片添加key
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  // 如果是同步加载（已缓存），直接显示
+                  if (wasSynchronouslyLoaded ?? false) {
+                    return child;
+                  }
+                  // 异步加载时，只在完全加载后显示，避免闪烁
+                  return frame != null ? child : Container(color: Colors.black);
+                },
               );
             }
             return Container(color: Colors.black);
@@ -498,23 +508,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       }
     }
     
-    // 应用动画变换
-    if (animationProperties != null && animationProperties.isNotEmpty) {
-      backgroundWidget = Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.identity()
-          ..translate(
-            (animationProperties['xcenter'] ?? 0.0) * MediaQuery.of(context).size.width,
-            (animationProperties['ycenter'] ?? 0.0) * MediaQuery.of(context).size.height,
-          )
-          ..scale(animationProperties['scale'] ?? 1.0)
-          ..rotateZ(animationProperties['rotation'] ?? 0.0),
-        child: Opacity(
-          opacity: (animationProperties['alpha'] ?? 1.0).clamp(0.0, 1.0),
-          child: backgroundWidget,
-        ),
-      );
-    }
+    // 始终应用动画变换以避免Widget结构变化导致的闪烁
+    backgroundWidget = Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.identity()
+        ..translate(
+          ((animationProperties?['xcenter'] ?? 0.0)) * MediaQuery.of(context).size.width,
+          ((animationProperties?['ycenter'] ?? 0.0)) * MediaQuery.of(context).size.height,
+        )
+        ..scale((animationProperties?['scale'] ?? 1.0))
+        ..rotateZ((animationProperties?['rotation'] ?? 0.0)),
+      child: Opacity(
+        opacity: ((animationProperties?['alpha'] ?? 1.0)).clamp(0.0, 1.0),
+        child: backgroundWidget,
+      ),
+    );
     
     // 应用场景滤镜
     if (sceneFilter != null) {
