@@ -1,0 +1,168 @@
+import 'package:sakiengine/src/config/config_models.dart';
+import 'package:sakiengine/src/game/game_manager.dart';
+
+/// 角色自动分布工具类
+/// 根据视觉小说最佳实践自动分布多个角色的位置
+class CharacterAutoDistribution {
+  
+  /// 计算自动分布的角色位置
+  /// [characters] 当前场景中的角色状态Map
+  /// [poseConfigs] 姿势配置Map
+  /// [characterOrder] 角色出场顺序（按时间排序）
+  /// 返回更新后的姿势配置Map
+  static Map<String, PoseConfig> calculateAutoDistribution(
+    Map<String, CharacterState> characters,
+    Map<String, PoseConfig> poseConfigs,
+    List<String> characterOrder,
+  ) {
+    print('DEBUG: 开始自动分布计算');
+    print('DEBUG: 角色总数: ${characters.length}');
+    print('DEBUG: 角色ID列表: ${characters.keys.toList()}');
+    print('DEBUG: 姿势配置总数: ${poseConfigs.length}');
+    
+    // 复制原始配置以避免修改原数据
+    final result = Map<String, PoseConfig>.from(poseConfigs);
+    
+    // 找出所有使用auto锚点且没有设置xcenter的角色
+    final autoCharacters = <String>[];
+    for (final characterId in characters.keys) {
+      final character = characters[characterId]!;
+      final pose = poseConfigs[character.positionId];
+      
+      print('DEBUG: 检查角色 $characterId, positionId=${character.positionId}');
+      if (pose != null) {
+        print('DEBUG:   pose配置: anchor=${pose.anchor}, xcenter=${pose.xcenter}, ycenter=${pose.ycenter}');
+        print('DEBUG:   isAutoAnchor=${pose.isAutoAnchor}');
+        
+        if (pose.isAutoAnchor && pose.xcenter == 0.5) {
+          autoCharacters.add(characterId);
+          print('DEBUG:   → 添加到自动分布列表');
+        } else {
+          print('DEBUG:   → 跳过（非auto锚点或xcenter≠0.5）');
+        }
+      } else {
+        print('DEBUG:   → 警告：找不到pose配置');
+      }
+    }
+    
+    print('DEBUG: 自动分布角色列表: $autoCharacters');
+    
+    if (autoCharacters.isEmpty) {
+      print('DEBUG: 无需自动分布，返回原配置');
+      return result;
+    }
+    
+    // 按出场顺序排序自动分布的角色
+    autoCharacters.sort((a, b) {
+      final indexA = characterOrder.indexOf(a);
+      final indexB = characterOrder.indexOf(b);
+      // 如果角色不在出场顺序中，放在最后
+      if (indexA == -1 && indexB == -1) return 0;
+      if (indexA == -1) return 1;
+      if (indexB == -1) return -1;
+      return indexA.compareTo(indexB);
+    });
+    
+    print('DEBUG: 排序后的自动分布角色: $autoCharacters');
+    
+    // 根据角色数量计算分布位置
+    final positions = _calculateDistributionPositions(autoCharacters.length);
+    print('DEBUG: 计算出的分布位置: $positions');
+    
+    // 应用自动分布
+    for (int i = 0; i < autoCharacters.length; i++) {
+      final characterId = autoCharacters[i];
+      final character = characters[characterId]!;
+      final originalPose = poseConfigs[character.positionId]!;
+      final newXCenter = positions[i];
+      
+      print('DEBUG: 处理角色 $characterId (${i + 1}/${autoCharacters.length})');
+      print('DEBUG:   原始xcenter: ${originalPose.xcenter} → 新xcenter: $newXCenter');
+      print('DEBUG:   保持ycenter: ${originalPose.ycenter}');
+      print('DEBUG:   anchor: ${originalPose.anchor} → ${originalPose.anchor == 'auto' ? 'center' : originalPose.anchor}');
+      
+      // 为每个角色创建独立的配置ID，避免共享positionId导致的覆盖问题
+      final uniquePoseId = '${character.positionId}_auto_$i';
+      print('DEBUG:   创建独立配置ID: $uniquePoseId');
+      
+      // 创建新的姿势配置，使用计算出的x位置
+      result[uniquePoseId] = originalPose.copyWithAutoDistribution(newXCenter);
+      
+      // 更新角色的positionId指向新的独立配置
+      // 注意：这里需要修改character对象，但CharacterState是不可变的
+      // 我们需要在调用方处理这个问题
+    }
+    
+    print('DEBUG: 自动分布完成');
+    return result;
+  }
+  
+  /// 根据角色数量计算最佳分布位置
+  /// 返回x轴位置数组（0.0到1.0之间的归一化坐标）
+  static List<double> _calculateDistributionPositions(int characterCount) {
+    switch (characterCount) {
+      case 1:
+        // 一个角色：居中
+        return [0.5];
+      case 2:
+        // 两个角色：左右均匀分布
+        return [0.25, 0.75];
+      case 3:
+        // 三个角色：左中右均匀分布
+        return [0.2, 0.5, 0.8];
+      case 4:
+        // 四个角色：平均分布
+        return [0.15, 0.38, 0.62, 0.85];
+      case 5:
+        // 五个角色：平均分布
+        return [0.1, 0.3, 0.5, 0.7, 0.9];
+      default:
+        // 超过5个角色：动态平均分布
+        if (characterCount <= 1) return [0.5];
+        
+        final positions = <double>[];
+        final margin = 0.05; // 边缘留5%空间
+        final availableWidth = 1.0 - (margin * 2);
+        final spacing = availableWidth / (characterCount - 1);
+        
+        for (int i = 0; i < characterCount; i++) {
+          positions.add(margin + (spacing * i));
+        }
+        return positions;
+    }
+  }
+  
+  /// 获取角色出场顺序的辅助方法
+  /// 通过分析游戏状态历史来确定角色的出场先后顺序
+  static List<String> getCharacterAppearanceOrder(List<String> currentCharacters) {
+    // 在实际实现中，这里应该维护一个角色出现时间的记录
+    // 暂时返回当前顺序
+    return List.from(currentCharacters);
+  }
+  
+  /// 调试方法：打印角色分布信息
+  static void debugPrintDistribution(
+    Map<String, CharacterState> characters,
+    Map<String, PoseConfig> originalPoses,
+    Map<String, PoseConfig> distributedPoses,
+  ) {
+    print('=== 角色自动分布调试信息 ===');
+    print('总角色数: ${characters.length}');
+    
+    final autoCharacters = <String>[];
+    for (final entry in characters.entries) {
+      final characterId = entry.key;
+      final character = entry.value;
+      final originalPose = originalPoses[character.positionId];
+      final distributedPose = distributedPoses[character.positionId];
+      
+      if (originalPose != null && originalPose.isAutoAnchor) {
+        autoCharacters.add(characterId);
+        print('角色 $characterId: ${originalPose.xcenter} -> ${distributedPose?.xcenter ?? "未分布"}');
+      }
+    }
+    
+    print('自动分布角色: ${autoCharacters.join(", ")}');
+    print('========================');
+  }
+}

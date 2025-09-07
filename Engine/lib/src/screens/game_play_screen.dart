@@ -33,6 +33,7 @@ import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
+import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -480,7 +481,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       children: [
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
-        ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
+        ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
         if (gameState.dialogue != null && !gameState.isNvlMode)
           _createDialogueBox(
             speaker: gameState.speaker,
@@ -578,6 +579,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
+    // 应用自动分布逻辑
+    final characterOrder = characters.keys.toList();
+    final distributedPoseConfigs = CharacterAutoDistribution.calculateAutoDistribution(
+      characters,
+      poseConfigs,
+      characterOrder,
+    );
+    
     // 按resourceId分组，保留最新的角色状态
     final Map<String, MapEntry<String, CharacterState>> charactersByResourceId = {};
     
@@ -590,7 +599,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     return charactersByResourceId.values.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
-      final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
+      // 使用分布后的pose配置
+      final poseConfig = distributedPoseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
 
       // 使用resourceId作为key，确保唯一性
       final widgetKey = '${characterState.resourceId}';

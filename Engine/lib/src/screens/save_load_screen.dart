@@ -60,7 +60,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 
     try {
       final snapshot = widget.gameManager!.saveStateSnapshot();
-      await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot);
+      await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot, widget.gameManager!.poseConfigs);
       
       _notificationOverlayKey.currentState?.show('保存成功');
       

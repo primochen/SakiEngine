@@ -7,6 +7,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
+import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 
 /// 游戏渲染器 - 统一的背景和角色绘制逻辑
 /// 同时供游戏界面和截图生成器使用，确保完全一致的渲染效果
@@ -56,10 +57,18 @@ class GameRenderer {
     Map<String, PoseConfig> poseConfigs,
     Size canvasSize,
   ) async {
+    // 应用自动分布逻辑
+    final characterOrder = characters.keys.toList();
+    final distributedPoseConfigs = CharacterAutoDistribution.calculateAutoDistribution(
+      characters,
+      poseConfigs,
+      characterOrder,
+    );
+    
     for (final entry in characters.entries) {
       final characterId = entry.key;
       final characterState = entry.value;
-      await drawSingleCharacter(canvas, characterId, characterState, poseConfigs, canvasSize);
+      await drawSingleCharacter(canvas, characterId, characterState, distributedPoseConfigs, canvasSize);
     }
   }
   

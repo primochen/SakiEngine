@@ -1,5 +1,6 @@
 import 'dart:convert' show utf8;
 import 'dart:typed_data';
+import 'dart:math' show min;
 import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
@@ -31,45 +32,61 @@ class BinarySerializer {
 
   /// 从二进制数据反序列化SaveSlot
   static SaveSlot deserializeSaveSlot(Uint8List data) {
+    print('DEBUG: 开始反序列化存档，数据长度: ${data.length}');
+    
     final reader = _BinaryReader(data);
     
     // 读取并验证魔法数字和版本号
+    print('DEBUG: 读取魔法数字...');
     final magic = String.fromCharCodes(reader.readBytes(4));
+    print('DEBUG: 魔法数字: "$magic" (期望: "$_magicNumber")');
+    
     if (magic != _magicNumber) {
       throw FormatException('Invalid file format: expected $_magicNumber, got $magic');
     }
     
+    print('DEBUG: 读取版本号...');
     final version = reader.readInt32();
+    print('DEBUG: 版本号: $version (当前支持: $_version)');
+    
     if (version != _version) {
       throw FormatException('Unsupported version: $version');
     }
     
     // 读取基本信息
+    print('DEBUG: 读取基本信息...');
     final id = reader.readInt32();
     final saveTime = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
     final currentScript = reader.readString();
-    final dialoguePreview = reader.readString();
+    final dialoguePreview = reader.readNullableString();
     final screenshotData = reader.readNullableBytes();
+    
+    print('DEBUG: ID=$id, 时间=$saveTime, 脚本=$currentScript');
+    print('DEBUG: 对话预览=${dialoguePreview != null ? (dialoguePreview.length > 50 ? dialoguePreview.substring(0, 50) + "..." : dialoguePreview) : "null"}');
+    print('DEBUG: 截图数据长度=${screenshotData?.length ?? 0}');
     
     // 读取锁定状态（向后兼容旧版本存档）
     bool isLocked = false;
     if (reader.hasMoreData()) {
       try {
         isLocked = reader.readByte() == 1;
+        print('DEBUG: 锁定状态=$isLocked');
       } catch (e) {
-        // 如果读取失败，默认为未锁定
+        print('DEBUG: 无法读取锁定状态，默认为未锁定: $e');
         isLocked = false;
       }
     }
     
     // 读取游戏状态快照
+    print('DEBUG: 读取游戏状态快照...');
     final snapshot = _deserializeGameStateSnapshot(reader);
     
+    print('DEBUG: 存档反序列化完成');
     return SaveSlot(
       id: id,
       saveTime: saveTime,
       currentScript: currentScript,
-      dialoguePreview: dialoguePreview,
+      dialoguePreview: dialoguePreview ?? '',
       snapshot: snapshot,
       screenshotData: screenshotData,
       isLocked: isLocked,
@@ -238,7 +255,7 @@ class BinarySerializer {
     final dialogue = reader.readString();
     final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
     final scriptIndex = reader.readInt32();
-    final stateSnapshot = _deserializeGameStateSnapshot(reader);
+    final stateSnapshot = _deserializeGameStateSnapshot(reader); // 历史记录也使用相同版本
     
     return DialogueHistoryEntry(
       speaker: speaker,

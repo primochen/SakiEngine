@@ -608,7 +608,6 @@ class GameManager {
           _currentState = _currentState.copyWith(
             dialogue: node.dialogue,
             speaker: characterConfig?.name,
-            poseConfigs: _poseConfigs,
             currentNode: null,
             clearDialogueAndSpeaker: false,
             forceNullSpeaker: node.character == null,
@@ -727,7 +726,6 @@ class GameManager {
           _currentState = _currentState.copyWith(
             dialogue: node.dialogue,
             speaker: characterConfig?.name,
-            poseConfigs: _poseConfigs,
             currentNode: null,
             clearDialogueAndSpeaker: false,
             forceNullSpeaker: node.character == null,
@@ -965,7 +963,6 @@ class GameManager {
     
     // 恢复 NVL 状态
     _currentState = snapshot.currentState.copyWith(
-      poseConfigs: _poseConfigs,
       isNvlMode: snapshot.isNvlMode,
       isNvlMovieMode: snapshot.isNvlMovieMode,
       nvlDialogues: snapshot.nvlDialogues,
@@ -1012,7 +1009,6 @@ class GameManager {
       }
       
       _currentState = _savedSnapshot!.currentState.copyWith(
-        poseConfigs: _poseConfigs,
         clearDialogueAndSpeaker: true,
         forceNullCurrentNode: true,
         // 恢复 NVL 状态
@@ -1390,7 +1386,6 @@ class GameState {
   final Map<String, CharacterState> characters;
   final String? dialogue;
   final String? speaker;
-  final Map<String, PoseConfig> poseConfigs;
   final SksNode? currentNode;
   final bool isNvlMode;
   final bool isNvlMovieMode;
@@ -1408,7 +1403,6 @@ class GameState {
     this.characters = const {},
     this.dialogue,
     this.speaker,
-    this.poseConfigs = const {},
     this.currentNode,
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
@@ -1432,7 +1426,6 @@ class GameState {
     Map<String, CharacterState>? characters,
     String? dialogue,
     String? speaker,
-    Map<String, PoseConfig>? poseConfigs,
     SksNode? currentNode,
     bool clearDialogueAndSpeaker = false,
     bool clearCharacters = false,
@@ -1459,7 +1452,6 @@ class GameState {
       speaker: forceNullSpeaker
           ? null
           : (clearDialogueAndSpeaker ? null : (speaker ?? this.speaker)),
-      poseConfigs: poseConfigs ?? this.poseConfigs,
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
       isNvlMode: isNvlMode ?? this.isNvlMode,
       isNvlMovieMode: isNvlMovieMode ?? this.isNvlMovieMode,
