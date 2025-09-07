@@ -476,6 +476,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
   }
 
+  // 淡出动画完成后移除角色
+  void _removeCharacterAfterFadeOut(String characterId) {
+    _gameManager.removeCharacterAfterFadeOut(characterId);
+  }
+
   Widget _buildSceneWithFilter(GameState gameState) {
     return Stack(
       children: [
@@ -629,6 +634,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             return _CharacterLayer(
               key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
               assetName: layerInfo.assetName,
+              isFadingOut: characterState.isFadingOut,
+              onFadeOutComplete: characterState.isFadingOut ? () {
+                // 淡出完成，从角色列表中移除该角色
+                _removeCharacterAfterFadeOut(characterId);
+              } : null,
             );
           }).toList();
           
@@ -694,9 +704,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
 class _CharacterLayer extends StatefulWidget {
   final String assetName;
+  final bool isFadingOut;
+  final VoidCallback? onFadeOutComplete;
+  
   const _CharacterLayer({
     super.key, 
     required this.assetName,
+    this.isFadingOut = false,
+    this.onFadeOutComplete,
   });
 
   @override
@@ -740,6 +755,17 @@ class _CharacterLayerState extends State<_CharacterLayer>
   @override
   void didUpdateWidget(covariant _CharacterLayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // 检查是否开始淡出
+    if (!oldWidget.isFadingOut && widget.isFadingOut) {
+      // 开始淡出动画
+      _controller.reverse().then((_) {
+        // 淡出完成，通知回调
+        widget.onFadeOutComplete?.call();
+      });
+      return;
+    }
+    
     if (oldWidget.assetName != widget.assetName) {
       _previousImage = _currentImage;
       _loadImage().then((_) {

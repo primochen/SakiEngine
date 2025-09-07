@@ -569,14 +569,20 @@ class GameManager {
 
       if (node is HideNode) {
         final newCharacters = Map.of(_currentState.characters);
-        newCharacters.remove(node.character);
+        final character = newCharacters[node.character];
         
-        // 检测角色位置变化并触发动画（如果需要）
-        await _checkAndAnimateCharacterPositions(newCharacters);
+        if (character != null) {
+          // 不立即移除角色，而是标记为正在淡出
+          newCharacters[node.character] = character.copyWith(isFadingOut: true);
+          
+          _currentState = _currentState.copyWith(
+            characters: newCharacters,
+            clearDialogueAndSpeaker: false,
+            everShownCharacters: _everShownCharacters
+          );
+          _gameStateController.add(_currentState);
+        }
         
-        _currentState =
-            _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: false, everShownCharacters: _everShownCharacters);
-        _gameStateController.add(_currentState);
         _scriptIndex++;
         continue;
       }
@@ -1448,6 +1454,19 @@ class GameManager {
     }
   }
 
+  /// 淡出动画完成后移除角色
+  void removeCharacterAfterFadeOut(String characterId) {
+    final newCharacters = Map.of(_currentState.characters);
+    newCharacters.remove(characterId);
+    
+    _currentState = _currentState.copyWith(
+      characters: newCharacters,
+      clearDialogueAndSpeaker: false,
+      everShownCharacters: _everShownCharacters
+    );
+    _gameStateController.add(_currentState);
+  }
+
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
@@ -1573,6 +1592,7 @@ class CharacterState {
   final String? expression;
   final String? positionId;
   final Map<String, double>? animationProperties;
+  final bool isFadingOut;
 
   CharacterState({
     required this.resourceId, 
@@ -1580,6 +1600,7 @@ class CharacterState {
     this.expression, 
     this.positionId,
     this.animationProperties,
+    this.isFadingOut = false,
   });
   
 
@@ -1589,6 +1610,7 @@ class CharacterState {
     String? positionId,
     Map<String, double>? animationProperties,
     bool clearAnimationProperties = false,
+    bool? isFadingOut,
   }) {
     return CharacterState(
       resourceId: resourceId,
@@ -1596,6 +1618,7 @@ class CharacterState {
       expression: expression ?? this.expression,
       positionId: positionId ?? this.positionId,
       animationProperties: clearAnimationProperties ? null : (animationProperties ?? this.animationProperties),
+      isFadingOut: isFadingOut ?? this.isFadingOut,
     );
   }
 }
