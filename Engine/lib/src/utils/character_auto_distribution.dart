@@ -1,10 +1,98 @@
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/utils/character_position_animator.dart';
 
 /// 角色自动分布工具类
 /// 根据视觉小说最佳实践自动分布多个角色的位置
 class CharacterAutoDistribution {
   
+  /// 计算需要动画的角色位置变化
+  /// 比较新旧角色分布，返回需要动画过渡的角色位置变化
+  /// [oldCharacters] 之前的角色状态Map
+  /// [newCharacters] 新的角色状态Map
+  /// [oldPoseConfigs] 之前的姿势配置Map
+  /// [newPoseConfigs] 新的姿势配置Map
+  /// [characterOrder] 角色出场顺序
+  /// 返回需要动画的角色位置变化列表
+  static List<CharacterPositionChange> calculatePositionChanges(
+    Map<String, CharacterState> oldCharacters,
+    Map<String, CharacterState> newCharacters,
+    Map<String, PoseConfig> oldPoseConfigs,
+    Map<String, PoseConfig> newPoseConfigs,
+    List<String> characterOrder,
+  ) {
+    print('[CharacterAutoDistribution] 计算位置变化...');
+    print('[CharacterAutoDistribution] 旧角色数量: ${oldCharacters.length}');
+    print('[CharacterAutoDistribution] 新角色数量: ${newCharacters.length}');
+    
+    final positionChanges = <CharacterPositionChange>[];
+    
+    // 计算旧的分布
+    final oldDistributed = calculateAutoDistribution(
+      oldCharacters, 
+      oldPoseConfigs, 
+      characterOrder,
+    );
+    
+    // 计算新的分布
+    final newDistributed = calculateAutoDistribution(
+      newCharacters, 
+      newPoseConfigs, 
+      characterOrder,
+    );
+    
+    print('[CharacterAutoDistribution] 旧分布配置数量: ${oldDistributed.length}');
+    print('[CharacterAutoDistribution] 新分布配置数量: ${newDistributed.length}');
+    
+    // 比较每个角色的位置变化
+    for (final characterId in newCharacters.keys) {
+      final oldCharacter = oldCharacters[characterId];
+      final newCharacter = newCharacters[characterId];
+      
+      print('[CharacterAutoDistribution] 检查角色 $characterId');
+      
+      if (oldCharacter == null || newCharacter == null) {
+        print('[CharacterAutoDistribution] 角色 $characterId 旧状态或新状态为null，跳过');
+        continue;
+      }
+      
+      // 获取角色的原始pose配置（检查是否为auto anchor）
+      final oldOriginalPose = oldPoseConfigs[oldCharacter.positionId];
+      final newOriginalPose = newPoseConfigs[newCharacter.positionId];
+      
+      // 获取分布后的pose配置（获取实际位置）
+      final oldAutoDistributedPoseId = '${characterId}_auto_distributed';
+      final newAutoDistributedPoseId = '${characterId}_auto_distributed';
+      
+      final oldDistributedPose = oldDistributed[oldAutoDistributedPoseId] ?? oldOriginalPose;
+      final newDistributedPose = newDistributed[newAutoDistributedPoseId] ?? newOriginalPose;
+      
+      print('[CharacterAutoDistribution] 角色 $characterId 原始pose isAuto: ${oldOriginalPose?.isAutoAnchor}, ${newOriginalPose?.isAutoAnchor}');
+      print('[CharacterAutoDistribution] 角色 $characterId 分布后位置: ${oldDistributedPose?.xcenter} -> ${newDistributedPose?.xcenter}');
+      
+      if (oldOriginalPose == null || newOriginalPose == null || oldDistributedPose == null || newDistributedPose == null) {
+        print('[CharacterAutoDistribution] 角色 $characterId pose配置为null，跳过');
+        continue;
+      }
+      
+      // 检查原始pose是否为auto anchor，且分布后的位置是否发生变化
+      if (oldOriginalPose.isAutoAnchor && newOriginalPose.isAutoAnchor && 
+          (oldDistributedPose.xcenter - newDistributedPose.xcenter).abs() > 0.001) {
+        print('[CharacterAutoDistribution] 角色 $characterId 需要位置动画: ${oldDistributedPose.xcenter} -> ${newDistributedPose.xcenter}');
+        positionChanges.add(CharacterPositionChange(
+          characterId: characterId,
+          fromX: oldDistributedPose.xcenter,
+          toX: newDistributedPose.xcenter,
+        ));
+      } else {
+        print('[CharacterAutoDistribution] 角色 $characterId 无需位置动画');
+      }
+    }
+    
+    print('[CharacterAutoDistribution] 总共需要动画的角色数量: ${positionChanges.length}');
+    return positionChanges;
+  }
+
   /// 计算自动分布的角色位置
   /// [characters] 当前场景中的角色状态Map
   /// [poseConfigs] 姿势配置Map

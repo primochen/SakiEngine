@@ -12,6 +12,8 @@ import 'package:sakiengine/src/effects/scene_transition_effects.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/utils/animation_manager.dart';
 import 'package:sakiengine/src/utils/scene_animation_controller.dart';
+import 'package:sakiengine/src/utils/character_position_animator.dart';
+import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
@@ -90,6 +92,74 @@ class GameManager {
   // 场景动画控制器
   SceneAnimationController? _sceneAnimationController;
   
+  // 角色位置动画管理器
+  CharacterPositionAnimator? _characterPositionAnimator;
+  
+  /// 检测并播放角色位置变化动画
+  Future<void> _checkAndAnimateCharacterPositions(Map<String, CharacterState> newCharacters) async {
+    if (_tickerProvider == null) return;
+    
+    print('[CharacterPositionAnimation] 检测位置变化...');
+    print('[CharacterPositionAnimation] 旧角色: ${_currentState.characters.keys.toList()}');
+    print('[CharacterPositionAnimation] 新角色: ${newCharacters.keys.toList()}');
+    
+    // 检测位置变化
+    final characterOrder = newCharacters.keys.toList();
+    final positionChanges = CharacterAutoDistribution.calculatePositionChanges(
+      _currentState.characters, 
+      newCharacters, 
+      _poseConfigs, 
+      _poseConfigs,
+      characterOrder,
+    );
+    
+    print('[CharacterPositionAnimation] 检测到 ${positionChanges.length} 个位置变化');
+    for (final change in positionChanges) {
+      print('[CharacterPositionAnimation] ${change.characterId}: ${change.fromX} -> ${change.toX}');
+    }
+    
+    if (positionChanges.isNotEmpty) {
+      // 如果有位置变化，播放动画
+      _characterPositionAnimator?.stop();
+      _characterPositionAnimator = CharacterPositionAnimator();
+      
+      print('[CharacterPositionAnimation] 开始播放位置动画...');
+      
+      await _characterPositionAnimator!.animatePositionChanges(
+        positionChanges: positionChanges,
+        vsync: _tickerProvider!,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        onUpdate: (positions) {
+          // 更新角色的动画属性
+          final updatedCharacters = Map<String, CharacterState>.from(_currentState.characters);
+          for (final entry in positions.entries) {
+            final characterId = entry.key;
+            final xPosition = entry.value;
+            final character = updatedCharacters[characterId];
+            if (character != null) {
+              updatedCharacters[characterId] = character.copyWith(
+                animationProperties: {
+                  ...character.animationProperties ?? {},
+                  'xcenter': xPosition,
+                },
+              );
+            }
+          }
+          
+          _currentState = _currentState.copyWith(characters: updatedCharacters);
+          _gameStateController.add(_currentState);
+        },
+        onComplete: () {
+          // 动画完成，清理动画属性
+          print('[CharacterPositionAnimation] 角色位置动画完成');
+        },
+      );
+    } else {
+      print('[CharacterPositionAnimation] 无需位置动画');
+    }
+  }
+
   /// 查找具有相同resourceId的现有角色key
   String? _findExistingCharacterKey(String resourceId) {
     //print('[GameManager] 查找resourceId=$resourceId的角色，当前角色列表: ${_currentState.characters.keys}');
@@ -467,6 +537,16 @@ class GameManager {
           resourceId: resourceId,
           positionId: positionId,
         );
+        
+        // 检测角色位置变化并触发动画（如果需要）
+        // 先将新角色添加到临时角色列表，然后检测位置变化
+        final tempCharacters = Map.of(newCharacters);
+        tempCharacters[finalCharacterKey] = currentCharacterState.copyWith(
+          pose: node.pose,
+          expression: node.expression,
+          clearAnimationProperties: false,
+        );
+        await _checkAndAnimateCharacterPositions(tempCharacters);
 
         newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: node.pose,
@@ -490,6 +570,10 @@ class GameManager {
       if (node is HideNode) {
         final newCharacters = Map.of(_currentState.characters);
         newCharacters.remove(node.character);
+        
+        // 检测角色位置变化并触发动画（如果需要）
+        await _checkAndAnimateCharacterPositions(newCharacters);
+        
         _currentState =
             _currentState.copyWith(characters: newCharacters, clearDialogueAndSpeaker: false, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
@@ -679,6 +763,10 @@ class GameManager {
               expression: node.expression,
               clearAnimationProperties: false,
             );
+            
+            // 检测角色位置变化并触发动画（如果需要）
+            await _checkAndAnimateCharacterPositions(newCharacters);
+            
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
             //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
