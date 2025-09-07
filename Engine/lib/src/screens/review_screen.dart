@@ -38,6 +38,12 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
   static const double _bottomTextSizeRatio = 0.44;        // 底部统计: 44%
 
   @override
+  void initState() {
+    super.initState();
+    // 使用 reverse: true 的 ListView，无需额外滚动逻辑
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
@@ -69,7 +75,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
         ),
         child: Center(
           child: Text(
-            '${widget.dialogueHistory.length} 段回忆',
+            '${widget.dialogueHistory.length} 段记录',
             style: config.reviewTitleTextStyle.copyWith(
               fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _bottomTextSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.7),
@@ -132,13 +138,16 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
       child: ListView.builder(
         controller: _scrollController,
+        reverse: true, // 反转列表，最新记录在视觉上的底部
         padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),
         itemCount: widget.dialogueHistory.length,
         itemBuilder: (context, index) {
-          final entry = widget.dialogueHistory[index];
+          // 由于列表反转，需要反转索引来获取正确的条目
+          final reversedIndex = widget.dialogueHistory.length - 1 - index;
+          final entry = widget.dialogueHistory[reversedIndex];
           return Column(
             children: [
-              _buildDialogueEntry(entry, index, uiScale, textScale, config),
+              _buildDialogueEntry(entry, reversedIndex, uiScale, textScale, config),
               SizedBox(height: 8 * uiScale),
             ],
           );
@@ -170,31 +179,39 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 说话人和序号
+          // 序号和说话人
           Row(
             children: [
-              if (entry.speaker != null && entry.speaker!.isNotEmpty) ...[
-                Text(
-                  entry.speaker!,
+              // 固定宽度的序号区域，确保对齐
+              SizedBox(
+                width: 40 * uiScale,
+                child: Text(
+                  '${index + 1}',
                   style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _speakerSizeRatio,
-                    fontWeight: FontWeight.w500,
-                    color: config.themeColors.primary,
-                    letterSpacing: 0.5,
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _indexSizeRatio,
+                    color: config.themeColors.primary.withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.normal,
                   ),
                 ),
-                SizedBox(width: 12 * uiScale),
-              ],
-              Text(
-                '${index + 1}',
-                style: config.reviewTitleTextStyle.copyWith(
-                  fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _indexSizeRatio,
-                  color: config.themeColors.primary.withValues(alpha: 0.5),
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.normal,
-                ),
               ),
-              const Spacer(),
+              // 说话人（如果有的话）
+              if (entry.speaker != null && entry.speaker!.isNotEmpty) ...[
+                Expanded(
+                  child: Text(
+                    entry.speaker!,
+                    style: config.reviewTitleTextStyle.copyWith(
+                      fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _speakerSizeRatio,
+                      fontWeight: FontWeight.w500,
+                      color: config.themeColors.primary,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ] else ...[
+                const Spacer(),
+              ],
               // 跳转按钮
               if (widget.onJumpToEntry != null)
                 _buildJumpButton(entry, uiScale, textScale, config),
