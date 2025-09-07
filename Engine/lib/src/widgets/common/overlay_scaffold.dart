@@ -99,6 +99,7 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
               autofocus: true,
               child: GestureDetector(
                 onTap: _handleClose,
+                onSecondaryTap: _handleClose,
                 child: Container(
                   width: double.infinity,
                   height: double.infinity,
@@ -107,6 +108,7 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
                   ),
                   child: GestureDetector(
                     onTap: () {},
+                    onSecondaryTap: _handleClose,
                     child: Center(
                       child: Transform.scale(
                         scale: _scaleAnimation.value,

@@ -9,6 +9,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/game/screenshot_generator.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
+import 'package:sakiengine/src/config/config_models.dart';
 
 class SaveLoadManager {
   // 获取当前游戏项目名称
@@ -53,7 +54,7 @@ class SaveLoadManager {
     return savesDir.path;
   }
 
-  Future<void> saveGame(int slotId, String currentScript, GameStateSnapshot snapshot) async {
+  Future<void> saveGame(int slotId, String currentScript, GameStateSnapshot snapshot, Map<String, PoseConfig> poseConfigs) async {
     // 检查目标位置是否有被锁定的存档
     final existingSlot = await loadGame(slotId);
     if (existingSlot?.isLocked == true) {
@@ -89,7 +90,7 @@ class SaveLoadManager {
     try {
       screenshotData = await ScreenshotGenerator.generateScreenshotData(
         currentState,
-        currentState.poseConfigs,
+        poseConfigs,
       );
     } catch (e) {
       print('生成截图失败: $e');
@@ -125,19 +126,37 @@ class SaveLoadManager {
 
   Future<List<SaveSlot>> listSaveSlots() async {
     final directory = await getSavesDirectory();
+    //print('DEBUG: 存档目录: $directory');
+    
     final files = await Directory(directory).list().toList();
+    //print('DEBUG: 找到 ${files.length} 个文件');
+    
     final saveSlots = <SaveSlot>[];
 
     for (var fileEntity in files) {
+      //print('DEBUG: 检查文件: ${fileEntity.path}');
+      
       if (fileEntity is File && fileEntity.path.endsWith('.sakisav')) {
+        //print('DEBUG: 尝试读取存档文件: ${fileEntity.path}');
         try {
           final binaryData = await fileEntity.readAsBytes();
-          saveSlots.add(SaveSlot.fromBinary(binaryData));
-        } catch(e) {
-          print('Error reading save file ${fileEntity.path}: $e');
+          //print('DEBUG: 成功读取 ${binaryData.length} 字节数据');
+          
+          final saveSlot = SaveSlot.fromBinary(binaryData);
+          //print('DEBUG: 成功解析存档，ID=${saveSlot.id}, 时间=${saveSlot.saveTime}');
+          
+          saveSlots.add(saveSlot);
+        } catch(e, stackTrace) {
+          print('ERROR: 读取存档文件失败 ${fileEntity.path}:');
+          print('ERROR: 异常信息: $e');
+          print('ERROR: 堆栈跟踪: $stackTrace');
         }
+      } else {
+        //print('DEBUG: 跳过非存档文件: ${fileEntity.path}');
       }
     }
+    
+    //print('DEBUG: 最终解析出 ${saveSlots.length} 个有效存档');
     saveSlots.sort((a, b) => a.id.compareTo(b.id));
     return saveSlots;
   }

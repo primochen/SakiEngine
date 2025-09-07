@@ -42,20 +42,63 @@ class ColorBackgroundRenderer {
     return Color(value);
   }
   
-  /// 在Canvas上绘制纯色背景
+  /// 在Canvas上绘制纯色背景（支持动画）
   static void drawColorBackground(
     Canvas canvas,
     String hexColor,
-    Size canvasSize,
-  ) {
+    Size canvasSize, {
+    Map<String, double>? animationProperties,
+  }) {
     try {
       final color = hexToColor(hexColor);
-      final paint = Paint()..color = color;
       
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
-        paint,
-      );
+      // 应用动画属性
+      if (animationProperties != null && animationProperties.isNotEmpty) {
+        canvas.save();
+        
+        // 计算变换中心点
+        final centerX = canvasSize.width / 2;
+        final centerY = canvasSize.height / 2;
+        
+        // 应用平移
+        final xOffset = (animationProperties['xcenter'] ?? 0.0) * canvasSize.width;
+        final yOffset = (animationProperties['ycenter'] ?? 0.0) * canvasSize.height;
+        canvas.translate(centerX + xOffset, centerY + yOffset);
+        
+        // 应用旋转
+        final rotation = animationProperties['rotation'] ?? 0.0;
+        if (rotation != 0.0) {
+          canvas.rotate(rotation);
+        }
+        
+        // 应用缩放
+        final scale = animationProperties['scale'] ?? 1.0;
+        if (scale != 1.0) {
+          canvas.scale(scale);
+        }
+        
+        // 移回中心点
+        canvas.translate(-centerX, -centerY);
+        
+        // 设置透明度
+        final alpha = (animationProperties['alpha'] ?? 1.0).clamp(0.0, 1.0);
+        final paint = Paint()..color = color.withOpacity(alpha);
+        
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
+          paint,
+        );
+        
+        canvas.restore();
+      } else {
+        // 无动画时使用原来的绘制方式
+        final paint = Paint()..color = color;
+        
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height),
+          paint,
+        );
+      }
     } catch (e) {
       print('绘制颜色背景失败: $e');
       // 回退到黑色背景

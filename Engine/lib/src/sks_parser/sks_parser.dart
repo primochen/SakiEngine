@@ -61,6 +61,8 @@ class SksParser {
           String? fxString;
           List<String>? layers;
           String? transitionType; // 新增：转场类型
+          String? animation; // 新增：动画类型
+          int? repeatCount; // 新增：重复次数
           
           // 检查是否为多图层语法 [layer1,layer2:params,...]
           if (allParams.isNotEmpty && allParams[0].startsWith('[') && allParams.join(' ').contains(']')) {
@@ -77,7 +79,7 @@ class SksParser {
                 backgroundName = layers[0].split(':')[0]; // 去掉可能的位置参数
               }
               
-              // 解析后续参数（timer, fx, with等）
+              // 解析后续参数（timer, fx, with, an, repeat等）
               final remainingParams = layerContent.substring(endBracket + 1).trim().split(' ').where((s) => s.isNotEmpty).toList();
               int i = 0;
               while (i < remainingParams.length) {
@@ -86,6 +88,12 @@ class SksParser {
                   i += 2;
                 } else if (remainingParams[i] == 'with' && i + 1 < remainingParams.length) {
                   transitionType = remainingParams[i + 1];
+                  i += 2;
+                } else if (remainingParams[i] == 'an' && i + 1 < remainingParams.length) {
+                  animation = remainingParams[i + 1];
+                  i += 2;
+                } else if (remainingParams[i] == 'repeat' && i + 1 < remainingParams.length) {
+                  repeatCount = int.tryParse(remainingParams[i + 1]);
                   i += 2;
                 } else if (remainingParams[i] == 'fx') {
                   if (i + 1 < remainingParams.length) {
@@ -98,7 +106,25 @@ class SksParser {
               }
             }
           } else {
-            // 单图层模式（原有逻辑）
+            // 单图层模式 - 改进解析逻辑
+            // 首先找到所有关键字的位置
+            final timerIndex = allParams.indexOf('timer');
+            final withIndex = allParams.indexOf('with');
+            final anIndex = allParams.indexOf('an');
+            final repeatIndex = allParams.indexOf('repeat');
+            final fxIndex = allParams.indexOf('fx');
+            
+            // 找到第一个关键字的位置，背景名称在这之前
+            final keywordIndices = [timerIndex, withIndex, anIndex, repeatIndex, fxIndex]
+                .where((index) => index >= 0)
+                .toList();
+            
+            final firstKeywordIndex = keywordIndices.isEmpty ? allParams.length : keywordIndices.reduce((a, b) => a < b ? a : b);
+            
+            // 背景名称是第一个关键字之前的所有参数
+            backgroundName = allParams.sublist(0, firstKeywordIndex).join(' ');
+            
+            // 解析各个参数
             int i = 0;
             while (i < allParams.length) {
               if (allParams[i] == 'timer' && i + 1 < allParams.length) {
@@ -107,23 +133,31 @@ class SksParser {
               } else if (allParams[i] == 'with' && i + 1 < allParams.length) {
                 transitionType = allParams[i + 1];
                 i += 2;
+              } else if (allParams[i] == 'an' && i + 1 < allParams.length) {
+                animation = allParams[i + 1];
+                i += 2;
+              } else if (allParams[i] == 'repeat' && i + 1 < allParams.length) {
+                repeatCount = int.tryParse(allParams[i + 1]);
+                i += 2;
               } else if (allParams[i] == 'fx') {
                 if (i + 1 < allParams.length) {
                   fxString = allParams.sublist(i + 1).join(' ');
                 }
                 break;
               } else {
-                backgroundName += (backgroundName.isEmpty ? '' : ' ') + allParams[i];
                 i++;
               }
             }
           }
           
+          // 调试输出
+          print('[SksParser] scene解析结果: background="$backgroundName", transition="$transitionType", animation="$animation", repeat=$repeatCount');
+          
           // 检查是否为十六进制颜色格式
           if (ColorBackgroundRenderer.isValidHexColor(backgroundName.trim())) {
-            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue, layers: layers, transitionType: transitionType));
+            nodes.add(BackgroundNode(backgroundName.trim(), timer: timerValue, layers: layers, transitionType: transitionType, animation: animation, repeatCount: repeatCount));
           } else {
-            nodes.add(BackgroundNode(backgroundName, timer: timerValue, layers: layers, transitionType: transitionType));
+            nodes.add(BackgroundNode(backgroundName, timer: timerValue, layers: layers, transitionType: transitionType, animation: animation, repeatCount: repeatCount));
           }
           
           // 如果有fx参数，添加FxNode
@@ -254,6 +288,13 @@ class SksParser {
             nodes.add(StopSoundNode());
           }
           break;
+        case 'bool':
+          if (parts.length >= 3) {
+            final variableName = parts[1];
+            final value = parts[2].toLowerCase() == 'true';
+            nodes.add(BoolNode(variableName, value));
+          }
+          break;
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {
@@ -269,13 +310,96 @@ class SksParser {
     return ScriptNode(nodes);
   }
 
-  SayNode? _parseSay(String line) {
+  SksNode? _parseSay(String line) {
     // 先处理行末注释
     String processedLine = line;
     final commentIndex = line.indexOf('//');
     if (commentIndex >= 0) {
       processedLine = line.substring(0, commentIndex).trim();
     }
+    
+    // 检查是否是条件对话 "dialogue" if variable true/false
+    final conditionalRegex = RegExp(r'^(.*?)\s*"([^"]+)"\s+if\s+(\w+)\s+(true|false)\s*$');
+    final conditionalMatch = conditionalRegex.firstMatch(processedLine);
+    
+    if (conditionalMatch != null) {
+      final beforeQuote = conditionalMatch.group(1)!.trim();
+      final dialogue = conditionalMatch.group(2)!;
+      final variableName = conditionalMatch.group(3)!;
+      final conditionValue = conditionalMatch.group(4)! == 'true';
+      
+      String? character;
+      String? pose;
+      String? expression;
+      String? animation;
+      int? repeatCount;
+      
+      // 解析角色和属性（如果存在）
+      if (beforeQuote.isNotEmpty) {
+        final parts = beforeQuote.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+        if (parts.isNotEmpty) {
+          character = parts[0];
+          
+          // 解析其他属性
+          if (parts.length > 1) {
+            final attrs = parts.sublist(1);
+            
+            // 查找an和repeat关键字位置
+            int anIndex = -1;
+            int repeatIndex = -1;
+            for (int i = 0; i < attrs.length; i++) {
+              if (attrs[i] == 'an') {
+                anIndex = i;
+              } else if (attrs[i] == 'repeat') {
+                repeatIndex = i;
+                break;
+              }
+            }
+            
+            // 解析repeat参数
+            if (repeatIndex >= 0 && repeatIndex + 1 < attrs.length) {
+              repeatCount = int.tryParse(attrs[repeatIndex + 1]);
+            }
+            
+            int endIndex = repeatIndex >= 0 ? repeatIndex : attrs.length;
+            
+            List<String> regularAttrs;
+            
+            if (anIndex >= 0 && anIndex < endIndex) {
+              // 有an动画语法
+              if (anIndex + 1 < endIndex) {
+                animation = attrs[anIndex + 1];
+              }
+              regularAttrs = attrs.sublist(0, anIndex);
+            } else {
+              regularAttrs = attrs.sublist(0, endIndex);
+            }
+            
+            // 解析普通属性
+            for (final attr in regularAttrs) {
+              if (attr.startsWith('pose') || attr.contains('pose')) {
+                pose = attr;
+              } else {
+                expression = attr;
+              }
+            }
+          }
+        }
+      }
+      
+      return ConditionalSayNode(
+        dialogue: dialogue,
+        character: character,
+        conditionVariable: variableName,
+        conditionValue: conditionValue,
+        pose: pose,
+        expression: expression,
+        animation: animation,
+        repeatCount: repeatCount,
+      );
+    }
+    
+    // 继续原有的解析逻辑
     
     // Improved regex to capture character, attributes and dialogue
     // 1: Optional character and attributes part

@@ -7,17 +7,19 @@ import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
+import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 
 /// 游戏渲染器 - 统一的背景和角色绘制逻辑
 /// 同时供游戏界面和截图生成器使用，确保完全一致的渲染效果
 class GameRenderer {
   
-  /// 在Canvas上绘制背景
+  /// 在Canvas上绘制背景（支持动画）
   static Future<void> drawBackground(
     Canvas canvas, 
     String? backgroundName, 
-    Size canvasSize,
-  ) async {
+    Size canvasSize, {
+    Map<String, double>? animationProperties,
+  }) async {
     if (backgroundName == null) {
       // 没有背景时使用黑色填充
       canvas.drawRect(
@@ -29,7 +31,7 @@ class GameRenderer {
 
     // 检查是否为十六进制颜色格式
     if (ColorBackgroundRenderer.isValidHexColor(backgroundName)) {
-      ColorBackgroundRenderer.drawColorBackground(canvas, backgroundName, canvasSize);
+      ColorBackgroundRenderer.drawColorBackground(canvas, backgroundName, canvasSize, animationProperties: animationProperties);
       return;
     }
 
@@ -41,8 +43,8 @@ class GameRenderer {
       final backgroundImage = await ImageLoader.loadImage(backgroundPath);
       if (backgroundImage == null) return;
       
-      // 使用与游戏界面相同的填充逻辑 (BoxFit.cover)
-      _drawImageWithBoxFitCover(canvas, backgroundImage, canvasSize);
+      // 使用与游戏界面相同的填充逻辑 (BoxFit.cover)，支持动画
+      _drawImageWithBoxFitCover(canvas, backgroundImage, canvasSize, animationProperties: animationProperties);
     } catch (e) {
       print('绘制背景失败: $e');
     }
@@ -55,10 +57,18 @@ class GameRenderer {
     Map<String, PoseConfig> poseConfigs,
     Size canvasSize,
   ) async {
+    // 应用自动分布逻辑
+    final characterOrder = characters.keys.toList();
+    final distributedPoseConfigs = CharacterAutoDistribution.calculateAutoDistribution(
+      characters,
+      poseConfigs,
+      characterOrder,
+    );
+    
     for (final entry in characters.entries) {
       final characterId = entry.key;
       final characterState = entry.value;
-      await drawSingleCharacter(canvas, characterId, characterState, poseConfigs, canvasSize);
+      await drawSingleCharacter(canvas, characterId, characterState, distributedPoseConfigs, canvasSize);
     }
   }
   
@@ -71,7 +81,11 @@ class GameRenderer {
     Size canvasSize,
   ) async {
     try {
-      final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
+      // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
+      final autoDistributedPoseId = '${characterId}_auto_distributed';
+      final poseConfig = poseConfigs[autoDistributedPoseId] ?? 
+                        poseConfigs[characterState.positionId] ?? 
+                        PoseConfig(id: 'default');
       
       // 使用新的异步图层解析器
       final layerInfos = await CharacterLayerParser.parseCharacterLayers(
@@ -198,7 +212,7 @@ class GameRenderer {
   }
   
   /// 使用 BoxFit.cover 逻辑绘制图片
-  static void _drawImageWithBoxFitCover(Canvas canvas, ui.Image image, Size canvasSize) {
+  static void _drawImageWithBoxFitCover(Canvas canvas, ui.Image image, Size canvasSize, {Map<String, double>? animationProperties}) {
     final imageAspectRatio = image.width / image.height;
     final canvasAspectRatio = canvasSize.width / canvasSize.height;
     
@@ -218,12 +232,55 @@ class GameRenderer {
     final offsetX = (canvasSize.width - scaledWidth) / 2;
     final offsetY = (canvasSize.height - scaledHeight) / 2;
     
-    canvas.drawImageRect(
-      image,
-      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-      Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight),
-      Paint(),
-    );
+    // 应用动画属性
+    if (animationProperties != null && animationProperties.isNotEmpty) {
+      canvas.save();
+      
+      // 计算变换中心点
+      final centerX = canvasSize.width / 2;
+      final centerY = canvasSize.height / 2;
+      
+      // 应用平移
+      final xOffset = (animationProperties['xcenter'] ?? 0.0) * canvasSize.width;
+      final yOffset = (animationProperties['ycenter'] ?? 0.0) * canvasSize.height;
+      canvas.translate(centerX + xOffset, centerY + yOffset);
+      
+      // 应用旋转
+      final rotation = animationProperties['rotation'] ?? 0.0;
+      if (rotation != 0.0) {
+        canvas.rotate(rotation);
+      }
+      
+      // 应用缩放
+      final scale = animationProperties['scale'] ?? 1.0;
+      if (scale != 1.0) {
+        canvas.scale(scale);
+      }
+      
+      // 移回中心点
+      canvas.translate(-centerX, -centerY);
+      
+      // 设置透明度
+      final alpha = animationProperties['alpha'] ?? 1.0;
+      final paint = Paint()..color = Color.fromRGBO(255, 255, 255, alpha);
+      
+      canvas.drawImageRect(
+        image,
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+        Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight),
+        paint,
+      );
+      
+      canvas.restore();
+    } else {
+      // 无动画时使用原来的绘制方式
+      canvas.drawImageRect(
+        image,
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+        Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight),
+        Paint(),
+      );
+    }
   }
   
   /// 加载角色图片

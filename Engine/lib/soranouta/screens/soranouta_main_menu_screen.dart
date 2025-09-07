@@ -12,6 +12,7 @@ import 'package:sakiengine/src/widgets/common/game_title_widget.dart';
 import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
 import 'package:sakiengine/src/widgets/common/debug_button_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
+import 'dart:math';
 
 /// SoraNoUta 项目的自定义主菜单屏幕
 /// 使用模块化标题组件 + 专用按钮
@@ -37,11 +38,24 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
   bool _showSettings = false;
+  late String _copyrightText;
 
   @override
   void initState() {
     super.initState();
+    _generateCopyrightText();
     _startBackgroundMusic();
+  }
+  
+  void _generateCopyrightText() {
+    final random = Random();
+    final randomValue = random.nextDouble();
+    
+    if (randomValue < 0.1) {
+      _copyrightText = 'Ⓒ Copyright 950-2050 Aimes Soft';
+    } else {
+      _copyrightText = 'Ⓒ Copyright 2023-2025 Aimes Soft';
+    }
   }
 
   @override
@@ -101,6 +115,21 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
             onPressed: () => setState(() => _showDebugPanel = true),
             scale: menuScale,
             config: config,
+          ),
+          
+          // 版权信息文本
+          Positioned(
+            right: 20,
+            bottom: 20,
+            child: Text(
+              _copyrightText,
+              style: TextStyle(
+                fontFamily: 'ChillJinshuSongPro_Soft',
+                fontSize: 40 * textScale,
+                color: Colors.black,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
           ),
           
           // 覆盖层

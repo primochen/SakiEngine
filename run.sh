@@ -205,6 +205,9 @@ flutter clean
 echo -e "${YELLOW}正在获取依赖...${NC}"
 flutter pub get
 
+echo -e "${YELLOW}正在生成应用图标...${NC}"
+flutter pub run flutter_launcher_icons:main
+
 echo ""
 
 # 根据平台启动

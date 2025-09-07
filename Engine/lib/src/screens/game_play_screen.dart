@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +32,8 @@ import 'package:sakiengine/src/config/project_info_manager.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
+import 'package:sakiengine/src/widgets/developer_panel.dart';
+import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -58,7 +61,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   bool _showLoadOverlay = false;
   bool _showSettings = false;
   bool _isShowingMenu = false;
+  bool _showDeveloperPanel = false; // 开发者面板显示状态
   HotKey? _reloadHotKey;
+  HotKey? _developerPanelHotKey; // Shift+D快捷键
   String? _projectName;
 
   @override
@@ -193,6 +198,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     if (_reloadHotKey != null) {
       hotKeyManager.unregister(_reloadHotKey!);
     }
+    // 取消注册开发者面板热键
+    if (_developerPanelHotKey != null) {
+      hotKeyManager.unregister(_developerPanelHotKey!);
+    }
     _gameManager.dispose();
     super.dispose();
   }
@@ -237,6 +246,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         print('应用内快捷键 Shift+R 注册成功');
       } catch (e2) {
         print('应用内快捷键注册也失败: $e2');
+      }
+    }
+
+    // 注册开发者面板快捷键 Shift+D (仅在Debug模式下)
+    if (kDebugMode) {
+      _developerPanelHotKey = HotKey(
+        key: PhysicalKeyboardKey.keyD,
+        modifiers: [HotKeyModifier.shift],
+        scope: HotKeyScope.inapp,
+      );
+      
+      try {
+        await hotKeyManager.register(
+          _developerPanelHotKey!,
+          keyDownHandler: (hotKey) {
+            print('开发者面板热键触发: ${hotKey.toJson()}');
+            if (mounted) {
+              setState(() {
+                _showDeveloperPanel = !_showDeveloperPanel;
+              });
+            }
+          },
+        );
+        print('快捷键 Shift+D 注册成功 (开发者面板)');
+      } catch (e) {
+        print('开发者面板快捷键注册失败: $e');
       }
     }
 
@@ -341,7 +376,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showSaveOverlay || 
                     _showLoadOverlay || 
                     _showReviewOverlay ||
-                    _showSettings;
+                    _showSettings ||
+                    _showDeveloperPanel; // 添加开发者面板检查
                 
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
                 if (pointerSignal is PointerScrollEvent) {
@@ -369,7 +405,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               child: Stack(
               children: [
                 GestureDetector(
-                  onTap: gameState.currentNode is MenuNode ? null : () {
+                  onTap: (gameState.currentNode is MenuNode || _showDeveloperPanel) ? null : () {
                     _dialogueProgressionManager.progressDialogue();
                   },
                   child: _buildSceneWithFilter(gameState),
@@ -419,6 +455,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   SettingsScreen(
                     onClose: () => setState(() => _showSettings = false),
                   ),
+                // 开发者面板 (仅Debug模式)
+                if (kDebugMode && _showDeveloperPanel)
+                  DeveloperPanel(
+                    onClose: () => setState(() => _showDeveloperPanel = false),
+                    gameManager: _gameManager,
+                    onReload: () => _gameManager.hotReload(_currentScript),
+                  ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,
                   scale: context.scaleFor(ComponentType.ui),
@@ -433,12 +476,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
   }
 
+  // 淡出动画完成后移除角色
+  void _removeCharacterAfterFadeOut(String characterId) {
+    _gameManager.removeCharacterAfterFadeOut(characterId);
+  }
+
   Widget _buildSceneWithFilter(GameState gameState) {
     return Stack(
       children: [
         if (gameState.background != null)
-          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers),
-        ..._buildCharacters(context, gameState.characters, gameState.poseConfigs, gameState.everShownCharacters),
+          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
+        ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
         if (gameState.dialogue != null && !gameState.isNvlMode)
           _createDialogueBox(
             speaker: gameState.speaker,
@@ -455,8 +503,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
   }
 
-  /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景
-  Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers]) {
+  /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画
+  Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers, Map<String, double>? animationProperties]) {
+    Widget backgroundWidget;
+    
     // 如果有多图层数据，使用多图层渲染器
     if (sceneLayers != null && sceneLayers.isNotEmpty) {
       final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
@@ -465,60 +515,83 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           .toList();
       
       if (layers.isNotEmpty) {
-        final multiLayerWidget = MultiLayerRenderer.buildMultiLayerScene(
+        backgroundWidget = MultiLayerRenderer.buildMultiLayerScene(
           layers: layers,
           screenSize: MediaQuery.of(context).size,
         );
-        
-        if (sceneFilter != null) {
-          return _FilteredBackground(
-            filter: sceneFilter,
-            child: multiLayerWidget,
-          );
-        }
-        return multiLayerWidget;
+      } else {
+        backgroundWidget = Container(color: Colors.black);
       }
-    }
-    
-    // 单图层模式（原有逻辑）
-    // 检查是否为十六进制颜色格式
-    if (ColorBackgroundRenderer.isValidHexColor(background)) {
-      final colorWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
-      if (sceneFilter != null) {
-        return _FilteredBackground(
-          filter: sceneFilter,
-          child: colorWidget,
+    } else {
+      // 单图层模式（原有逻辑）
+      // 检查是否为十六进制颜色格式
+      if (ColorBackgroundRenderer.isValidHexColor(background)) {
+        backgroundWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
+      } else {
+        // 处理图片背景
+        backgroundWidget = FutureBuilder<String?>(
+          key: ValueKey('bg_$background'), // 添加key避免重建
+          future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data != null) {
+              return Image.asset(
+                snapshot.data!,
+                key: ValueKey(snapshot.data!), // 为图片添加key
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  // 如果是同步加载（已缓存），直接显示
+                  if (wasSynchronouslyLoaded ?? false) {
+                    return child;
+                  }
+                  // 异步加载时，只在完全加载后显示，避免闪烁
+                  return frame != null ? child : Container(color: Colors.black);
+                },
+              );
+            }
+            return Container(color: Colors.black);
+          },
         );
       }
-      return colorWidget;
     }
     
-    // 处理图片背景
-    return FutureBuilder<String?>(
-      future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          final imageWidget = Image.asset(
-            snapshot.data!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          );
-          
-          if (sceneFilter != null) {
-            return _FilteredBackground(
-              filter: sceneFilter,
-              child: imageWidget,
-            );
-          }
-          return imageWidget;
-        }
-        return Container(color: Colors.black);
-      },
+    // 始终应用动画变换以避免Widget结构变化导致的闪烁
+    backgroundWidget = Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.identity()
+        ..translate(
+          ((animationProperties?['xcenter'] ?? 0.0)) * MediaQuery.of(context).size.width,
+          ((animationProperties?['ycenter'] ?? 0.0)) * MediaQuery.of(context).size.height,
+        )
+        ..scale((animationProperties?['scale'] ?? 1.0))
+        ..rotateZ((animationProperties?['rotation'] ?? 0.0)),
+      child: Opacity(
+        opacity: ((animationProperties?['alpha'] ?? 1.0)).clamp(0.0, 1.0),
+        child: backgroundWidget,
+      ),
     );
+    
+    // 应用场景滤镜
+    if (sceneFilter != null) {
+      backgroundWidget = _FilteredBackground(
+        filter: sceneFilter,
+        child: backgroundWidget,
+      );
+    }
+    
+    return backgroundWidget;
   }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
+    // 应用自动分布逻辑
+    final characterOrder = characters.keys.toList();
+    final distributedPoseConfigs = CharacterAutoDistribution.calculateAutoDistribution(
+      characters,
+      poseConfigs,
+      characterOrder,
+    );
+    
     // 按resourceId分组，保留最新的角色状态
     final Map<String, MapEntry<String, CharacterState>> charactersByResourceId = {};
     
@@ -531,7 +604,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     return charactersByResourceId.values.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
-      final poseConfig = poseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
+      // 使用分布后的pose配置
+      // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
+      final autoDistributedPoseId = '${characterId}_auto_distributed';
+      final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ?? 
+                        distributedPoseConfigs[characterState.positionId] ?? 
+                        PoseConfig(id: 'default');
 
       // 使用resourceId作为key，确保唯一性
       final widgetKey = '${characterState.resourceId}';
@@ -556,6 +634,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             return _CharacterLayer(
               key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
               assetName: layerInfo.assetName,
+              isFadingOut: characterState.isFadingOut,
+              onFadeOutComplete: characterState.isFadingOut ? () {
+                // 淡出完成，从角色列表中移除该角色
+                _removeCharacterAfterFadeOut(characterId);
+              } : null,
             );
           }).toList();
           
@@ -621,9 +704,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
 class _CharacterLayer extends StatefulWidget {
   final String assetName;
+  final bool isFadingOut;
+  final VoidCallback? onFadeOutComplete;
+  
   const _CharacterLayer({
     super.key, 
     required this.assetName,
+    this.isFadingOut = false,
+    this.onFadeOutComplete,
   });
 
   @override
@@ -667,6 +755,17 @@ class _CharacterLayerState extends State<_CharacterLayer>
   @override
   void didUpdateWidget(covariant _CharacterLayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // 检查是否开始淡出
+    if (!oldWidget.isFadingOut && widget.isFadingOut) {
+      // 开始淡出动画
+      _controller.reverse().then((_) {
+        // 淡出完成，通知回调
+        widget.onFadeOutComplete?.call();
+      });
+      return;
+    }
+    
     if (oldWidget.assetName != widget.assetName) {
       _previousImage = _currentImage;
       _loadImage().then((_) {

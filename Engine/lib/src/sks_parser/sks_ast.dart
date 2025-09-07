@@ -25,7 +25,9 @@ class BackgroundNode implements SksNode {
   final double? timer;
   final List<String>? layers; // 新增：多图层支持
   final String? transitionType; // 新增：转场类型支持 (with语法)
-  BackgroundNode(this.background, {this.timer, this.layers, this.transitionType});
+  final String? animation; // 新增：动画类型支持 (an语法)
+  final int? repeatCount; // 新增：重复次数支持 (repeat语法)
+  BackgroundNode(this.background, {this.timer, this.layers, this.transitionType, this.animation, this.repeatCount});
 }
 
 class SayNode implements SksNode {
@@ -99,4 +101,32 @@ class PlaySoundNode implements SksNode {
 
 class StopSoundNode implements SksNode {
   StopSoundNode();
+}
+
+class BoolNode implements SksNode {
+  final String variableName;
+  final bool value;
+  BoolNode(this.variableName, this.value);
+}
+
+class ConditionalSayNode implements SksNode {
+  final String dialogue;
+  final String? character;
+  final String conditionVariable;
+  final bool conditionValue;
+  final String? pose;
+  final String? expression;
+  final String? animation;
+  final int? repeatCount;
+  
+  ConditionalSayNode({
+    required this.dialogue,
+    this.character,
+    required this.conditionVariable,
+    required this.conditionValue,
+    this.pose,
+    this.expression,
+    this.animation,
+    this.repeatCount,
+  });
 }

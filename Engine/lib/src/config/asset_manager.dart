@@ -157,7 +157,31 @@ class AssetManager {
     final pathParts = name.split('/');
     final targetPath = pathParts.length > 1 ? pathParts.sublist(0, pathParts.length - 1).join('/') : '';
 
-    print("Searching for asset: name='$name', fileName='$targetFileName', path='$targetPath'");
+    // 检测是否包含cg关键词（不区分大小写）
+    final nameToCheck = name.toLowerCase();
+    final fileNameToCheck = targetFileName.toLowerCase();
+    final isCgRelated = nameToCheck.contains('cg') || fileNameToCheck.contains('cg');
+
+    print("Searching for asset: name='$name', fileName='$targetFileName', path='$targetPath', isCgRelated='$isCgRelated'");
+
+    // 如果检测到cg关键词，优先在cg路径下搜索
+    if (isCgRelated) {
+      for (final key in _assetManifest!.keys) {
+        final keyParts = key.split('/');
+        final keyFileName = keyParts.last;
+        final keyFileNameWithoutExt = keyFileName.split('.').first;
+        
+        // 检查文件名是否匹配且路径包含cg
+        if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
+          final keyPath = key.toLowerCase();
+          if (keyPath.contains('/cg/') || keyPath.contains('cg/')) {
+            _imageCache[name] = key;
+            print("Found CG asset in bundle: $name -> $key");
+            return key;
+          }
+        }
+      }
+    }
 
     // 1. 精确匹配：路径和文件名都要匹配
     for (final key in _assetManifest!.keys) {
@@ -214,12 +238,25 @@ class AssetManager {
     final fileNameToSearch = name.split('/').last;
 
     final searchBase = p.join(gamePath, 'Assets', 'images');
-    final searchPaths = [
+    
+    // 检测是否包含cg关键词（不区分大小写）
+    final nameToCheck = name.toLowerCase();
+    final fileNameToCheck = fileNameToSearch.toLowerCase();
+    final isCgRelated = nameToCheck.contains('cg') || fileNameToCheck.contains('cg');
+    
+    // 如果检测到cg关键词，优先从cg文件夹搜索
+    final searchPaths = <String>[];
+    if (isCgRelated) {
+      searchPaths.add(p.join(searchBase, 'cg'));
+    }
+    
+    // 添加其他常规搜索路径
+    searchPaths.addAll([
       p.join(searchBase, 'backgrounds'),
       p.join(searchBase, 'characters'),
       p.join(searchBase, 'items'),
       p.join(gamePath, 'Assets', 'gui'),
-    ];
+    ]);
 
     for (final dirPath in searchPaths) {
       final directory = Directory(dirPath);

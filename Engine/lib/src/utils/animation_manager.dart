@@ -167,17 +167,15 @@ class CharacterAnimationController {
       // 循环播放指定次数
       for (int i = 0; i < repeatCount; i++) {
         await _playKeyframes(animDef.keyframes, vsync);
-        // 重置位置以便下一次循环
-        _currentProperties = Map.from(_baseProperties);
-        onAnimationUpdate?.call(Map.from(_currentProperties));
+        if (i < repeatCount - 1) {
+          // 只在非最后一次循环时重置位置
+          _currentProperties = Map.from(_baseProperties);
+          onAnimationUpdate?.call(Map.from(_currentProperties));
+        }
       }
-      // 播放完所有循环后，自动添加平滑复原到基础位置
-      await _playReturnToBaseAnimation(vsync);
     } else {
       // repeatCount为0，播放一次
       await _playKeyframes(animDef.keyframes, vsync);
-      // 自动添加平滑复原到基础位置
-      await _playReturnToBaseAnimation(vsync);
     }
     
     print('[CharacterAnimationController] 动画播放完成: $animationName');
@@ -214,11 +212,7 @@ class CharacterAnimationController {
     // 真正的无限循环需要在游戏管理器层面处理
     await _playKeyframes(keyframes, vsync);
     
-    // 重置位置以便可能的下一次循环
-    _currentProperties = Map.from(_baseProperties);
-    onAnimationUpdate?.call(Map.from(_currentProperties));
-    
-    // 对于无限循环，我们不添加复原动画，保持在基础位置
+    // 无限循环动画不再自动重置，保持最终位置
   }
 
   Future<void> _playKeyframes(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {

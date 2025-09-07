@@ -41,6 +41,13 @@ class SceneTransitionEffectManager {
     print('[SceneTransition] 请求${transitionType.name}转场，当前状态: isTransitioning=$_isTransitioning');
     if (_isTransitioning) return;
     
+    // 对于diss转场，如果新旧背景相同，直接跳过转场
+    if (transitionType == TransitionType.diss && oldBackground == newBackground) {
+      print('[SceneTransition] diss转场检测到相同背景($oldBackground -> $newBackground)，跳过转场效果');
+      onMidTransition();
+      return;
+    }
+    
     _isTransitioning = true;
     print('[SceneTransition] 开始${transitionType.name}转场，时长: ${duration.inMilliseconds}ms');
     
@@ -308,18 +315,22 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
           });
         } else {
           print('[DissTransition] 警告: 新背景图片加载失败: ${widget.newBackgroundName}');
-          shouldStartAnimation = true; // 即使图片加载失败也要开始动画
         }
       } else {
         print('[DissTransition] 警告: 找不到新背景资源: ${widget.newBackgroundName}');
-        shouldStartAnimation = true; // 即使找不到资源也要开始动画
       }
     }
     
-    // 无论图片是否加载成功，都要开始动画，避免转场卡住
-    if (shouldStartAnimation) {
-      _controller.forward();
+    // 如果两个背景都加载失败，直接完成转场避免闪烁
+    if (_oldImage == null && _newImage == null) {
+      print('[DissTransition] 两个背景都未找到，直接完成转场');
+      widget.onMidTransition();
+      widget.onComplete();
+      return;
     }
+    
+    // 开始动画
+    _controller.forward();
   }
   
   void _onAnimationUpdate() {
