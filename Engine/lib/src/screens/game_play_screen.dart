@@ -600,7 +600,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       final characterId = entry.key;
       final characterState = entry.value;
       // 使用分布后的pose配置
-      final poseConfig = distributedPoseConfigs[characterState.positionId] ?? PoseConfig(id: 'default');
+      // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
+      final autoDistributedPoseId = '${characterId}_auto_distributed';
+      final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ?? 
+                        distributedPoseConfigs[characterState.positionId] ?? 
+                        PoseConfig(id: 'default');
 
       // 使用resourceId作为key，确保唯一性
       final widgetKey = '${characterState.resourceId}';

@@ -15,10 +15,10 @@ class CharacterAutoDistribution {
     Map<String, PoseConfig> poseConfigs,
     List<String> characterOrder,
   ) {
-    print('DEBUG: 开始自动分布计算');
-    print('DEBUG: 角色总数: ${characters.length}');
-    print('DEBUG: 角色ID列表: ${characters.keys.toList()}');
-    print('DEBUG: 姿势配置总数: ${poseConfigs.length}');
+    //print('Debug: 开始自动分布计算');
+    //print('Debug: 角色总数: ${characters.length}');
+    //print('Debug: 角色ID列表: ${characters.keys.toList()}');
+    //print('Debug: 姿势配置总数: ${poseConfigs.length}');
     
     // 复制原始配置以避免修改原数据
     final result = Map<String, PoseConfig>.from(poseConfigs);
@@ -29,26 +29,26 @@ class CharacterAutoDistribution {
       final character = characters[characterId]!;
       final pose = poseConfigs[character.positionId];
       
-      print('DEBUG: 检查角色 $characterId, positionId=${character.positionId}');
+      //print('Debug: 检查角色 $characterId, positionId=${character.positionId}');
       if (pose != null) {
-        print('DEBUG:   pose配置: anchor=${pose.anchor}, xcenter=${pose.xcenter}, ycenter=${pose.ycenter}');
-        print('DEBUG:   isAutoAnchor=${pose.isAutoAnchor}');
+        //print('Debug:   pose配置: anchor=${pose.anchor}, xcenter=${pose.xcenter}, ycenter=${pose.ycenter}');
+        //print('Debug:   isAutoAnchor=${pose.isAutoAnchor}');
         
         if (pose.isAutoAnchor && pose.xcenter == 0.5) {
           autoCharacters.add(characterId);
-          print('DEBUG:   → 添加到自动分布列表');
+          //print('Debug:   → 添加到自动分布列表');
         } else {
-          print('DEBUG:   → 跳过（非auto锚点或xcenter≠0.5）');
+          //print('Debug:   → 跳过（非auto锚点或xcenter≠0.5）');
         }
       } else {
-        print('DEBUG:   → 警告：找不到pose配置');
+        //print('Debug:   → 警告：找不到pose配置');
       }
     }
     
-    print('DEBUG: 自动分布角色列表: $autoCharacters');
+    //print('Debug: 自动分布角色列表: $autoCharacters');
     
     if (autoCharacters.isEmpty) {
-      print('DEBUG: 无需自动分布，返回原配置');
+      //print('Debug: 无需自动分布，返回原配置');
       return result;
     }
     
@@ -63,11 +63,11 @@ class CharacterAutoDistribution {
       return indexA.compareTo(indexB);
     });
     
-    print('DEBUG: 排序后的自动分布角色: $autoCharacters');
+    //print('Debug: 排序后的自动分布角色: $autoCharacters');
     
     // 根据角色数量计算分布位置
     final positions = _calculateDistributionPositions(autoCharacters.length);
-    print('DEBUG: 计算出的分布位置: $positions');
+    //print('Debug: 计算出的分布位置: $positions');
     
     // 应用自动分布
     for (int i = 0; i < autoCharacters.length; i++) {
@@ -76,24 +76,20 @@ class CharacterAutoDistribution {
       final originalPose = poseConfigs[character.positionId]!;
       final newXCenter = positions[i];
       
-      print('DEBUG: 处理角色 $characterId (${i + 1}/${autoCharacters.length})');
-      print('DEBUG:   原始xcenter: ${originalPose.xcenter} → 新xcenter: $newXCenter');
-      print('DEBUG:   保持ycenter: ${originalPose.ycenter}');
-      print('DEBUG:   anchor: ${originalPose.anchor} → ${originalPose.anchor == 'auto' ? 'center' : originalPose.anchor}');
+      //print('Debug: 处理角色 $characterId (${i + 1}/${autoCharacters.length})');
+      //print('Debug:   原始xcenter: ${originalPose.xcenter} → 新xcenter: $newXCenter');
+      //print('Debug:   保持ycenter: ${originalPose.ycenter}');
+      //print('Debug:   anchor: ${originalPose.anchor} → ${originalPose.anchor == 'auto' ? 'center' : originalPose.anchor}');
       
-      // 为每个角色创建独立的配置ID，避免共享positionId导致的覆盖问题
-      final uniquePoseId = '${character.positionId}_auto_$i';
-      print('DEBUG:   创建独立配置ID: $uniquePoseId');
+      // 使用角色ID作为独立的pose配置ID，避免多个角色共享同一个positionId导致覆盖
+      final uniquePoseId = '${characterId}_auto_distributed';
+      //print('Debug:   为角色创建独立配置: $uniquePoseId');
       
       // 创建新的姿势配置，使用计算出的x位置
       result[uniquePoseId] = originalPose.copyWithAutoDistribution(newXCenter);
-      
-      // 更新角色的positionId指向新的独立配置
-      // 注意：这里需要修改character对象，但CharacterState是不可变的
-      // 我们需要在调用方处理这个问题
     }
     
-    print('DEBUG: 自动分布完成');
+    //print('Debug: 自动分布完成');
     return result;
   }
   

@@ -157,23 +157,23 @@ class SakiEngineConfig {
           }
         }
         if (trimmedLine.startsWith('main_menu:')) {
-          print('Debug: parsing main_menu config line: $trimmedLine');
+          //print('Debug: parsing main_menu config line: $trimmedLine');
           final menuParams = trimmedLine.split(':')[1].trim().split(' ');
           for (final param in menuParams) {
             final keyValue = param.split('=');
             if (keyValue.length == 2) {
-              print('Debug: parsing param ${keyValue[0]} = ${keyValue[1]}');
+              //print('Debug: parsing param ${keyValue[0]} = ${keyValue[1]}');
               switch (keyValue[0]) {
                 case 'title':
                   mainMenuTitle = keyValue[1];
-                  print('Debug: set mainMenuTitle to: $mainMenuTitle');
+                  //print('Debug: set mainMenuTitle to: $mainMenuTitle');
                   break;
                 case 'background':
                   mainMenuBackground = keyValue[1];
                   break;
                 case 'size':
                   mainMenuTitleSize = double.tryParse(keyValue[1]) ?? 72.0;
-                  print('Debug: set mainMenuTitleSize to: $mainMenuTitleSize');
+                  //print('Debug: set mainMenuTitleSize to: $mainMenuTitleSize');
                   break;
                 case 'top':
                   mainMenuTitleTop = double.tryParse(keyValue[1]) ?? 0.1;
@@ -184,12 +184,12 @@ class SakiEngineConfig {
                 case 'bottom':
                   mainMenuTitleBottom = double.tryParse(keyValue[1]) ?? 0.0;
                   hasBottom = true;
-                  print('Debug: set mainMenuTitleBottom to: $mainMenuTitleBottom');
+                  //print('Debug: set mainMenuTitleBottom to: $mainMenuTitleBottom');
                   break;
                 case 'left':
                   mainMenuTitleLeft = double.tryParse(keyValue[1]) ?? 0.0;
                   hasLeft = true;
-                  print('Debug: set mainMenuTitleLeft to: $mainMenuTitleLeft');
+                  //print('Debug: set mainMenuTitleLeft to: $mainMenuTitleLeft');
                   break;
               }
             }
@@ -245,55 +245,55 @@ class SakiEngineConfig {
               switch (keyValue[0]) {
                 case 'border':
                   baseWindowBorder = double.tryParse(keyValue[1]) ?? 0.0;
-                  print('[Config] baseWindowBorder 设置为: $baseWindowBorder');
+                  //print('[Config] baseWindowBorder 设置为: $baseWindowBorder');
                   break;
                 case 'alpha':
                   baseWindowAlpha = double.tryParse(keyValue[1]) ?? 1.0;
-                  print('[Config] baseWindowAlpha 设置为: $baseWindowAlpha');
+                  //print('[Config] baseWindowAlpha 设置为: $baseWindowAlpha');
                   break;
                 case 'background':
                   baseWindowBackground = keyValue[1];
-                  print('[Config] baseWindowBackground 设置为: $baseWindowBackground');
+                  //print('[Config] baseWindowBackground 设置为: $baseWindowBackground');
                   break;
                 case 'xalign':
                   baseWindowXAlign = double.tryParse(keyValue[1]) ?? 0.5;
-                  print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
+                  //print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
                   break;
                 case 'yalign':
                   baseWindowYAlign = double.tryParse(keyValue[1]) ?? 0.5;
-                  print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
+                  //print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
                   break;
                 case 'background_alpha':
                   baseWindowBackgroundAlpha = double.tryParse(keyValue[1]) ?? 0.3;
-                  print('[Config] baseWindowBackgroundAlpha 设置为: $baseWindowBackgroundAlpha');
+                  //print('[Config] baseWindowBackgroundAlpha 设置为: $baseWindowBackgroundAlpha');
                   break;
                 case 'background_blend':
                   baseWindowBackgroundBlendMode = _parseBlendMode(keyValue[1]);
-                  print('[Config] baseWindowBackgroundBlendMode 设置为: $baseWindowBackgroundBlendMode');
+                  //print('[Config] baseWindowBackgroundBlendMode 设置为: $baseWindowBackgroundBlendMode');
                   break;
                 case 'background_scale':
                   baseWindowBackgroundScale = double.tryParse(keyValue[1]) ?? 1.0;
-                  print('[Config] baseWindowBackgroundScale 设置为: $baseWindowBackgroundScale');
+                  //print('[Config] baseWindowBackgroundScale 设置为: $baseWindowBackgroundScale');
                   break;
                 case 'background_xalign':
                   baseWindowXAlign = (double.tryParse(keyValue[1]) ?? 0.5).clamp(0.0, 1.0);
-                  print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
+                  //print('[Config] baseWindowXAlign 设置为: $baseWindowXAlign');
                   break;
                 case 'background_yalign':
                   baseWindowYAlign = (double.tryParse(keyValue[1]) ?? 0.5).clamp(0.0, 1.0);
-                  print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
+                  //print('[Config] baseWindowYAlign 设置为: $baseWindowYAlign');
                   break;
                 case 'dialogue_background_scale':
                   dialogueBackgroundScale = double.tryParse(keyValue[1]) ?? 1.0;
-                  print('[Config] dialogueBackgroundScale 设置为: $dialogueBackgroundScale');
+                  //print('[Config] dialogueBackgroundScale 设置为: $dialogueBackgroundScale');
                   break;
                 case 'dialogue_background_xalign':
                   dialogueBackgroundXAlign = double.tryParse(keyValue[1]) ?? 1.0;
-                  print('[Config] dialogueBackgroundXAlign 设置为: $dialogueBackgroundXAlign');
+                  //print('[Config] dialogueBackgroundXAlign 设置为: $dialogueBackgroundXAlign');
                   break;
                 case 'dialogue_background_yalign':
                   dialogueBackgroundYAlign = double.tryParse(keyValue[1]) ?? 0.5;
-                  print('[Config] dialogueBackgroundYAlign 设置为: $dialogueBackgroundYAlign');
+                  //print('[Config] dialogueBackgroundYAlign 设置为: $dialogueBackgroundYAlign');
                   break;
               }
             }
@@ -307,19 +307,19 @@ class SakiEngineConfig {
               switch (keyValue[0]) {
                 case 'xpos':
                   soranoutaSpeakerXPos = double.tryParse(keyValue[1]) ?? 0.2;
-                  print('[Config] soranoutaSpeakerXPos 设置为: $soranoutaSpeakerXPos');
+                  //print('[Config] soranoutaSpeakerXPos 设置为: $soranoutaSpeakerXPos');
                   break;
                 case 'ypos':
                   soranoutaSpeakerYPos = double.tryParse(keyValue[1]) ?? 0.0;
-                  print('[Config] soranoutaSpeakerYPos 设置为: $soranoutaSpeakerYPos');
+                  //print('[Config] soranoutaSpeakerYPos 设置为: $soranoutaSpeakerYPos');
                   break;
                 case 'dialogue_xpos':
                   soranoUtaTextXPos = double.tryParse(keyValue[1]) ?? 0.0;
-                  print('[Config] soranoUtaTextXPos 设置为: $soranoUtaTextXPos');
+                  //print('[Config] soranoUtaTextXPos 设置为: $soranoUtaTextXPos');
                   break;
                 case 'dialogue_ypos':
                   soranoUtaTextYPos = double.tryParse(keyValue[1]) ?? 0.0;
-                  print('[Config] soranoUtaTextYPos 设置为: $soranoUtaTextYPos');
+                  //print('[Config] soranoUtaTextYPos 设置为: $soranoUtaTextYPos');
                   break;
               }
             }
