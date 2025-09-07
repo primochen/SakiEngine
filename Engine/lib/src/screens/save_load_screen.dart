@@ -40,6 +40,9 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
   final SaveLoadManager _saveLoadManager = SaveLoadManager();
   late Future<List<SaveSlot>> _saveSlotsFuture;
+  final ScrollController _scrollController = ScrollController();
+  List<SaveSlot> _cachedSaveSlots = [];
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -50,9 +53,49 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   void _loadSaveSlots() {
     if (mounted) {
       setState(() {
-        _saveSlotsFuture = _saveLoadManager.listSaveSlots();
+        _saveSlotsFuture = _saveLoadManager.listSaveSlots().then((slots) {
+          _cachedSaveSlots = List.from(slots);
+          _isInitialized = true;
+          return slots;
+        });
       });
     }
+  }
+
+  Future<void> _updateSingleSlot(int slotId, SaveSlot? newSlotData) async {
+    if (!mounted) return;
+    
+    setState(() {
+      if (newSlotData == null) {
+        _cachedSaveSlots.removeWhere((slot) => slot.id == slotId);
+      } else {
+        final existingIndex = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId);
+        if (existingIndex >= 0) {
+          _cachedSaveSlots[existingIndex] = newSlotData;
+        } else {
+          _cachedSaveSlots.add(newSlotData);
+        }
+      }
+    });
+  }
+
+  Future<void> _swapSlots(int slotId1, int slotId2) async {
+    if (!mounted) return;
+    
+    final slot1Index = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId1);
+    final slot2Index = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId2);
+    
+    setState(() {
+      if (slot1Index >= 0 && slot2Index >= 0) {
+        final temp = _cachedSaveSlots[slot1Index];
+        _cachedSaveSlots[slot1Index] = _cachedSaveSlots[slot2Index].copyWith(id: slotId1);
+        _cachedSaveSlots[slot2Index] = temp.copyWith(id: slotId2);
+      } else if (slot1Index >= 0) {
+        _cachedSaveSlots[slot1Index] = _cachedSaveSlots[slot1Index].copyWith(id: slotId2);
+      } else if (slot2Index >= 0) {
+        _cachedSaveSlots[slot2Index] = _cachedSaveSlots[slot2Index].copyWith(id: slotId1);
+      }
+    });
   }
 
   Future<void> _handleSave(int slotId) async {
@@ -64,6 +107,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       
       _notificationOverlayKey.currentState?.show('保存成功');
       
+      // 重新加载以获取最新的存档数据（包括新保存的截图）
       _loadSaveSlots();
 
       Timer(const Duration(milliseconds: 550), () {
@@ -113,7 +157,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     try {
       await _saveLoadManager.deleteSave(slotId);
       _notificationOverlayKey.currentState?.show('存档已删除');
-      _loadSaveSlots(); // 刷新存档列表
+      await _updateSingleSlot(slotId, null);
     } catch (e) {
       _notificationOverlayKey.currentState?.show('删除失败: $e');
     }
@@ -127,7 +171,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         final slot = existingSlots.firstWhere((s) => s.id == slotId);
         final isNowLocked = !slot.isLocked;
         _notificationOverlayKey.currentState?.show(isNowLocked ? '存档已锁定' : '存档已解锁');
-        _loadSaveSlots();
+        await _updateSingleSlot(slotId, slot.copyWith(isLocked: isNowLocked));
       } else {
         _notificationOverlayKey.currentState?.show('操作失败');
       }
@@ -191,7 +235,13 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       }
       
       if (success) {
-        _loadSaveSlots();
+        if (targetSlot.id == -1) {
+          final slot = existingSlots.firstWhere((s) => s.id == fromSlotId);
+          await _updateSingleSlot(fromSlotId, null);
+          await _updateSingleSlot(toSlotId, slot.copyWith(id: toSlotId));
+        } else {
+          await _swapSlots(fromSlotId, toSlotId);
+        }
       }
     } catch (e) {
       _notificationOverlayKey.currentState?.show('移动失败: $e');
@@ -235,11 +285,12 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
           return Center(child: Text('读取存档失败: ${snapshot.error}', style: TextStyle(color: config.themeColors.primary, fontSize: 16 * textScale)));
         }
 
-        final savedSlots = snapshot.data ?? [];
+        final savedSlots = _isInitialized ? _cachedSaveSlots : (snapshot.data ?? []);
         
         return ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
           child: GridView.builder(
+            controller: _scrollController,
             padding: EdgeInsets.all(32 * uiScale),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 1 : 
@@ -346,14 +397,41 @@ class _SaveSlotCard extends StatefulWidget {
   State<_SaveSlotCard> createState() => _SaveSlotCardState();
 }
 
-class _SaveSlotCardState extends State<_SaveSlotCard> {
+class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderStateMixin {
   bool _isHovered = false;
+  late AnimationController _animationController;
+  late Animation<double> _borderAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _borderAnimation = Tween<double>(
+      begin: 0.2,
+      end: 0.5,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant _SaveSlotCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 只在必要时重绘
     if (widget.saveSlot?.screenshotData != oldWidget.saveSlot?.screenshotData ||
-        widget.saveSlot?.saveTime != oldWidget.saveSlot?.saveTime) {
+        widget.saveSlot?.saveTime != oldWidget.saveSlot?.saveTime ||
+        widget.saveSlot?.isLocked != oldWidget.saveSlot?.isLocked ||
+        widget.saveSlot?.dialoguePreview != oldWidget.saveSlot?.dialoguePreview) {
       if (mounted) {
         setState(() {});
       }
@@ -383,39 +461,46 @@ class _SaveSlotCardState extends State<_SaveSlotCard> {
         borderRadius: BorderRadius.circular(0 * uiScale),
         hoverColor: config.themeColors.primary.withOpacity(0.1),
         onHover: (hovering) {
-          if (mounted) {
+          if (_isHovered != hovering) {
             setState(() {
               _isHovered = hovering;
             });
+            if (hovering) {
+              _animationController.forward();
+            } else {
+              _animationController.reverse();
+            }
           }
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? config.themeColors.primary.withOpacity(0.05)
-                : Colors.transparent,
-            border: Border.all(
-              color: config.themeColors.primary.withOpacity(_isHovered ? 0.5 : 0.2),
-              width: 1,
-            ),
-            borderRadius: BorderRadius.circular(0 * uiScale),
-          ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: EdgeInsets.all(12.0 * uiScale),
-                child: widget.saveSlot != null
-                    ? _buildDataCard(uiScale, widget.textScale, config)
-                    : _buildEmptyCard(uiScale, widget.textScale, config),
+        child: AnimatedBuilder(
+          animation: _borderAnimation,
+          builder: (context, child) => Container(
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? config.themeColors.primary.withOpacity(0.05)
+                  : Colors.transparent,
+              border: Border.all(
+                color: config.themeColors.primary.withOpacity(_borderAnimation.value),
+                width: 1,
               ),
-              if ((widget.onMove != null || widget.onDelete != null || widget.onToggleLock != null) && widget.saveSlot != null)
-                Positioned(
-                  bottom: 8 * uiScale,
-                  right: 8 * uiScale,
-                  child: _buildActionButtons(uiScale, config),
+              borderRadius: BorderRadius.circular(0 * uiScale),
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(12.0 * uiScale),
+                  child: widget.saveSlot != null
+                      ? _buildDataCard(uiScale, widget.textScale, config)
+                      : _buildEmptyCard(uiScale, widget.textScale, config),
                 ),
-            ],
+                if ((widget.onMove != null || widget.onDelete != null || widget.onToggleLock != null) && widget.saveSlot != null)
+                  Positioned(
+                    bottom: 8 * uiScale,
+                    right: 8 * uiScale,
+                    child: _buildActionButtons(uiScale, config),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

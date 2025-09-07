@@ -65,6 +65,18 @@ link_game_assets() {
     echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"
     cp "$project_root/default_game.txt" "$engine_dir/assets/"
     
+    # 处理 icon.png 复制逻辑（优先使用游戏目录，回退到项目根目录）
+    echo -e "${YELLOW}正在处理应用图标...${NC}"
+    if [ -f "$game_dir/icon.png" ]; then
+        echo -e "${GREEN}使用游戏目录中的 icon.png${NC}"
+        cp "$game_dir/icon.png" "$engine_dir/assets/"
+    elif [ -f "$project_root/icon.png" ]; then
+        echo -e "${YELLOW}游戏目录未找到 icon.png，使用项目根目录的图标${NC}"
+        cp "$project_root/icon.png" "$engine_dir/assets/"
+    else
+        echo -e "${RED}警告: 未找到 icon.png 文件${NC}"
+    fi
+    
     echo -e "${GREEN}资源处理完成。${NC}"
 }
 

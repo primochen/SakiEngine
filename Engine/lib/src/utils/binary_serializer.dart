@@ -417,6 +417,26 @@ class SaveSlot {
     this.isLocked = false,
   });
 
+  SaveSlot copyWith({
+    int? id,
+    DateTime? saveTime,
+    String? currentScript,
+    String? dialoguePreview,
+    GameStateSnapshot? snapshot,
+    Uint8List? screenshotData,
+    bool? isLocked,
+  }) {
+    return SaveSlot(
+      id: id ?? this.id,
+      saveTime: saveTime ?? this.saveTime,
+      currentScript: currentScript ?? this.currentScript,
+      dialoguePreview: dialoguePreview ?? this.dialoguePreview,
+      snapshot: snapshot ?? this.snapshot,
+      screenshotData: screenshotData ?? this.screenshotData,
+      isLocked: isLocked ?? this.isLocked,
+    );
+  }
+
   /// 从二进制数据创建SaveSlot
   factory SaveSlot.fromBinary(Uint8List data) {
     return BinarySerializer.deserializeSaveSlot(data);

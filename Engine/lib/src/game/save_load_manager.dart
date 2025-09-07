@@ -126,24 +126,24 @@ class SaveLoadManager {
 
   Future<List<SaveSlot>> listSaveSlots() async {
     final directory = await getSavesDirectory();
-    print('DEBUG: 存档目录: $directory');
+    //print('DEBUG: 存档目录: $directory');
     
     final files = await Directory(directory).list().toList();
-    print('DEBUG: 找到 ${files.length} 个文件');
+    //print('DEBUG: 找到 ${files.length} 个文件');
     
     final saveSlots = <SaveSlot>[];
 
     for (var fileEntity in files) {
-      print('DEBUG: 检查文件: ${fileEntity.path}');
+      //print('DEBUG: 检查文件: ${fileEntity.path}');
       
       if (fileEntity is File && fileEntity.path.endsWith('.sakisav')) {
-        print('DEBUG: 尝试读取存档文件: ${fileEntity.path}');
+        //print('DEBUG: 尝试读取存档文件: ${fileEntity.path}');
         try {
           final binaryData = await fileEntity.readAsBytes();
-          print('DEBUG: 成功读取 ${binaryData.length} 字节数据');
+          //print('DEBUG: 成功读取 ${binaryData.length} 字节数据');
           
           final saveSlot = SaveSlot.fromBinary(binaryData);
-          print('DEBUG: 成功解析存档，ID=${saveSlot.id}, 时间=${saveSlot.saveTime}');
+          //print('DEBUG: 成功解析存档，ID=${saveSlot.id}, 时间=${saveSlot.saveTime}');
           
           saveSlots.add(saveSlot);
         } catch(e, stackTrace) {
@@ -152,11 +152,11 @@ class SaveLoadManager {
           print('ERROR: 堆栈跟踪: $stackTrace');
         }
       } else {
-        print('DEBUG: 跳过非存档文件: ${fileEntity.path}');
+        //print('DEBUG: 跳过非存档文件: ${fileEntity.path}');
       }
     }
     
-    print('DEBUG: 最终解析出 ${saveSlots.length} 个有效存档');
+    //print('DEBUG: 最终解析出 ${saveSlots.length} 个有效存档');
     saveSlots.sort((a, b) => a.id.compareTo(b.id));
     return saveSlots;
   }
