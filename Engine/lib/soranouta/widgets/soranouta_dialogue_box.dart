@@ -232,7 +232,6 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       color: SettingsManager().currentDarkMode ? Colors.black : Colors.white,
       letterSpacing: 0.5,
       fontFamily: 'ChillJinshuSongPro_Soft',
-      backgroundColor: SettingsManager().currentDarkMode ? Colors.white : Colors.black,
       height: 1.1,
     );
 
@@ -311,11 +310,8 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
                             ),
                           ),
                         ),
-                      // 上层：半透明控件
-                      Container(
-                        color: config.themeColors.background
-                            .withOpacity(config.baseWindowAlpha * 0.3),
-                        child: Padding(
+                      // 上层：文本区域
+                      Padding(
                           padding: EdgeInsets.only(
                             left: 16.0 * uiScale + config.soranoUtaTextXPos,
                             right: 16.0 * uiScale,
@@ -420,7 +416,6 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
                               );
                             },
                           ),
-                        ),
                       ),
                     ],
                   ),
