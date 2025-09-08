@@ -487,7 +487,7 @@ class GameManager {
           });
           return; // 转场过程中暂停脚本执行，将在转场完成后自动恢复
         } else {
-          print('[GameManager] 跳过转场：${isInitialBackground ? "初始背景" : (isSameBackground ? "相同背景" : "无context")}');
+          //print('[GameManager] 跳过转场：${isInitialBackground ? "初始背景" : (isSameBackground ? "相同背景" : "无context")}');
           // 直接切换背景 - 初始背景、相同背景或无context时
           _currentState = _currentState.copyWith(
               background: node.background, 
@@ -1248,7 +1248,7 @@ class GameManager {
         if (assetPath != null && _context != null) {
           // 预加载图片到缓存
           await precacheImage(AssetImage(assetPath), _context!);
-          print('[GameManager] 预加载背景图片完成: $newBackground');
+          //print('[GameManager] 预加载背景图片完成: $newBackground');
         }
       } catch (e) {
         print('[GameManager] 预加载背景图片失败: $e');
@@ -1257,7 +1257,7 @@ class GameManager {
     
     // 解析转场类型
     final effectType = TransitionTypeParser.parseTransitionType(transitionType ?? 'fade');
-    print('[GameManager] 转场类型解析: 输入="$transitionType" -> 解析结果=${effectType.name}');
+    //print('[GameManager] 转场类型解析: 输入="$transitionType" -> 解析结果=${effectType.name}');
     
     // 如果是diss转场，需要准备旧背景和新背景名称
     String? oldBackgroundName;
@@ -1267,8 +1267,15 @@ class GameManager {
       // 传递背景名称而不是Widget
       oldBackgroundName = _currentState.background;
       newBackgroundName = newBackground;
-      print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
+      //print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
     }
+    
+    // 在转场开始前先清除对话框，避免"残留"效果
+    _currentState = _currentState.copyWith(
+      clearDialogueAndSpeaker: true,
+      everShownCharacters: _everShownCharacters,
+    );
+    _gameStateController.add(_currentState);
     
     // 根据转场类型选择转场管理器
     if (effectType == TransitionType.fade) {
@@ -1277,19 +1284,17 @@ class GameManager {
         context: _context!,
         onMidTransition: () {
         ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
-        // 在黑屏最深时切换背景，清除对话和所有角色（类似Renpy）
+        // 在黑屏最深时切换背景和清除所有角色（类似Renpy）
         // 先停止并清理旧的场景动画控制器
         _sceneAnimationController?.dispose();
         _sceneAnimationController = null;
         
-        final oldState = _currentState;
         _currentState = _currentState.copyWith(
           background: newBackground,
           sceneFilter: sceneFilter,
           clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
           sceneLayers: layers,
           clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
-          clearDialogueAndSpeaker: true,
           clearCharacters: true,
           sceneAnimation: animation,
           sceneAnimationRepeat: repeatCount,
@@ -1312,19 +1317,17 @@ class GameManager {
         newBackground: newBackgroundName,
         onMidTransition: () {
           ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
-          // 在转场中点切换背景，清除对话和所有角色（类似Renpy）
+          // 在转场中点切换背景和清除所有角色（类似Renpy）
           // 先停止并清理旧的场景动画控制器
           _sceneAnimationController?.dispose();
           _sceneAnimationController = null;
           
-          final oldState = _currentState;
           _currentState = _currentState.copyWith(
             background: newBackground,
             sceneFilter: sceneFilter,
             clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
             sceneLayers: layers,
             clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
-            clearDialogueAndSpeaker: true,
             clearCharacters: true,
             sceneAnimation: animation,
             sceneAnimationRepeat: repeatCount,
@@ -1370,7 +1373,7 @@ class GameManager {
     }
     
     if (lastBackgroundNode != null && lastBackgroundNode.animation != null) {
-      print('[GameManager] 检测到当前场景有动画: ${lastBackgroundNode.animation}, repeat: ${lastBackgroundNode.repeatCount}');
+      //print('[GameManager] 检测到当前场景有动画: ${lastBackgroundNode.animation}, repeat: ${lastBackgroundNode.repeatCount}');
       
       // 更新当前状态的场景动画信息
       _currentState = _currentState.copyWith(
@@ -1428,7 +1431,7 @@ class GameManager {
         _gameStateController.add(_currentState);
       },
       onComplete: () {
-        print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
+        //print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
         // 将动画最终状态应用到角色的基础配置
         final finalProperties = animController.currentProperties;
         final positionId = characterState.positionId;
