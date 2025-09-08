@@ -151,7 +151,7 @@ class SksParser {
           }
           
           // 调试输出
-          print('[SksParser] scene解析结果: background="$backgroundName", transition="$transitionType", animation="$animation", repeat=$repeatCount');
+          //print('[SksParser] scene解析结果: background="$backgroundName", transition="$transitionType", animation="$animation", repeat=$repeatCount');
           
           // 检查是否为十六进制颜色格式
           if (ColorBackgroundRenderer.isValidHexColor(backgroundName.trim())) {

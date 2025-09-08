@@ -65,6 +65,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   HotKey? _reloadHotKey;
   HotKey? _developerPanelHotKey; // Shift+D快捷键
   String? _projectName;
+  final GlobalKey _nvlScreenKey = GlobalKey();
+  
+  // 跟踪上一次的NVL状态，用于检测转场
+  bool _previousIsNvlMode = false;
+  bool _previousIsNvlMovieMode = false;
 
   @override
   void initState() {
@@ -142,12 +147,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   Widget _createDialogueBox({
+    Key? key,
     String? speaker,
     required String dialogue,
   }) {
     // 根据项目名称选择对话框
     if (_projectName == 'SoraNoUta') {
       return SoranoUtaDialogueBox(
+        key: key,
         speaker: speaker,
         dialogue: dialogue,
         progressionManager: _dialogueProgressionManager,
@@ -156,6 +163,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 默认对话框
     return DialogueBox(
+      key: key,
       speaker: speaker,
       dialogue: dialogue,
       progressionManager: _dialogueProgressionManager,
@@ -360,6 +368,18 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             }
             final gameState = snapshot.data!;
             
+            // 检测从电影模式退出，播放退出动画
+            if (_previousIsNvlMode && _previousIsNvlMovieMode && 
+                (!gameState.isNvlMode || !gameState.isNvlMovieMode)) {
+              // 即将从电影模式退出，播放黑边退出动画
+              final state = _nvlScreenKey.currentState as NvlScreenController?;
+              state?.playMovieModeExitAnimation();
+            }
+            
+            // 更新状态跟踪
+            _previousIsNvlMode = gameState.isNvlMode;
+            _previousIsNvlMovieMode = gameState.isNvlMovieMode;
+            
             // 更新选项显示状态
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -410,13 +430,25 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   },
                   child: _buildSceneWithFilter(gameState),
                 ),
-                // NVL 模式覆盖层
-                if (gameState.isNvlMode)
-                  NvlScreen(
-                    nvlDialogues: gameState.nvlDialogues,
-                    isMovieMode: gameState.isNvlMovieMode,
-                    progressionManager: _dialogueProgressionManager,
-                  ),
+                // NVL 模式覆盖层 - 使用 AnimatedSwitcher 添加过渡动画
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    // 电影模式和普通旁白模式都只使用淡入淡出，不再有上移动画
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  child: gameState.isNvlMode
+                      ? NvlScreen(
+                          key: _nvlScreenKey,
+                          nvlDialogues: gameState.nvlDialogues,
+                          isMovieMode: gameState.isNvlMovieMode,
+                          progressionManager: _dialogueProgressionManager,
+                        )
+                      : const SizedBox.shrink(key: ValueKey('no_nvl')),
+                ),
                 QuickMenu(
                   onSave: () => setState(() => _showSaveOverlay = true),
                   onLoad: () => setState(() => _showLoadOverlay = true),
@@ -487,11 +519,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
         ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        if (gameState.dialogue != null && !gameState.isNvlMode)
-          _createDialogueBox(
-            speaker: gameState.speaker,
-            dialogue: gameState.dialogue!,
-          ),
+        // 使用 AnimatedSwitcher 为对话框切换添加过渡动画
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                )),
+                child: child,
+              ),
+            );
+          },
+          child: gameState.dialogue != null && !gameState.isNvlMode
+              ? _createDialogueBox(
+                  key: const ValueKey('normal_dialogue'),
+                  speaker: gameState.speaker,
+                  dialogue: gameState.dialogue!,
+                )
+              : const SizedBox.shrink(key: ValueKey('no_dialogue')),
+        ),
         if (gameState.currentNode is MenuNode)
           ChoiceMenu(
             menuNode: gameState.currentNode as MenuNode,

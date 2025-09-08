@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
-import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
-import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
-import 'package:sakiengine/src/utils/rich_text_parser.dart';
+import 'package:sakiengine/src/utils/dialogue_shake_effect.dart';
+import 'soranouta_dialogue_content.dart';
+import 'soranouta_speaker_widget.dart';
 
 class SoranoUtaDialogueBox extends StatefulWidget {
   final String? speaker;
@@ -32,7 +32,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
 
   // 打字机动画管理器
   late TypewriterAnimationManager _typewriterController;
-  bool _enableTypewriter = true;
+  final bool _enableTypewriter = true;
   bool _enableSpeakerAnimation = true;
 
   // 文本淡入动画控制器
@@ -42,7 +42,6 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
   // 说话人擦除动画控制器
   late AnimationController _speakerWipeController;
   late Animation<double> _speakerWipeAnimation;
-  String? _currentSpeaker;
 
   // 等待键入字符闪烁动画控制器
   late AnimationController _blinkController;
@@ -97,7 +96,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       curve: Curves.easeOutQuart,
     ));
 
-    _currentSpeaker = widget.speaker;
+    // 启动说话人动画
 
     // 初始化等待键入字符闪烁动画
     _blinkController = AnimationController(
@@ -157,7 +156,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
 
     // 如果说话人发生变化，重新开始说话人擦除动画
     if (widget.speaker != oldWidget.speaker) {
-      _currentSpeaker = widget.speaker;
+      // 启动说话人动画
       if (widget.speaker != null &&
           widget.speaker!.isNotEmpty &&
           _enableSpeakerAnimation) {
@@ -201,17 +200,6 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
     widget.progressionManager?.progressDialogue();
   }
 
-  bool _isTextOverflowing(
-      BuildContext context, String text, TextStyle style, double maxWidth) {
-    final textPainter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    )..layout(maxWidth: maxWidth);
-
-    return textPainter.height > maxWidth;
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -232,247 +220,50 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       color: SettingsManager().currentDarkMode ? Colors.black : Colors.white,
       letterSpacing: 0.5,
       fontFamily: 'ChillJinshuSongPro_Soft',
+      backgroundColor: SettingsManager().currentDarkMode ? Colors.white : Colors.black,
       height: 1.1,
     );
 
-    return Stack(
-      children: [
-        // 对话框（独立控件）
-        GestureDetector(
-          onTap: _handleTap,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: MouseRegion(
-              onEnter: (_) => setState(() => _isHovered = true),
-              onExit: (_) => setState(() => _isHovered = false),
-              child: Container(
-                width: screenSize.width * 0.85,
-                height: screenSize.height * 0.35 / 1.5,
-                margin: EdgeInsets.all(16.0 * uiScale),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(
-                      config.baseWindowBorder > 0
-                          ? config.baseWindowBorder * uiScale
-                          : 0 * uiScale),
-                  border: Border.all(
-                    color: config.themeColors.primary
-                        .withOpacity(_isHovered ? 0.4 : 0.2),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 12 * uiScale,
-                      offset: Offset(0, 4 * uiScale),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                      config.baseWindowBorder > 0
-                          ? config.baseWindowBorder * uiScale
-                          : 0 * uiScale),
-                  child: Stack(
-                    children: [
-                      // 底层：纯色背景
-                      Container(
-                        width: double.infinity,
-                        height: double.infinity,
-                        color: config.themeColors.background
-                            .withOpacity(_dialogOpacity),
-                      ),
-                      // 中层：背景图片
-                      if (config.baseWindowBackground != null &&
-                          config.baseWindowBackground!.isNotEmpty)
-                        Positioned.fill(
-                          child: Opacity(
-                            opacity: config.baseWindowBackgroundAlpha *
-                                _dialogOpacity,
-                            child: ColorFiltered(
-                              colorFilter: ColorFilter.mode(
-                                Colors.transparent,
-                                config.baseWindowBackgroundBlendMode,
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.none,
-                                alignment: Alignment(
-                                  (config.dialogueBackgroundXAlign - 0.5) * 2,
-                                  (config.dialogueBackgroundYAlign - 0.5) * 2,
-                                ),
-                                child: Transform.scale(
-                                  scale: config.dialogueBackgroundScale,
-                                  child: SmartAssetImage(
-                                    assetName: config.baseWindowBackground!,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      // 上层：文本区域
-                      Padding(
-                          padding: EdgeInsets.only(
-                            left: 16.0 * uiScale + config.soranoUtaTextXPos,
-                            right: 16.0 * uiScale,
-                            top: 16.0 * uiScale + config.soranoUtaTextYPos,
-                            bottom: 16.0 * uiScale,
-                          ),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              // 检查文本是否溢出
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (mounted) {
-                                  setState(() {
-                                    _isDialogueComplete = !_isTextOverflowing(
-                                        context,
-                                        widget.dialogue,
-                                        dialogueStyle,
-                                        constraints.maxWidth - 32 * uiScale);
-                                  });
-                                }
-                              });
-
-                              return SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    FadeTransition(
-                                      opacity: _textFadeAnimation,
-                                      child: RichText(
-                                        text: TextSpan(
-                                          children: [
-                                            ..._enableTypewriter
-                                                ? _typewriterController.getTextSpans(dialogueStyle)
-                                                : RichTextParser.createTextSpans(widget.dialogue, dialogueStyle),
-                                            if (_isDialogueComplete)
-                                              WidgetSpan(
-                                                alignment:
-                                                    PlaceholderAlignment.middle,
-                                                child: Padding(
-                                                  padding: EdgeInsets.only(
-                                                      left: uiScale),
-                                                  child: widget.speaker !=
-                                                              null &&
-                                                          widget.speaker!
-                                                              .isNotEmpty
-                                                      ? Padding(
-                                                          padding:
-                                                              EdgeInsets.only(
-                                                                  bottom: 15 *
-                                                                      uiScale),
-                                                          child:
-                                                              AnimatedBuilder(
-                                                            animation:
-                                                                _blinkAnimation,
-                                                            builder: (context,
-                                                                child) {
-                                                              return Opacity(
-                                                                opacity:
-                                                                    _blinkAnimation
-                                                                        .value,
-                                                                child: Text(
-                                                                  '_',
-                                                                  style: dialogueStyle
-                                                                      .copyWith(
-                                                                    color: SettingsManager().currentDarkMode 
-                                                                        ? Colors.white 
-                                                                        : config.themeColors.primary,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    height: 1.0,
-                                                                  ),
-                                                                ),
-                                                              );
-                                                            },
-                                                          ),
-                                                        )
-                                                      : Padding(
-                                                          padding:
-                                                              EdgeInsets.only(
-                                                                  bottom: 7 *
-                                                                      uiScale),
-                                                          child:
-                                                              DialogueNextArrow(
-                                                            visible:
-                                                                _isDialogueComplete,
-                                                            fontSize:
-                                                                dialogueStyle
-                                                                    .fontSize!,
-                                                            color: SettingsManager().currentDarkMode
-                                                                ? Colors.white.withValues(alpha: 0.8)
-                                                                : config.themeColors.primary.withValues(alpha: 0.7),
-                                                          ),
-                                                        ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+    return DialogueShakeEffect(
+      dialogue: widget.dialogue,
+      enabled: true,
+      intensity: 4.0 * uiScale,
+      duration: const Duration(milliseconds: 600),
+      child: Stack(
+        children: [
+          // 主对话框内容
+          SoranoutaDialogueContent(
+            dialogue: widget.dialogue,
+            dialogueStyle: dialogueStyle,
+            screenSize: screenSize,
+            uiScale: uiScale,
+            textScale: textScale,
+            isHovered: _isHovered,
+            isDialogueComplete: _isDialogueComplete,
+            dialogOpacity: _dialogOpacity,
+            onTap: _handleTap,
+            onHoverChanged: (hovered) => setState(() => _isHovered = hovered),
+            config: config,
+            enableTypewriter: _enableTypewriter,
+            typewriterController: _typewriterController,
+            textFadeAnimation: _textFadeAnimation,
+            blinkAnimation: _blinkAnimation,
           ),
-        ),
-
-        // 说话人黑色矩形（独立控件，在对话框之上）
-        Positioned(
-          left: (screenSize.width * 0.85) * config.soranoutaSpeakerXPos +
-              16 * uiScale,
-          bottom: 16 * uiScale +
-              (screenSize.height * 0.35 / 1.5) *
-                  (1.0 - config.soranoutaSpeakerYPos),
-          child: FractionalTranslation(
-            translation: const Offset(0.0, 0.5),
-            child: Opacity(
-              opacity: (widget.speaker != null && widget.speaker!.isNotEmpty)
-                  ? 1.0
-                  : 0.0,
-              child: _enableSpeakerAnimation
-                  ? AnimatedBuilder(
-                      animation: _speakerWipeAnimation,
-                      builder: (context, child) {
-                        return ClipRect(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: (widget.speaker != null &&
-                                    widget.speaker!.isNotEmpty)
-                                ? _speakerWipeAnimation.value
-                                : 0.0,
-                            child: Text(
-                              widget.speaker ?? ' ',
-                              style: speakerStyle,
-                              textHeightBehavior: const TextHeightBehavior(
-                                applyHeightToFirstAscent: false,
-                                applyHeightToLastDescent: false,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  : Text(
-                      widget.speaker ?? ' ',
-                      style: speakerStyle,
-                      textHeightBehavior: const TextHeightBehavior(
-                        applyHeightToFirstAscent: false,
-                        applyHeightToLastDescent: false,
-                      ),
-                    ),
-            ),
+          
+          // 说话人显示组件
+          SoranoutaSpeakerWidget(
+            speaker: widget.speaker,
+            speakerStyle: speakerStyle,
+            screenWidth: screenSize.width,
+            screenHeight: screenSize.height,
+            uiScale: uiScale,
+            speakerXPos: config.soranoutaSpeakerXPos,
+            speakerYPos: config.soranoutaSpeakerYPos,
+            enableAnimation: _enableSpeakerAnimation,
+            wipeAnimation: _speakerWipeAnimation,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

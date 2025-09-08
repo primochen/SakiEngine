@@ -38,18 +38,18 @@ class SceneTransitionEffectManager {
     String? oldBackground,
     String? newBackground,
   }) async {
-    print('[SceneTransition] 请求${transitionType.name}转场，当前状态: isTransitioning=$_isTransitioning');
+    //print('[SceneTransition] 请求${transitionType.name}转场，当前状态: isTransitioning=$_isTransitioning');
     if (_isTransitioning) return;
     
     // 对于diss转场，如果新旧背景相同，直接跳过转场
     if (transitionType == TransitionType.diss && oldBackground == newBackground) {
-      print('[SceneTransition] diss转场检测到相同背景($oldBackground -> $newBackground)，跳过转场效果');
+      //print('[SceneTransition] diss转场检测到相同背景($oldBackground -> $newBackground)，跳过转场效果');
       onMidTransition();
       return;
     }
     
     _isTransitioning = true;
-    print('[SceneTransition] 开始${transitionType.name}转场，时长: ${duration.inMilliseconds}ms');
+    //print('[SceneTransition] 开始${transitionType.name}转场，时长: ${duration.inMilliseconds}ms');
     
     final completer = Completer<void>();
     
@@ -61,7 +61,7 @@ class SceneTransitionEffectManager {
           duration: duration,
           onMidTransition: onMidTransition,
           onComplete: () {
-            print('[SceneTransition] fade转场完成，移除覆盖层');
+            //print('[SceneTransition] fade转场完成，移除覆盖层');
             _removeOverlay();
             _isTransitioning = false;
             completer.complete();
@@ -73,7 +73,7 @@ class SceneTransitionEffectManager {
           duration: duration,
           onMidTransition: onMidTransition,
           onComplete: () {
-            print('[SceneTransition] diss转场完成，移除覆盖层');
+            //print('[SceneTransition] diss转场完成，移除覆盖层');
             _removeOverlay();
             _isTransitioning = false;
             completer.complete();
@@ -88,7 +88,7 @@ class SceneTransitionEffectManager {
           duration: duration,
           onMidTransition: onMidTransition,
           onComplete: () {
-            print('[SceneTransition] 默认fade转场完成，移除覆盖层');
+            //print('[SceneTransition] 默认fade转场完成，移除覆盖层');
             _removeOverlay();
             _isTransitioning = false;
             completer.complete();
@@ -102,7 +102,7 @@ class SceneTransitionEffectManager {
     );
     
     // 插入覆盖层
-    print('[SceneTransition] 插入${transitionType.name}转场覆盖层');
+    //print('[SceneTransition] 插入${transitionType.name}转场覆盖层');
     Overlay.of(context).insert(_overlayEntry!);
     
     return completer.future;

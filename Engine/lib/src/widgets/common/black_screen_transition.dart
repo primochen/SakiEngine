@@ -74,11 +74,11 @@ class SceneTransitionManager {
     required VoidCallback onMidTransition,
     Duration duration = const Duration(milliseconds: 800),
   }) async {
-    print('[SceneTransition] 请求scene转场，当前状态: isTransitioning=$_isTransitioning');
+    //print('[SceneTransition] 请求scene转场，当前状态: isTransitioning=$_isTransitioning');
     if (_isTransitioning) return;
     
     _isTransitioning = true;
-    print('[SceneTransition] 开始scene转场，时长: ${duration.inMilliseconds}ms');
+    //print('[SceneTransition] 开始scene转场，时长: ${duration.inMilliseconds}ms');
     
     final completer = Completer<void>();
     
@@ -88,7 +88,7 @@ class SceneTransitionManager {
         duration: duration,
         onMidTransition: onMidTransition,
         onComplete: () {
-          print('[SceneTransition] scene转场完成，移除覆盖层');
+          //print('[SceneTransition] scene转场完成，移除覆盖层');
           _removeOverlay();
           _isTransitioning = false;
           completer.complete();
@@ -97,7 +97,7 @@ class SceneTransitionManager {
     );
     
     // 插入覆盖层
-    print('[SceneTransition] 插入scene转场覆盖层');
+    //print('[SceneTransition] 插入scene转场覆盖层');
     Overlay.of(context).insert(_overlayEntry!);
     
     return completer.future;

@@ -7,6 +7,12 @@ import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
+// 用于外部访问NvlScreen状态的接口
+abstract class NvlScreenController {
+  void setCinematicBarsVisible(bool visible);
+  void playMovieModeExitAnimation();
+}
+
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
   final DialogueProgressionManager? progressionManager;
@@ -23,8 +29,7 @@ class NvlScreen extends StatefulWidget {
   State<NvlScreen> createState() => _NvlScreenState();
 }
 
-class _NvlScreenState extends State<NvlScreen>
-    with TickerProviderStateMixin {
+class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin implements NvlScreenController {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   final ScrollController _scrollController = ScrollController();
@@ -33,11 +38,20 @@ class _NvlScreenState extends State<NvlScreen>
   final Map<int, AnimationController> _textFadeControllers = {};
   final Map<int, Animation<double>> _textFadeAnimations = {};
   
+  // 电影黑边动画控制器 - 分别为上下黑边创建独立控制器
+  late AnimationController _topBarController;
+  late AnimationController _bottomBarController;
+  late Animation<double> _topBarAnimation;
+  late Animation<double> _bottomBarAnimation;
+  
   // 当前打字机控制器（只有最后一句对话使用）
   TypewriterAnimationManager? _currentTypewriterController;
   
   // 跟踪最后一句对话是否完成（用于显示箭头）
   bool _isLastDialogueComplete = false;
+  
+  // 控制黑边显示状态 - 用于转场时临时隐藏黑边
+  bool _showCinematicBars = false;
 
   @override
   void initState() {
@@ -54,7 +68,46 @@ class _NvlScreenState extends State<NvlScreen>
       curve: Curves.easeInOut,
     ));
     
+    // 初始化电影黑边动画 - 创建两个独立的控制器
+    _topBarController = AnimationController(
+      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
+      vsync: this,
+    );
+    
+    _bottomBarController = AnimationController(
+      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
+      vsync: this,
+    );
+    
+    // 上方黑边从屏幕上方滑入
+    _topBarAnimation = Tween<double>(
+      begin: -1.0, // 从屏幕上方外开始
+      end: 0.0,    // 滑入到正确位置
+    ).animate(CurvedAnimation(
+      parent: _topBarController,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    // 下方黑边从屏幕下方滑入
+    _bottomBarAnimation = Tween<double>(
+      begin: 1.0,  // 从屏幕下方外开始  
+      end: 0.0,    // 滑入到正确位置
+    ).animate(CurvedAnimation(
+      parent: _bottomBarController,
+      curve: Curves.easeOutCubic,
+    ));
+    
     _fadeController.forward();
+    
+    // 如果是电影模式，启动黑边动画并设置显示状态
+    if (widget.isMovieMode) {
+      _showCinematicBars = true;
+      // 让上下黑边有个小延迟，增加视觉层次
+      _topBarController.forward();
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _bottomBarController.forward();
+      });
+    }
     
     // 自动滚动到底部
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -71,6 +124,22 @@ class _NvlScreenState extends State<NvlScreen>
   @override
   void didUpdateWidget(NvlScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // 如果电影模式状态发生变化，重新启动动画
+    if (widget.isMovieMode != oldWidget.isMovieMode) {
+      if (widget.isMovieMode) {
+        _showCinematicBars = true;
+        _topBarController.forward();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _bottomBarController.forward();
+        });
+      } else {
+        // 当切换到非电影模式时，先隐藏黑边再反转动画
+        _showCinematicBars = false;
+        _topBarController.reverse();
+        _bottomBarController.reverse();
+      }
+    }
     
     // 当有新对话添加时，重置状态
     if (widget.nvlDialogues.length > oldWidget.nvlDialogues.length) {
@@ -94,6 +163,8 @@ class _NvlScreenState extends State<NvlScreen>
   @override
   void dispose() {
     _fadeController.dispose();
+    _topBarController.dispose();
+    _bottomBarController.dispose();
     _scrollController.dispose();
     // 从推进管理器注销打字机
     widget.progressionManager?.registerTypewriter(null);
@@ -141,6 +212,42 @@ class _NvlScreenState extends State<NvlScreen>
       });
     }
   }
+  
+  /// 控制电影模式黑边的显示/隐藏
+  /// 用于转场时临时隐藏黑边以避免视觉问题
+  @override
+  void setCinematicBarsVisible(bool visible) {
+    if (mounted && _showCinematicBars != visible) {
+      setState(() {
+        _showCinematicBars = visible;
+      });
+      
+      if (visible) {
+        // 显示黑边：从屏幕外滑入
+        _topBarController.forward();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _bottomBarController.forward();
+        });
+      } else {
+        // 隐藏黑边：滑出屏幕外
+        _topBarController.reverse();
+        _bottomBarController.reverse();
+      }
+    }
+  }
+  
+  /// 播放电影模式退出动画：黑边退回屏幕外
+  @override
+  void playMovieModeExitAnimation() {
+    if (mounted && widget.isMovieMode) {
+      // 让黑边退回屏幕外
+      // 上边向上滑出屏幕（从0.0回到-1.0，即从屏幕顶部滑到屏幕上方外）
+      _topBarController.reverse();
+      
+      // 下边向下滑出屏幕（从0.0回到1.0，即从屏幕底部滑到屏幕下方外）
+      _bottomBarController.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,8 +273,8 @@ class _NvlScreenState extends State<NvlScreen>
               ),
             ),
             
-            // 如果是电影模式，添加上下黑边
-            if (widget.isMovieMode) ..._buildCinematicBars(context),
+            // 如果是电影模式且允许显示黑边，添加上下黑边
+            if (widget.isMovieMode && _showCinematicBars) ..._buildCinematicBars(context),
             
             // 内容区域
             _buildContent(config, textScale, uiScale),
@@ -271,25 +378,41 @@ class _NvlScreenState extends State<NvlScreen>
     final barHeight = MediaQuery.of(context).size.height * 0.12; // 12% 的屏幕高度
     
     return [
-      // 上方黑边
-      Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: Container(
-          height: barHeight,
-          color: Colors.black,
-        ),
+      // 上方黑边 - 从屏幕上方滑入
+      AnimatedBuilder(
+        animation: _topBarAnimation,
+        builder: (context, child) {
+          // _topBarAnimation: -1.0 -> 0.0
+          // 实际位置: -barHeight -> 0 (从上方外滑入到屏幕顶部)
+          final topPosition = _topBarAnimation.value * barHeight;
+          return Positioned(
+            top: topPosition,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: barHeight,
+              color: Colors.black,
+            ),
+          );
+        },
       ),
-      // 下方黑边
-      Positioned(
-        bottom: 0,
-        left: 0,
-        right: 0,
-        child: Container(
-          height: barHeight,
-          color: Colors.black,
-        ),
+      // 下方黑边 - 从屏幕下方滑入
+      AnimatedBuilder(
+        animation: _bottomBarAnimation,
+        builder: (context, child) {
+          // _bottomBarAnimation: 1.0 -> 0.0
+          // 实际位置: -barHeight -> 0 (从下方外滑入到屏幕底部)
+          final bottomPosition = -_bottomBarAnimation.value * barHeight;
+          return Positioned(
+            bottom: bottomPosition,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: barHeight,
+              color: Colors.black,
+            ),
+          );
+        },
       ),
     ];
   }

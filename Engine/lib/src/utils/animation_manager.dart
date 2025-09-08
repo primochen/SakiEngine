@@ -6,7 +6,7 @@ class AnimationKeyframe {
   final String type; // 'ease' or 'linear'
   final double duration;
   final Map<String, double> properties;
-  
+
   AnimationKeyframe({
     required this.type,
     required this.duration,
@@ -17,7 +17,7 @@ class AnimationKeyframe {
 class AnimationDefinition {
   final String name;
   final List<AnimationKeyframe> keyframes;
-  
+
   AnimationDefinition({
     required this.name,
     required this.keyframes,
@@ -30,9 +30,10 @@ class AnimationManager {
 
   static Future<void> loadAnimations() async {
     if (_isLoaded) return;
-    
+
     try {
-      final content = await AssetManager().loadString('assets/GameScript/configs/animation.sks');
+      final content = await AssetManager()
+          .loadString('assets/GameScript/configs/animation.sks');
       _parseAnimations(content);
       _isLoaded = true;
     } catch (e) {
@@ -50,11 +51,11 @@ class AnimationManager {
     final lines = content.split('\n');
     String? currentAnimationName;
     List<AnimationKeyframe> currentKeyframes = [];
-    
+
     for (final line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty || trimmed.startsWith('//')) continue;
-      
+
       if (!trimmed.startsWith('ease') && !trimmed.startsWith('linear')) {
         // 这是动画名称
         if (currentAnimationName != null && currentKeyframes.isNotEmpty) {
@@ -73,7 +74,7 @@ class AnimationManager {
         }
       }
     }
-    
+
     // 处理最后一个动画
     if (currentAnimationName != null && currentKeyframes.isNotEmpty) {
       _animations[currentAnimationName] = AnimationDefinition(
@@ -86,13 +87,13 @@ class AnimationManager {
   static AnimationKeyframe? _parseKeyframe(String line) {
     final parts = line.split(' ');
     if (parts.length < 3) return null;
-    
+
     final type = parts[0]; // 'ease' or 'linear'
     final duration = double.tryParse(parts[1]);
     if (duration == null) return null;
-    
+
     final properties = <String, double>{};
-    
+
     // 解析属性变化 如: ycenter-0.5, xcenter+0.1
     for (int i = 2; i < parts.length; i++) {
       final prop = parts[i];
@@ -104,7 +105,7 @@ class AnimationManager {
         properties[propName] = operator == '+' ? value : -value;
       }
     }
-    
+
     return AnimationKeyframe(
       type: type,
       duration: duration,
@@ -129,12 +130,14 @@ class CharacterAnimationController {
   final String characterId;
   final VoidCallback? onComplete;
   final void Function(Map<String, double>)? onAnimationUpdate;
-  
+
   AnimationController? _controller;
   Animation<double>? _animation;
   Map<String, double> _baseProperties = {};
   Map<String, double> _currentProperties = {};
-  
+  Map<String, double> _originalBaseProperties = {}; // 保存真正的初始基础位置，永不改变
+  bool _shouldStop = false; // 用于控制无限循环的停止
+
   CharacterAnimationController({
     required this.characterId,
     this.onComplete,
@@ -150,35 +153,29 @@ class CharacterAnimationController {
   }) async {
     final animDef = AnimationManager.getAnimation(animationName);
     if (animDef == null) {
-      print('[CharacterAnimationController] 动画不存在: $animationName');
       onComplete?.call();
       return;
     }
-
-    print('[CharacterAnimationController] 开始播放动画: $animationName, repeat: ${repeatCount ?? "无限"}');
     _baseProperties = Map.from(baseProperties);
     _currentProperties = Map.from(baseProperties);
-    
+    _originalBaseProperties = Map.from(baseProperties); // 保存初始基础位置，永不改变
+    _shouldStop = false; // 重置停止标志
+
     // 根据repeatCount决定播放次数
-    if (repeatCount == null) {
-      // 无限循环播放
+    if (repeatCount == 0) {
+      // repeat 0 表示无限循环播放
       await _playInfiniteLoop(animDef.keyframes, vsync);
-    } else if (repeatCount > 0) {
+    } else if (repeatCount == null || repeatCount == 1) {
+      // 不写repeat或repeat 1，播放一次
+      await _playKeyframes(animDef.keyframes, vsync);
+    } else if (repeatCount > 1) {
       // 循环播放指定次数
+      // 每次循环都基于真正的初始基础位置计算偏移，避免累积
       for (int i = 0; i < repeatCount; i++) {
         await _playKeyframes(animDef.keyframes, vsync);
-        if (i < repeatCount - 1) {
-          // 只在非最后一次循环时重置位置
-          _currentProperties = Map.from(_baseProperties);
-          onAnimationUpdate?.call(Map.from(_currentProperties));
-        }
       }
-    } else {
-      // repeatCount为0，播放一次
-      await _playKeyframes(animDef.keyframes, vsync);
     }
-    
-    print('[CharacterAnimationController] 动画播放完成: $animationName');
+
     onComplete?.call();
   }
 
@@ -192,45 +189,111 @@ class CharacterAnimationController {
         break;
       }
     }
-    
+
     if (!needsReturn) return;
-    
+
     // 创建回到基础位置的关键帧（0.3秒平滑过渡）
     final returnKeyframe = AnimationKeyframe(
       type: 'ease',
       duration: 0.3,
       properties: {}, // 空属性表示回到基础值
     );
-    
+
     await _playKeyframe(returnKeyframe, vsync, isReturnAnimation: true);
   }
 
   /// 无限循环播放动画
-  Future<void> _playInfiniteLoop(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
-    // 注意：这里实际上不是真正的无限循环，因为那会阻塞UI
-    // 我们播放一次后就停止，让游戏管理器决定是否继续
-    // 真正的无限循环需要在游戏管理器层面处理
-    await _playKeyframes(keyframes, vsync);
-    
-    // 无限循环动画不再自动重置，保持最终位置
+  Future<void> _playInfiniteLoop(
+      List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
+    // 实现真正的无限循环播放
+    // 每次循环都基于真正的初始基础位置计算偏移，避免累积
+    while (!_shouldStop) {
+      // 播放完整的动画序列
+      await _playKeyframes(keyframes, vsync);
+
+      // 如果被标记为停止，则跳出循环
+      if (_shouldStop) break;
+
+      // 添加短暂的延迟避免过于频繁的循环（可选）
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
   }
 
-  Future<void> _playKeyframes(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
+  /// 平滑地重置到基础位置
+  Future<void> _smoothResetToBasePosition(TickerProvider vsync) async {
+    // 检查是否需要重置
+    bool needsReset = false;
+    for (final key in _currentProperties.keys) {
+      if ((_currentProperties[key] ?? 0.0) != (_baseProperties[key] ?? 0.0)) {
+        needsReset = true;
+        break;
+      }
+    }
+
+    if (!needsReset) return;
+
+    // 创建一个快速的平滑过渡回到基础位置
+    final resetDuration = 100; // 100ms 快速重置
+    _controller?.dispose();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: resetDuration),
+      vsync: vsync,
+    );
+
+    final startProperties = Map<String, double>.from(_currentProperties);
+    final endProperties = Map<String, double>.from(_baseProperties);
+
+    final curvedAnimation = CurvedAnimation(
+      parent: _controller!,
+      curve: Curves.easeInOut,
+    );
+
+    final animation =
+        Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation);
+
+    animation.addListener(() {
+      final progress = animation.value;
+
+      for (final propName in _currentProperties.keys) {
+        final startValue = startProperties[propName] ?? 0.0;
+        final endValue = endProperties[propName] ?? 0.0;
+        _currentProperties[propName] =
+            startValue + (endValue - startValue) * progress;
+      }
+
+      onAnimationUpdate?.call(Map.from(_currentProperties));
+    });
+
+    final completer = Completer<void>();
+    _controller!.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        completer.complete();
+      }
+    });
+
+    await _controller!.forward();
+    await completer.future;
+  }
+
+  Future<void> _playKeyframes(
+      List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
     for (final keyframe in keyframes) {
       await _playKeyframe(keyframe, vsync);
     }
   }
 
-  Future<void> _playKeyframe(AnimationKeyframe keyframe, TickerProvider vsync, {bool isReturnAnimation = false}) async {
+  Future<void> _playKeyframe(AnimationKeyframe keyframe, TickerProvider vsync,
+      {bool isReturnAnimation = false}) async {
     _controller?.dispose();
     _controller = AnimationController(
       duration: Duration(milliseconds: (keyframe.duration * 1000).round()),
       vsync: vsync,
     );
 
-    final startProperties = Map<String, double>.from(_currentProperties); // 从当前位置开始
+    final startProperties =
+        Map<String, double>.from(_currentProperties); // 从当前位置开始
     final endProperties = Map<String, double>.from(_currentProperties);
-    
+
     if (isReturnAnimation) {
       // 复原动画：从当前位置回到基础属性值
       for (final key in _currentProperties.keys) {
@@ -238,11 +301,13 @@ class CharacterAnimationController {
         endProperties[key] = _baseProperties[key] ?? 0.0; // 回到基础位置
       }
     } else {
-      // 正常动画：从基础位置开始，移动到基础位置+偏移量
+      // 正常动画：基于真正的初始基础位置计算偏移量
+      // 确保每个关键帧的偏移都是相对于最初传入值，避免累积
       for (final entry in keyframe.properties.entries) {
         final propName = entry.key;
         final offset = entry.value;
-        endProperties[propName] = (_baseProperties[propName] ?? 0.0) + offset;
+        endProperties[propName] =
+            (_originalBaseProperties[propName] ?? 0.0) + offset;
       }
     }
 
@@ -261,16 +326,17 @@ class CharacterAnimationController {
     }
 
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation);
-    
+
     _animation!.addListener(() {
       final progress = _animation!.value;
-      
+
       if (isReturnAnimation) {
         // 复原动画：插值到基础位置
         for (final propName in _currentProperties.keys) {
           final startValue = startProperties[propName] ?? 0.0;
           final endValue = endProperties[propName] ?? 0.0;
-          _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+          _currentProperties[propName] =
+              startValue + (endValue - startValue) * progress;
         }
       } else {
         // 正常动画：只更新关键帧中定义的属性
@@ -278,10 +344,11 @@ class CharacterAnimationController {
           final propName = entry.key;
           final startValue = startProperties[propName] ?? 0.0;
           final endValue = endProperties[propName] ?? 0.0;
-          _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+          _currentProperties[propName] =
+              startValue + (endValue - startValue) * progress;
         }
       }
-      
+
       // 调用实时更新回调
       onAnimationUpdate?.call(Map.from(_currentProperties));
     });
@@ -299,7 +366,13 @@ class CharacterAnimationController {
 
   Map<String, double> get currentProperties => Map.from(_currentProperties);
 
+  /// 停止无限循环动画
+  void stopInfiniteLoop() {
+    _shouldStop = true;
+  }
+
   void dispose() {
+    _shouldStop = true; // 确保停止任何正在运行的无限循环
     _controller?.dispose();
   }
 }

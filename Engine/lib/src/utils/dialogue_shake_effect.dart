@@ -1,0 +1,300 @@
+import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
+/// 对话框震动效果管理器
+/// 当检测到对话中包含感叹号时，触发GAL风格Q弹震动（快速左右震动带弹性衰减）
+class DialogueShakeEffect extends StatefulWidget {
+  final Widget child;
+  final String dialogue;
+  final bool enabled;
+  final double intensity;
+  final Duration duration;
+
+  const DialogueShakeEffect({
+    super.key,
+    required this.child,
+    required this.dialogue,
+    this.enabled = true,
+    this.intensity = 8.0, // 增大默认强度
+    this.duration = const Duration(milliseconds: 1000), // 进一步延长到1秒让过渡极其舒缓
+  });
+
+  @override
+  State<DialogueShakeEffect> createState() => _DialogueShakeEffectState();
+}
+
+class _DialogueShakeEffectState extends State<DialogueShakeEffect>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeShakeAnimation();
+    _checkForExclamation();
+  }
+
+  @override
+  void didUpdateWidget(DialogueShakeEffect oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 如果对话内容发生变化，重新检查是否需要震动
+    if (widget.dialogue != oldWidget.dialogue) {
+      _checkForExclamation();
+    }
+  }
+
+  void _initializeShakeAnimation() {
+    // Q弹震动控制器
+    _shakeController = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    _shakeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOutCubic, // 使用更加舒缓的三次曲线
+    ));
+  }
+
+  void _checkForExclamation() {
+    if (!widget.enabled) {
+      return;
+    }
+
+    // 检测中英文感叹号
+    final hasExclamation = widget.dialogue.contains('!') || 
+                          widget.dialogue.contains('！');
+    
+    // 如果发现感叹号，触发GAL风格震动
+    if (hasExclamation) {
+      _triggerShake();
+    }
+  }
+
+  void _triggerShake() {
+    // 重置并启动震动动画
+    _shakeController.reset();
+    _shakeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shakeAnimation,
+      builder: (context, child) {
+        final progress = _shakeAnimation.value.clamp(0.0, 1.0);
+        
+        double offsetX = 0.0;
+        double offsetY = 0.0;
+        
+        if (progress < 0.5) {
+          // 主要Q弹震动阶段 - 进一步减少主震动时间比例
+          final t = progress / 0.5;
+          final shakeIntensity = math.sin(t * math.pi); // 0到1再到0的完美曲线
+          
+          // 更低频率震动，极其舒缓
+          final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
+          final baseAmplitude = widget.intensity * 2.0; // 大幅增加基础震动强度
+          
+          // 主要左右震动
+          offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
+          
+          // 配合轻微上下震动增加Q弹感
+          offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
+          
+        } else {
+          // 极其舒缓的收尾阶段 - 大幅延长收尾时间
+          final t = (progress - 0.5) / 0.5;
+          final fadeOut = 1.0 - Curves.easeOutCubic.transform(t); // 使用三次缓出曲线让收尾极其平滑
+          final finalAmplitude = widget.intensity * 0.5 * fadeOut;
+          
+          // 极其温和的收尾震动
+          offsetX = finalAmplitude * math.sin(t * math.pi * 2); // 极低频率的收尾
+          offsetY = finalAmplitude * 0.3 * math.cos(t * math.pi * 1.5); // 轻微的上下收尾
+        }
+
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..translate(offsetX, offsetY, 0.0),
+          child: widget.child,
+        );
+      },
+    );
+  }
+}
+
+/// GAL风格Q弹震动效果的工具方法类
+class ShakeEffectUtils {
+  /// 检测文本中是否包含感叹号（中英文）
+  static bool containsExclamation(String text) {
+    return text.contains('!') || text.contains('！');
+  }
+
+  /// 创建Q弹震动效果矩阵
+  static Matrix4 createShakeTransform(double progress, double intensity) {
+    progress = progress.clamp(0.0, 1.0);
+    
+    double offsetX = 0.0;
+    double offsetY = 0.0;
+    
+    if (progress < 0.5) {
+      // 主要Q弹震动阶段 - 进一步减少主震动时间比例
+      final t = progress / 0.5;
+      final shakeIntensity = math.sin(t * math.pi); // 0到1再到0的完美曲线
+      
+      // 更低频率震动，极其舒缓
+      final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
+      final baseAmplitude = intensity * 2.0; // 大幅增加基础震动强度
+      
+      // 主要左右震动
+      offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
+      
+      // 配合轻微上下震动增加Q弹感
+      offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
+      
+    } else {
+      // 极其舒缓的收尾阶段 - 大幅延长收尾时间
+      final t = (progress - 0.5) / 0.5;
+      final fadeOut = 1.0 - Curves.easeOutCubic.transform(t); // 使用三次缓出曲线让收尾极其平滑
+      final finalAmplitude = intensity * 0.5 * fadeOut;
+      
+      // 极其温和的收尾震动
+      offsetX = finalAmplitude * math.sin(t * math.pi * 2); // 极低频率的收尾
+      offsetY = finalAmplitude * 0.3 * math.cos(t * math.pi * 1.5); // 轻微的上下收尾
+    }
+    
+    return Matrix4.identity()
+      ..translate(offsetX, offsetY, 0.0);
+  }
+
+  /// 获取Q弹震动效果偏移量
+  static Offset getShakeOffset(double progress, double intensity) {
+    progress = progress.clamp(0.0, 1.0);
+    
+    double offsetX = 0.0;
+    double offsetY = 0.0;
+    
+    if (progress < 0.5) {
+      // 主要Q弹震动阶段 - 进一步减少主震动时间比例
+      final t = progress / 0.5;
+      final shakeIntensity = math.sin(t * math.pi);
+      
+      final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
+      final baseAmplitude = intensity * 2.0;
+      
+      offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
+      offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
+      
+    } else {
+      // 极其舒缓的收尾阶段 - 大幅延长收尾时间
+      final t = (progress - 0.5) / 0.5;
+      final fadeOut = 1.0 - Curves.easeOutCubic.transform(t); // 使用三次缓出曲线让收尾极其平滑
+      final finalAmplitude = intensity * 0.5 * fadeOut;
+      
+      // 极其温和的收尾震动
+      offsetX = finalAmplitude * math.sin(t * math.pi * 2); // 极低频率的收尾
+      offsetY = finalAmplitude * 0.3 * math.cos(t * math.pi * 1.5); // 轻微的上下收尾
+    }
+    
+    return Offset(offsetX, offsetY);
+  }
+}
+
+/// 简化版本的GAL震动Widget，可以直接包装任何组件
+class SimpleShakeWrapper extends StatefulWidget {
+  final Widget child;
+  final bool trigger;
+  final double intensity;
+  final Duration duration;
+  final VoidCallback? onShakeComplete;
+
+  const SimpleShakeWrapper({
+    super.key,
+    required this.child,
+    required this.trigger,
+    this.intensity = 8.0, // 增大默认强度
+    this.duration = const Duration(milliseconds: 1000), // 进一步延长到1秒让过渡极其舒缓
+    this.onShakeComplete,
+  });
+
+  @override
+  State<SimpleShakeWrapper> createState() => _SimpleShakeWrapperState();
+}
+
+class _SimpleShakeWrapperState extends State<SimpleShakeWrapper>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  bool _lastTrigger = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_controller);
+
+    _animation.addStatusListener((status) {
+      if (status == AnimationStatus.completed && widget.onShakeComplete != null) {
+        widget.onShakeComplete!();
+      }
+    });
+
+    _lastTrigger = widget.trigger;
+  }
+
+  @override
+  void didUpdateWidget(SimpleShakeWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 检测trigger从false变为true时触发GAL震动
+    if (!_lastTrigger && widget.trigger) {
+      _controller.reset();
+      _controller.forward();
+    }
+    _lastTrigger = widget.trigger;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final transform = ShakeEffectUtils.createShakeTransform(
+          _animation.value, 
+          widget.intensity
+        );
+        
+        return Transform(
+          alignment: Alignment.center,
+          transform: transform,
+          child: widget.child,
+        );
+      },
+    );
+  }
+}
