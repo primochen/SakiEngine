@@ -300,7 +300,7 @@ play music play
 l "啊！？"////对话框抖三抖
 x hen "做饭就差你没来了！快点！"////立绘渐入进来，一脸生气的表情
 "做饭？"
-scene cg_cp0_q1 an cgjump
+scene cg_cp0_q1 an cgjump repeat 0
 "还没等我反应过来，夏悠便拉着我的手朝平地下面跑去。"
 l "诶诶？"
 "跑着，跑着。"

@@ -34,11 +34,6 @@ ease 0.3 ycenter+0 scale-0
 cgjump
 ease 0.3 ycenter-0.02 scale+0.1
 ease 0.3 ycenter+0 scale+0.1
-ease 0.3 ycenter-0.02 scale+0.1
-ease 0.3 ycenter+0 scale+0.1
-ease 0.3 ycenter-0.02 scale+0.1
-ease 0.3 ycenter+0 scale+0.1
-ease 0.3 ycenter+0 scale-0
 
 zoomjumpin
 ease 0.3 ycenter-0.05 scale+0.3
