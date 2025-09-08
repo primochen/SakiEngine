@@ -99,9 +99,9 @@ class GameManager {
   Future<void> _checkAndAnimateCharacterPositions(Map<String, CharacterState> newCharacters) async {
     if (_tickerProvider == null) return;
     
-    print('[CharacterPositionAnimation] 检测位置变化...');
-    print('[CharacterPositionAnimation] 旧角色: ${_currentState.characters.keys.toList()}');
-    print('[CharacterPositionAnimation] 新角色: ${newCharacters.keys.toList()}');
+    //print('[CharacterPositionAnimation] 检测位置变化...');
+    //print('[CharacterPositionAnimation] 旧角色: ${_currentState.characters.keys.toList()}');
+    //print('[CharacterPositionAnimation] 新角色: ${newCharacters.keys.toList()}');
     
     // 检测位置变化
     final characterOrder = newCharacters.keys.toList();
@@ -113,9 +113,9 @@ class GameManager {
       characterOrder,
     );
     
-    print('[CharacterPositionAnimation] 检测到 ${positionChanges.length} 个位置变化');
+    //print('[CharacterPositionAnimation] 检测到 ${positionChanges.length} 个位置变化');
     for (final change in positionChanges) {
-      print('[CharacterPositionAnimation] ${change.characterId}: ${change.fromX} -> ${change.toX}');
+      //print('[CharacterPositionAnimation] ${change.characterId}: ${change.fromX} -> ${change.toX}');
     }
     
     if (positionChanges.isNotEmpty) {
@@ -123,7 +123,7 @@ class GameManager {
       _characterPositionAnimator?.stop();
       _characterPositionAnimator = CharacterPositionAnimator();
       
-      print('[CharacterPositionAnimation] 开始播放位置动画...');
+      //print('[CharacterPositionAnimation] 开始播放位置动画...');
       
       await _characterPositionAnimator!.animatePositionChanges(
         positionChanges: positionChanges,
@@ -152,11 +152,11 @@ class GameManager {
         },
         onComplete: () {
           // 动画完成，清理动画属性
-          print('[CharacterPositionAnimation] 角色位置动画完成');
+          //print('[CharacterPositionAnimation] 角色位置动画完成');
         },
       );
     } else {
-      print('[CharacterPositionAnimation] 无需位置动画');
+      //print('[CharacterPositionAnimation] 无需位置动画');
     }
   }
 
