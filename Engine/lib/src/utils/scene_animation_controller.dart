@@ -11,6 +11,8 @@ class SceneAnimationController {
   Animation<double>? _animation;
   Map<String, double> _baseProperties = {};
   Map<String, double> _currentProperties = {};
+  Map<String, double> _originalBaseProperties = {}; // 保存真正的初始基础位置，永不改变
+  bool _shouldStop = false; // 用于控制无限循环的停止
   
   SceneAnimationController({
     required this.sceneId,
@@ -32,27 +34,25 @@ class SceneAnimationController {
       return;
     }
 
-    print('[SceneAnimationController] 开始播放场景动画: $animationName, repeat: ${repeatCount ?? "无限"}');
+    print('[SceneAnimationController] 开始播放场景动画: $animationName, repeat: ${repeatCount == null ? "1(默认)" : (repeatCount == 0 ? "无限(repeat=0)" : repeatCount.toString())}');
     _baseProperties = Map.from(baseProperties);
     _currentProperties = Map.from(baseProperties);
+    _originalBaseProperties = Map.from(baseProperties); // 保存初始基础位置，永不改变
+    _shouldStop = false; // 重置停止标志
     
     // 根据repeatCount决定播放次数
-    if (repeatCount == null) {
-      // 无限循环播放
+    if (repeatCount == 0) {
+      // repeat 0 表示无限循环播放
       await _playInfiniteLoop(animDef.keyframes, vsync);
-    } else if (repeatCount > 0) {
+    } else if (repeatCount == null || repeatCount == 1) {
+      // 不写repeat或repeat 1，播放一次
+      await _playKeyframes(animDef.keyframes, vsync);
+    } else if (repeatCount > 1) {
       // 循环播放指定次数
+      // 每次循环都基于真正的初始基础位置计算偏移，避免累积
       for (int i = 0; i < repeatCount; i++) {
         await _playKeyframes(animDef.keyframes, vsync);
-        if (i < repeatCount - 1) {
-          // 只在非最后一次循环时重置位置
-          _currentProperties = Map.from(_baseProperties);
-          onAnimationUpdate?.call(Map.from(_currentProperties));
-        }
       }
-    } else {
-      // repeatCount为0，播放一次
-      await _playKeyframes(animDef.keyframes, vsync);
     }
     
     print('[SceneAnimationController] 场景动画播放完成: $animationName');
@@ -84,16 +84,78 @@ class SceneAnimationController {
 
   /// 无限循环播放动画
   Future<void> _playInfiniteLoop(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
-    // 注意：这里实际上不是真正的无限循环，因为那会阻塞UI
-    // 我们播放一次后就停止，让游戏管理器决定是否继续
-    // 真正的无限循环需要在游戏管理器层面处理
-    await _playKeyframes(keyframes, vsync);
+    // 实现真正的无限循环播放
+    // 每次循环都基于真正的初始基础位置计算偏移，避免累积
+    while (!_shouldStop) {
+      // 播放完整的动画序列
+      await _playKeyframes(keyframes, vsync);
+      
+      // 如果被标记为停止，则跳出循环
+      if (_shouldStop) break;
+      
+      // 添加短暂的延迟避免过于频繁的循环（可选）
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  /// 平滑地重置到基础位置
+  Future<void> _smoothResetToBasePosition(TickerProvider vsync) async {
+    // 检查是否需要重置
+    bool needsReset = false;
+    for (final key in _currentProperties.keys) {
+      if ((_currentProperties[key] ?? 0.0) != (_baseProperties[key] ?? 0.0)) {
+        needsReset = true;
+        break;
+      }
+    }
     
-    // 无限循环动画不再自动重置，保持最终位置
+    if (!needsReset) return;
+    
+    // 创建一个快速的平滑过渡回到基础位置
+    final resetDuration = 100; // 100ms 快速重置
+    _controller?.dispose();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: resetDuration),
+      vsync: vsync,
+    );
+
+    final startProperties = Map<String, double>.from(_currentProperties);
+    final endProperties = Map<String, double>.from(_baseProperties);
+    
+    final curvedAnimation = CurvedAnimation(
+      parent: _controller!,
+      curve: Curves.easeInOut,
+    );
+
+    final animation = Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation);
+    
+    animation.addListener(() {
+      final progress = animation.value;
+      
+      for (final propName in _currentProperties.keys) {
+        final startValue = startProperties[propName] ?? 0.0;
+        final endValue = endProperties[propName] ?? 0.0;
+        _currentProperties[propName] = startValue + (endValue - startValue) * progress;
+      }
+      
+      onAnimationUpdate?.call(Map.from(_currentProperties));
+    });
+
+    final completer = Completer<void>();
+    _controller!.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        completer.complete();
+      }
+    });
+
+    await _controller!.forward();
+    await completer.future;
   }
 
   Future<void> _playKeyframes(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
     for (final keyframe in keyframes) {
+      // 检查是否应该停止
+      if (_shouldStop) break;
       await _playKeyframe(keyframe, vsync);
     }
   }
@@ -115,11 +177,12 @@ class SceneAnimationController {
         endProperties[key] = _baseProperties[key] ?? 0.0; // 回到基础位置
       }
     } else {
-      // 正常动画：从基础位置开始，移动到基础位置+偏移量
+      // 正常动画：基于真正的初始基础位置计算偏移量
+      // 确保每个关键帧的偏移都是相对于最初传入值，避免累积
       for (final entry in keyframe.properties.entries) {
         final propName = entry.key;
         final offset = entry.value;
-        endProperties[propName] = (_baseProperties[propName] ?? 0.0) + offset;
+        endProperties[propName] = (_originalBaseProperties[propName] ?? 0.0) + offset;
       }
     }
 
@@ -176,7 +239,13 @@ class SceneAnimationController {
 
   Map<String, double> get currentProperties => Map.from(_currentProperties);
 
+  /// 停止无限循环动画
+  void stopInfiniteLoop() {
+    _shouldStop = true;
+  }
+
   void dispose() {
+    _shouldStop = true; // 确保停止任何正在运行的无限循环
     _controller?.dispose();
   }
 }

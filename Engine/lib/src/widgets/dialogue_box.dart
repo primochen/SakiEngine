@@ -7,6 +7,7 @@ import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
+import 'package:sakiengine/src/utils/dialogue_shake_effect.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
@@ -171,11 +172,16 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
 
     return GestureDetector(
       onTap: _handleTap,
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
+      child: DialogueShakeEffect(
+        dialogue: widget.dialogue,
+        enabled: true,
+        intensity: 4.0 * uiScale,
+        duration: const Duration(milliseconds: 600),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
           child: Container(
             width: screenSize.width * 0.85,
             height: screenSize.height * 0.25,
@@ -330,6 +336,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
               ),
             ),
           ),
+        ),
         ),
       ),
     );

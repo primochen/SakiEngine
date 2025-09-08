@@ -381,12 +381,7 @@ class MusicManager extends ChangeNotifier {
     final oldMusicPath = _currentBackgroundMusic;
     _currentBackgroundMusic = assetPath;
     
-    if (oldMusicPath != null && fadeTransition) {
-      // 有旧音乐且需要淡入淡出过渡
-      if (kDebugMode) {
-        print('[AudioManager] 平滑切换音乐: $oldMusicPath -> $assetPath');
-      }
-      
+    if (oldMusicPath != null && fadeTransition) {  
       // 先淡出旧音乐
       await _fadeOut(
         AudioTrackType.music,
@@ -437,17 +432,10 @@ class MusicManager extends ChangeNotifier {
       player = _soundPlayers[_soundPlayerIndex % _soundPlayers.length];
       _soundPlayerIndex = (_soundPlayerIndex + 1) % _soundPlayers.length;
       
-      if (kDebugMode) {
-        print('[AudioManager] 播放音效(重叠): $assetPath, 使用播放器#$_soundPlayerIndex');
-      }
     } else {
       // 使用主音效播放器
       player = _trackPlayers[AudioTrackType.sound]!;
       await player.stop(); // 停止当前音效
-      
-      if (kDebugMode) {
-        print('[AudioManager] 播放音效(替换): $assetPath');
-      }
     }
     
     // 设置播放模式
@@ -485,7 +473,7 @@ class MusicManager extends ChangeNotifier {
       
       if (fadeOut && _isSoundEnabled) {
         if (kDebugMode) {
-          print('[AudioManager] 淡出停止音效: $_currentSound');
+          //print('[AudioManager] 淡出停止音效: $_currentSound');
         }
         
         await _fadeOut(
@@ -523,7 +511,7 @@ class MusicManager extends ChangeNotifier {
       
       if (fadeOut && _isMusicEnabled) {
         if (kDebugMode) {
-          print('[AudioManager] 淡出停止音乐: $_currentBackgroundMusic');
+          //print('[AudioManager] 淡出停止音乐: $_currentBackgroundMusic');
         }
         
         await _fadeOut(
@@ -554,7 +542,7 @@ class MusicManager extends ChangeNotifier {
       
       if (fadeOut && _isMusicEnabled) {
         if (kDebugMode) {
-          print('[AudioManager] 淡出清除音乐: $_currentBackgroundMusic');
+          //print('[AudioManager] 淡出清除音乐: $_currentBackgroundMusic');
         }
         
         await _fadeOut(
@@ -593,7 +581,7 @@ class MusicManager extends ChangeNotifier {
       
       if (fadeOut && _isMusicEnabled) {
         if (kDebugMode) {
-          print('[AudioManager] 淡出强制停止音乐: $_currentBackgroundMusic');
+          //print('[AudioManager] 淡出强制停止音乐: $_currentBackgroundMusic');
         }
         
         await _fadeOut(
@@ -609,7 +597,7 @@ class MusicManager extends ChangeNotifier {
         await _trackPlayers[AudioTrackType.music]!.stop();
         _currentBackgroundMusic = null;
         if (kDebugMode) {
-          print('[AudioManager] 强制停止背景音乐');
+          //print('[AudioManager] 强制停止背景音乐');
         }
       }
     } catch (e) {

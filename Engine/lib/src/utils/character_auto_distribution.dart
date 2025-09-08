@@ -21,9 +21,9 @@ class CharacterAutoDistribution {
     Map<String, PoseConfig> newPoseConfigs,
     List<String> characterOrder,
   ) {
-    print('[CharacterAutoDistribution] 计算位置变化...');
-    print('[CharacterAutoDistribution] 旧角色数量: ${oldCharacters.length}');
-    print('[CharacterAutoDistribution] 新角色数量: ${newCharacters.length}');
+    //print('[CharacterAutoDistribution] 计算位置变化...');
+    //print('[CharacterAutoDistribution] 旧角色数量: ${oldCharacters.length}');
+    //print('[CharacterAutoDistribution] 新角色数量: ${newCharacters.length}');
     
     final positionChanges = <CharacterPositionChange>[];
     
@@ -41,18 +41,18 @@ class CharacterAutoDistribution {
       characterOrder,
     );
     
-    print('[CharacterAutoDistribution] 旧分布配置数量: ${oldDistributed.length}');
-    print('[CharacterAutoDistribution] 新分布配置数量: ${newDistributed.length}');
+    //print('[CharacterAutoDistribution] 旧分布配置数量: ${oldDistributed.length}');
+    //print('[CharacterAutoDistribution] 新分布配置数量: ${newDistributed.length}');
     
     // 比较每个角色的位置变化
     for (final characterId in newCharacters.keys) {
       final oldCharacter = oldCharacters[characterId];
       final newCharacter = newCharacters[characterId];
       
-      print('[CharacterAutoDistribution] 检查角色 $characterId');
+      //print('[CharacterAutoDistribution] 检查角色 $characterId');
       
       if (oldCharacter == null || newCharacter == null) {
-        print('[CharacterAutoDistribution] 角色 $characterId 旧状态或新状态为null，跳过');
+        //print('[CharacterAutoDistribution] 角色 $characterId 旧状态或新状态为null，跳过');
         continue;
       }
       
@@ -67,29 +67,29 @@ class CharacterAutoDistribution {
       final oldDistributedPose = oldDistributed[oldAutoDistributedPoseId] ?? oldOriginalPose;
       final newDistributedPose = newDistributed[newAutoDistributedPoseId] ?? newOriginalPose;
       
-      print('[CharacterAutoDistribution] 角色 $characterId 原始pose isAuto: ${oldOriginalPose?.isAutoAnchor}, ${newOriginalPose?.isAutoAnchor}');
-      print('[CharacterAutoDistribution] 角色 $characterId 分布后位置: ${oldDistributedPose?.xcenter} -> ${newDistributedPose?.xcenter}');
+      //print('[CharacterAutoDistribution] 角色 $characterId 原始pose isAuto: ${oldOriginalPose?.isAutoAnchor}, ${newOriginalPose?.isAutoAnchor}');
+      //print('[CharacterAutoDistribution] 角色 $characterId 分布后位置: ${oldDistributedPose?.xcenter} -> ${newDistributedPose?.xcenter}');
       
       if (oldOriginalPose == null || newOriginalPose == null || oldDistributedPose == null || newDistributedPose == null) {
-        print('[CharacterAutoDistribution] 角色 $characterId pose配置为null，跳过');
+        //print('[CharacterAutoDistribution] 角色 $characterId pose配置为null，跳过');
         continue;
       }
       
       // 检查原始pose是否为auto anchor，且分布后的位置是否发生变化
       if (oldOriginalPose.isAutoAnchor && newOriginalPose.isAutoAnchor && 
           (oldDistributedPose.xcenter - newDistributedPose.xcenter).abs() > 0.001) {
-        print('[CharacterAutoDistribution] 角色 $characterId 需要位置动画: ${oldDistributedPose.xcenter} -> ${newDistributedPose.xcenter}');
+        //print('[CharacterAutoDistribution] 角色 $characterId 需要位置动画: ${oldDistributedPose.xcenter} -> ${newDistributedPose.xcenter}');
         positionChanges.add(CharacterPositionChange(
           characterId: characterId,
           fromX: oldDistributedPose.xcenter,
           toX: newDistributedPose.xcenter,
         ));
       } else {
-        print('[CharacterAutoDistribution] 角色 $characterId 无需位置动画');
+        //print('[CharacterAutoDistribution] 角色 $characterId 无需位置动画');
       }
     }
     
-    print('[CharacterAutoDistribution] 总共需要动画的角色数量: ${positionChanges.length}');
+    //print('[CharacterAutoDistribution] 总共需要动画的角色数量: ${positionChanges.length}');
     return positionChanges;
   }
 
