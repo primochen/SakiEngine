@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 /// 对话框震动效果管理器
-/// 当检测到对话中包含感叹号时，触发震动动画
+/// 当检测到对话中包含感叹号时，触发GAL风格震动（2-3次快速抖动带衰减）
 class DialogueShakeEffect extends StatefulWidget {
   final Widget child;
   final String dialogue;
@@ -16,7 +16,7 @@ class DialogueShakeEffect extends StatefulWidget {
     required this.dialogue,
     this.enabled = true,
     this.intensity = 3.0,
-    this.duration = const Duration(milliseconds: 500),
+    this.duration = const Duration(milliseconds: 100), // 更快的动画速度
   });
 
   @override
@@ -24,12 +24,9 @@ class DialogueShakeEffect extends StatefulWidget {
 }
 
 class _DialogueShakeEffectState extends State<DialogueShakeEffect>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
-  double _shakeIntensity = 0.0; // 当前震动强度
-  late AnimationController _intensityController;
-  late Animation<double> _intensityAnimation;
 
   @override
   void initState() {
@@ -49,9 +46,9 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
   }
 
   void _initializeShakeAnimation() {
-    // 震动频率控制器（按需启动）
+    // GAL风格震动控制器 - 短时间内完成2-3次抖动
     _shakeController = AnimationController(
-      duration: const Duration(milliseconds: 42), // ~24Hz
+      duration: widget.duration,
       vsync: this,
     );
 
@@ -59,28 +56,6 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
       begin: 0.0,
       end: 1.0,
     ).animate(_shakeController);
-
-    // 强度控制器（控制震动衰减）
-    _intensityController = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
-
-    _intensityAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _intensityController,
-      curve: Curves.easeOut,
-    ));
-
-    // 监听强度动画完成事件
-    _intensityController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        // 震动结束时停止高频震动动画
-        _shakeController.stop();
-      }
-    });
   }
 
   void _checkForExclamation() {
@@ -92,40 +67,88 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     final hasExclamation = widget.dialogue.contains('!') || 
                           widget.dialogue.contains('！');
     
-    // 如果发现感叹号，启动震动效果
+    // 如果发现感叹号，触发GAL风格震动
     if (hasExclamation) {
-      _startShakeEffect();
+      _triggerShake();
     }
   }
 
-  void _startShakeEffect() {
-    // 启动高频震动动画
-    _shakeController.repeat();
-    
-    // 重置并启动强度衰减动画
-    _intensityController.reset();
-    _intensityController.forward();
+  void _triggerShake() {
+    // 重置并启动震动动画
+    _shakeController.reset();
+    _shakeController.forward();
   }
 
   @override
   void dispose() {
     _shakeController.dispose();
-    _intensityController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_shakeAnimation, _intensityAnimation]),
+      animation: _shakeAnimation,
       builder: (context, child) {
-        // 计算当前的震动偏移
-        final shakeValue = math.sin(_shakeAnimation.value * 2 * math.pi);
-        final currentIntensity = widget.intensity * _intensityAnimation.value;
-        final shake = currentIntensity * shakeValue;
+        final progress = _shakeAnimation.value;
+        
+        double intensity;
+        double offsetY = 0.0;
+        double scaleX = 1.0;
+        double scaleY = 1.0;
+        
+        if (progress < 0.4) {
+          // 主要撞击：果冻变形 + 轻微向上弹
+          final t = progress / 0.4;
+          final easedT = Curves.easeInOut.transform(t);
+          intensity = 1.0;
+          
+          // 轻微向上弹跳
+          offsetY = -widget.intensity * 0.8 * math.sin(easedT * math.pi) * intensity;
+          
+          // 果冻变形效果
+          scaleX = 1.0 + widget.intensity * 0.05 * math.sin(easedT * math.pi) * intensity;
+          scaleY = 1.0 - widget.intensity * 0.04 * math.sin(easedT * math.pi) * intensity;
+          
+        } else if (progress < 0.65) {
+          // 余震衰减：微小的果冻余震
+          final t = (progress - 0.4) / 0.25;
+          final decay = math.exp(-t * 2);
+          intensity = 0.25 * decay;
+          
+          // 微小的余震变形
+          final aftershock = math.sin(t * math.pi * 1.5);
+          scaleX = 1.0 + widget.intensity * 0.015 * aftershock * intensity;
+          scaleY = 1.0 - widget.intensity * 0.01 * aftershock * intensity;
+          
+        } else {
+          // 二次弹跳：像果冻掉到案板上的轻微反弹
+          final t = (progress - 0.65) / 0.35;
+          final bounceT = Curves.easeOut.transform(t);
+          intensity = 0.3 * (1.0 - t); // 快速衰减
+          final easedT = Curves.easeInOut.transform(t);
+          // 轻微的二次弹跳
+          final bounce = math.sin(bounceT * math.pi);
+          offsetY = -widget.intensity * 0.8 * math.sin(easedT * math.pi) * intensity;
+          
+          // 轻微的二次变形
+          scaleX = 1.0 + widget.intensity * 0.03 * bounce * intensity;
+          scaleY = 1.0 - widget.intensity * 0.02 * bounce * intensity;
+          
+          // 最后阶段平滑到静止
+          if (t > 0.7) {
+            final fadeOut = (1.0 - t) / 0.3;
+            offsetY *= fadeOut;
+            scaleX = 1.0 + (scaleX - 1.0) * fadeOut;
+            scaleY = 1.0 + (scaleY - 1.0) * fadeOut;
+          }
+        }
 
-        return Transform.translate(
-          offset: Offset(shake, 0),
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..translate(0.0, offsetY, 0.0)
+            ..scale(scaleX, scaleY, 1.0),
           child: widget.child,
         );
       },
@@ -133,27 +156,71 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
   }
 }
 
-/// 震动效果的工具方法类
+/// GAL风格果冻震动效果的工具方法类
 class ShakeEffectUtils {
   /// 检测文本中是否包含感叹号（中英文）
   static bool containsExclamation(String text) {
     return text.contains('!') || text.contains('！');
   }
 
-  /// 创建震动变换矩阵
+  /// 创建纯粹的果冻撞击变形效果矩阵
   static Matrix4 createShakeTransform(double progress, double intensity) {
-    final shake = intensity * math.sin(progress * math.pi * 12) * (1.0 - progress);
-    return Matrix4.translationValues(shake, 0.0, 0.0);
+    double shakeIntensity;
+    double offsetY = 0.0;
+    double scaleX = 1.0;
+    double scaleY = 1.0;
+    
+    if (progress < 0.6) {
+      // 主要撞击变形
+      final t = progress / 0.6;
+      final easedT = Curves.easeInOut.transform(t);
+      shakeIntensity = 1.0;
+      
+      offsetY = -intensity * 0.8 * math.sin(easedT * math.pi) * shakeIntensity;
+      scaleX = 1.0 + intensity * 0.05 * math.sin(easedT * math.pi) * shakeIntensity;
+      scaleY = 1.0 - intensity * 0.04 * math.sin(easedT * math.pi) * shakeIntensity;
+      
+    } else {
+      // 果冻余震衰减
+      final t = (progress - 0.6) / 0.4;
+      final decay = math.exp(-t * 4);
+      final easedDecay = Curves.easeOut.transform(decay);
+      shakeIntensity = 0.3 * easedDecay;
+      
+      final aftershock = math.sin(t * math.pi * 3);
+      scaleX = 1.0 + intensity * 0.02 * aftershock * shakeIntensity;
+      scaleY = 1.0 - intensity * 0.015 * aftershock * shakeIntensity;
+      
+      // 接近静止时平滑过渡
+      if (shakeIntensity < 0.01) {
+        scaleX = 1.0 + (scaleX - 1.0) * (shakeIntensity / 0.01);
+        scaleY = 1.0 + (scaleY - 1.0) * (shakeIntensity / 0.01);
+      }
+    }
+    
+    return Matrix4.identity()
+      ..translate(0.0, offsetY, 0.0)
+      ..scale(scaleX, scaleY, 1.0);
   }
 
-  /// 获取震动偏移量
+  /// 获取纯粹的果冻撞击效果偏移量
   static Offset getShakeOffset(double progress, double intensity) {
-    final shake = intensity * math.sin(progress * math.pi * 12) * (1.0 - progress);
-    return Offset(shake, 0);
+    double offsetY = 0.0;
+    
+    if (progress < 0.6) {
+      // 主要撞击，轻微向上弹跳
+      final t = progress / 0.6;
+      final easedT = Curves.easeInOut.transform(t);
+      
+      offsetY = -intensity * 0.8 * math.sin(easedT * math.pi);
+    }
+    // 衰减阶段不需要位移，只有变形
+    
+    return Offset(0, offsetY);
   }
 }
 
-/// 简化版本的震动Widget，可以直接包装任何组件
+/// 简化版本的GAL震动Widget，可以直接包装任何组件
 class SimpleShakeWrapper extends StatefulWidget {
   final Widget child;
   final bool trigger;
@@ -166,7 +233,7 @@ class SimpleShakeWrapper extends StatefulWidget {
     required this.child,
     required this.trigger,
     this.intensity = 3.0,
-    this.duration = const Duration(milliseconds: 500),
+    this.duration = const Duration(milliseconds: 150),
     this.onShakeComplete,
   });
 
@@ -191,10 +258,7 @@ class _SimpleShakeWrapperState extends State<SimpleShakeWrapper>
     _animation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(_controller);
 
     _animation.addStatusListener((status) {
       if (status == AnimationStatus.completed && widget.onShakeComplete != null) {
@@ -209,7 +273,7 @@ class _SimpleShakeWrapperState extends State<SimpleShakeWrapper>
   void didUpdateWidget(SimpleShakeWrapper oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    // 检测trigger从false变为true时触发震动
+    // 检测trigger从false变为true时触发GAL震动
     if (!_lastTrigger && widget.trigger) {
       _controller.reset();
       _controller.forward();
@@ -228,13 +292,14 @@ class _SimpleShakeWrapperState extends State<SimpleShakeWrapper>
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        final offset = ShakeEffectUtils.getShakeOffset(
+        final transform = ShakeEffectUtils.createShakeTransform(
           _animation.value, 
           widget.intensity
         );
         
-        return Transform.translate(
-          offset: offset,
+        return Transform(
+          alignment: Alignment.center,
+          transform: transform,
           child: widget.child,
         );
       },
