@@ -192,7 +192,9 @@ class GameManager {
   // 获取当前对话文本（用于开发者面板定位）
   String get currentDialogueText => _dialogueHistory.isNotEmpty ? _dialogueHistory.last.dialogue : '';
 
-  GameManager({this.onReturn});
+  GameManager({this.onReturn}) {
+    _currentState = GameState.initial(); // 提前初始化，避免late变量访问错误
+  }
 
   /// 设置BuildContext用于转场效果
   void setContext(BuildContext context, [TickerProvider? tickerProvider]) {
@@ -200,11 +202,12 @@ class GameManager {
     _context = context;
     _tickerProvider = tickerProvider;
     
-    // 如果当前状态有场景动画且之前没有TickerProvider，现在重新启动动画
-    if (_currentState.sceneAnimation != null && tickerProvider != null && _sceneAnimationController == null) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (_tickerProvider != null && _currentState.sceneAnimation != null && _sceneAnimationController == null) {
-          _startSceneAnimation(_currentState.sceneAnimation!, _currentState.sceneAnimationRepeat);
+    // 如果当前状态有场景动画且之前没有TickerProvider，现在检测并启动动画
+    if (tickerProvider != null && _sceneAnimationController == null) {
+      // 延迟一点时间执行动画检测，确保context完全设置好
+      Future.delayed(const Duration(milliseconds: 50), () async {
+        if (_tickerProvider != null) {
+          await _checkAndRestoreSceneAnimation();
         }
       });
     }
@@ -1076,6 +1079,9 @@ class GameManager {
       everShownCharacters: _everShownCharacters,
     );
     
+    // 立即发送状态更新以确保UI正确显示包括场景动画属性
+    _gameStateController.add(_currentState);
+    
     if (snapshot.dialogueHistory.isNotEmpty) {
       _dialogueHistory = List.from(snapshot.dialogueHistory);
     }
@@ -1083,14 +1089,8 @@ class GameManager {
     // 检查恢复位置的音乐区间（强制检查）
     await _checkMusicRegionAtCurrentIndex(forceCheck: true);
     
-    // 如果目标状态有场景动画，重新启动动画
-    if (_currentState.sceneAnimation != null && _tickerProvider != null) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (_tickerProvider != null && _currentState.sceneAnimation != null) {
-          _startSceneAnimation(_currentState.sceneAnimation!, _currentState.sceneAnimationRepeat);
-        }
-      });
-    }
+    // 检测并恢复当前场景的动画
+    await _checkAndRestoreSceneAnimation();
     
     if (shouldReExecute) {
       await _executeScript();
@@ -1140,6 +1140,13 @@ class GameManager {
       // 取消当前活跃的计时器
       _currentTimer?.cancel();
       _currentTimer = null;
+      
+      // 清理旧的场景动画控制器
+      _sceneAnimationController?.dispose();
+      _sceneAnimationController = null;
+      
+      // 检测并恢复当前场景的动画
+      await _checkAndRestoreSceneAnimation();
       
       await _executeScript();
     }
@@ -1348,7 +1355,40 @@ class GameManager {
     }
   }
 
-  /// 停止所有音效，但保留背景音乐
+  /// 检测当前脚本位置的场景动画并重新启动
+  Future<void> _checkAndRestoreSceneAnimation() async {
+    if (_tickerProvider == null) return;
+    
+    // 向前搜索最近的BackgroundNode，找出当前场景的动画设置
+    BackgroundNode? lastBackgroundNode;
+    
+    for (int i = _scriptIndex; i >= 0; i--) {
+      if (i < _script.children.length && _script.children[i] is BackgroundNode) {
+        lastBackgroundNode = _script.children[i] as BackgroundNode;
+        break;
+      }
+    }
+    
+    if (lastBackgroundNode != null && lastBackgroundNode.animation != null) {
+      print('[GameManager] 检测到当前场景有动画: ${lastBackgroundNode.animation}, repeat: ${lastBackgroundNode.repeatCount}');
+      
+      // 更新当前状态的场景动画信息
+      _currentState = _currentState.copyWith(
+        sceneAnimation: lastBackgroundNode.animation,
+        sceneAnimationRepeat: lastBackgroundNode.repeatCount,
+        sceneAnimationProperties: <String, double>{}, // 重置动画属性
+        everShownCharacters: _everShownCharacters,
+      );
+      
+      // 立即启动场景动画
+      _startSceneAnimation(lastBackgroundNode.animation!, lastBackgroundNode.repeatCount);
+      
+      // 发送状态更新
+      _gameStateController.add(_currentState);
+    } else {
+      print('[GameManager] 当前场景没有检测到动画');
+    }
+  }
   void stopAllSounds() {
     MusicManager().stopAudio(AudioTrackConfig.sound);
   }
