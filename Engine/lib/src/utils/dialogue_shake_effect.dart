@@ -16,7 +16,7 @@ class DialogueShakeEffect extends StatefulWidget {
     required this.dialogue,
     this.enabled = true,
     this.intensity = 8.0, // 增大默认强度
-    this.duration = const Duration(milliseconds: 600), // 延长动画时间让过渡更舒缓
+    this.duration = const Duration(milliseconds: 1000), // 进一步延长到1秒让过渡极其舒缓
   });
 
   @override
@@ -57,7 +57,7 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _shakeController,
-      curve: Curves.easeInOutBack, // 使用更舒缓的曲线
+      curve: Curves.easeInOutCubic, // 使用更加舒缓的三次曲线
     ));
   }
 
@@ -98,13 +98,13 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
         double offsetX = 0.0;
         double offsetY = 0.0;
         
-        if (progress < 0.6) {
-          // 主要Q弹震动阶段 - 减少主震动时间比例
-          final t = progress / 0.6;
+        if (progress < 0.5) {
+          // 主要Q弹震动阶段 - 进一步减少主震动时间比例
+          final t = progress / 0.5;
           final shakeIntensity = math.sin(t * math.pi); // 0到1再到0的完美曲线
           
-          // 适中频率震动，避免残影
-          final shakeFreq = 6; // 进一步降低频率让过渡更舒缓
+          // 更低频率震动，极其舒缓
+          final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
           final baseAmplitude = widget.intensity * 2.0; // 大幅增加基础震动强度
           
           // 主要左右震动
@@ -114,14 +114,14 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
           offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
           
         } else {
-          // 舒缓收尾阶段 - 延长收尾时间让过渡更自然
-          final t = (progress - 0.6) / 0.4;
-          final fadeOut = 1.0 - Curves.easeOut.transform(t); // 使用缓出曲线让收尾更舒缓
-          final finalAmplitude = widget.intensity * 0.4 * fadeOut;
+          // 极其舒缓的收尾阶段 - 大幅延长收尾时间
+          final t = (progress - 0.5) / 0.5;
+          final fadeOut = 1.0 - Curves.easeOutCubic.transform(t); // 使用三次缓出曲线让收尾极其平滑
+          final finalAmplitude = widget.intensity * 0.5 * fadeOut;
           
-          // 温和的收尾震动
-          offsetX = finalAmplitude * math.sin(t * math.pi * 3); // 更低频率的收尾
-          offsetY = 0; // 结束阶段不要上下震动
+          // 极其温和的收尾震动
+          offsetX = finalAmplitude * math.sin(t * math.pi * 2); // 极低频率的收尾
+          offsetY = finalAmplitude * 0.3 * math.cos(t * math.pi * 1.5); // 轻微的上下收尾
         }
 
         return Transform(
@@ -149,13 +149,13 @@ class ShakeEffectUtils {
     double offsetX = 0.0;
     double offsetY = 0.0;
     
-    if (progress < 0.6) {
-      // 主要Q弹震动阶段 - 减少主震动时间比例
-      final t = progress / 0.6;
+    if (progress < 0.5) {
+      // 主要Q弹震动阶段 - 进一步减少主震动时间比例
+      final t = progress / 0.5;
       final shakeIntensity = math.sin(t * math.pi); // 0到1再到0的完美曲线
       
-      // 适中频率震动，避免残影
-      final shakeFreq = 6; // 进一步降低频率让过渡更舒缓
+      // 更低频率震动，极其舒缓
+      final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
       final baseAmplitude = intensity * 2.0; // 大幅增加基础震动强度
       
       // 主要左右震动
@@ -165,14 +165,14 @@ class ShakeEffectUtils {
       offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
       
     } else {
-      // 舒缓收尾阶段 - 延长收尾时间让过渡更自然
-      final t = (progress - 0.6) / 0.4;
-      final fadeOut = 1.0 - Curves.easeOut.transform(t); // 使用缓出曲线让收尾更舒缓
-      final finalAmplitude = intensity * 0.4 * fadeOut;
+      // 极其舒缓的收尾阶段 - 大幅延长收尾时间
+      final t = (progress - 0.5) / 0.5;
+      final fadeOut = 1.0 - Curves.easeOutCubic.transform(t); // 使用三次缓出曲线让收尾极其平滑
+      final finalAmplitude = intensity * 0.5 * fadeOut;
       
-      // 温和的收尾震动
-      offsetX = finalAmplitude * math.sin(t * math.pi * 3); // 更低频率的收尾
-      offsetY = 0; // 结束阶段不要上下震动
+      // 极其温和的收尾震动
+      offsetX = finalAmplitude * math.sin(t * math.pi * 2); // 极低频率的收尾
+      offsetY = finalAmplitude * 0.3 * math.cos(t * math.pi * 1.5); // 轻微的上下收尾
     }
     
     return Matrix4.identity()
@@ -186,26 +186,26 @@ class ShakeEffectUtils {
     double offsetX = 0.0;
     double offsetY = 0.0;
     
-    if (progress < 0.6) {
-      // 主要Q弹震动阶段 - 减少主震动时间比例
-      final t = progress / 0.6;
+    if (progress < 0.5) {
+      // 主要Q弹震动阶段 - 进一步减少主震动时间比例
+      final t = progress / 0.5;
       final shakeIntensity = math.sin(t * math.pi);
       
-      final shakeFreq = 6; // 进一步降低频率让过渡更舒缓
+      final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
       final baseAmplitude = intensity * 2.0;
       
       offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
       offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
       
     } else {
-      // 舒缓收尾阶段 - 延长收尾时间让过渡更自然
-      final t = (progress - 0.6) / 0.4;
-      final fadeOut = 1.0 - Curves.easeOut.transform(t); // 使用缓出曲线让收尾更舒缓
-      final finalAmplitude = intensity * 0.4 * fadeOut;
+      // 极其舒缓的收尾阶段 - 大幅延长收尾时间
+      final t = (progress - 0.5) / 0.5;
+      final fadeOut = 1.0 - Curves.easeOutCubic.transform(t); // 使用三次缓出曲线让收尾极其平滑
+      final finalAmplitude = intensity * 0.5 * fadeOut;
       
-      // 温和的收尾震动
-      offsetX = finalAmplitude * math.sin(t * math.pi * 3); // 更低频率的收尾
-      offsetY = 0;
+      // 极其温和的收尾震动
+      offsetX = finalAmplitude * math.sin(t * math.pi * 2); // 极低频率的收尾
+      offsetY = finalAmplitude * 0.3 * math.cos(t * math.pi * 1.5); // 轻微的上下收尾
     }
     
     return Offset(offsetX, offsetY);
@@ -225,7 +225,7 @@ class SimpleShakeWrapper extends StatefulWidget {
     required this.child,
     required this.trigger,
     this.intensity = 8.0, // 增大默认强度
-    this.duration = const Duration(milliseconds: 600), // 延长动画时间让过渡更舒缓
+    this.duration = const Duration(milliseconds: 1000), // 进一步延长到1秒让过渡极其舒缓
     this.onShakeComplete,
   });
 
