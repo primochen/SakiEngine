@@ -328,10 +328,12 @@ hide gonna1
 show syozen1
 "那男的则是刘守真了。"
 hide syozen1
+scene bl
 show kurokajitsu at items2
 "在他们面前的，则是一堆树叶，上面放着几颗黑色的果子。"
 "给我的直觉就是这个果子并不能吃。"
 hide kurokajitsu
+scene kichi
 l "这是？"
 ls "你失忆了？这些也不是新食材啊，都是用了好多次的。"
 lg "啊？你说的是这些果子吗？我也不知道叫什么，反正不能吃就对了。"

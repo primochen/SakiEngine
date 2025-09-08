@@ -199,6 +199,15 @@ class GameManager {
     ////print('[GameManager] 设置上下文用于转场效果');
     _context = context;
     _tickerProvider = tickerProvider;
+    
+    // 如果当前状态有场景动画且之前没有TickerProvider，现在重新启动动画
+    if (_currentState.sceneAnimation != null && tickerProvider != null && _sceneAnimationController == null) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_tickerProvider != null && _currentState.sceneAnimation != null && _sceneAnimationController == null) {
+          _startSceneAnimation(_currentState.sceneAnimation!, _currentState.sceneAnimationRepeat);
+        }
+      });
+    }
   }
 
   /// 构建音乐区间列表
@@ -1055,7 +1064,7 @@ class GameManager {
     _currentTimer?.cancel();
     _currentTimer = null;
     
-    // 清理场景动画控制器（解决回退时动画未停止的bug）
+    // 清理旧的场景动画控制器
     _sceneAnimationController?.dispose();
     _sceneAnimationController = null;
     
@@ -1073,6 +1082,15 @@ class GameManager {
     
     // 检查恢复位置的音乐区间（强制检查）
     await _checkMusicRegionAtCurrentIndex(forceCheck: true);
+    
+    // 如果目标状态有场景动画，重新启动动画
+    if (_currentState.sceneAnimation != null && _tickerProvider != null) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_tickerProvider != null && _currentState.sceneAnimation != null) {
+          _startSceneAnimation(_currentState.sceneAnimation!, _currentState.sceneAnimationRepeat);
+        }
+      });
+    }
     
     if (shouldReExecute) {
       await _executeScript();
