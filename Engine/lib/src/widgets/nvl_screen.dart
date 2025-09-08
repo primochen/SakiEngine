@@ -7,6 +7,12 @@ import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 
+// 用于外部访问NvlScreen状态的接口
+abstract class NvlScreenController {
+  void setCinematicBarsVisible(bool visible);
+  void playMovieModeExitAnimation();
+}
+
 class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
   final DialogueProgressionManager? progressionManager;
@@ -23,8 +29,7 @@ class NvlScreen extends StatefulWidget {
   State<NvlScreen> createState() => _NvlScreenState();
 }
 
-class _NvlScreenState extends State<NvlScreen>
-    with TickerProviderStateMixin {
+class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin implements NvlScreenController {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   final ScrollController _scrollController = ScrollController();
@@ -44,6 +49,9 @@ class _NvlScreenState extends State<NvlScreen>
   
   // 跟踪最后一句对话是否完成（用于显示箭头）
   bool _isLastDialogueComplete = false;
+  
+  // 控制黑边显示状态 - 用于转场时临时隐藏黑边
+  bool _showCinematicBars = false;
 
   @override
   void initState() {
@@ -62,12 +70,12 @@ class _NvlScreenState extends State<NvlScreen>
     
     // 初始化电影黑边动画 - 创建两个独立的控制器
     _topBarController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
       vsync: this,
     );
     
     _bottomBarController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
       vsync: this,
     );
     
@@ -91,8 +99,9 @@ class _NvlScreenState extends State<NvlScreen>
     
     _fadeController.forward();
     
-    // 如果是电影模式，启动黑边动画
+    // 如果是电影模式，启动黑边动画并设置显示状态
     if (widget.isMovieMode) {
+      _showCinematicBars = true;
       // 让上下黑边有个小延迟，增加视觉层次
       _topBarController.forward();
       Future.delayed(const Duration(milliseconds: 100), () {
@@ -119,11 +128,14 @@ class _NvlScreenState extends State<NvlScreen>
     // 如果电影模式状态发生变化，重新启动动画
     if (widget.isMovieMode != oldWidget.isMovieMode) {
       if (widget.isMovieMode) {
+        _showCinematicBars = true;
         _topBarController.forward();
         Future.delayed(const Duration(milliseconds: 100), () {
           _bottomBarController.forward();
         });
       } else {
+        // 当切换到非电影模式时，先隐藏黑边再反转动画
+        _showCinematicBars = false;
         _topBarController.reverse();
         _bottomBarController.reverse();
       }
@@ -200,6 +212,42 @@ class _NvlScreenState extends State<NvlScreen>
       });
     }
   }
+  
+  /// 控制电影模式黑边的显示/隐藏
+  /// 用于转场时临时隐藏黑边以避免视觉问题
+  @override
+  void setCinematicBarsVisible(bool visible) {
+    if (mounted && _showCinematicBars != visible) {
+      setState(() {
+        _showCinematicBars = visible;
+      });
+      
+      if (visible) {
+        // 显示黑边：从屏幕外滑入
+        _topBarController.forward();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _bottomBarController.forward();
+        });
+      } else {
+        // 隐藏黑边：滑出屏幕外
+        _topBarController.reverse();
+        _bottomBarController.reverse();
+      }
+    }
+  }
+  
+  /// 播放电影模式退出动画：黑边退回屏幕外
+  @override
+  void playMovieModeExitAnimation() {
+    if (mounted && widget.isMovieMode) {
+      // 让黑边退回屏幕外
+      // 上边向上滑出屏幕（从0.0回到-1.0，即从屏幕顶部滑到屏幕上方外）
+      _topBarController.reverse();
+      
+      // 下边向下滑出屏幕（从0.0回到1.0，即从屏幕底部滑到屏幕下方外）
+      _bottomBarController.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,8 +273,8 @@ class _NvlScreenState extends State<NvlScreen>
               ),
             ),
             
-            // 如果是电影模式，添加上下黑边
-            if (widget.isMovieMode) ..._buildCinematicBars(context),
+            // 如果是电影模式且允许显示黑边，添加上下黑边
+            if (widget.isMovieMode && _showCinematicBars) ..._buildCinematicBars(context),
             
             // 内容区域
             _buildContent(config, textScale, uiScale),
