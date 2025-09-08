@@ -232,6 +232,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       color: SettingsManager().currentDarkMode ? Colors.black : Colors.white,
       letterSpacing: 0.5,
       fontFamily: 'ChillJinshuSongPro_Soft',
+      backgroundColor: SettingsManager().currentDarkMode ? Colors.white : Colors.black,
       height: 1.1,
     );
 

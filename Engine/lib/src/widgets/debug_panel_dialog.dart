@@ -273,6 +273,21 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
               ),
               const Spacer(),
               TextButton.icon(
+                onPressed: _copyLogs,
+                icon: Icon(
+                  Icons.copy,
+                  size: 16 * scale,
+                  color: config.themeColors.primary,
+                ),
+                label: Text(
+                  '复制日志',
+                  style: TextStyle(
+                    fontSize: 14 * scale,
+                    color: config.themeColors.primary,
+                  ),
+                ),
+              ),
+              TextButton.icon(
                 onPressed: _generateTestLogs,
                 icon: Icon(
                   Icons.bug_report,
@@ -542,6 +557,18 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
 
   void _clearLogs() {
     DebugLogger.instance.clear();
+  }
+
+  Future<void> _copyLogs() async {
+    final logs = DebugLogger.instance.logs;
+    if (logs.isEmpty) {
+      DebugLogger.instance.log('暂无日志可复制');
+      return;
+    }
+    
+    final logText = logs.join('\n');
+    await Clipboard.setData(ClipboardData(text: logText));
+    DebugLogger.instance.log('已复制 ${logs.length} 条日志到剪贴板');
   }
 
   Future<void> _openSaveDirectory() async {
