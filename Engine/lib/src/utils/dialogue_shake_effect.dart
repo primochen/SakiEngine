@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 /// 对话框震动效果管理器
-/// 当检测到对话中包含感叹号时，触发GAL风格震动（2-3次快速抖动带衰减）
+/// 当检测到对话中包含感叹号时，触发GAL风格Q弹震动（快速左右震动带弹性衰减）
 class DialogueShakeEffect extends StatefulWidget {
   final Widget child;
   final String dialogue;
@@ -15,8 +15,8 @@ class DialogueShakeEffect extends StatefulWidget {
     required this.child,
     required this.dialogue,
     this.enabled = true,
-    this.intensity = 3.0,
-    this.duration = const Duration(milliseconds: 100), // 更快的动画速度
+    this.intensity = 8.0, // 增大默认强度
+    this.duration = const Duration(milliseconds: 600), // 延长动画时间让过渡更舒缓
   });
 
   @override
@@ -46,7 +46,7 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
   }
 
   void _initializeShakeAnimation() {
-    // GAL风格震动控制器 - 短时间内完成2-3次抖动
+    // Q弹震动控制器
     _shakeController = AnimationController(
       duration: widget.duration,
       vsync: this,
@@ -55,7 +55,10 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     _shakeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(_shakeController);
+    ).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.easeInOutBack, // 使用更舒缓的曲线
+    ));
   }
 
   void _checkForExclamation() {
@@ -90,65 +93,41 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     return AnimatedBuilder(
       animation: _shakeAnimation,
       builder: (context, child) {
-        final progress = _shakeAnimation.value;
+        final progress = _shakeAnimation.value.clamp(0.0, 1.0);
         
-        double intensity;
+        double offsetX = 0.0;
         double offsetY = 0.0;
-        double scaleX = 1.0;
-        double scaleY = 1.0;
         
-        if (progress < 0.4) {
-          // 主要撞击：果冻变形 + 轻微向上弹
-          final t = progress / 0.4;
-          final easedT = Curves.easeInOut.transform(t);
-          intensity = 1.0;
+        if (progress < 0.6) {
+          // 主要Q弹震动阶段 - 减少主震动时间比例
+          final t = progress / 0.6;
+          final shakeIntensity = math.sin(t * math.pi); // 0到1再到0的完美曲线
           
-          // 轻微向上弹跳
-          offsetY = -widget.intensity * 0.8 * math.sin(easedT * math.pi) * intensity;
+          // 适中频率震动，避免残影
+          final shakeFreq = 6; // 进一步降低频率让过渡更舒缓
+          final baseAmplitude = widget.intensity * 2.0; // 大幅增加基础震动强度
           
-          // 果冻变形效果
-          scaleX = 1.0 + widget.intensity * 0.05 * math.sin(easedT * math.pi) * intensity;
-          scaleY = 1.0 - widget.intensity * 0.04 * math.sin(easedT * math.pi) * intensity;
+          // 主要左右震动
+          offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
           
-        } else if (progress < 0.65) {
-          // 余震衰减：微小的果冻余震
-          final t = (progress - 0.4) / 0.25;
-          final decay = math.exp(-t * 2);
-          intensity = 0.25 * decay;
-          
-          // 微小的余震变形
-          final aftershock = math.sin(t * math.pi * 1.5);
-          scaleX = 1.0 + widget.intensity * 0.015 * aftershock * intensity;
-          scaleY = 1.0 - widget.intensity * 0.01 * aftershock * intensity;
+          // 配合轻微上下震动增加Q弹感
+          offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
           
         } else {
-          // 二次弹跳：像果冻掉到案板上的轻微反弹
-          final t = (progress - 0.65) / 0.35;
-          final bounceT = Curves.easeOut.transform(t);
-          intensity = 0.3 * (1.0 - t); // 快速衰减
-          final easedT = Curves.easeInOut.transform(t);
-          // 轻微的二次弹跳
-          final bounce = math.sin(bounceT * math.pi);
-          offsetY = -widget.intensity * 0.8 * math.sin(easedT * math.pi) * intensity;
+          // 舒缓收尾阶段 - 延长收尾时间让过渡更自然
+          final t = (progress - 0.6) / 0.4;
+          final fadeOut = 1.0 - Curves.easeOut.transform(t); // 使用缓出曲线让收尾更舒缓
+          final finalAmplitude = widget.intensity * 0.4 * fadeOut;
           
-          // 轻微的二次变形
-          scaleX = 1.0 + widget.intensity * 0.03 * bounce * intensity;
-          scaleY = 1.0 - widget.intensity * 0.02 * bounce * intensity;
-          
-          // 最后阶段平滑到静止
-          if (t > 0.7) {
-            final fadeOut = (1.0 - t) / 0.3;
-            offsetY *= fadeOut;
-            scaleX = 1.0 + (scaleX - 1.0) * fadeOut;
-            scaleY = 1.0 + (scaleY - 1.0) * fadeOut;
-          }
+          // 温和的收尾震动
+          offsetX = finalAmplitude * math.sin(t * math.pi * 3); // 更低频率的收尾
+          offsetY = 0; // 结束阶段不要上下震动
         }
 
         return Transform(
           alignment: Alignment.center,
           transform: Matrix4.identity()
-            ..translate(0.0, offsetY, 0.0)
-            ..scale(scaleX, scaleY, 1.0),
+            ..translate(offsetX, offsetY, 0.0),
           child: widget.child,
         );
       },
@@ -156,67 +135,80 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
   }
 }
 
-/// GAL风格果冻震动效果的工具方法类
+/// GAL风格Q弹震动效果的工具方法类
 class ShakeEffectUtils {
   /// 检测文本中是否包含感叹号（中英文）
   static bool containsExclamation(String text) {
     return text.contains('!') || text.contains('！');
   }
 
-  /// 创建纯粹的果冻撞击变形效果矩阵
+  /// 创建Q弹震动效果矩阵
   static Matrix4 createShakeTransform(double progress, double intensity) {
-    double shakeIntensity;
+    progress = progress.clamp(0.0, 1.0);
+    
+    double offsetX = 0.0;
     double offsetY = 0.0;
-    double scaleX = 1.0;
-    double scaleY = 1.0;
     
     if (progress < 0.6) {
-      // 主要撞击变形
+      // 主要Q弹震动阶段 - 减少主震动时间比例
       final t = progress / 0.6;
-      final easedT = Curves.easeInOut.transform(t);
-      shakeIntensity = 1.0;
+      final shakeIntensity = math.sin(t * math.pi); // 0到1再到0的完美曲线
       
-      offsetY = -intensity * 0.8 * math.sin(easedT * math.pi) * shakeIntensity;
-      scaleX = 1.0 + intensity * 0.05 * math.sin(easedT * math.pi) * shakeIntensity;
-      scaleY = 1.0 - intensity * 0.04 * math.sin(easedT * math.pi) * shakeIntensity;
+      // 适中频率震动，避免残影
+      final shakeFreq = 6; // 进一步降低频率让过渡更舒缓
+      final baseAmplitude = intensity * 2.0; // 大幅增加基础震动强度
+      
+      // 主要左右震动
+      offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
+      
+      // 配合轻微上下震动增加Q弹感
+      offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
       
     } else {
-      // 果冻余震衰减
+      // 舒缓收尾阶段 - 延长收尾时间让过渡更自然
       final t = (progress - 0.6) / 0.4;
-      final decay = math.exp(-t * 4);
-      final easedDecay = Curves.easeOut.transform(decay);
-      shakeIntensity = 0.3 * easedDecay;
+      final fadeOut = 1.0 - Curves.easeOut.transform(t); // 使用缓出曲线让收尾更舒缓
+      final finalAmplitude = intensity * 0.4 * fadeOut;
       
-      final aftershock = math.sin(t * math.pi * 3);
-      scaleX = 1.0 + intensity * 0.02 * aftershock * shakeIntensity;
-      scaleY = 1.0 - intensity * 0.015 * aftershock * shakeIntensity;
-      
-      // 接近静止时平滑过渡
-      if (shakeIntensity < 0.01) {
-        scaleX = 1.0 + (scaleX - 1.0) * (shakeIntensity / 0.01);
-        scaleY = 1.0 + (scaleY - 1.0) * (shakeIntensity / 0.01);
-      }
+      // 温和的收尾震动
+      offsetX = finalAmplitude * math.sin(t * math.pi * 3); // 更低频率的收尾
+      offsetY = 0; // 结束阶段不要上下震动
     }
     
     return Matrix4.identity()
-      ..translate(0.0, offsetY, 0.0)
-      ..scale(scaleX, scaleY, 1.0);
+      ..translate(offsetX, offsetY, 0.0);
   }
 
-  /// 获取纯粹的果冻撞击效果偏移量
+  /// 获取Q弹震动效果偏移量
   static Offset getShakeOffset(double progress, double intensity) {
+    progress = progress.clamp(0.0, 1.0);
+    
+    double offsetX = 0.0;
     double offsetY = 0.0;
     
     if (progress < 0.6) {
-      // 主要撞击，轻微向上弹跳
+      // 主要Q弹震动阶段 - 减少主震动时间比例
       final t = progress / 0.6;
-      final easedT = Curves.easeInOut.transform(t);
+      final shakeIntensity = math.sin(t * math.pi);
       
-      offsetY = -intensity * 0.8 * math.sin(easedT * math.pi);
+      final shakeFreq = 6; // 进一步降低频率让过渡更舒缓
+      final baseAmplitude = intensity * 2.0;
+      
+      offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
+      offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
+      
+    } else {
+      // 舒缓收尾阶段 - 延长收尾时间让过渡更自然
+      final t = (progress - 0.6) / 0.4;
+      final fadeOut = 1.0 - Curves.easeOut.transform(t); // 使用缓出曲线让收尾更舒缓
+      final finalAmplitude = intensity * 0.4 * fadeOut;
+      
+      // 温和的收尾震动
+      offsetX = finalAmplitude * math.sin(t * math.pi * 3); // 更低频率的收尾
+      offsetY = 0;
     }
-    // 衰减阶段不需要位移，只有变形
     
-    return Offset(0, offsetY);
+    return Offset(offsetX, offsetY);
   }
 }
 
@@ -232,8 +224,8 @@ class SimpleShakeWrapper extends StatefulWidget {
     super.key,
     required this.child,
     required this.trigger,
-    this.intensity = 3.0,
-    this.duration = const Duration(milliseconds: 150),
+    this.intensity = 8.0, // 增大默认强度
+    this.duration = const Duration(milliseconds: 600), // 延长动画时间让过渡更舒缓
     this.onShakeComplete,
   });
 
