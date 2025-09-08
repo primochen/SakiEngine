@@ -210,23 +210,29 @@ flutter pub run flutter_launcher_icons:main
 
 echo ""
 
-# 根据平台启动
-case "$PLATFORM" in
-    "macos")
-        echo -e "${GREEN}在 macOS 上启动项目...${NC}"
-        echo "Debug: GAME_DIR=$GAME_DIR"
-        flutter run -d macos --dart-define=SAKI_GAME_PATH="$GAME_DIR"
-        ;;
-    "linux")
-        echo -e "${GREEN}在 Linux 上启动项目...${NC}"
-        flutter run -d linux --dart-define=SAKI_GAME_PATH="$GAME_DIR"
-        ;;
-    "windows")
-        echo -e "${GREEN}在 Windows 上启动项目...${NC}"
-        flutter run -d windows --dart-define=SAKI_GAME_PATH="$GAME_DIR"
-        ;;
-    *)
-        echo -e "${RED}错误: 不支持的平台 $PLATFORM${NC}"
-        exit 1
-        ;;
-esac
+# 检查是否为web模式
+if [ "$1" = "web" ]; then
+    echo -e "${GREEN}在 Web (Chrome) 上启动项目...${NC}"
+    flutter run -d chrome --dart-define=SAKI_GAME_PATH="$GAME_DIR"
+else
+    # 根据平台启动
+    case "$PLATFORM" in
+        "macos")
+            echo -e "${GREEN}在 macOS 上启动项目...${NC}"
+            echo "Debug: GAME_DIR=$GAME_DIR"
+            flutter run -d macos --dart-define=SAKI_GAME_PATH="$GAME_DIR"
+            ;;
+        "linux")
+            echo -e "${GREEN}在 Linux 上启动项目...${NC}"
+            flutter run -d linux --dart-define=SAKI_GAME_PATH="$GAME_DIR"
+            ;;
+        "windows")
+            echo -e "${GREEN}在 Windows 上启动项目...${NC}"
+            flutter run -d windows --dart-define=SAKI_GAME_PATH="$GAME_DIR"
+            ;;
+        *)
+            echo -e "${RED}错误: 不支持的平台 $PLATFORM${NC}"
+            exit 1
+            ;;
+    esac
+fi

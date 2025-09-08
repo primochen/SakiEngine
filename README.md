@@ -60,6 +60,13 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 - [ ] 性能进一步优化
 - [ ] 更多平台细节适配
 
+### 特色功能
+
+- [x] 自动角色站位，多角色会自动分配位置
+- [x] 自动对话框震动，检测到感叹号字符会自动震动
+- [x] 自带普通旁白和电影旁白，电影旁白会有上下黑边
+- [x] 有单独的存档格式.sakisav，市面已存在的反编译工具目前无法直接支持
+
 ### 部署指南
 
 #### 前提条件
@@ -107,8 +114,13 @@ flutter run -d macos --dart-define=SAKI_GAME_PATH="$PWD/../Game/YourGameName"
 
 #### 构建发布版
 
+#### 构建不同平台（GitHub Action 使用）
+
+直接推送即可。github会自动编译全平台二进制文件。
+
+#### 本地构建
+
 ```bash
-# 构建不同平台（GitHub Action 使用）
 ./build.sh macos
 ./build.sh linux  
 ./build.sh windows
