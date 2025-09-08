@@ -27,7 +27,9 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     with TickerProviderStateMixin {
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
-  bool _shouldShake = false;
+  double _shakeIntensity = 0.0; // 当前震动强度
+  late AnimationController _intensityController;
+  late Animation<double> _intensityAnimation;
 
   @override
   void initState() {
@@ -47,23 +49,42 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
   }
 
   void _initializeShakeAnimation() {
+    // 震动频率控制器（按需启动）
     _shakeController = AnimationController(
-      duration: widget.duration,
+      duration: const Duration(milliseconds: 42), // ~24Hz
       vsync: this,
     );
 
     _shakeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
+    ).animate(_shakeController);
+
+    // 强度控制器（控制震动衰减）
+    _intensityController = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    _intensityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
     ).animate(CurvedAnimation(
-      parent: _shakeController,
-      curve: Curves.elasticOut,
+      parent: _intensityController,
+      curve: Curves.easeOut,
     ));
+
+    // 监听强度动画完成事件
+    _intensityController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        // 震动结束时停止高频震动动画
+        _shakeController.stop();
+      }
+    });
   }
 
   void _checkForExclamation() {
     if (!widget.enabled) {
-      _shouldShake = false;
       return;
     }
 
@@ -71,43 +92,37 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     final hasExclamation = widget.dialogue.contains('!') || 
                           widget.dialogue.contains('！');
     
-    if (hasExclamation != _shouldShake) {
-      setState(() {
-        _shouldShake = hasExclamation;
-      });
-      
-      if (_shouldShake) {
-        _triggerShake();
-      }
+    // 如果发现感叹号，启动震动效果
+    if (hasExclamation) {
+      _startShakeEffect();
     }
   }
 
-  void _triggerShake() {
-    if (_shakeController.isAnimating) {
-      _shakeController.reset();
-    }
-    _shakeController.forward();
+  void _startShakeEffect() {
+    // 启动高频震动动画
+    _shakeController.repeat();
+    
+    // 重置并启动强度衰减动画
+    _intensityController.reset();
+    _intensityController.forward();
   }
 
   @override
   void dispose() {
     _shakeController.dispose();
+    _intensityController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_shouldShake) {
-      return widget.child;
-    }
-
     return AnimatedBuilder(
-      animation: _shakeAnimation,
+      animation: Listenable.merge([_shakeAnimation, _intensityAnimation]),
       builder: (context, child) {
-        final shakeValue = _shakeAnimation.value;
-        final shake = widget.intensity * 
-                      math.sin(shakeValue * math.pi * 12) * 
-                      (1.0 - shakeValue);
+        // 计算当前的震动偏移
+        final shakeValue = math.sin(_shakeAnimation.value * 2 * math.pi);
+        final currentIntensity = widget.intensity * _intensityAnimation.value;
+        final shake = currentIntensity * shakeValue;
 
         return Transform.translate(
           offset: Offset(shake, 0),
