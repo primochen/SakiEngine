@@ -44,7 +44,7 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         shell: bash
         run: |
-          version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          version=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Detected version: $version"
       
