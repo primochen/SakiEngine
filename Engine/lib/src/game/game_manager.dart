@@ -1055,6 +1055,10 @@ class GameManager {
     _currentTimer?.cancel();
     _currentTimer = null;
     
+    // 清理场景动画控制器（解决回退时动画未停止的bug）
+    _sceneAnimationController?.dispose();
+    _sceneAnimationController = null;
+    
     // 恢复 NVL 状态
     _currentState = snapshot.currentState.copyWith(
       isNvlMode: snapshot.isNvlMode,
@@ -1249,6 +1253,10 @@ class GameManager {
         onMidTransition: () {
         ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
         // 在黑屏最深时切换背景，清除对话和所有角色（类似Renpy）
+        // 先停止并清理旧的场景动画控制器
+        _sceneAnimationController?.dispose();
+        _sceneAnimationController = null;
+        
         final oldState = _currentState;
         _currentState = _currentState.copyWith(
           background: newBackground,
@@ -1280,6 +1288,10 @@ class GameManager {
         onMidTransition: () {
           ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
           // 在转场中点切换背景，清除对话和所有角色（类似Renpy）
+          // 先停止并清理旧的场景动画控制器
+          _sceneAnimationController?.dispose();
+          _sceneAnimationController = null;
+          
           final oldState = _currentState;
           _currentState = _currentState.copyWith(
             background: newBackground,

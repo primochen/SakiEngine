@@ -154,6 +154,8 @@ class SceneAnimationController {
 
   Future<void> _playKeyframes(List<AnimationKeyframe> keyframes, TickerProvider vsync) async {
     for (final keyframe in keyframes) {
+      // 检查是否应该停止
+      if (_shouldStop) break;
       await _playKeyframe(keyframe, vsync);
     }
   }
