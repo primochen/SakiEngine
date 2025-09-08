@@ -79,8 +79,8 @@ jobs:
         run: |
           cd Engine/build/macos/Build/Products/Release
           
-          # 从项目根目录读取游戏名称（修正相对路径为8层）
-          GAME_NAME=$(cat ../../../../../../../../default_game.txt 2>/dev/null | tr -d '\n\r' | xargs)
+          # 从项目根目录读取游戏名称（修正相对路径为6层）
+          GAME_NAME=$(cat ../../../../../../default_game.txt 2>/dev/null | tr -d '\n\r' | xargs)
           
           # 如果读取失败，使用默认名称
           if [ -z "$GAME_NAME" ]; then
@@ -103,8 +103,8 @@ jobs:
             exit 1
           fi
           
-          # 从Engine目录读取版本号（修正相对路径为8层）
-          version=$(grep '^version:' ../../../../../../../../Engine/pubspec.yaml 2>/dev/null | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          # 从Engine目录读取版本号（修正相对路径为6层）
+          version=$(grep '^version:' ../../../../../../Engine/pubspec.yaml 2>/dev/null | cut -d ' ' -f 2 | cut -d '+' -f 1)
           
           # 如果读取失败，使用默认版本
           if [ -z "$version" ]; then
