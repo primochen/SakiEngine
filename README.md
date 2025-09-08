@@ -1,18 +1,23 @@
 # SakiEngine
+
 ## 基于Flutter开发的视觉小说游戏引擎
 
 ### 项目截图
 
 #### 主界面
+
 ![主界面](Git/main.png)
 
 #### 对话系统
+
 ![对话系统](Git/dialog.png)
 
 #### 历史记录
+
 ![历史记录](Git/history.png)
 
 #### 对话场景
+
 ![对话场景](Git/say.png)
 
 ### 项目简介
@@ -36,6 +41,7 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 ### 开发状态
 
 项目目前处于积极开发中。主要功能已经实现，正在持续优化和完善：
+
 - [x] 基础对话系统
 - [x] 角色立绘支持
 - [x] 场景管理
@@ -57,12 +63,14 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 ### 部署指南
 
 #### 前提条件
+
 - 安装 Flutter SDK（建议使用最新稳定版）
 - 配置相应平台的开发环境（Android Studio、Xcode等）
 
 #### 快速开始
 
 ##### 开发环境启动（推荐）
+
 ```bash
 # macOS/Linux
 ./run.sh
@@ -72,18 +80,22 @@ SakiEngine 是一个基于 Flutter 的现代化视觉小说游戏引擎，专为
 ```
 
 **首次运行时会自动：**
+
 - 检测您的操作系统（macOS/Linux/Windows）
 - 扫描可用的游戏项目
 - 让您选择默认游戏项目
 - 自动配置并启动项目
 
 ##### 传统方式（手动步骤）
+
 1. 选择游戏项目
+
 ```bash
 ./scripts/select_game.sh
 ```
 
 2. 运行对应平台的传统脚本
+
 ```bash
 # macOS（传统方式）
 ./scripts/run_legacy_macos.sh
@@ -111,14 +123,15 @@ flutter run -d macos --dart-define=SAKI_GAME_PATH="$PWD/../Game/YourGameName"
 Windows 用户需要使用以下方式之一来运行 shell 脚本：
 
 1. **Git Bash**（推荐）
+   
    - 安装 Git for Windows 后自带
    - 右键选择 "Git Bash Here" 然后运行 `./run.sh`
-
 2. **WSL (Windows Subsystem for Linux)**
+   
    - 在 Microsoft Store 安装 Ubuntu 或其他 Linux 发行版
    - 在 WSL 终端中运行脚本
-
 3. **PowerShell + bash**
+   
    - 如果安装了 Git Bash，可在 PowerShell 中运行：`bash ./run.sh`
 
 #### 项目结构
@@ -158,6 +171,7 @@ SakiEngine 提供了便捷的项目创建工具，可以快速搭建新的视觉
 ```
 
 **创建工具会自动：**
+
 - 创建完整的项目目录结构
 - 生成基础的配置文件（角色、姿势、系统配置）
 - 创建示例剧情脚本
@@ -168,6 +182,7 @@ SakiEngine 提供了便捷的项目创建工具，可以快速搭建新的视觉
 #### 项目模块化系统
 
 每个新项目都会自动创建对应的Flutter模块，支持：
+
 - **自定义主题**：项目特有的颜色、字体、界面风格
 - **自定义界面**：主菜单、游戏界面、存档界面等
 - **项目配置**：特殊的引擎参数和功能开关
@@ -178,16 +193,19 @@ SakiEngine 提供了便捷的项目创建工具，可以快速搭建新的视觉
 #### 快速开始新项目
 
 1. **创建项目**
+
 ```bash
 ./scripts/create_new_project.sh
 ```
 
 2. **选择并运行**
+
 ```bash
 ./run.sh  # 选择新创建的项目
 ```
 
 3. **自定义项目模块**
+
 ```bash
 # 编辑项目模块文件
 Engine/lib/yourproject/yourproject_module.dart
@@ -253,6 +271,7 @@ return
 ```
 
 特点：
+
 - 无需缩进
 - 使用 `//` 注释
 - 简单的角色对话语法
@@ -263,6 +282,11 @@ return
 
 本项目使用开源许可证。详细信息请参见 LICENSE 文件。
 
+### 示例游戏
+
+本项目包含一个既是商业游戏也是开源游戏的游戏项目：《空之歌：每当磁针再次振动，我便在此等待》。
+
 ### 贡献
 
 欢迎提交 Issues 和 Pull Requests！
+
