@@ -142,12 +142,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   Widget _createDialogueBox({
+    Key? key,
     String? speaker,
     required String dialogue,
   }) {
     // 根据项目名称选择对话框
     if (_projectName == 'SoraNoUta') {
       return SoranoUtaDialogueBox(
+        key: key,
         speaker: speaker,
         dialogue: dialogue,
         progressionManager: _dialogueProgressionManager,
@@ -156,6 +158,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 默认对话框
     return DialogueBox(
+      key: key,
       speaker: speaker,
       dialogue: dialogue,
       progressionManager: _dialogueProgressionManager,
@@ -410,13 +413,45 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   },
                   child: _buildSceneWithFilter(gameState),
                 ),
-                // NVL 模式覆盖层
-                if (gameState.isNvlMode)
-                  NvlScreen(
-                    nvlDialogues: gameState.nvlDialogues,
-                    isMovieMode: gameState.isNvlMovieMode,
-                    progressionManager: _dialogueProgressionManager,
-                  ),
+                // NVL 模式覆盖层 - 使用 AnimatedSwitcher 添加过渡动画
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    // 检查是否是电影模式，如果是电影模式则只使用淡入淡出
+                    final isMovieMode = gameState.isNvlMovieMode;
+                    
+                    if (isMovieMode) {
+                      // 电影模式只使用淡入淡出，避免黑边一起移动
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    } else {
+                      // 普通旁白模式使用淡入+滑动
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, -0.1),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOut,
+                          )),
+                          child: child,
+                        ),
+                      );
+                    }
+                  },
+                  child: gameState.isNvlMode
+                      ? NvlScreen(
+                          key: ValueKey('nvl_screen_${gameState.isNvlMovieMode}'),
+                          nvlDialogues: gameState.nvlDialogues,
+                          isMovieMode: gameState.isNvlMovieMode,
+                          progressionManager: _dialogueProgressionManager,
+                        )
+                      : const SizedBox.shrink(key: ValueKey('no_nvl')),
+                ),
                 QuickMenu(
                   onSave: () => setState(() => _showSaveOverlay = true),
                   onLoad: () => setState(() => _showLoadOverlay = true),
@@ -487,11 +522,32 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
         ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        if (gameState.dialogue != null && !gameState.isNvlMode)
-          _createDialogueBox(
-            speaker: gameState.speaker,
-            dialogue: gameState.dialogue!,
-          ),
+        // 使用 AnimatedSwitcher 为对话框切换添加过渡动画
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                )),
+                child: child,
+              ),
+            );
+          },
+          child: gameState.dialogue != null && !gameState.isNvlMode
+              ? _createDialogueBox(
+                  key: const ValueKey('normal_dialogue'),
+                  speaker: gameState.speaker,
+                  dialogue: gameState.dialogue!,
+                )
+              : const SizedBox.shrink(key: ValueKey('no_dialogue')),
+        ),
         if (gameState.currentNode is MenuNode)
           ChoiceMenu(
             menuNode: gameState.currentNode as MenuNode,
