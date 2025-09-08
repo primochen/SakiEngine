@@ -43,7 +43,7 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         shell: bash
         run: |
-          version=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          version=$(grep '^version:' Engine/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Detected version: $version"
       
@@ -79,18 +79,40 @@ jobs:
         run: |
           cd Engine/build/macos/Build/Products/Release
           
-          # 从 default_game.txt 读取游戏名称
-          GAME_NAME=$(cat ../../../../../../default_game.txt | tr -d '\n\r' | xargs)
+          # 从项目根目录读取游戏名称（修正相对路径为7层）
+          GAME_NAME=$(cat ../../../../../../../default_game.txt 2>/dev/null | tr -d '\n\r' | xargs)
+          
+          # 如果读取失败，使用默认名称
+          if [ -z "$GAME_NAME" ]; then
+            GAME_NAME="SakiEngine"
+            echo "⚠️  无法读取 default_game.txt，使用默认名称: $GAME_NAME"
+          fi
+          
           APP_NAME="$GAME_NAME.app"
+          
+          echo "🔍 构建信息:"
+          echo "   当前路径: $(pwd)"
+          echo "   游戏名称: $GAME_NAME"
+          echo "   应用名称: $APP_NAME"
 
           # 检查 .app 文件是否存在
           if [ ! -d "$APP_NAME" ]; then
             echo "❌ 错误: 未找到应用 '$APP_NAME'。"
+            echo "当前目录内容:"
+            ls -la
             exit 1
           fi
           
-          # 生成构件名称
-          version=$(grep '^version:' ../../../../../../pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          # 从Engine目录读取版本号（修正相对路径为7层）
+          version=$(grep '^version:' ../../../../../../../Engine/pubspec.yaml 2>/dev/null | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          
+          # 如果读取失败，使用默认版本
+          if [ -z "$version" ]; then
+            version="1.0.0"
+            echo "⚠️  无法读取版本号，使用默认版本: $version"
+          fi
+          
+          echo "   版本号: $version"
           
           if [ "${{ inputs.create_dmg }}" = "true" ]; then
             # 创建DMG
