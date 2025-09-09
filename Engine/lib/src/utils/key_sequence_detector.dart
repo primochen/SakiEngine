@@ -1,0 +1,385 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:sakiengine/src/config/asset_manager.dart';
+
+/// 长按键检测器
+/// 用于检测特定按键的长按操作，如长按C键
+class LongPressKeyDetector {
+  final LogicalKeyboardKey _targetKey;
+  final VoidCallback _onLongPress;
+  final Duration _longPressDuration;
+  
+  bool _isListening = false;
+  bool _isKeyPressed = false;
+  Timer? _longPressTimer;
+  
+  LongPressKeyDetector({
+    required LogicalKeyboardKey key,
+    required VoidCallback onLongPress,
+    Duration longPressDuration = const Duration(milliseconds: 800),
+  }) : _targetKey = key,
+       _onLongPress = onLongPress,
+       _longPressDuration = longPressDuration;
+
+  /// 开始监听键盘事件
+  void startListening() {
+    if (_isListening) return;
+    
+    _isListening = true;
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    
+    if (kDebugMode) {
+      print('长按键检测器: 开始监听 ${_targetKey.debugName} 长按事件');
+    }
+  }
+
+  /// 停止监听键盘事件
+  void stopListening() {
+    if (!_isListening) return;
+    
+    _isListening = false;
+    _cancelLongPressTimer();
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    _isKeyPressed = false;
+    
+    if (kDebugMode) {
+      print('长按键检测器: 停止监听');
+    }
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (!_isListening) return false;
+    
+    if (event.logicalKey == _targetKey) {
+      if (event is KeyDownEvent) {
+        // 按键按下
+        if (!_isKeyPressed) {
+          _isKeyPressed = true;
+          _startLongPressTimer();
+          
+          if (kDebugMode) {
+            print('长按键检测器: ${_targetKey.debugName} 按下，开始计时');
+          }
+        }
+        return true;
+      } else if (event is KeyUpEvent) {
+        // 按键松开
+        if (_isKeyPressed) {
+          _isKeyPressed = false;
+          _cancelLongPressTimer();
+          
+          if (kDebugMode) {
+            print('长按键检测器: ${_targetKey.debugName} 松开，取消计时');
+          }
+        }
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  void _startLongPressTimer() {
+    _cancelLongPressTimer();
+    _longPressTimer = Timer(_longPressDuration, () {
+      if (_isKeyPressed && _isListening) {
+        if (kDebugMode) {
+          print('长按键检测器: ${_targetKey.debugName} 长按触发');
+        }
+        _onLongPress();
+      }
+    });
+  }
+
+  void _cancelLongPressTimer() {
+    _longPressTimer?.cancel();
+    _longPressTimer = null;
+  }
+
+  void dispose() {
+    stopListening();
+  }
+}
+
+/// 脚本内容修改器
+/// 负责修改脚本文件中的对话行，添加或更新角色差分信息
+class ScriptContentModifier {
+  
+  /// 修改脚本文件中的对话行，添加差分信息
+  /// 
+  /// [scriptFilePath] 脚本文件的完整路径
+  /// [targetDialogue] 目标对话文本
+  /// [characterId] 角色ID
+  /// [newExpression] 新的表情差分
+  static Future<bool> modifyDialogueLine({
+    required String scriptFilePath,
+    required String targetDialogue,
+    required String characterId,
+    required String newExpression,
+  }) async {
+    try {
+      final file = File(scriptFilePath);
+      if (!await file.exists()) {
+        if (kDebugMode) {
+          print('脚本修改器: 文件不存在 $scriptFilePath');
+        }
+        return false;
+      }
+
+      final content = await file.readAsString();
+      final lines = content.split('\n');
+      bool modified = false;
+
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].trim();
+        
+        // 检查是否是包含目标对话的行，同时验证角色ID
+        if (_isTargetDialogueLine(line, targetDialogue, characterId)) {
+          final modifiedLine = _modifyDialogueLine(line, characterId, newExpression);
+          if (modifiedLine != line) {
+            lines[i] = lines[i].replaceAll(line, modifiedLine);
+            modified = true;
+            
+            if (kDebugMode) {
+              print('脚本修改器: 修改对话行');
+              print('原始行: $line');
+              print('修改后: $modifiedLine');
+            }
+            break; // 只修改第一个匹配的行
+          }
+        }
+      }
+
+      if (modified) {
+        final modifiedContent = lines.join('\n');
+        await _writeScriptFile(file, modifiedContent);
+        
+        if (kDebugMode) {
+          print('脚本修改器: 成功保存修改的脚本文件');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('脚本修改器: 未找到匹配的对话行');
+        }
+        return false;
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('脚本修改器: 修改脚本文件失败: $e');
+      }
+      return false;
+    }
+  }
+
+  /// 检查是否是目标对话行
+  static bool _isTargetDialogueLine(String line, String targetDialogue, [String? expectedCharacterId]) {
+    // 去除前后空白
+    final trimmedLine = line.trim();
+    final trimmedDialogue = targetDialogue.trim();
+    
+    // 检查不同的对话格式
+    // 格式1: "对话内容" - 只有在没有指定expectedCharacterId时才匹配
+    if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"') && expectedCharacterId == null) {
+      final dialogueContent = trimmedLine.substring(1, trimmedLine.length - 1);
+      if (dialogueContent == trimmedDialogue) {
+        return true;
+      }
+    }
+    
+    // 格式2: character "对话内容"
+    // 格式3: character expression "对话内容"
+    if (trimmedLine.contains('"') && !trimmedLine.startsWith('"')) {
+      final parts = trimmedLine.split(' ');
+      if (parts.isNotEmpty) {
+        final lineCharacterId = parts[0];
+        
+        // 如果指定了expectedCharacterId，必须匹配
+        if (expectedCharacterId != null && lineCharacterId != expectedCharacterId) {
+          return false;
+        }
+        
+        final quoteStart = trimmedLine.indexOf('"');
+        final quoteEnd = trimmedLine.lastIndexOf('"');
+        if (quoteStart >= 0 && quoteEnd > quoteStart) {
+          final dialogueContent = trimmedLine.substring(quoteStart + 1, quoteEnd);
+          if (dialogueContent == trimmedDialogue) {
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  /// 修改对话行，添加或更新表情信息
+  static String _modifyDialogueLine(String line, String characterId, String newExpression) {
+    final trimmedLine = line.trim();
+    
+    // 如果已经包含该角色的表情信息，更新它
+    if (trimmedLine.startsWith(characterId)) {
+      // 检查是否已经有表情信息
+      final parts = trimmedLine.split(' ');
+      if (parts.length >= 3 && parts[0] == characterId && parts[2].startsWith('"')) {
+        // 格式: character expression "dialogue"
+        // 更新表情
+        parts[1] = newExpression;
+        return parts.join(' ');
+      } else if (parts.length >= 2 && parts[1].startsWith('"')) {
+        // 格式: character "dialogue"
+        // 插入表情
+        return '${parts[0]} $newExpression ${parts.sublist(1).join(' ')}';
+      }
+    }
+    
+    // 如果是纯对话格式，添加角色和表情信息
+    if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"')) {
+      return '$characterId $newExpression $trimmedLine';
+    }
+    
+    // 其他情况，尝试智能添加
+    if (trimmedLine.contains('"')) {
+      final quoteIndex = trimmedLine.indexOf('"');
+      return '${trimmedLine.substring(0, quoteIndex)}$characterId $newExpression ${trimmedLine.substring(quoteIndex)}';
+    }
+    
+    // 如果无法识别格式，返回原始行
+    return line;
+  }
+
+  /// 写入脚本文件，使用多种方法确保成功
+  static Future<void> _writeScriptFile(File file, String content) async {
+    bool writeSuccess = false;
+    String lastError = '';
+
+    // 方法1: 直接文件写入
+    try {
+      await file.writeAsString(content);
+      writeSuccess = true;
+      if (kDebugMode) {
+        print('脚本修改器: 直接文件写入成功');
+      }
+    } catch (e) {
+      lastError = '直接写入失败: $e';
+      if (kDebugMode) {
+        print('脚本修改器: $lastError');
+      }
+    }
+
+    if (!writeSuccess) {
+      // 方法2: 使用临时文件 + 移动
+      try {
+        final tempFile = File('${file.path}.tmp');
+        await tempFile.writeAsString(content);
+        await tempFile.rename(file.path);
+        writeSuccess = true;
+        if (kDebugMode) {
+          print('脚本修改器: 临时文件写入成功');
+        }
+      } catch (e) {
+        lastError += ', 临时文件写入失败: $e';
+        if (kDebugMode) {
+          print('脚本修改器: 临时文件写入失败: $e');
+        }
+      }
+    }
+
+    if (!writeSuccess) {
+      // 方法3: 使用命令行
+      try {
+        // 转义特殊字符
+        final escapedContent = content
+            .replaceAll('\\', '\\\\')
+            .replaceAll('\$', '\\\$')
+            .replaceAll('"', '\\"');
+        
+        final result = await Process.run('sh', [
+          '-c',
+          'printf "%s" "\$1" > "\$2"',
+          '--',
+          escapedContent,
+          file.path,
+        ]);
+        
+        if (result.exitCode == 0) {
+          writeSuccess = true;
+          if (kDebugMode) {
+            print('脚本修改器: 命令行写入成功');
+          }
+        } else {
+          lastError += ', 命令行写入失败: ${result.stderr}';
+        }
+      } catch (e) {
+        lastError += ', 命令行写入异常: $e';
+      }
+    }
+
+    if (!writeSuccess) {
+      throw Exception('所有写入方法均失败: $lastError');
+    }
+  }
+
+  /// 获取当前脚本文件路径
+  static Future<String?> getCurrentScriptFilePath(String scriptName) async {
+    try {
+      // 获取游戏路径
+      final gamePath = await _getGamePathFromAssetManager();
+      if (gamePath == null) return null;
+      
+      // 构建脚本文件路径
+      final scriptPath = p.join(gamePath, 'GameScript', 'labels', '$scriptName.sks');
+      final scriptFile = File(scriptPath);
+      
+      if (await scriptFile.exists()) {
+        return scriptPath;
+      } else {
+        if (kDebugMode) {
+          print('脚本修改器: 脚本文件不存在: $scriptPath');
+        }
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('脚本修改器: 获取脚本文件路径失败: $e');
+      }
+      return null;
+    }
+  }
+
+  /// 从AssetManager获取游戏路径
+  static Future<String?> _getGamePathFromAssetManager() async {
+    try {
+      // 首先检查环境变量
+      const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+      if (fromDefine.isNotEmpty) return fromDefine;
+      
+      final fromEnv = Platform.environment['SAKI_GAME_PATH'];
+      if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+      
+      // 从assets读取default_game.txt
+      final assetContent = await AssetManager().loadString('assets/default_game.txt');
+      final defaultGame = assetContent.trim();
+      
+      if (defaultGame.isEmpty) {
+        throw Exception('default_game.txt is empty');
+      }
+      
+      final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
+      if (kDebugMode) {
+        print("脚本修改器: 从default_game.txt获取游戏路径: $gamePath");
+      }
+      
+      return gamePath;
+    } catch (e) {
+      if (kDebugMode) {
+        print('脚本修改器: 无法获取游戏路径: $e');
+      }
+      return null;
+    }
+  }
+}

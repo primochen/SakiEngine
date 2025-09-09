@@ -191,6 +191,12 @@ class GameManager {
   
   // 获取当前对话文本（用于开发者面板定位）
   String get currentDialogueText => _dialogueHistory.isNotEmpty ? _dialogueHistory.last.dialogue : '';
+  
+  // 获取当前游戏状态（用于表情选择器）
+  GameState get currentState => _currentState;
+  
+  // 获取角色配置（用于表情选择器）
+  Map<String, CharacterConfig> get characterConfigs => _characterConfigs;
 
   GameManager({this.onReturn}) {
     _currentState = GameState.initial(); // 提前初始化，避免late变量访问错误

@@ -34,6 +34,8 @@ import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
+import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
+import 'package:sakiengine/src/utils/expression_selector_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -62,8 +64,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   bool _showSettings = false;
   bool _isShowingMenu = false;
   bool _showDeveloperPanel = false; // 开发者面板显示状态
+  bool _showExpressionSelector = false; // 表情选择器显示状态
   HotKey? _reloadHotKey;
   HotKey? _developerPanelHotKey; // Shift+D快捷键
+  ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
@@ -88,6 +92,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
     // 注册系统级热键 Shift+R
     _setupHotkey();
+    
+    // 初始化表情选择器管理器（仅在Debug模式下）
+    if (kDebugMode) {
+      _setupExpressionSelectorManager();
+    }
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -210,6 +219,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     if (_developerPanelHotKey != null) {
       hotKeyManager.unregister(_developerPanelHotKey!);
     }
+    // 清理表情选择器管理器
+    _expressionSelectorManager?.dispose();
+    
     _gameManager.dispose();
     super.dispose();
   }
@@ -319,6 +331,40 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     } catch (e) {
       print('箭头键快捷键注册失败: $e');
     }
+  }
+
+  // 设置表情选择器管理器（Debug模式下的表情选择功能）
+  void _setupExpressionSelectorManager() {
+    _expressionSelectorManager = ExpressionSelectorManager(
+      gameManager: _gameManager,
+      showNotificationCallback: _showNotificationMessage,
+      triggerReloadCallback: _handleHotReload,
+      getCurrentGameState: () {
+        // 获取当前游戏状态
+        return _gameManager.currentState;
+      },
+      setExpressionSelectorVisibility: (show) {
+        if (mounted) {
+          // 检查是否可以显示表情选择器
+          final canShow = show && _expressionSelectorManager!.canShowExpressionSelector(
+            showSaveOverlay: _showSaveOverlay,
+            showLoadOverlay: _showLoadOverlay,
+            showReviewOverlay: _showReviewOverlay,
+            showSettings: _showSettings,
+            showDeveloperPanel: _showDeveloperPanel,
+            isShowingMenu: _isShowingMenu,
+          );
+          
+          setState(() {
+            _showExpressionSelector = canShow;
+          });
+          
+          _expressionSelectorManager!.setExpressionSelectorVisible(canShow);
+        }
+      },
+    );
+    
+    _expressionSelectorManager!.initialize();
   }
 
   // 显示通知消息
@@ -493,6 +539,30 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onClose: () => setState(() => _showDeveloperPanel = false),
                     gameManager: _gameManager,
                     onReload: () => _gameManager.hotReload(_currentScript),
+                  ),
+                // 表情选择器 (仅Debug模式)
+                if (kDebugMode && _showExpressionSelector)
+                  Builder(
+                    builder: (context) {
+                      final speakerInfo = _expressionSelectorManager?.getCurrentSpeakerInfo();
+                      if (speakerInfo == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return ExpressionSelectorDialog(
+                        characterId: speakerInfo.characterId,
+                        characterName: speakerInfo.speakerName,
+                        currentPose: speakerInfo.currentPose,
+                        currentExpression: speakerInfo.currentExpression,
+                        onSelectionChanged: (pose, expression) {
+                          _expressionSelectorManager?.handleExpressionSelectionChanged(
+                            speakerInfo.characterId,
+                            pose,
+                            expression,
+                          );
+                        },
+                        onClose: () => setState(() => _showExpressionSelector = false),
+                      );
+                    },
                   ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,

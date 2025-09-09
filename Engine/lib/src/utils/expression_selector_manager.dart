@@ -1,0 +1,269 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/utils/key_sequence_detector.dart';
+
+/// 表情选择器管理器
+/// 负责处理Debug模式下的C键检测和表情选择器的显示逻辑
+class ExpressionSelectorManager {
+  final GameManager gameManager;
+  final Function(String message) showNotificationCallback;
+  final Function() triggerReloadCallback;
+  final Function(bool show) setExpressionSelectorVisibility;
+  final Function() getCurrentGameState;
+
+  bool _isExpressionSelectorVisible = false;
+
+  ExpressionSelectorManager({
+    required this.gameManager,
+    required this.showNotificationCallback,
+    required this.triggerReloadCallback,
+    required this.setExpressionSelectorVisibility,
+    required this.getCurrentGameState,
+  });
+
+  /// 初始化Shift+C快捷键检测（仅在Debug模式下）
+  void initialize() {
+    if (!kDebugMode) return;
+    
+    // 使用Shift+C快捷键，避免与其他功能冲突
+    _setupShiftCHotkey();
+  }
+
+  /// 设置Shift+C快捷键
+  void _setupShiftCHotkey() {
+    // 注册到HardwareKeyboard而不是使用LongPressKeyDetector
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  /// 处理键盘事件
+  bool _handleKeyEvent(KeyEvent event) {
+    if (!kDebugMode) return false;
+    
+    // 检查Shift+C组合键
+    if (event is KeyDownEvent && 
+        event.logicalKey == LogicalKeyboardKey.keyC &&
+        HardwareKeyboard.instance.isShiftPressed) {
+      
+      _handleShiftCPress();
+      return true;
+    }
+    
+    return false;
+  }
+
+  /// 处理Shift+C按键事件
+  void _handleShiftCPress() {
+    _requestShowExpressionSelector();
+  }
+
+  /// 释放资源
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+  }
+
+  /// 设置表情选择器可见性状态
+  void setExpressionSelectorVisible(bool visible) {
+    _isExpressionSelectorVisible = visible;
+  }
+
+  /// 检查当前是否可以显示表情选择器
+  bool canShowExpressionSelector({
+    required bool showSaveOverlay,
+    required bool showLoadOverlay,
+    required bool showReviewOverlay,
+    required bool showSettings,
+    required bool showDeveloperPanel,
+    required bool isShowingMenu,
+  }) {
+    return !showSaveOverlay &&
+           !showLoadOverlay &&
+           !showReviewOverlay &&
+           !showSettings &&
+           !showDeveloperPanel &&
+           !_isExpressionSelectorVisible &&
+           !isShowingMenu;
+  }
+
+  /// 请求显示表情选择器（需要调用方进行状态检查）
+  void _requestShowExpressionSelector() {
+    try {
+      // 获取当前游戏状态
+      final gameStateValue = getCurrentGameState();
+      if (gameStateValue == null || gameStateValue.speaker == null || gameStateValue.speaker!.isEmpty) {
+        showNotificationCallback('没有当前说话角色');
+        return;
+      }
+
+      // 查找当前说话角色的信息
+      final speakerInfo = _findCurrentSpeakerInfo(gameStateValue);
+      if (speakerInfo == null) {
+        showNotificationCallback('无法找到角色信息: ${gameStateValue.speaker}');
+        return;
+      }
+
+      if (kDebugMode) {
+        //print('表情选择器: 检测到说话角色 ${speakerInfo.speakerName} (${speakerInfo.characterId})');
+        print('当前pose: ${speakerInfo.currentPose}, expression: ${speakerInfo.currentExpression}');
+      }
+
+      // 通知调用方显示表情选择器
+      setExpressionSelectorVisibility(true);
+
+    } catch (e) {
+      if (kDebugMode) {
+        //print('表情选择器: 获取角色信息失败: $e');
+      }
+      showNotificationCallback('获取角色信息失败');
+    }
+  }
+
+  /// 获取当前说话角色信息
+  SpeakerInfo? getCurrentSpeakerInfo() {
+    final gameStateValue = getCurrentGameState();
+    if (gameStateValue == null || gameStateValue.speaker == null || gameStateValue.speaker!.isEmpty) {
+      return null;
+    }
+
+    return _findCurrentSpeakerInfo(gameStateValue);
+  }
+
+  /// 查找当前说话角色的信息
+  SpeakerInfo? _findCurrentSpeakerInfo(dynamic gameState) {
+    final currentSpeaker = gameState.speaker as String;
+    
+    // 获取角色配置
+    final characterConfigs = gameManager.characterConfigs;
+    
+    // 首先通过角色名称在配置中查找对应的key和resourceId
+    String? characterKey;
+    String? targetResourceId;
+    
+    for (final entry in characterConfigs.entries) {
+      if (entry.value.name == currentSpeaker) {
+        characterKey = entry.key;
+        targetResourceId = entry.value.resourceId;
+        break;
+      }
+    }
+    
+    // 如果通过配置找到了角色信息，使用resourceId查找差分，但保留characterKey用于脚本修改
+    if (characterKey != null && targetResourceId != null) {
+      // 从场景中找到对应resourceId的角色状态信息
+      for (final entry in gameState.characters.entries) {
+        final characterState = entry.value;
+        final resourceId = characterState.resourceId as String;
+        
+        // 跳过narrator
+        if (resourceId == 'narrator') continue;
+        
+        // 找到匹配的resourceId
+        if (resourceId == targetResourceId) {
+          return SpeakerInfo(
+            characterId: targetResourceId, // 使用resourceId来查找差分文件
+            speakerName: currentSpeaker,
+            currentPose: characterState.pose ?? 'pose1',
+            currentExpression: characterState.expression ?? 'happy',
+            scriptCharacterKey: characterKey, // 保留characterKey用于脚本修改
+          );
+        }
+      }
+      
+      // 如果没找到完全匹配的resourceId，使用第一个非narrator角色作为fallback
+      for (final entry in gameState.characters.entries) {
+        final characterState = entry.value;
+        final resourceId = characterState.resourceId as String;
+        
+        if (resourceId != 'narrator') {
+          return SpeakerInfo(
+            characterId: resourceId, // 使用实际的resourceId来查找差分文件
+            speakerName: currentSpeaker,
+            currentPose: characterState.pose ?? 'pose1',
+            currentExpression: characterState.expression ?? 'happy',
+            scriptCharacterKey: characterKey, // 保留characterKey用于脚本修改
+          );
+        }
+      }
+    }
+    
+    // 如果配置中没找到，使用fallback逻辑
+    for (final entry in gameState.characters.entries) {
+      final characterState = entry.value;
+      final resourceId = characterState.resourceId as String;
+      
+      // 跳过narrator角色
+      if (resourceId == 'narrator') {
+        continue;
+      }
+      
+      return SpeakerInfo(
+        characterId: resourceId,
+        speakerName: currentSpeaker,
+        currentPose: characterState.pose ?? 'pose1',
+        currentExpression: characterState.expression ?? 'happy',
+      );
+    }
+    
+    return null;
+  }
+
+  /// 处理表情选择变更
+  Future<void> handleExpressionSelectionChanged(String characterId, String pose, String expression) async {
+    try {
+      // 获取当前对话文本
+      final currentDialogue = gameManager.currentDialogueText;
+      if (currentDialogue.isEmpty) {
+        showNotificationCallback('没有当前对话文本');
+        return;
+      }
+
+      // 获取当前脚本文件路径
+      final scriptPath = await ScriptContentModifier.getCurrentScriptFilePath(gameManager.currentScriptFile);
+      if (scriptPath == null) {
+        showNotificationCallback('无法获取脚本文件路径');
+        return;
+      }
+
+      // 获取当前说话角色信息，确定用于脚本修改的characterKey
+      final speakerInfo = getCurrentSpeakerInfo();
+      final scriptCharacterKey = speakerInfo?.scriptCharacterKey ?? characterId;
+
+      // 修改脚本文件
+      final success = await ScriptContentModifier.modifyDialogueLine(
+        scriptFilePath: scriptPath,
+        targetDialogue: currentDialogue,
+        characterId: scriptCharacterKey, // 使用脚本中的角色key
+        newExpression: expression,
+      );
+
+      if (success) {
+        showNotificationCallback('已应用差分: $expression');
+        
+        // 触发脚本重载
+        triggerReloadCallback();
+      } else {
+        showNotificationCallback('修改脚本失败');
+      }
+
+    } catch (e) {
+      showNotificationCallback('应用差分失败: $e');
+    }
+  }
+}
+
+/// 说话角色信息
+class SpeakerInfo {
+  final String characterId; // 用于查找差分文件的resourceId
+  final String speakerName;
+  final String currentPose;
+  final String currentExpression;
+  final String? scriptCharacterKey; // 用于脚本修改的角色key
+
+  const SpeakerInfo({
+    required this.characterId,
+    required this.speakerName,
+    required this.currentPose,
+    required this.currentExpression,
+    this.scriptCharacterKey,
+  });
+}
