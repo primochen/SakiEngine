@@ -197,11 +197,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ),
             ),
           
-          Positioned(
-            bottom: screenSize.height * 0.05,
-            left: screenSize.width * 0.02,
-            child: _buildDebugButton(context, menuScale, config),
-          ),
           
           _buildMenuButtons(context, menuScale, config),
 
@@ -333,54 +328,4 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  Widget _buildDebugButton(
-    BuildContext context,
-    double scale,
-    SakiEngineConfig config,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          setState(() => _showDebugPanel = true);
-        },
-        onHover: (hovering) => setState(() {}),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 16 * scale,
-            vertical: 12 * scale,
-          ),
-          decoration: BoxDecoration(
-            color: config.themeColors.background.withOpacity(0.85),
-            border: Border.all(
-              color: config.themeColors.primary.withOpacity(0.6),
-              width: 1.5,
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.settings_applications,
-                color: config.themeColors.primary,
-                size: 18 * scale,
-              ),
-              SizedBox(width: 8 * scale),
-              Text(
-                '调试界面',
-                style: TextStyle(
-                  fontFamily: 'SourceHanSansCN',
-                  fontSize: 14 * scale,
-                  color: config.themeColors.primary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

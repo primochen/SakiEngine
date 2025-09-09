@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
@@ -10,7 +9,6 @@ import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/widgets/common/game_title_widget.dart';
 import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
-import 'package:sakiengine/src/widgets/common/debug_button_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'dart:math';
 
@@ -108,13 +106,6 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
             config: config,
             scale: menuScale,
             screenSize: screenSize,
-          ),
-          
-          // 模块化调试按钮
-          DebugButtonWidget(
-            onPressed: () => setState(() => _showDebugPanel = true),
-            scale: menuScale,
-            config: config,
           ),
           
           // 版权信息文本
