@@ -443,7 +443,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showLoadOverlay || 
                     _showReviewOverlay ||
                     _showSettings ||
-                    _showDeveloperPanel; // 添加开发者面板检查
+                    _showDeveloperPanel || // 添加开发者面板检查
+                    _showExpressionSelector; // 添加表情选择器检查
                 
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
                 if (pointerSignal is PointerScrollEvent) {
