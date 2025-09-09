@@ -138,7 +138,7 @@ class ScriptContentModifier {
         
         // 检查是否是包含目标对话的行，同时验证角色ID
         if (_isTargetDialogueLine(line, targetDialogue, characterId)) {
-          final modifiedLine = _modifyDialogueLine(line, characterId, newExpression);
+          final modifiedLine = _modifyDialogueLine(line, characterId, null, newExpression);
           if (modifiedLine != line) {
             lines[i] = lines[i].replaceAll(line, modifiedLine);
             modified = true;
@@ -217,39 +217,111 @@ class ScriptContentModifier {
     return false;
   }
 
-  /// 修改对话行，添加或更新表情信息
-  static String _modifyDialogueLine(String line, String characterId, String newExpression) {
+  /// 修改对话行，添加或更新pose和表情信息
+  static String _modifyDialogueLine(String line, String characterId, String? newPose, String? newExpression) {
     final trimmedLine = line.trim();
     
-    // 如果已经包含该角色的表情信息，更新它
+    // 如果已经包含该角色的信息，更新它
     if (trimmedLine.startsWith(characterId)) {
-      // 检查是否已经有表情信息
       final parts = trimmedLine.split(' ');
-      if (parts.length >= 3 && parts[0] == characterId && parts[2].startsWith('"')) {
-        // 格式: character expression "dialogue"
-        // 更新表情
-        parts[1] = newExpression;
+      
+      // 识别不同格式
+      if (parts.length >= 4 && parts[0] == characterId && parts[3].startsWith('"')) {
+        // 格式: character pose expression "dialogue"
+        if (newPose != null) parts[1] = newPose;
+        if (newExpression != null) parts[2] = newExpression;
         return parts.join(' ');
+      } else if (parts.length >= 3 && parts[0] == characterId && parts[2].startsWith('"')) {
+        // 格式: character expression "dialogue" 或 character pose "dialogue"
+        // 需要扩展为三段式
+        final dialoguePart = parts.sublist(2).join(' ');
+        final currentPose = newPose ?? 'pose1'; // 默认pose
+        final currentExpression = newExpression ?? parts[1]; // 保持原有或使用新的
+        return '$characterId $currentPose $currentExpression $dialoguePart';
       } else if (parts.length >= 2 && parts[1].startsWith('"')) {
         // 格式: character "dialogue"
-        // 插入表情
-        return '${parts[0]} $newExpression ${parts.sublist(1).join(' ')}';
+        // 插入pose和表情
+        final pose = newPose ?? 'pose1';
+        final expression = newExpression ?? 'normal';
+        return '$characterId $pose $expression ${parts.sublist(1).join(' ')}';
       }
     }
     
-    // 如果是纯对话格式，添加角色和表情信息
+    // 如果是纯对话格式，添加角色、pose和表情信息
     if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"')) {
-      return '$characterId $newExpression $trimmedLine';
+      final pose = newPose ?? 'pose1';
+      final expression = newExpression ?? 'normal';
+      return '$characterId $pose $expression $trimmedLine';
     }
     
     // 其他情况，尝试智能添加
     if (trimmedLine.contains('"')) {
       final quoteIndex = trimmedLine.indexOf('"');
-      return '${trimmedLine.substring(0, quoteIndex)}$characterId $newExpression ${trimmedLine.substring(quoteIndex)}';
+      final pose = newPose ?? 'pose1';
+      final expression = newExpression ?? 'normal';
+      return '${trimmedLine.substring(0, quoteIndex)}$characterId $pose $expression ${trimmedLine.substring(quoteIndex)}';
     }
     
     // 如果无法识别格式，返回原始行
     return line;
+  }
+
+  /// 修改指定对话行的pose和表情信息
+  /// 支持同时修改pose和expression
+  static Future<bool> modifyDialogueLineWithPose({
+    required String scriptFilePath,
+    required String targetDialogue,
+    required String characterId,
+    String? newPose,
+    String? newExpression,
+  }) async {
+    try {
+      final file = File(scriptFilePath);
+      if (!await file.exists()) {
+        return false;
+      }
+
+      final content = await file.readAsString();
+      final lines = content.split('\n');
+      bool modified = false;
+
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].trim();
+        
+        // 检查是否是包含目标对话的行，同时验证角色ID
+        if (_isTargetDialogueLine(line, targetDialogue, characterId)) {
+          final modifiedLine = _modifyDialogueLine(line, characterId, newPose, newExpression);
+          if (modifiedLine != line) {
+            lines[i] = lines[i].replaceAll(line, modifiedLine);
+            modified = true;
+            
+            if (kDebugMode) {
+              print('脚本修改器: 修改对话行（pose+expression）');
+              print('原始行: $line');
+              print('修改后: $modifiedLine');
+            }
+            break; // 只修改第一个匹配的行
+          }
+        }
+      }
+
+      if (modified) {
+        final modifiedContent = lines.join('\n');
+        await _writeScriptFile(file, modifiedContent);
+        
+        if (kDebugMode) {
+          print('脚本修改器: 成功保存修改的脚本文件（pose+expression）');
+        }
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('脚本修改器: 修改对话行失败: $e');
+      }
+      return false;
+    }
   }
 
   /// 写入脚本文件，使用多种方法确保成功

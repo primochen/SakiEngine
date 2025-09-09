@@ -228,16 +228,17 @@ class ExpressionSelectorManager {
       final speakerInfo = getCurrentSpeakerInfo();
       final scriptCharacterKey = speakerInfo?.scriptCharacterKey ?? characterId;
 
-      // 修改脚本文件
-      final success = await ScriptContentModifier.modifyDialogueLine(
+      // 修改脚本文件 - 需要创建新的方法来同时修改pose和expression
+      final success = await ScriptContentModifier.modifyDialogueLineWithPose(
         scriptFilePath: scriptPath,
         targetDialogue: currentDialogue,
-        characterId: scriptCharacterKey, // 使用脚本中的角色key
+        characterId: scriptCharacterKey,
+        newPose: pose,
         newExpression: expression,
       );
 
       if (success) {
-        showNotificationCallback('已应用差分: $expression');
+        showNotificationCallback('已应用差分: $pose / $expression');
         
         // 触发脚本重载
         triggerReloadCallback();
