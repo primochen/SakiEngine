@@ -5,6 +5,119 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
 
+/// 按键序列检测器
+/// 用于检测特定按键序列，如连续按下 c-o-n-s-o-l-e
+class KeySequenceDetector {
+  final List<LogicalKeyboardKey> _targetSequence;
+  final VoidCallback _onSequenceComplete;
+  final Duration _sequenceTimeout;
+  
+  bool _isListening = false;
+  List<LogicalKeyboardKey> _currentSequence = [];
+  Timer? _timeoutTimer;
+  
+  KeySequenceDetector({
+    required List<LogicalKeyboardKey> sequence,
+    required VoidCallback onSequenceComplete,
+    Duration sequenceTimeout = const Duration(seconds: 3),
+  }) : _targetSequence = sequence,
+       _onSequenceComplete = onSequenceComplete,
+       _sequenceTimeout = sequenceTimeout;
+
+  /// 开始监听键盘事件
+  void startListening() {
+    if (_isListening) return;
+    
+    _isListening = true;
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    
+    if (kDebugMode) {
+      final sequenceNames = _targetSequence.map((key) => key.debugName).join('-');
+      print('按键序列检测器: 开始监听序列 $sequenceNames');
+    }
+  }
+
+  /// 停止监听键盘事件
+  void stopListening() {
+    if (!_isListening) return;
+    
+    _isListening = false;
+    _cancelTimeoutTimer();
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    _currentSequence.clear();
+    
+    if (kDebugMode) {
+      print('按键序列检测器: 停止监听');
+    }
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (!_isListening) return false;
+    
+    if (event is KeyDownEvent) {
+      final key = event.logicalKey;
+      
+      // 检查是否是序列中的下一个键
+      if (_currentSequence.length < _targetSequence.length &&
+          key == _targetSequence[_currentSequence.length]) {
+        
+        _currentSequence.add(key);
+        _resetTimeout();
+        
+        if (kDebugMode) {
+          print('按键序列检测器: 按键 ${key.debugName} 匹配，当前序列长度: ${_currentSequence.length}/${_targetSequence.length}');
+        }
+        
+        // 检查序列是否完成
+        if (_currentSequence.length == _targetSequence.length) {
+          if (kDebugMode) {
+            print('按键序列检测器: 序列完成！');
+          }
+          _onSequenceComplete();
+          _resetSequence();
+          return true;
+        }
+        
+        return true;
+      } else {
+        // 按键不匹配，重置序列
+        if (_currentSequence.isNotEmpty) {
+          if (kDebugMode) {
+            print('按键序列检测器: 按键 ${key.debugName} 不匹配，重置序列');
+          }
+          _resetSequence();
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  void _resetTimeout() {
+    _cancelTimeoutTimer();
+    _timeoutTimer = Timer(_sequenceTimeout, () {
+      if (kDebugMode) {
+        print('按键序列检测器: 序列超时，重置');
+      }
+      _resetSequence();
+    });
+  }
+
+  void _cancelTimeoutTimer() {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
+  }
+
+  void _resetSequence() {
+    _currentSequence.clear();
+    _cancelTimeoutTimer();
+  }
+
+  void dispose() {
+    stopListening();
+  }
+}
+
 /// 长按键检测器
 /// 用于检测特定按键的长按操作，如长按C键
 class LongPressKeyDetector {

@@ -74,6 +74,7 @@ class ExpressionSelectorManager {
     required bool showReviewOverlay,
     required bool showSettings,
     required bool showDeveloperPanel,
+    required bool showDebugPanel,
     required bool isShowingMenu,
   }) {
     return !showSaveOverlay &&
@@ -81,6 +82,7 @@ class ExpressionSelectorManager {
            !showReviewOverlay &&
            !showSettings &&
            !showDeveloperPanel &&
+           !showDebugPanel &&
            !_isExpressionSelectorVisible &&
            !isShowingMenu;
   }

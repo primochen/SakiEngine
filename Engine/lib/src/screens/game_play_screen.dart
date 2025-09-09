@@ -33,9 +33,11 @@ import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
+import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
 import 'package:sakiengine/src/utils/expression_selector_manager.dart';
+import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -64,9 +66,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   bool _showSettings = false;
   bool _isShowingMenu = false;
   bool _showDeveloperPanel = false; // 开发者面板显示状态
+  bool _showDebugPanel = false; // 调试面板显示状态
   bool _showExpressionSelector = false; // 表情选择器显示状态
   HotKey? _reloadHotKey;
   HotKey? _developerPanelHotKey; // Shift+D快捷键
+  KeySequenceDetector? _consoleSequenceDetector; // console序列检测器
   ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
@@ -97,6 +101,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     if (kDebugMode) {
       _setupExpressionSelectorManager();
     }
+    
+    // 初始化console序列检测器（发行版也可用，方便玩家复制日志）
+    _setupConsoleSequenceDetector();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -221,6 +228,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     }
     // 清理表情选择器管理器
     _expressionSelectorManager?.dispose();
+    // 清理console序列检测器
+    _consoleSequenceDetector?.dispose();
     
     _gameManager.dispose();
     super.dispose();
@@ -352,6 +361,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             showReviewOverlay: _showReviewOverlay,
             showSettings: _showSettings,
             showDeveloperPanel: _showDeveloperPanel,
+            showDebugPanel: _showDebugPanel,
             isShowingMenu: _isShowingMenu,
           );
           
@@ -365,6 +375,38 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
     
     _expressionSelectorManager!.initialize();
+  }
+
+  // 设置console按键序列检测器（发行版也可用，方便玩家复制日志）
+  void _setupConsoleSequenceDetector() {
+    // 定义 c-o-n-s-o-l-e 按键序列
+    final consoleSequence = [
+      LogicalKeyboardKey.keyC,
+      LogicalKeyboardKey.keyO,
+      LogicalKeyboardKey.keyN,
+      LogicalKeyboardKey.keyS,
+      LogicalKeyboardKey.keyO,
+      LogicalKeyboardKey.keyL,
+      LogicalKeyboardKey.keyE,
+    ];
+    
+    _consoleSequenceDetector = KeySequenceDetector(
+      sequence: consoleSequence,
+      onSequenceComplete: () {
+        if (mounted) {
+          setState(() {
+            _showDebugPanel = !_showDebugPanel;
+          });
+          _showNotificationMessage('调试面板 ${_showDebugPanel ? '开启' : '关闭'}');
+        }
+      },
+      sequenceTimeout: const Duration(seconds: 3),
+    );
+    
+    _consoleSequenceDetector!.startListening();
+    
+    print('Console按键序列检测器已启动 (c-o-n-s-o-l-e)');
+    print('发行版用户可通过连续按下 c-o-n-s-o-l-e 来打开日志面板复制日志');
   }
 
   // 显示通知消息
@@ -444,6 +486,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showReviewOverlay ||
                     _showSettings ||
                     _showDeveloperPanel || // 添加开发者面板检查
+                    _showDebugPanel || // 添加调试面板检查
                     _showExpressionSelector; // 添加表情选择器检查
                 
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
@@ -540,6 +583,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onClose: () => setState(() => _showDeveloperPanel = false),
                     gameManager: _gameManager,
                     onReload: () => _gameManager.hotReload(_currentScript),
+                  ),
+                // 调试面板 (发行版也可用，方便玩家复制日志)
+                if (_showDebugPanel)
+                  DebugPanelDialog(
+                    onClose: () => setState(() => _showDebugPanel = false),
                   ),
                 // 表情选择器 (仅Debug模式)
                 if (kDebugMode && _showExpressionSelector)
