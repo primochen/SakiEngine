@@ -314,6 +314,25 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
           ),
           textAlign: TextAlign.center,
         ),
+        SizedBox(height: 12 * uiScale),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _applySelection(_selectedPose, _selectedExpression),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: config.themeColors.primary,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 12 * uiScale),
+            ),
+            child: Text(
+              '应用所有更改',
+              style: TextStyle(
+                fontSize: 14 * textScale,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -331,7 +350,7 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
 
   Widget _buildPoseList(SakiEngineConfig config, double uiScale, double textScale) {
     return Container(
-      height: 120 * uiScale,
+      height: 150 * uiScale,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _poses.length,
@@ -340,24 +359,44 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
           final isSelected = pose.name == _selectedPose;
           
           return Container(
-            width: 100 * uiScale,
+            width: 120 * uiScale,
             margin: EdgeInsets.only(right: 8 * uiScale),
-            child: _buildOptionTile(
-              title: pose.displayName,
-              subtitle: 'pose',
-              isSelected: isSelected,
-              onTap: () {
-                setState(() {
-                  _selectedPose = pose.name;
-                });
-                _updatePreview();
-                // 应用pose变更到脚本
-                widget.onSelectionChanged(_selectedPose, _selectedExpression);
-                widget.onClose();
-              },
-              config: config,
-              uiScale: uiScale,
-              textScale: textScale,
+            child: Column(
+              children: [
+                Expanded(
+                  child: _buildOptionTile(
+                    title: pose.displayName,
+                    subtitle: 'pose',
+                    isSelected: isSelected,
+                    onTap: () {
+                      setState(() {
+                        _selectedPose = pose.name;
+                      });
+                      _updatePreview();
+                    },
+                    config: config,
+                    uiScale: uiScale,
+                    textScale: textScale,
+                  ),
+                ),
+                SizedBox(height: 4 * uiScale),
+                SizedBox(
+                  width: double.infinity,
+                  height: 24 * uiScale,
+                  child: ElevatedButton(
+                    onPressed: () => _applySelection(pose.name, _selectedExpression),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: config.themeColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 4 * uiScale),
+                    ),
+                    child: Text(
+                      '应用',
+                      style: TextStyle(fontSize: 10 * textScale),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },
