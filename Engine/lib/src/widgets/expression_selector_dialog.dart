@@ -26,6 +26,7 @@ class ExpressionSelectorDialog extends StatefulWidget {
   final String characterName;
   final String currentPose;
   final String currentExpression;
+  final String? currentDialogue;
   final Function(String pose, String expression) onSelectionChanged;
   final VoidCallback onClose;
 
@@ -35,6 +36,7 @@ class ExpressionSelectorDialog extends StatefulWidget {
     required this.characterName,
     required this.currentPose,
     required this.currentExpression,
+    this.currentDialogue,
     required this.onSelectionChanged,
     required this.onClose,
   }) : super(key: key);
@@ -239,6 +241,35 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 当前台词显示
+              if (widget.currentDialogue != null && widget.currentDialogue!.isNotEmpty) ...[
+                _buildSectionTitle('当前台词', config, textScale),
+                SizedBox(height: 8 * uiScale),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12 * uiScale),
+                  decoration: BoxDecoration(
+                    color: config.themeColors.surface.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8 * uiScale),
+                    border: Border.all(
+                      color: config.themeColors.primary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    widget.currentDialogue!,
+                    style: config.dialogueTextStyle.copyWith(
+                      fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+                      color: config.themeColors.onSurface,
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(height: 16 * uiScale),
+              ],
+              
               if (_poses.isNotEmpty) ...[
                 _buildSectionTitle('姿势 (Poses)', config, textScale),
                 SizedBox(height: 8 * uiScale),
@@ -250,8 +281,11 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
                 _buildSectionTitle('表情差分 (Expressions)', config, textScale),
                 SizedBox(height: 8 * uiScale),
                 Expanded(
-                  child: _buildExpressionList(config, uiScale, textScale),
+                  child: SingleChildScrollView(
+                    child: _buildExpressionList(config, uiScale, textScale),
+                  ),
                 ),
+                SizedBox(height: 16 * uiScale),
               ],
               
               if (_poses.isEmpty && _expressions.isEmpty) ...[
@@ -405,15 +439,16 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
   }
 
   Widget _buildExpressionList(SakiEngineConfig config, double uiScale, double textScale) {
-    return ListView.builder(
-      itemCount: _expressions.length,
-      itemBuilder: (context, index) {
-        final expression = _expressions[index];
+    return Wrap(
+      spacing: 8 * uiScale,
+      runSpacing: 8 * uiScale,
+      children: _expressions.map((expression) {
         final isSelected = expression.name == _selectedExpression;
         
-        return Container(
-          margin: EdgeInsets.only(bottom: 8 * uiScale),
-          child: Row(
+        return SizedBox(
+          width: 120 * uiScale,
+          height: 120 * uiScale,
+          child: Column(
             children: [
               Expanded(
                 child: _buildOptionTile(
@@ -431,23 +466,27 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
                   textScale: textScale,
                 ),
               ),
-              SizedBox(width: 8 * uiScale),
-              ElevatedButton(
-                onPressed: () => _applySelection(_selectedPose, expression.name),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: config.themeColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(60 * uiScale, 36 * uiScale),
-                ),
-                child: Text(
-                  '应用',
-                  style: TextStyle(fontSize: 12 * textScale),
+              SizedBox(height: 4 * uiScale),
+              SizedBox(
+                width: double.infinity,
+                height: 24 * uiScale,
+                child: ElevatedButton(
+                  onPressed: () => _applySelection(_selectedPose, expression.name),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: config.themeColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 4 * uiScale),
+                  ),
+                  child: Text(
+                    '应用',
+                    style: TextStyle(fontSize: 10 * textScale),
+                  ),
                 ),
               ),
             ],
           ),
         );
-      },
+      }).toList(),
     );
   }
 

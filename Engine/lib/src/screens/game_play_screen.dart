@@ -602,6 +602,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                         characterName: speakerInfo.speakerName,
                         currentPose: speakerInfo.currentPose,
                         currentExpression: speakerInfo.currentExpression,
+                        currentDialogue: _gameManager.currentDialogueText,
                         onSelectionChanged: (pose, expression) {
                           _expressionSelectorManager?.handleExpressionSelectionChanged(
                             speakerInfo.characterId,
