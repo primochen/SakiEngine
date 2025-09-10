@@ -60,15 +60,6 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
     _loadCharacterLayers();
   }
 
-  void _updatePreview() {
-    // 重新构建预览 - 触发build方法重新渲染预览区域
-    if (mounted) {
-      setState(() {
-        // 状态更新会触发预览区域重建
-      });
-    }
-  }
-
   Widget _buildLayeredPreview() {
     // 使用 Stack 叠加图层，类似游戏中的角色渲染
     final layers = <Widget>[];
@@ -78,6 +69,7 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
       final poseAssetName = 'characters/${widget.characterId}-$_selectedPose';
       layers.add(
         SmartAssetImage(
+          key: ValueKey('pose_${widget.characterId}_$_selectedPose'),
           assetName: poseAssetName,
           fit: BoxFit.contain,
         ),
@@ -89,6 +81,7 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
       final expressionAssetName = 'characters/${widget.characterId}-$_selectedExpression';
       layers.add(
         SmartAssetImage(
+          key: ValueKey('expression_${widget.characterId}_$_selectedExpression'),
           assetName: expressionAssetName,
           fit: BoxFit.contain,
         ),
@@ -110,6 +103,7 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
     
     // 使用Stack叠加所有图层，和游戏中的渲染效果一样
     return Stack(
+      key: ValueKey('preview_${widget.characterId}_${_selectedPose}_$_selectedExpression'),
       fit: StackFit.expand,
       children: layers,
     );
@@ -187,7 +181,6 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
     setState(() {
       _selectedPose = pose;
       _selectedExpression = expression;
-      _updatePreview();
     });
     
     // 立即应用更改并关闭对话框
@@ -324,6 +317,7 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
         SizedBox(height: 8 * uiScale),
         Expanded(
           child: Container(
+            key: ValueKey('preview_container_${_selectedPose}_$_selectedExpression'),
             width: double.infinity,
             decoration: BoxDecoration(
               color: config.themeColors.surface,
@@ -406,7 +400,6 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
                       setState(() {
                         _selectedPose = pose.name;
                       });
-                      _updatePreview();
                     },
                     config: config,
                     uiScale: uiScale,
@@ -459,7 +452,6 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
                     setState(() {
                       _selectedExpression = expression.name;
                     });
-                    _updatePreview();
                   },
                   config: config,
                   uiScale: uiScale,
