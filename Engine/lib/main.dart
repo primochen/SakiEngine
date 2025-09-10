@@ -84,8 +84,8 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
       future: moduleLoader.getCurrentModule(),
       builder: (builderContext, snapshot) {
         if (!snapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            body: Center(child: Container(color: Colors.black)),
           );
         }
 
@@ -198,11 +198,11 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
           future: moduleLoader.getCurrentModule(),
           builder: (builderContext, snapshot) {
             if (!snapshot.hasData) {
-              return const MaterialApp(
+              return MaterialApp(
                 debugShowCheckedModeBanner: false,
                 home: Scaffold(
                   body: Center(
-                    child: CircularProgressIndicator(),
+                    child: Container(color: Colors.black),
                   ),
                 ),
               );

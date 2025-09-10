@@ -289,36 +289,42 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
   }
   
   Future<void> _loadImages() async {
-    bool shouldStartAnimation = true;
+    // 等待所有需要的图片加载完成后再开始动画
+    List<Future<void>> loadTasks = [];
     
     // 加载旧背景图片
     if (widget.oldBackgroundName != null) {
-      final oldAssetPath = await AssetManager().findAsset(widget.oldBackgroundName!);
-      if (oldAssetPath != null && mounted) {
-        final oldImage = await ImageLoader.loadImage(oldAssetPath);
-        if (mounted && oldImage != null) {
-          setState(() {
+      loadTasks.add(() async {
+        final oldAssetPath = await AssetManager().findAsset(widget.oldBackgroundName!);
+        if (oldAssetPath != null && mounted) {
+          final oldImage = await ImageLoader.loadImage(oldAssetPath);
+          if (mounted && oldImage != null) {
             _oldImage = oldImage;
-          });
+          }
         }
-      }
+      }());
     }
     
     // 加载新背景图片
     if (widget.newBackgroundName != null) {
-      final newAssetPath = await AssetManager().findAsset(widget.newBackgroundName!);
-      if (newAssetPath != null && mounted) {
-        final newImage = await ImageLoader.loadImage(newAssetPath);
-        if (mounted && newImage != null) {
-          setState(() {
+      loadTasks.add(() async {
+        final newAssetPath = await AssetManager().findAsset(widget.newBackgroundName!);
+        if (newAssetPath != null && mounted) {
+          final newImage = await ImageLoader.loadImage(newAssetPath);
+          if (mounted && newImage != null) {
             _newImage = newImage;
-          });
+          } else {
+            print('[DissTransition] 警告: 新背景图片加载失败: ${widget.newBackgroundName}');
+          }
         } else {
-          print('[DissTransition] 警告: 新背景图片加载失败: ${widget.newBackgroundName}');
+          print('[DissTransition] 警告: 找不到新背景资源: ${widget.newBackgroundName}');
         }
-      } else {
-        print('[DissTransition] 警告: 找不到新背景资源: ${widget.newBackgroundName}');
-      }
+      }());
+    }
+    
+    // 等待所有图片加载完成
+    if (loadTasks.isNotEmpty) {
+      await Future.wait(loadTasks);
     }
     
     // 如果两个背景都加载失败，直接完成转场避免闪烁
@@ -329,15 +335,33 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
       return;
     }
     
-    // 开始动画
-    _controller.forward();
+    // 所有图片加载完成后，一次性更新状态
+    if (mounted) {
+      setState(() {
+        // 图片已在上面加载，这里只是触发重建
+      });
+      
+      // 等待下一帧确保图片完全渲染后再开始动画
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _controller.forward();
+        }
+      });
+    }
   }
   
   void _onAnimationUpdate() {
-    // 在动画中点执行场景切换
-    if (!_midTransitionExecuted && _controller.value >= 0.5) {
+    // 对于CG转场，延迟状态更新到90%，避免中途更新导致的闪烁
+    // 对于普通背景转场，保持在50%更新
+    final isLikelyCG = widget.oldBackgroundName?.toLowerCase().contains('cg') == true || 
+                      widget.newBackgroundName?.toLowerCase().contains('cg') == true;
+    
+    final updateThreshold = isLikelyCG ? 0.9 : 0.5;
+    
+    // 在指定进度执行场景切换
+    if (!_midTransitionExecuted && _controller.value >= updateThreshold) {
       _midTransitionExecuted = true;
-      print('[DissTransition] 到达转场中点，执行回调');
+      print('[DissTransition] 到达转场更新点(${(updateThreshold * 100).toInt()}%)，执行回调');
       widget.onMidTransition();
     }
   }

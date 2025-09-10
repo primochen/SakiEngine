@@ -5,6 +5,27 @@ class ScriptNode implements SksNode {
   ScriptNode(this.children);
 }
 
+class AnimeNode implements SksNode {
+  final String animeName;
+  final bool loop; // 是否循环播放
+  final bool keep; // 新增：是否在播放完成后保留（阻止自动消失）
+  final String? transitionType; // 可选的转场效果
+  final double? timer; // 可选的计时器
+  
+  AnimeNode(
+    this.animeName, {
+    this.loop = false, // 默认不循环
+    this.keep = false, // 默认不保留，播放完就消失
+    this.transitionType,
+    this.timer,
+  });
+
+  @override
+  String toString() {
+    return 'AnimeNode(animeName: $animeName, loop: $loop, keep: $keep, transitionType: $transitionType, timer: $timer)';
+  }
+}
+
 class ShowNode implements SksNode {
   final String character;
   final String? pose;
@@ -35,9 +56,10 @@ class SayNode implements SksNode {
   final String dialogue;
   final String? pose;
   final String? expression;
+  final String? position;
   final String? animation;
   final int? repeatCount;
-  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.animation, this.repeatCount});
+  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.position, this.animation, this.repeatCount});
 }
 
 class ChoiceOptionNode {
@@ -116,6 +138,7 @@ class ConditionalSayNode implements SksNode {
   final bool conditionValue;
   final String? pose;
   final String? expression;
+  final String? position;
   final String? animation;
   final int? repeatCount;
   
@@ -126,6 +149,7 @@ class ConditionalSayNode implements SksNode {
     required this.conditionValue,
     this.pose,
     this.expression,
+    this.position,
     this.animation,
     this.repeatCount,
   });

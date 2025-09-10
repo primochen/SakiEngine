@@ -7,6 +7,7 @@ import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
 
 class DeveloperPanel extends StatefulWidget {
@@ -28,6 +29,7 @@ class DeveloperPanel extends StatefulWidget {
 class _DeveloperPanelState extends State<DeveloperPanel>
     with TickerProviderStateMixin {
   bool _showScriptPreview = false;
+  bool _showDebugPanel = false;
   String _currentScriptContent = '';
   String _currentScriptPath = '';
   final TextEditingController _scriptController = TextEditingController();
@@ -675,85 +677,94 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     final textScale = context.scaleFor(ComponentType.text);
     final panelWidth = screenSize.width / 6;
 
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Positioned(
-          right: -panelWidth * _slideAnimation.value,
-          top: 0,
-          bottom: 0,
-          width: panelWidth,
-          child: Shortcuts(
-            shortcuts: <LogicalKeySet, Intent>{
-              LogicalKeySet(LogicalKeyboardKey.escape): const _CloseIntent(),
-            },
-            child: Actions(
-              actions: <Type, Action<Intent>>{
-                _CloseIntent: _CloseAction(_handleClose),
-              },
-              child: Focus(
-                autofocus: true,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 20 * uiScale,
-                          offset: Offset(-8 * uiScale, 0),
+    return Stack(
+      children: [
+        AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return Positioned(
+              right: -panelWidth * _slideAnimation.value,
+              top: 0,
+              bottom: 0,
+              width: panelWidth,
+              child: Shortcuts(
+                shortcuts: <LogicalKeySet, Intent>{
+                  LogicalKeySet(LogicalKeyboardKey.escape): const _CloseIntent(),
+                },
+                child: Actions(
+                  actions: <Type, Action<Intent>>{
+                    _CloseIntent: _CloseAction(_handleClose),
+                  },
+                  child: Focus(
+                    autofocus: true,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 20 * uiScale,
+                              offset: Offset(-8 * uiScale, 0),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(config.baseWindowBorder),
-                        bottomLeft: Radius.circular(config.baseWindowBorder),
-                      ),
-                      child: Stack(
-                        children: [
-                          // 底层：纯色背景
-                          Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            color: config.themeColors.background,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(config.baseWindowBorder),
+                            bottomLeft: Radius.circular(config.baseWindowBorder),
                           ),
-                          // 中层：背景图片
-                          if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
-                            Positioned.fill(
-                              child: Opacity(
-                                opacity: config.baseWindowBackgroundAlpha * 0.5,
-                                child: ColorFiltered(
-                                  colorFilter: ColorFilter.mode(
-                                    Colors.transparent,
-                                    config.baseWindowBackgroundBlendMode,
+                          child: Stack(
+                            children: [
+                              // 底层：纯色背景
+                              Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                color: config.themeColors.background,
+                              ),
+                              // 中层：背景图片
+                              if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
+                                Positioned.fill(
+                                  child: Opacity(
+                                    opacity: config.baseWindowBackgroundAlpha * 0.5,
+                                    child: ColorFiltered(
+                                      colorFilter: ColorFilter.mode(
+                                        Colors.transparent,
+                                        config.baseWindowBackgroundBlendMode,
+                                      ),
+                                      child: Container(color: Colors.blue), // 临时替换 SmartAssetImage
+                                    ),
                                   ),
-                                  child: Container(color: Colors.blue), // 临时替换 SmartAssetImage
+                                ),
+                              // 上层：半透明面板
+                              Container(
+                                color: config.themeColors.background.withOpacity(0.85),
+                                child: Column(
+                                  children: [
+                                    _buildHeader(uiScale, textScale, config),
+                                    Expanded(
+                                      child: _buildContent(uiScale, textScale, config),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          // 上层：半透明面板
-                          Container(
-                            color: config.themeColors.background.withOpacity(0.85),
-                            child: Column(
-                              children: [
-                                _buildHeader(uiScale, textScale, config),
-                                Expanded(
-                                  child: _buildContent(uiScale, textScale, config),
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
+            );
+          },
+        ),
+        // 调试面板覆盖层
+        if (_showDebugPanel)
+          DebugPanelDialog(
+            onClose: () => setState(() => _showDebugPanel = false),
           ),
-        );
-      },
+      ],
     );
   }
 
@@ -810,6 +821,21 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               if (_showScriptPreview) {
                 _loadCurrentScript();
               }
+            },
+            config: config,
+            uiScale: uiScale,
+            textScale: textScale,
+          ),
+          
+          SizedBox(height: 8 * uiScale),
+          
+          // 调试面板按钮
+          _buildStyledButton(
+            text: '调试面板',
+            onPressed: () {
+              setState(() {
+                _showDebugPanel = true;
+              });
             },
             config: config,
             uiScale: uiScale,

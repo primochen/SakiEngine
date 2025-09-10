@@ -164,19 +164,21 @@ class AssetManager {
 
     print("Searching for asset: name='$name', fileName='$targetFileName', path='$targetPath', isCgRelated='$isCgRelated'");
 
-    // 如果检测到cg关键词，优先在cg路径下搜索
+    // 如果检测到cg关键词，优先在cg路径下搜索（支持递归子文件夹）
     if (isCgRelated) {
       for (final key in _assetManifest!.keys) {
         final keyParts = key.split('/');
         final keyFileName = keyParts.last;
         final keyFileNameWithoutExt = keyFileName.split('.').first;
         
-        // 检查文件名是否匹配且路径包含cg
+        // 检查文件名是否匹配且路径包含cg（支持cg的任意子文件夹）
         if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
           final keyPath = key.toLowerCase();
-          if (keyPath.contains('/cg/') || keyPath.contains('cg/')) {
+          // 更精确的cg路径检测：支持 /cg/ 或 /cg/任意子目录/
+          if (keyPath.contains('/cg/') || keyPath.startsWith('cg/') || 
+              keyPath.contains('assets/images/cg/')) {
             _imageCache[name] = key;
-            print("Found CG asset in bundle: $name -> $key");
+            print("Found CG asset in bundle (recursive): $name -> $key");
             return key;
           }
         }
@@ -265,11 +267,10 @@ class AssetManager {
           if (file is File) {
             final fileNameWithoutExt = p.basenameWithoutExtension(file.path);
             if (fileNameWithoutExt.toLowerCase() == fileNameToSearch.toLowerCase()) {
-              final relativePath = p.relative(file.path, from: gamePath);
-              // 在发布模式下，Flutter 需要 'assets/' 前缀
-              final assetPath = p.join('assets', relativePath).replaceAll('\\', '/');
-              _imageCache[name] = assetPath; // 使用原始名称作为缓存的键
-              print("Found asset in file system: $name -> $assetPath");
+              // Debug模式下直接返回绝对路径，用于FileImage
+              final assetPath = file.path.replaceAll('\\', '/');
+              _imageCache[name] = assetPath;
+              //print("Found asset in file system: $name -> $assetPath");
               return assetPath;
             }
           }
@@ -277,27 +278,33 @@ class AssetManager {
       }
     }
 
-    print("Asset not found in file system: $name");
+    //print("Asset not found in file system: $name");
     return null;
   }
 
-  /// 扫描指定角色ID的所有可用图层文件
-  /// 返回按字母顺序排序的文件名列表（不包含扩展名和角色ID前缀）
-  static Future<List<String>> getAvailableCharacterLayers(String characterId) async {
+  /// 递归扫描指定角色ID的所有可用图层文件
+  /// 使用与findAsset相同的递归搜索逻辑
+  static Future<List<String>> getAvailableCharacterLayersRecursive(String characterId) async {
     final availableLayers = <String>[];
     
     try {
       final gamePath = await _getGamePath();
-      final charactersDir = Directory(p.join(gamePath, 'Assets', 'images', 'characters'));
+      if (gamePath.isEmpty) {
+        return availableLayers;
+      }
+
+      final searchBase = p.join(gamePath, 'Assets', 'images');
+      final charactersDir = Directory(p.join(searchBase, 'characters'));
       
       if (!await charactersDir.exists()) {
         return availableLayers;
       }
-      
+
       final prefix = '$characterId-';
       final imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.avif'];
       
-      await for (final file in charactersDir.list()) {
+      // 使用递归搜索，和findAsset一样
+      await for (final file in charactersDir.list(recursive: true)) {
         if (file is File) {
           final fileName = p.basename(file.path);
           final fileNameWithoutExt = p.basenameWithoutExtension(fileName);
@@ -317,13 +324,83 @@ class AssetManager {
       // 按字母顺序排序
       availableLayers.sort();
       
+    } catch (e) {
       if (kDebugMode) {
-        print("Available layers for $characterId: $availableLayers");
+        print("AssetManager: 递归扫描角色图层出错 $characterId: $e");
       }
+    }
+    
+    return availableLayers;
+  }
+
+  /// 扫描指定角色ID的所有可用图层文件
+  /// 返回按字母顺序排序的文件名列表（不包含扩展名和角色ID前缀）
+  static Future<List<String>> getAvailableCharacterLayers(String characterId) async {
+    final availableLayers = <String>[];
+    
+    try {
+      final gamePath = await _getGamePath();
+      final charactersDir = Directory(p.join(gamePath, 'Assets', 'images', 'characters'));
+      
+      if (kDebugMode) {
+        print("AssetManager: 查找角色 $characterId 的图层文件");
+        print("AssetManager: 游戏路径: $gamePath");
+        print("AssetManager: 角色文件夹路径: ${charactersDir.path}");
+        print("AssetManager: 角色文件夹是否存在: ${await charactersDir.exists()}");
+      }
+      
+      if (!await charactersDir.exists()) {
+        if (kDebugMode) {
+          print("AssetManager: 角色文件夹不存在，返回空列表");
+        }
+        return availableLayers;
+      }
+      
+      final prefix = '$characterId-';
+      final imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.avif'];
+      
+      if (kDebugMode) {
+        print("AssetManager: 查找前缀: $prefix");
+      }
+      
+      var fileCount = 0;
+      await for (final file in charactersDir.list()) {
+        if (file is File) {
+          final fileName = p.basename(file.path);
+          fileCount++;
+          
+          if (kDebugMode && fileCount <= 20) { // 只打印前20个文件避免日志过多
+            print("AssetManager: 检查文件: $fileName");
+          }
+          
+          final fileNameWithoutExt = p.basenameWithoutExtension(fileName);
+          
+          // 检查是否以指定角色ID开头且是图片文件
+          if (fileNameWithoutExt.startsWith(prefix) && 
+              imageExtensions.any((ext) => fileName.toLowerCase().endsWith(ext))) {
+            // 提取图层名称（去掉角色ID前缀）
+            final layerName = fileNameWithoutExt.substring(prefix.length);
+            if (layerName.isNotEmpty) {
+              availableLayers.add(layerName);
+              if (kDebugMode) {
+                print("AssetManager: 找到匹配文件: $fileName -> 图层: $layerName");
+              }
+            }
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        print("AssetManager: 总共检查了 $fileCount 个文件");
+        print("AssetManager: 找到 ${availableLayers.length} 个 $characterId 的图层");
+      }
+      
+      // 按字母顺序排序
+      availableLayers.sort();
       
     } catch (e) {
       if (kDebugMode) {
-        print("Error scanning character layers for $characterId: $e");
+        print("AssetManager: 扫描角色图层出错 $characterId: $e");
       }
     }
     

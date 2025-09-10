@@ -315,6 +315,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                                                visible: _isDialogueComplete,
                                                fontSize: dialogueStyle.fontSize!,
                                                color: config.themeColors.primary.withOpacity(0.7),
+                                               speaker: widget.speaker,
                                              ),
                                            ),
                                          ),

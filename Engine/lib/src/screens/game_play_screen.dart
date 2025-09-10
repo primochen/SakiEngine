@@ -26,6 +26,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
@@ -33,7 +34,11 @@ import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
+import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
+import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
+import 'package:sakiengine/src/utils/expression_selector_manager.dart';
+import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -62,18 +67,41 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   bool _showSettings = false;
   bool _isShowingMenu = false;
   bool _showDeveloperPanel = false; // 开发者面板显示状态
+  bool _showDebugPanel = false; // 调试面板显示状态
+  bool _showExpressionSelector = false; // 表情选择器显示状态
   HotKey? _reloadHotKey;
   HotKey? _developerPanelHotKey; // Shift+D快捷键
+  KeySequenceDetector? _consoleSequenceDetector; // console序列检测器
+  ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
   // 跟踪上一次的NVL状态，用于检测转场
   bool _previousIsNvlMode = false;
   bool _previousIsNvlMovieMode = false;
+  
+  // 加载淡出动画控制
+  late AnimationController _loadingFadeController;
+  late Animation<double> _loadingFadeAnimation;
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
+    
+    // 初始化加载淡出动画
+    _loadingFadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _loadingFadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _loadingFadeController,
+      curve: Curves.easeOut,
+    ));
+    
     _gameManager = GameManager(
       onReturn: _returnToMainMenu,
     );
@@ -88,6 +116,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
     // 注册系统级热键 Shift+R
     _setupHotkey();
+    
+    // 初始化表情选择器管理器（仅在Debug模式下）
+    if (kDebugMode) {
+      _setupExpressionSelectorManager();
+    }
+    
+    // 初始化console序列检测器（发行版也可用，方便玩家复制日志）
+    _setupConsoleSequenceDetector();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -210,6 +246,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     if (_developerPanelHotKey != null) {
       hotKeyManager.unregister(_developerPanelHotKey!);
     }
+    // 清理表情选择器管理器
+    _expressionSelectorManager?.dispose();
+    // 清理console序列检测器
+    _consoleSequenceDetector?.dispose();
+    // 清理加载淡出动画控制器
+    _loadingFadeController.dispose();
+    
     _gameManager.dispose();
     super.dispose();
   }
@@ -321,6 +364,73 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     }
   }
 
+  // 设置表情选择器管理器（Debug模式下的表情选择功能）
+  void _setupExpressionSelectorManager() {
+    _expressionSelectorManager = ExpressionSelectorManager(
+      gameManager: _gameManager,
+      showNotificationCallback: _showNotificationMessage,
+      triggerReloadCallback: _handleHotReload,
+      getCurrentGameState: () {
+        // 获取当前游戏状态
+        return _gameManager.currentState;
+      },
+      setExpressionSelectorVisibility: (show) {
+        if (mounted) {
+          // 检查是否可以显示表情选择器
+          final canShow = show && _expressionSelectorManager!.canShowExpressionSelector(
+            showSaveOverlay: _showSaveOverlay,
+            showLoadOverlay: _showLoadOverlay,
+            showReviewOverlay: _showReviewOverlay,
+            showSettings: _showSettings,
+            showDeveloperPanel: _showDeveloperPanel,
+            showDebugPanel: _showDebugPanel,
+            isShowingMenu: _isShowingMenu,
+          );
+          
+          setState(() {
+            _showExpressionSelector = canShow;
+          });
+          
+          _expressionSelectorManager!.setExpressionSelectorVisible(canShow);
+        }
+      },
+    );
+    
+    _expressionSelectorManager!.initialize();
+  }
+
+  // 设置console按键序列检测器（发行版也可用，方便玩家复制日志）
+  void _setupConsoleSequenceDetector() {
+    // 定义 c-o-n-s-o-l-e 按键序列
+    final consoleSequence = [
+      LogicalKeyboardKey.keyC,
+      LogicalKeyboardKey.keyO,
+      LogicalKeyboardKey.keyN,
+      LogicalKeyboardKey.keyS,
+      LogicalKeyboardKey.keyO,
+      LogicalKeyboardKey.keyL,
+      LogicalKeyboardKey.keyE,
+    ];
+    
+    _consoleSequenceDetector = KeySequenceDetector(
+      sequence: consoleSequence,
+      onSequenceComplete: () {
+        if (mounted) {
+          setState(() {
+            _showDebugPanel = !_showDebugPanel;
+          });
+          _showNotificationMessage('调试面板 ${_showDebugPanel ? '开启' : '关闭'}');
+        }
+      },
+      sequenceTimeout: const Duration(seconds: 3),
+    );
+    
+    _consoleSequenceDetector!.startListening();
+    
+    print('Console按键序列检测器已启动 (c-o-n-s-o-l-e)');
+    print('发行版用户可通过连续按下 c-o-n-s-o-l-e 来打开日志面板复制日志');
+  }
+
   // 显示通知消息
   void _showNotificationMessage(String message) {
     _notificationOverlayKey.currentState?.show(message);
@@ -364,9 +474,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           stream: _gameManager.gameStateStream,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return Container(color: Colors.black);
             }
             final gameState = snapshot.data!;
+            
+            // 首次加载完成，触发淡出动画
+            if (_isInitialLoading) {
+              _isInitialLoading = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _loadingFadeController.forward();
+              });
+            }
             
             // 检测从电影模式退出，播放退出动画
             if (_previousIsNvlMode && _previousIsNvlMovieMode && 
@@ -397,7 +515,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showLoadOverlay || 
                     _showReviewOverlay ||
                     _showSettings ||
-                    _showDeveloperPanel; // 添加开发者面板检查
+                    _showDeveloperPanel || // 添加开发者面板检查
+                    _showDebugPanel || // 添加调试面板检查
+                    _showExpressionSelector; // 添加表情选择器检查
                 
                 // 处理标准的PointerScrollEvent（鼠标滚轮）
                 if (pointerSignal is PointerScrollEvent) {
@@ -494,9 +614,51 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     gameManager: _gameManager,
                     onReload: () => _gameManager.hotReload(_currentScript),
                   ),
+                // 调试面板 (发行版也可用，方便玩家复制日志)
+                if (_showDebugPanel)
+                  DebugPanelDialog(
+                    onClose: () => setState(() => _showDebugPanel = false),
+                  ),
+                // 表情选择器 (仅Debug模式)
+                if (kDebugMode && _showExpressionSelector)
+                  Builder(
+                    builder: (context) {
+                      final speakerInfo = _expressionSelectorManager?.getCurrentSpeakerInfo();
+                      if (speakerInfo == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return ExpressionSelectorDialog(
+                        characterId: speakerInfo.characterId,
+                        characterName: speakerInfo.speakerName,
+                        currentPose: speakerInfo.currentPose,
+                        currentExpression: speakerInfo.currentExpression,
+                        currentDialogue: _gameManager.currentDialogueText,
+                        onSelectionChanged: (pose, expression) {
+                          _expressionSelectorManager?.handleExpressionSelectionChanged(
+                            speakerInfo.characterId,
+                            pose,
+                            expression,
+                          );
+                        },
+                        onClose: () => setState(() => _showExpressionSelector = false),
+                      );
+                    },
+                  ),
                 NotificationOverlay(
                   key: _notificationOverlayKey,
                   scale: context.scaleFor(ComponentType.ui),
+                ),
+                // 加载淡出覆盖层
+                AnimatedBuilder(
+                  animation: _loadingFadeAnimation,
+                  builder: (context, child) {
+                    if (_loadingFadeAnimation.value <= 0.0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
+                      color: Colors.black.withOpacity(_loadingFadeAnimation.value),
+                    );
+                  },
                 ),
               ],
             ),
@@ -519,6 +681,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
         ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+        // 添加anime覆盖层
+        if (gameState.animeOverlay != null)
+          _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
         // 使用 AnimatedSwitcher 为对话框切换添加过渡动画
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -554,6 +719,36 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           ),
       ],
     );
+  }
+
+  /// 构建anime覆盖层 - 全屏显示，支持WebP动图播放
+  Widget _buildAnimeOverlay(String animeName, bool loop, {bool keep = false}) {
+    return Positioned.fill(
+      child: SmartAssetImage(
+        assetName: animeName,
+        fit: BoxFit.cover, // 和scene一样，贴满屏幕
+        loop: loop, // 传递loop参数
+        onAnimationComplete: !loop && !keep ? () {
+          // 非循环且非keep模式下，动画完成后清除覆盖层
+          _clearAnimeOverlay();
+        } : null,
+        errorWidget: Container(
+          color: Colors.transparent,
+          child: Center(
+            child: Text(
+              'Anime not found: $animeName',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 清除anime覆盖层
+  void _clearAnimeOverlay() {
+    // 通过GameManager清除anime覆盖层
+    _gameManager.clearAnimeOverlay();
   }
 
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画

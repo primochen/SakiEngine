@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
+import 'package:sakiengine/src/widgets/animated_webp_image.dart';
 
 /// 智能图像小部件 - 自动处理AVIF、WebP和其他格式
 /// 
 /// 特性:
 /// - 自动识别图像格式
+/// - WebP动图支持 (默认播放一次，可通过loop参数控制循环)
 /// - WebP优先策略 (完美透明通道 + 优化文件大小)
 /// - AVIF智能回退 (WebP > PNG > AVIF)
 /// - 透明通道保护处理
@@ -15,6 +17,8 @@ class SmartImage extends StatelessWidget {
   final double? width;
   final double? height;
   final Widget? errorWidget;
+  final bool? loop; // 新增：控制WebP动图是否循环播放
+  final VoidCallback? onAnimationComplete; // 新增：动画完成回调
 
   const SmartImage.asset(
     this.assetPath, {
@@ -23,6 +27,8 @@ class SmartImage extends StatelessWidget {
     this.width,
     this.height,
     this.errorWidget,
+    this.loop,
+    this.onAnimationComplete, // 新增
   });
 
   @override
@@ -33,15 +39,16 @@ class SmartImage extends StatelessWidget {
     if (lowercasePath.endsWith('.avif')) {
       return _buildAvifImageWithFallback();
     } else if (lowercasePath.endsWith('.webp')) {
-      // WebP有完美的透明通道支持，直接使用
-      return Image.asset(
+      // WebP支持动画，使用专门的动图组件，默认不循环
+      return AnimatedWebPImage.asset(
         assetPath,
         fit: fit ?? BoxFit.contain,
         width: width,
         height: height,
-        errorBuilder: errorWidget != null 
-          ? (context, error, stackTrace) => errorWidget!
-          : null,
+        errorWidget: errorWidget,
+        autoPlay: true,
+        loop: loop ?? false, // 默认不循环
+        onAnimationComplete: onAnimationComplete, // 传递动画完成回调
       );
     } else {
       return Image.asset(
@@ -71,17 +78,31 @@ class SmartImage extends StatelessWidget {
         
         final bestPath = snapshot.data;
         
-        // 如果找到了更好的格式，使用标准Image.asset
+        // 如果找到了更好的格式，使用对应的组件
         if (bestPath != null && bestPath != assetPath) {
-          return Image.asset(
-            bestPath,
-            fit: fit ?? BoxFit.contain,
-            width: width,
-            height: height,
-            errorBuilder: errorWidget != null 
-              ? (context, error, stackTrace) => errorWidget!
-              : null,
-          );
+          if (bestPath.toLowerCase().endsWith('.webp')) {
+            // 使用WebP动图组件，默认不循环
+            return AnimatedWebPImage.asset(
+              bestPath,
+              fit: fit ?? BoxFit.contain,
+              width: width,
+              height: height,
+              errorWidget: errorWidget,
+              autoPlay: true,
+              loop: loop ?? false, // 默认不循环
+            );
+          } else {
+            // 使用标准Image组件
+            return Image.asset(
+              bestPath,
+              fit: fit ?? BoxFit.contain,
+              width: width,
+              height: height,
+              errorBuilder: errorWidget != null 
+                ? (context, error, stackTrace) => errorWidget!
+                : null,
+            );
+          }
         }
         
         // 否则使用AVIF，但添加透明背景处理

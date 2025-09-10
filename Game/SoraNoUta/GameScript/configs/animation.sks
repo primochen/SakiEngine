@@ -21,6 +21,15 @@
 jump
 ease 0.3 ycenter-0.05
 ease 0.3 ycenter+0
+//上下抽搐
+jumptb
+ease 0.3 ycenter-0.02
+ease 0.3 ycenter+0.02
+ease 0.3 ycenter-0.02
+ease 0.3 ycenter+0.02
+ease 0.3 ycenter-0.02
+ease 0.3 ycenter+0.02
+ease 0.15 ycenter+0.0
 
 backjump
 ease 0.3 ycenter+0 scale-0

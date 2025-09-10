@@ -165,9 +165,41 @@ class SksParser {
             nodes.add(FxNode(fxString));
           }
           break;
+        case 'anime':
+          // anime命令：anime cg_igiari [loop] [keep] [with diss] [timer 2.0]
+          if (parts.length < 2) break;
+          
+          final animeName = parts[1];
+          bool isLoop = false;
+          bool keepAfterComplete = false; // 新增：是否在完成后保留
+          String? transitionType;
+          double? timerValue;
+          
+          // 解析参数
+          for (int i = 2; i < parts.length; i++) {
+            if (parts[i].toLowerCase() == 'loop') {
+              isLoop = true;
+            } else if (parts[i].toLowerCase() == 'keep') { // 新增：keep参数
+              keepAfterComplete = true;
+            } else if (parts[i] == 'with' && i + 1 < parts.length) {
+              transitionType = parts[i + 1];
+              i++; // 跳过下一个参数
+            } else if (parts[i] == 'timer' && i + 1 < parts.length) {
+              timerValue = double.tryParse(parts[i + 1]);
+              i++; // 跳过下一个参数
+            }
+          }
+          
+          print('[SksParser] 解析anime命令: $animeName, loop: $isLoop, keep: $keepAfterComplete, transition: $transitionType, timer: $timerValue');
+          nodes.add(AnimeNode(animeName, loop: isLoop, keep: keepAfterComplete, transitionType: transitionType, timer: timerValue));
+          break;
         case 'show':
           //print('[SksParser] 解析show命令: $trimmedLine');
           final character = parts[1];
+          
+          // CG显示命令保持为ShowNode，支持叠加显示
+          // 但需要特殊处理以支持WebP动图的loop参数
+          
           String? pose;
           String? expression;
           String? position;
@@ -331,6 +363,7 @@ class SksParser {
       String? character;
       String? pose;
       String? expression;
+      String? position;
       String? animation;
       int? repeatCount;
       
@@ -344,11 +377,14 @@ class SksParser {
           if (parts.length > 1) {
             final attrs = parts.sublist(1);
             
-            // 查找an和repeat关键字位置
+            // 查找at、an和repeat关键字位置
+            int atIndex = -1;
             int anIndex = -1;
             int repeatIndex = -1;
             for (int i = 0; i < attrs.length; i++) {
-              if (attrs[i] == 'an') {
+              if (attrs[i] == 'at') {
+                atIndex = i;
+              } else if (attrs[i] == 'an') {
                 anIndex = i;
               } else if (attrs[i] == 'repeat') {
                 repeatIndex = i;
@@ -370,8 +406,27 @@ class SksParser {
               if (anIndex + 1 < endIndex) {
                 animation = attrs[anIndex + 1];
               }
-              regularAttrs = attrs.sublist(0, anIndex);
+              
+              if (atIndex >= 0 && atIndex < anIndex) {
+                // at在an之前：character pose expression at position an animation
+                final attributeParts = attrs.sublist(0, atIndex);
+                regularAttrs = attributeParts;
+                if (atIndex + 1 < anIndex) {
+                  position = attrs[atIndex + 1];
+                }
+              } else {
+                // 没有at或at在an之后（无效）
+                regularAttrs = attrs.sublist(0, anIndex);
+              }
+            } else if (atIndex >= 0 && atIndex < endIndex) {
+              // 有at但没有an：character pose expression at position
+              final attributeParts = attrs.sublist(0, atIndex);
+              regularAttrs = attributeParts;
+              if (atIndex + 1 < endIndex) {
+                position = attrs[atIndex + 1];
+              }
             } else {
+              // 没有特殊语法，都是普通属性
               regularAttrs = attrs.sublist(0, endIndex);
             }
             
@@ -394,6 +449,7 @@ class SksParser {
         conditionValue: conditionValue,
         pose: pose,
         expression: expression,
+        position: position,
         animation: animation,
         repeatCount: repeatCount,
       );
@@ -431,17 +487,21 @@ class SksParser {
     final character = parts[0];
     String? pose;
     String? expression;
+    String? position;
     int? repeatCount;
     
-    // 解析pose、expression、animation和repeat属性
+    // 解析pose、expression、position、animation和repeat属性
     if (parts.length > 1) {
         final attrs = parts.sublist(1);
         
-        // 查找an和repeat关键字位置
+        // 查找at、an和repeat关键字位置
+        int atIndex = -1;
         int anIndex = -1;
         int repeatIndex = -1;
         for (int i = 0; i < attrs.length; i++) {
-          if (attrs[i] == 'an') {
+          if (attrs[i] == 'at') {
+            atIndex = i;
+          } else if (attrs[i] == 'an') {
             anIndex = i;
           } else if (attrs[i] == 'repeat') {
             repeatIndex = i;
@@ -464,8 +524,27 @@ class SksParser {
           if (anIndex + 1 < endIndex) {
             animation = attrs[anIndex + 1];
           }
-          regularAttrs = attrs.sublist(0, anIndex);
+          
+          if (atIndex >= 0 && atIndex < anIndex) {
+            // at在an之前：character pose expression at position an animation
+            final attributeParts = attrs.sublist(0, atIndex);
+            regularAttrs = attributeParts;
+            if (atIndex + 1 < anIndex) {
+              position = attrs[atIndex + 1];
+            }
+          } else {
+            // 没有at或at在an之后（无效）
+            regularAttrs = attrs.sublist(0, anIndex);
+          }
+        } else if (atIndex >= 0 && atIndex < endIndex) {
+          // 有at但没有an：character pose expression at position
+          final attributeParts = attrs.sublist(0, atIndex);
+          regularAttrs = attributeParts;
+          if (atIndex + 1 < endIndex) {
+            position = attrs[atIndex + 1];
+          }
         } else {
+          // 没有特殊语法，都是普通属性
           regularAttrs = attrs.sublist(0, endIndex);
         }
         
@@ -478,9 +557,9 @@ class SksParser {
           }
         }
         
-        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, animation: animation, repeatCount: repeatCount);
+        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount);
     }
     
-    return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression);
+    return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, position: position);
   }
 } 
