@@ -29,5 +29,6 @@ items: scale=0.5 ycenter=0.45 anchor=center
 items2: scale=1.1 ycenter=0.5 anchor=center
 items3: scale=1.0 ycenter=0.5 anchor=center
 xiayo1pose: scale=1.3 ycenter=0.7 anchor=auto
+xiayo1posezoom: scale=1.6 ycenter=0.8 anchor=auto
 xiayo1poseleft: scale=1.3 ycenter=0.7 xcenter=0.25 anchor=center
 xiayo1poseright: scale=1.3 ycenter=0.7 xcenter=0.75 anchor=center

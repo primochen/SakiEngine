@@ -164,19 +164,21 @@ class AssetManager {
 
     print("Searching for asset: name='$name', fileName='$targetFileName', path='$targetPath', isCgRelated='$isCgRelated'");
 
-    // 如果检测到cg关键词，优先在cg路径下搜索
+    // 如果检测到cg关键词，优先在cg路径下搜索（支持递归子文件夹）
     if (isCgRelated) {
       for (final key in _assetManifest!.keys) {
         final keyParts = key.split('/');
         final keyFileName = keyParts.last;
         final keyFileNameWithoutExt = keyFileName.split('.').first;
         
-        // 检查文件名是否匹配且路径包含cg
+        // 检查文件名是否匹配且路径包含cg（支持cg的任意子文件夹）
         if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
           final keyPath = key.toLowerCase();
-          if (keyPath.contains('/cg/') || keyPath.contains('cg/')) {
+          // 更精确的cg路径检测：支持 /cg/ 或 /cg/任意子目录/
+          if (keyPath.contains('/cg/') || keyPath.startsWith('cg/') || 
+              keyPath.contains('assets/images/cg/')) {
             _imageCache[name] = key;
-            print("Found CG asset in bundle: $name -> $key");
+            print("Found CG asset in bundle (recursive): $name -> $key");
             return key;
           }
         }

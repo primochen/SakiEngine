@@ -105,13 +105,13 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
           
           // 更低频率震动，极其舒缓
           final shakeFreq = 4; // 进一步降低频率让过渡极其舒缓
-          final baseAmplitude = widget.intensity * 2.0; // 大幅增加基础震动强度
+          final baseAmplitude = widget.intensity * 4.0; // 大幅增加基础震动强度
           
           // 主要左右震动
           offsetX = baseAmplitude * shakeIntensity * math.sin(t * math.pi * shakeFreq);
           
           // 配合轻微上下震动增加Q弹感
-          offsetY = baseAmplitude * 0.6 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.7);
+          offsetY = baseAmplitude * 0.8 * shakeIntensity * math.cos(t * math.pi * shakeFreq * 0.9);
           
         } else {
           // 极其舒缓的收尾阶段 - 大幅延长收尾时间

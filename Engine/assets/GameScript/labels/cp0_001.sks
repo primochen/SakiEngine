@@ -190,7 +190,8 @@ scene to school an backjump
 play sound sagasu
 "原地停了下来，解开了书包，就开始翻找东西。"
 play sound haneru
-x pose5 an zoomjumpin "你在找什么？"////立绘弹跳出来，一脸微笑的神情
+show xiayo1 pose5 at xiayo1posezoom an jump
+x pose5 think2 "你在找什么？"////立绘弹跳出来，一脸微笑的神情
 x wakuwaku3 an jump repeat 2 "是你上次说过的装甲勇士的变身腰带吗？你带过来了？"////侧脸思考，0.5s以后眼睛转过来
 "别说了别说了，我不由得感到了面红耳赤。"
 "但是这个跟我寻找的东西没有关系。"
@@ -204,7 +205,7 @@ l "给你吃。"
 "我在夏悠面前晃了晃。"
 hide zao
 play sound haneru
-x star an zoomjumpout "哇哦！有零食吃了！谢谢。"////双眼放光的动作
+x star at xiayo1pose an jump "哇哦！有零食吃了！谢谢。"////双眼放光的动作
 play sound kamu
 nvlm
 "猛地抓过去一大把开始嚼了起来。"
@@ -334,7 +335,7 @@ scene kurokajitsu
 hide kurokajitsu
 scene kichi
 l "这是？"
-ls pose1 eve "你失忆了？这些也不是新食材啊，都是用了好多次的。"
+ls odoroki "你失忆了？这些也不是新食材啊，都是用了好多次的。"
 lg angry an jump "啊？你说的是这些果子吗？我也不知道叫什么，反正不能吃就对了。"
 lg what "千万不要偷偷吃啊！这里最近的医院也是很远的。"
 l "[size=1.4]我看起来像很贪吃的人吗？[/size]"////对话框震动，文字变大
@@ -342,7 +343,7 @@ ls pose2 naruhodo "不要用比喻句来阐述事实比较好..."
 l oogoe "原来我在你们心中是这种形象。"
 l "虽然一点也没错。"
 l "我可以做到什么？"
-x pose2 hen "当然是收集食材咯！"////侧身微笑
+x pose2 hen an jump "当然是收集食材咯！"////侧身微笑
 x pose3 doyagao "收集食材到足够四个人吃的分量就足够了。"////正身指着，微笑
 x pose2 ciallo "之前的老食材都可以。"
 x pose3 think "也就是黑色的奇怪果子，蛇莓，树根那些，有新食材就更好了。"////侧身思考
