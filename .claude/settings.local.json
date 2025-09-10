@@ -6,7 +6,8 @@
       "Bash(npx:*)",
       "Bash(flutter pub get)",
       "Bash(dart analyze:*)",
-      "Bash(npm:*)"
+      "Bash(npm:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
