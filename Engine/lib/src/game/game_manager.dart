@@ -1397,7 +1397,14 @@ class GameManager {
     // 预加载背景图片以避免动画闪烁
     if (!ColorBackgroundRenderer.isValidHexColor(newBackground)) {
       try {
-        final assetPath = await AssetManager().findAsset('backgrounds/${newBackground.replaceAll(' ', '-')}');
+        // 先尝试使用AssetManager的智能查找，它会处理CG的特殊路径
+        String? assetPath = await AssetManager().findAsset(newBackground);
+        
+        // 如果AssetManager找不到，再尝试backgrounds路径
+        if (assetPath == null) {
+          assetPath = await AssetManager().findAsset('backgrounds/${newBackground.replaceAll(' ', '-')}');
+        }
+        
         if (assetPath != null && _context != null) {
           // 预加载图片到缓存
           if (kDebugMode && !assetPath.startsWith('assets/')) {
@@ -1407,7 +1414,9 @@ class GameManager {
             // 发布模式或assets路径，使用AssetImage
             await precacheImage(AssetImage(assetPath), _context!);
           }
-          //print('[GameManager] 预加载背景图片完成: $newBackground');
+          //print('[GameManager] 预加载背景图片完成: $newBackground -> $assetPath');
+        } else {
+          print('[GameManager] 警告: 无法找到背景图片进行预加载: $newBackground');
         }
       } catch (e) {
         print('[GameManager] 预加载背景图片失败: $e');
@@ -1423,11 +1432,27 @@ class GameManager {
     String? newBackgroundName;
     
     if (effectType == TransitionType.diss) {
-      // 传递背景名称而不是Widget，需要转换为正确的资源路径格式
+      // 传递背景名称而不是Widget，让AssetManager智能查找正确路径
       if (_currentState.background != null) {
-        oldBackgroundName = 'backgrounds/${_currentState.background!.replaceAll(' ', '-')}';
+        // 先尝试直接使用背景名称，让AssetManager智能查找
+        final oldBgPath = await AssetManager().findAsset(_currentState.background!);
+        if (oldBgPath != null) {
+          oldBackgroundName = _currentState.background!;
+        } else {
+          // 回退到backgrounds路径
+          oldBackgroundName = 'backgrounds/${_currentState.background!.replaceAll(' ', '-')}';
+        }
       }
-      newBackgroundName = 'backgrounds/${newBackground.replaceAll(' ', '-')}';
+      
+      // 对新背景也做同样处理
+      final newBgPath = await AssetManager().findAsset(newBackground);
+      if (newBgPath != null) {
+        newBackgroundName = newBackground;
+      } else {
+        // 回退到backgrounds路径
+        newBackgroundName = 'backgrounds/${newBackground.replaceAll(' ', '-')}';
+      }
+      
       //print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
     }
     
