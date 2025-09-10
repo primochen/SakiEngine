@@ -8,15 +8,22 @@ class ScriptNode implements SksNode {
 class AnimeNode implements SksNode {
   final String animeName;
   final bool loop; // 是否循环播放
+  final bool keep; // 新增：是否在播放完成后保留（阻止自动消失）
   final String? transitionType; // 可选的转场效果
   final double? timer; // 可选的计时器
   
   AnimeNode(
     this.animeName, {
     this.loop = false, // 默认不循环
+    this.keep = false, // 默认不保留，播放完就消失
     this.transitionType,
     this.timer,
   });
+
+  @override
+  String toString() {
+    return 'AnimeNode(animeName: $animeName, loop: $loop, keep: $keep, transitionType: $transitionType, timer: $timer)';
+  }
 }
 
 class ShowNode implements SksNode {

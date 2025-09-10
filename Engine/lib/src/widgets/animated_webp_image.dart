@@ -19,6 +19,7 @@ class AnimatedWebPImage extends StatefulWidget {
   final bool autoPlay;
   final bool loop;
   final Duration? frameDuration;
+  final VoidCallback? onAnimationComplete; // 新增：动画完成回调
 
   const AnimatedWebPImage.asset(
     this.assetPath, {
@@ -30,6 +31,7 @@ class AnimatedWebPImage extends StatefulWidget {
     this.autoPlay = true,
     this.loop = true,
     this.frameDuration,
+    this.onAnimationComplete, // 新增
   });
 
   @override
@@ -52,10 +54,8 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
   @override
   void dispose() {
     _animationController.dispose();
-    // 清理图像资源
-    for (final frame in _frames) {
-      frame.image.dispose();
-    }
+    // 不清理图像资源，因为它们来自全局预加载缓存
+    // 缓存的图像资源由WebPPreloadCache统一管理生命周期
     super.dispose();
   }
 
@@ -153,6 +153,13 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
             vsync: this,
           );
           
+          // 添加动画完成监听
+          _animationController.addStatusListener((status) {
+            if (status == AnimationStatus.completed && !widget.loop) {
+              widget.onAnimationComplete?.call();
+            }
+          });
+          
           if (widget.autoPlay) {
             if (widget.loop) {
               _animationController.repeat();
@@ -203,6 +210,13 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
           duration: widget.frameDuration ?? totalDuration,
           vsync: this,
         );
+        
+        // 添加动画完成监听
+        _animationController.addStatusListener((status) {
+          if (status == AnimationStatus.completed && !widget.loop) {
+            widget.onAnimationComplete?.call();
+          }
+        });
         
         if (widget.autoPlay) {
           if (widget.loop) {

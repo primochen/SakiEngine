@@ -683,7 +683,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
         // 添加anime覆盖层
         if (gameState.animeOverlay != null)
-          _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop),
+          _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
         // 使用 AnimatedSwitcher 为对话框切换添加过渡动画
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -722,12 +722,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   /// 构建anime覆盖层 - 全屏显示，支持WebP动图播放
-  Widget _buildAnimeOverlay(String animeName, bool loop) {
+  Widget _buildAnimeOverlay(String animeName, bool loop, {bool keep = false}) {
     return Positioned.fill(
       child: SmartAssetImage(
         assetName: animeName,
         fit: BoxFit.cover, // 和scene一样，贴满屏幕
         loop: loop, // 传递loop参数
+        onAnimationComplete: !loop && !keep ? () {
+          // 非循环且非keep模式下，动画完成后清除覆盖层
+          _clearAnimeOverlay();
+        } : null,
         errorWidget: Container(
           color: Colors.transparent,
           child: Center(
@@ -739,6 +743,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         ),
       ),
     );
+  }
+
+  /// 清除anime覆盖层
+  void _clearAnimeOverlay() {
+    // 通过GameManager清除anime覆盖层
+    _gameManager.clearAnimeOverlay();
   }
 
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画

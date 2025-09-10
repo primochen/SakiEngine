@@ -166,11 +166,12 @@ class SksParser {
           }
           break;
         case 'anime':
-          // anime命令：anime cg_igiari [loop] [with diss] [timer 2.0]
+          // anime命令：anime cg_igiari [loop] [keep] [with diss] [timer 2.0]
           if (parts.length < 2) break;
           
           final animeName = parts[1];
           bool isLoop = false;
+          bool keepAfterComplete = false; // 新增：是否在完成后保留
           String? transitionType;
           double? timerValue;
           
@@ -178,6 +179,8 @@ class SksParser {
           for (int i = 2; i < parts.length; i++) {
             if (parts[i].toLowerCase() == 'loop') {
               isLoop = true;
+            } else if (parts[i].toLowerCase() == 'keep') { // 新增：keep参数
+              keepAfterComplete = true;
             } else if (parts[i] == 'with' && i + 1 < parts.length) {
               transitionType = parts[i + 1];
               i++; // 跳过下一个参数
@@ -187,8 +190,8 @@ class SksParser {
             }
           }
           
-          print('[SksParser] 解析anime命令: $animeName, loop: $isLoop, transition: $transitionType, timer: $timerValue');
-          nodes.add(AnimeNode(animeName, loop: isLoop, transitionType: transitionType, timer: timerValue));
+          print('[SksParser] 解析anime命令: $animeName, loop: $isLoop, keep: $keepAfterComplete, transition: $transitionType, timer: $timerValue');
+          nodes.add(AnimeNode(animeName, loop: isLoop, keep: keepAfterComplete, transitionType: transitionType, timer: timerValue));
           break;
         case 'show':
           //print('[SksParser] 解析show命令: $trimmedLine');

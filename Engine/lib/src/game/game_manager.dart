@@ -664,11 +664,12 @@ class GameManager {
       }
 
       if (node is AnimeNode) {
-        print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}');
+        print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}, keep: ${node.keep}');
         
         _currentState = _currentState.copyWith(
           animeOverlay: node.animeName,
           animeLoop: node.loop,
+          animeKeep: node.keep, // 传递keep参数
           clearDialogueAndSpeaker: true,
           everShownCharacters: _everShownCharacters,
         );
@@ -1821,6 +1822,15 @@ class GameManager {
     _gameStateController.add(_currentState);
   }
 
+  /// 清除anime覆盖层
+  void clearAnimeOverlay() {
+    _currentState = _currentState.copyWith(
+      clearAnimeOverlay: true,
+      everShownCharacters: _everShownCharacters,
+    );
+    _gameStateController.add(_currentState);
+  }
+
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
@@ -1860,6 +1870,7 @@ class GameState {
   final int? sceneAnimationRepeat; // 新增：场景动画重复次数
   final String? animeOverlay; // 新增：anime覆盖动画名称
   final bool animeLoop; // 新增：anime是否循环播放
+  final bool animeKeep; // 新增：anime完成后是否保留
 
   GameState({
     this.background,
@@ -1879,6 +1890,7 @@ class GameState {
     this.sceneAnimationRepeat,
     this.animeOverlay, // 新增
     this.animeLoop = false, // 新增，默认不循环
+    this.animeKeep = false, // 新增，默认不保留
   });
 
   factory GameState.initial() {
@@ -1911,6 +1923,7 @@ class GameState {
     int? sceneAnimationRepeat,
     String? animeOverlay, // 新增
     bool? animeLoop, // 新增
+    bool? animeKeep, // 新增
     bool clearAnimeOverlay = false, // 新增
   }) {
     return GameState(
@@ -1933,6 +1946,7 @@ class GameState {
       sceneAnimationRepeat: clearSceneAnimation ? null : (sceneAnimationRepeat ?? this.sceneAnimationRepeat),
       animeOverlay: clearAnimeOverlay ? null : (animeOverlay ?? this.animeOverlay), // 新增
       animeLoop: animeLoop ?? this.animeLoop, // 新增
+      animeKeep: animeKeep ?? this.animeKeep, // 新增
     );
   }
 }

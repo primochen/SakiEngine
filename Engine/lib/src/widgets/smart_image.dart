@@ -18,6 +18,7 @@ class SmartImage extends StatelessWidget {
   final double? height;
   final Widget? errorWidget;
   final bool? loop; // 新增：控制WebP动图是否循环播放
+  final VoidCallback? onAnimationComplete; // 新增：动画完成回调
 
   const SmartImage.asset(
     this.assetPath, {
@@ -27,6 +28,7 @@ class SmartImage extends StatelessWidget {
     this.height,
     this.errorWidget,
     this.loop,
+    this.onAnimationComplete, // 新增
   });
 
   @override
@@ -46,6 +48,7 @@ class SmartImage extends StatelessWidget {
         errorWidget: errorWidget,
         autoPlay: true,
         loop: loop ?? false, // 默认不循环
+        onAnimationComplete: onAnimationComplete, // 传递动画完成回调
       );
     } else {
       return Image.asset(
