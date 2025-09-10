@@ -572,7 +572,19 @@ class GameManager {
           _isWaitingForTimer = true;
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
-          _transitionToNewBackground(node.background, sceneFilter, node.layers, node.transitionType, node.animation, node.repeatCount).then((_) {
+          // 检查是否是CG到CG的转场，如果是且没有指定转场类型，则使用dissolve
+          String? finalTransitionType = node.transitionType;
+          final currentBg = _currentState.background;
+          final newBg = node.background;
+          final isCurrentCG = currentBg != null && currentBg.toLowerCase().contains('cg');
+          final isNewCG = newBg.toLowerCase().contains('cg');
+          
+          if (isCurrentCG && isNewCG && finalTransitionType == null) {
+            finalTransitionType = 'diss'; // CG到CG默认使用dissolve转场
+            //print('[GameManager] CG到CG转场，使用默认dissolve效果');
+          }
+          
+          _transitionToNewBackground(node.background, sceneFilter, node.layers, finalTransitionType, node.animation, node.repeatCount).then((_) {
             // 转场完成后启动计时器
             _startSceneTimer(timerDuration);
           });
@@ -1411,9 +1423,11 @@ class GameManager {
     String? newBackgroundName;
     
     if (effectType == TransitionType.diss) {
-      // 传递背景名称而不是Widget
-      oldBackgroundName = _currentState.background;
-      newBackgroundName = newBackground;
+      // 传递背景名称而不是Widget，需要转换为正确的资源路径格式
+      if (_currentState.background != null) {
+        oldBackgroundName = 'backgrounds/${_currentState.background!.replaceAll(' ', '-')}';
+      }
+      newBackgroundName = 'backgrounds/${newBackground.replaceAll(' ', '-')}';
       //print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
     }
     
@@ -1464,30 +1478,55 @@ class GameManager {
         newBackground: newBackgroundName,
         onMidTransition: () {
           ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
-          // 在转场中点切换背景和清除所有角色（类似Renpy）
-          // 先停止并清理旧的场景动画控制器
-          _sceneAnimationController?.dispose();
-          _sceneAnimationController = null;
-          
-          _currentState = _currentState.copyWith(
-            background: newBackground,
-            sceneFilter: sceneFilter,
-            clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
-            sceneLayers: layers,
-            clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
-            clearCharacters: true,
-            sceneAnimation: animation,
-            sceneAnimationRepeat: repeatCount,
-            sceneAnimationProperties: null, // 不设置空对象，避免闪烁
-            clearSceneAnimation: animation == null,
-            everShownCharacters: _everShownCharacters,
-          );
-          ////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
-          _gameStateController.add(_currentState);
-          ////print('[GameManager] 状态已发送到Stream');
+          // 对于dissolve转场，不在中点更新背景状态，避免与转场效果冲突
+          // 只更新其他状态，背景更新延迟到转场完成
+          if (effectType != TransitionType.diss) {
+            // 在转场中点切换背景和清除所有角色（类似Renpy）
+            // 先停止并清理旧的场景动画控制器
+            _sceneAnimationController?.dispose();
+            _sceneAnimationController = null;
+            
+            _currentState = _currentState.copyWith(
+              background: newBackground,
+              sceneFilter: sceneFilter,
+              clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
+              sceneLayers: layers,
+              clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
+              clearCharacters: true,
+              sceneAnimation: animation,
+              sceneAnimationRepeat: repeatCount,
+              sceneAnimationProperties: null, // 不设置空对象，避免闪烁
+              clearSceneAnimation: animation == null,
+              everShownCharacters: _everShownCharacters,
+            );
+            ////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
+            _gameStateController.add(_currentState);
+            ////print('[GameManager] 状态已发送到Stream');
+          } else {
+            // 对于dissolve转场，在转场中点就更新背景，避免结束时闪烁
+            _sceneAnimationController?.dispose();
+            _sceneAnimationController = null;
+            
+            _currentState = _currentState.copyWith(
+              background: newBackground, // 在中点就更新背景，避免结束时的闪烁
+              sceneFilter: sceneFilter,
+              clearSceneFilter: sceneFilter == null,
+              sceneLayers: layers,
+              clearSceneLayers: layers == null,
+              clearCharacters: true,
+              sceneAnimation: animation,
+              sceneAnimationRepeat: repeatCount,
+              sceneAnimationProperties: null,
+              clearSceneAnimation: animation == null,
+              everShownCharacters: _everShownCharacters,
+            );
+            _gameStateController.add(_currentState);
+          }
         },
         duration: const Duration(milliseconds: 800),
       );
+      
+      // dissolve转场的背景已在中点更新，这里不需要重复更新
     }
     
     ////print('[GameManager] scene转场完成，等待计时器结束');
