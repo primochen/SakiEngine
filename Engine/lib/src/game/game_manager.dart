@@ -843,72 +843,84 @@ class GameManager {
         CharacterState? currentCharacterState;
 
         if (node.character != null) {
-          // 确定最终的角色key
-          String finalCharacterKey;
-          if (characterConfig != null) {
-            finalCharacterKey = characterConfig.resourceId; // 使用resourceId作为key
+          // 检查当前背景是否为CG，如果是CG则不更新角色立绘
+          if (_isCurrentBackgroundCG()) {
+            //print('[GameManager] 当前背景为CG，跳过角色立绘更新');
+            // 直接更新对话内容，不处理角色状态
+            _currentState = _currentState.copyWith(
+              speaker: characterConfig?.name ?? node.character,
+              dialogue: node.dialogue,
+              everShownCharacters: _everShownCharacters,
+            );
           } else {
-            finalCharacterKey = node.character!; // 使用原始名称作为key
-          }
-          
-          currentCharacterState = _currentState.characters[finalCharacterKey];
-          //print('[GameManager] 查找角色 $finalCharacterKey: ${currentCharacterState != null ? "找到" : "未找到"}');
-          
-          if (currentCharacterState != null) {
-            // 角色已存在，更新表情、姿势和位置
-            //print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}, position=${node.position}');
-            final newCharacters = Map.of(_currentState.characters);
-            final updatedCharacter = currentCharacterState.copyWith(
-              pose: node.pose,
-              expression: node.expression,
-              positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
-              clearAnimationProperties: false,
-            );
-            newCharacters[finalCharacterKey] = updatedCharacter;
+            // 正常处理角色立绘逻辑
+            // 确定最终的角色key
+            String finalCharacterKey;
+            if (characterConfig != null) {
+              finalCharacterKey = characterConfig.resourceId; // 使用resourceId作为key
+            } else {
+              finalCharacterKey = node.character!; // 使用原始名称作为key
+            }
             
-            // 如果位置发生变化，播放pose属性变化动画
-            if (node.position != null && node.position != currentCharacterState.positionId) {
-              await _checkAndAnimatePoseAttributeChanges(
-                characterId: finalCharacterKey,
-                oldPositionId: currentCharacterState.positionId,
-                newPositionId: node.position,
+            currentCharacterState = _currentState.characters[finalCharacterKey];
+            //print('[GameManager] 查找角色 $finalCharacterKey: ${currentCharacterState != null ? "找到" : "未找到"}');
+            
+            if (currentCharacterState != null) {
+              // 角色已存在，更新表情、姿势和位置
+              //print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}, position=${node.position}');
+              final newCharacters = Map.of(_currentState.characters);
+              final updatedCharacter = currentCharacterState.copyWith(
+                pose: node.pose,
+                expression: node.expression,
+                positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
+                clearAnimationProperties: false,
               );
-            }
-            
-            //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}, position=${updatedCharacter.positionId}');
-            _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
-            _gameStateController.add(_currentState);
-            //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
-            
-            // 如果有动画，启动动画播放（非阻塞）
-            if (node.animation != null) {
-              _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
-            }
-          } else if (characterConfig != null) {
-            // 角色不存在，创建新角色
-            //print('[GameManager] 创建新角色 $finalCharacterKey');
-            currentCharacterState = CharacterState(
-              resourceId: characterConfig.resourceId,
-              positionId: node.position ?? characterConfig.defaultPoseId, // 优先使用指定的position，否则使用默认值
-            );
-            
-            final newCharacters = Map.of(_currentState.characters);
-            newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
-              pose: node.pose,
-              expression: node.expression,
-              clearAnimationProperties: false,
-            );
-            
-            // 检测角色位置变化并触发动画（如果需要）
-            await _checkAndAnimateCharacterPositions(newCharacters);
-            
-            _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
-            _gameStateController.add(_currentState);
-            //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
-            
-            // 如果有动画，启动动画播放（非阻塞）
-            if (node.animation != null) {
-              _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
+              newCharacters[finalCharacterKey] = updatedCharacter;
+              
+              // 如果位置发生变化，播放pose属性变化动画
+              if (node.position != null && node.position != currentCharacterState.positionId) {
+                await _checkAndAnimatePoseAttributeChanges(
+                  characterId: finalCharacterKey,
+                  oldPositionId: currentCharacterState.positionId,
+                  newPositionId: node.position,
+                );
+              }
+              
+              //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}, position=${updatedCharacter.positionId}');
+              _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+              _gameStateController.add(_currentState);
+              //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+              
+              // 如果有动画，启动动画播放（非阻塞）
+              if (node.animation != null) {
+                _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
+              }
+            } else if (characterConfig != null) {
+              // 角色不存在，创建新角色
+              //print('[GameManager] 创建新角色 $finalCharacterKey');
+              currentCharacterState = CharacterState(
+                resourceId: characterConfig.resourceId,
+                positionId: node.position ?? characterConfig.defaultPoseId, // 优先使用指定的position，否则使用默认值
+              );
+              
+              final newCharacters = Map.of(_currentState.characters);
+              newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
+                pose: node.pose,
+                expression: node.expression,
+                clearAnimationProperties: false,
+              );
+              
+              // 检测角色位置变化并触发动画（如果需要）
+              await _checkAndAnimateCharacterPositions(newCharacters);
+              
+              _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
+              _gameStateController.add(_currentState);
+              //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+              
+              // 如果有动画，启动动画播放（非阻塞）
+              if (node.animation != null) {
+                _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
+              }
             }
           }
         }
@@ -946,14 +958,17 @@ class GameManager {
           return;
         } else {
           // 普通对话模式
-          _currentState = _currentState.copyWith(
-            dialogue: node.dialogue,
-            speaker: characterConfig?.name,
-            currentNode: null,
-            clearDialogueAndSpeaker: false,
-            forceNullSpeaker: node.character == null,
-            everShownCharacters: _everShownCharacters,
-          );
+          // 在CG背景下，如果之前已经设置了对话内容，就不要重复设置
+          if (!(_isCurrentBackgroundCG() && node.character != null)) {
+            _currentState = _currentState.copyWith(
+              dialogue: node.dialogue,
+              speaker: characterConfig?.name,
+              currentNode: null,
+              clearDialogueAndSpeaker: false,
+              forceNullSpeaker: node.character == null,
+              everShownCharacters: _everShownCharacters,
+            );
+          }
 
           _addToDialogueHistory(
             speaker: characterConfig?.name,
@@ -1350,6 +1365,15 @@ class GameManager {
         await _executeScript();
       }
     });
+  }
+
+  /// 检查当前背景是否为CG
+  bool _isCurrentBackgroundCG() {
+    final currentBg = _currentState.background;
+    if (currentBg == null) return false;
+    
+    // 检查背景名称是否包含"cg"关键词（不区分大小写）
+    return currentBg.toLowerCase().contains('cg');
   }
 
   /// 使用转场效果切换背景
