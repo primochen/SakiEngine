@@ -79,10 +79,29 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   // 跟踪上一次的NVL状态，用于检测转场
   bool _previousIsNvlMode = false;
   bool _previousIsNvlMovieMode = false;
+  
+  // 加载淡出动画控制
+  late AnimationController _loadingFadeController;
+  late Animation<double> _loadingFadeAnimation;
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
+    
+    // 初始化加载淡出动画
+    _loadingFadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _loadingFadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _loadingFadeController,
+      curve: Curves.easeOut,
+    ));
+    
     _gameManager = GameManager(
       onReturn: _returnToMainMenu,
     );
@@ -231,6 +250,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _expressionSelectorManager?.dispose();
     // 清理console序列检测器
     _consoleSequenceDetector?.dispose();
+    // 清理加载淡出动画控制器
+    _loadingFadeController.dispose();
     
     _gameManager.dispose();
     super.dispose();
@@ -457,6 +478,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             }
             final gameState = snapshot.data!;
             
+            // 首次加载完成，触发淡出动画
+            if (_isInitialLoading) {
+              _isInitialLoading = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _loadingFadeController.forward();
+              });
+            }
+            
             // 检测从电影模式退出，播放退出动画
             if (_previousIsNvlMode && _previousIsNvlMovieMode && 
                 (!gameState.isNvlMode || !gameState.isNvlMovieMode)) {
@@ -618,6 +647,18 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                 NotificationOverlay(
                   key: _notificationOverlayKey,
                   scale: context.scaleFor(ComponentType.ui),
+                ),
+                // 加载淡出覆盖层
+                AnimatedBuilder(
+                  animation: _loadingFadeAnimation,
+                  builder: (context, child) {
+                    if (_loadingFadeAnimation.value <= 0.0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
+                      color: Colors.black.withOpacity(_loadingFadeAnimation.value),
+                    );
+                  },
                 ),
               ],
             ),
