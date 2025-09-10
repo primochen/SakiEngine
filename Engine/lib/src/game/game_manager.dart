@@ -623,6 +623,27 @@ class GameManager {
         continue;
       }
 
+      if (node is AnimeNode) {
+        print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}');
+        
+        _currentState = _currentState.copyWith(
+          animeOverlay: node.animeName,
+          animeLoop: node.loop,
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        
+        // 如果有计时器，启动计时器
+        if (node.timer != null && node.timer! > 0) {
+          _isWaitingForTimer = true;
+          _startSceneTimer(node.timer!);
+        }
+        
+        _scriptIndex++;
+        continue;
+      }
+
       if (node is ShowNode) {
         //print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
         // 优先使用角色配置，如果没有配置则直接使用资源ID
@@ -1788,6 +1809,8 @@ class GameState {
   final Map<String, double>? sceneAnimationProperties; // 新增：场景动画属性
   final String? sceneAnimation; // 新增：当前场景动画名称
   final int? sceneAnimationRepeat; // 新增：场景动画重复次数
+  final String? animeOverlay; // 新增：anime覆盖动画名称
+  final bool animeLoop; // 新增：anime是否循环播放
 
   GameState({
     this.background,
@@ -1805,6 +1828,8 @@ class GameState {
     this.sceneAnimationProperties,
     this.sceneAnimation,
     this.sceneAnimationRepeat,
+    this.animeOverlay, // 新增
+    this.animeLoop = false, // 新增，默认不循环
   });
 
   factory GameState.initial() {
@@ -1835,6 +1860,9 @@ class GameState {
     bool clearSceneAnimation = false,
     String? sceneAnimation,
     int? sceneAnimationRepeat,
+    String? animeOverlay, // 新增
+    bool? animeLoop, // 新增
+    bool clearAnimeOverlay = false, // 新增
   }) {
     return GameState(
       background: background ?? this.background,
@@ -1854,6 +1882,8 @@ class GameState {
       sceneAnimationProperties: clearSceneAnimation ? null : (sceneAnimationProperties ?? this.sceneAnimationProperties),
       sceneAnimation: clearSceneAnimation ? null : (sceneAnimation ?? this.sceneAnimation),
       sceneAnimationRepeat: clearSceneAnimation ? null : (sceneAnimationRepeat ?? this.sceneAnimationRepeat),
+      animeOverlay: clearAnimeOverlay ? null : (animeOverlay ?? this.animeOverlay), // 新增
+      animeLoop: animeLoop ?? this.animeLoop, // 新增
     );
   }
 }

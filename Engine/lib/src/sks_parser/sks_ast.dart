@@ -5,6 +5,20 @@ class ScriptNode implements SksNode {
   ScriptNode(this.children);
 }
 
+class AnimeNode implements SksNode {
+  final String animeName;
+  final bool loop; // 是否循环播放
+  final String? transitionType; // 可选的转场效果
+  final double? timer; // 可选的计时器
+  
+  AnimeNode(
+    this.animeName, {
+    this.loop = false, // 默认不循环
+    this.transitionType,
+    this.timer,
+  });
+}
+
 class ShowNode implements SksNode {
   final String character;
   final String? pose;

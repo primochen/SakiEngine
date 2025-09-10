@@ -165,9 +165,38 @@ class SksParser {
             nodes.add(FxNode(fxString));
           }
           break;
+        case 'anime':
+          // anime命令：anime cg_igiari [loop] [with diss] [timer 2.0]
+          if (parts.length < 2) break;
+          
+          final animeName = parts[1];
+          bool isLoop = false;
+          String? transitionType;
+          double? timerValue;
+          
+          // 解析参数
+          for (int i = 2; i < parts.length; i++) {
+            if (parts[i].toLowerCase() == 'loop') {
+              isLoop = true;
+            } else if (parts[i] == 'with' && i + 1 < parts.length) {
+              transitionType = parts[i + 1];
+              i++; // 跳过下一个参数
+            } else if (parts[i] == 'timer' && i + 1 < parts.length) {
+              timerValue = double.tryParse(parts[i + 1]);
+              i++; // 跳过下一个参数
+            }
+          }
+          
+          print('[SksParser] 解析anime命令: $animeName, loop: $isLoop, transition: $transitionType, timer: $timerValue');
+          nodes.add(AnimeNode(animeName, loop: isLoop, transitionType: transitionType, timer: timerValue));
+          break;
         case 'show':
           //print('[SksParser] 解析show命令: $trimmedLine');
           final character = parts[1];
+          
+          // CG显示命令保持为ShowNode，支持叠加显示
+          // 但需要特殊处理以支持WebP动图的loop参数
+          
           String? pose;
           String? expression;
           String? position;

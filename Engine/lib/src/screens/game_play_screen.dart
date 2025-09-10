@@ -26,6 +26,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
@@ -639,6 +640,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
         ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+        // 添加anime覆盖层
+        if (gameState.animeOverlay != null)
+          _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop),
         // 使用 AnimatedSwitcher 为对话框切换添加过渡动画
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -673,6 +677,26 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             },
           ),
       ],
+    );
+  }
+
+  /// 构建anime覆盖层 - 全屏显示，支持WebP动图播放
+  Widget _buildAnimeOverlay(String animeName, bool loop) {
+    return Positioned.fill(
+      child: SmartAssetImage(
+        assetName: animeName,
+        fit: BoxFit.cover, // 和scene一样，贴满屏幕
+        loop: loop, // 传递loop参数
+        errorWidget: Container(
+          color: Colors.transparent,
+          child: Center(
+            child: Text(
+              'Anime not found: $animeName',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
