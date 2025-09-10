@@ -453,7 +453,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           stream: _gameManager.gameStateStream,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return Container(color: Colors.black);
             }
             final gameState = snapshot.data!;
             

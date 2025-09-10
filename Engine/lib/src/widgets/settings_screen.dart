@@ -162,8 +162,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLoadingContent() {
-    return const Center(
-      child: CircularProgressIndicator(),
+    return Center(
+      child: Container(color: Colors.black),
     );
   }
 

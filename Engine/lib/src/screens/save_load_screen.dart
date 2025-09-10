@@ -279,7 +279,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       future: _saveSlotsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: Container(color: Colors.black));
         }
         if (snapshot.hasError) {
           return Center(child: Text('读取存档失败: ${snapshot.error}', style: TextStyle(color: config.themeColors.primary, fontSize: 16 * textScale)));
