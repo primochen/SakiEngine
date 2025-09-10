@@ -351,10 +351,17 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
   }
   
   void _onAnimationUpdate() {
-    // 在动画中点执行场景切换
-    if (!_midTransitionExecuted && _controller.value >= 0.5) {
+    // 对于CG转场，延迟状态更新到90%，避免中途更新导致的闪烁
+    // 对于普通背景转场，保持在50%更新
+    final isLikelyCG = widget.oldBackgroundName?.toLowerCase().contains('cg') == true || 
+                      widget.newBackgroundName?.toLowerCase().contains('cg') == true;
+    
+    final updateThreshold = isLikelyCG ? 0.9 : 0.5;
+    
+    // 在指定进度执行场景切换
+    if (!_midTransitionExecuted && _controller.value >= updateThreshold) {
       _midTransitionExecuted = true;
-      print('[DissTransition] 到达转场中点，执行回调');
+      print('[DissTransition] 到达转场更新点(${(updateThreshold * 100).toInt()}%)，执行回调');
       widget.onMidTransition();
     }
   }
