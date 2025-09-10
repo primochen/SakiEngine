@@ -14,14 +14,43 @@ class CharacterPositionChange {
   });
 }
 
+/// 角色属性变化的描述（包括所有pose属性）
+class CharacterAttributeChange {
+  final String characterId;
+  final Map<String, double> fromAttributes;
+  final Map<String, double> toAttributes;
+  
+  CharacterAttributeChange({
+    required this.characterId,
+    required this.fromAttributes,
+    required this.toAttributes,
+  });
+  
+  /// 检查是否有属性变化
+  bool get hasChanges {
+    for (final key in toAttributes.keys) {
+      final fromValue = fromAttributes[key] ?? 0.0;
+      final toValue = toAttributes[key] ?? 0.0;
+      if ((fromValue - toValue).abs() > 0.001) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
 /// 角色位置补间动画管理器
 /// 处理角色从一个位置平滑移动到另一个位置的动画
+/// 现已扩展支持所有pose属性的补间（xcenter、ycenter、scale、alpha等）
 class CharacterPositionAnimator {
   AnimationController? _controller;
   Animation<double>? _animation;
   List<CharacterPositionChange> _positionChanges = [];
+  List<CharacterAttributeChange> _attributeChanges = [];
   Map<String, double> _currentPositions = {};
+  Map<String, Map<String, double>> _currentAttributes = {};
   void Function(Map<String, double>)? _onUpdate;
+  void Function(Map<String, Map<String, double>>)? _onAttributeUpdate;
   VoidCallback? _onComplete;
   
   /// 开始角色位置变化的补间动画
@@ -45,7 +74,9 @@ class CharacterPositionAnimator {
     }
     
     _positionChanges = positionChanges;
+    _attributeChanges = [];
     _onUpdate = onUpdate;
+    _onAttributeUpdate = null;
     _onComplete = onComplete;
     
     // 初始化当前位置
@@ -54,6 +85,50 @@ class CharacterPositionAnimator {
       _currentPositions[change.characterId] = change.fromX;
     }
     
+    await _startAnimation(vsync, duration, curve);
+  }
+  
+  /// 开始角色属性变化的补间动画
+  /// [attributeChanges] 所有需要动画的角色属性变化
+  /// [vsync] TickerProvider用于创建AnimationController
+  /// [duration] 动画持续时间，默认0.3秒（比位置动画稍快）
+  /// [curve] 动画曲线，默认easeInOut
+  /// [onUpdate] 动画更新回调，参数是角色ID到属性映射的映射
+  /// [onComplete] 动画完成回调
+  Future<void> animateAttributeChanges({
+    required List<CharacterAttributeChange> attributeChanges,
+    required TickerProvider vsync,
+    Duration duration = const Duration(milliseconds: 300),
+    Curve curve = Curves.easeInOut,
+    void Function(Map<String, Map<String, double>>)? onUpdate,
+    VoidCallback? onComplete,
+  }) async {
+    // 过滤掉没有变化的属性
+    final filteredChanges = attributeChanges.where((change) => change.hasChanges).toList();
+    
+    if (filteredChanges.isEmpty) {
+      onUpdate?.call({});
+      onComplete?.call();
+      return;
+    }
+    
+    _positionChanges = [];
+    _attributeChanges = filteredChanges;
+    _onUpdate = null;
+    _onAttributeUpdate = onUpdate;
+    _onComplete = onComplete;
+    
+    // 初始化当前属性
+    _currentAttributes.clear();
+    for (final change in filteredChanges) {
+      _currentAttributes[change.characterId] = Map.from(change.fromAttributes);
+    }
+    
+    await _startAnimation(vsync, duration, curve);
+  }
+  
+  /// 开始动画
+  Future<void> _startAnimation(TickerProvider vsync, Duration duration, Curve curve) async {
     // 创建动画控制器
     _controller?.dispose();
     _controller = AnimationController(
@@ -69,13 +144,13 @@ class CharacterPositionAnimator {
     
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation);
     
-    _animation!.addListener(_updatePositions);
+    _animation!.addListener(_updateAnimation);
     
     // 启动动画
     await _controller!.forward();
     
     // 清理
-    _animation!.removeListener(_updatePositions);
+    _animation!.removeListener(_updateAnimation);
     _controller?.dispose();
     _controller = null;
     _animation = null;
@@ -83,22 +158,45 @@ class CharacterPositionAnimator {
     _onComplete?.call();
   }
   
-  /// 更新角色位置
-  void _updatePositions() {
+  /// 更新动画
+  void _updateAnimation() {
     final progress = _animation!.value;
     
-    for (final change in _positionChanges) {
-      final currentX = change.fromX + (change.toX - change.fromX) * progress;
-      _currentPositions[change.characterId] = currentX;
+    // 更新位置变化
+    if (_positionChanges.isNotEmpty) {
+      for (final change in _positionChanges) {
+        final currentX = change.fromX + (change.toX - change.fromX) * progress;
+        _currentPositions[change.characterId] = currentX;
+      }
+      _onUpdate?.call(Map.from(_currentPositions));
     }
     
-    _onUpdate?.call(Map.from(_currentPositions));
+    // 更新属性变化
+    if (_attributeChanges.isNotEmpty) {
+      for (final change in _attributeChanges) {
+        final currentAttrs = _currentAttributes[change.characterId]!;
+        
+        // 对每个属性进行插值
+        for (final key in change.toAttributes.keys) {
+          final fromValue = change.fromAttributes[key] ?? 0.0;
+          final toValue = change.toAttributes[key]!;
+          final currentValue = fromValue + (toValue - fromValue) * progress;
+          currentAttrs[key] = currentValue;
+        }
+      }
+      _onAttributeUpdate?.call(Map.from(_currentAttributes));
+    }
+  }
+  
+  /// 更新角色位置（已废弃，保留以兼容旧代码）
+  void _updatePositions() {
+    _updateAnimation();
   }
   
   /// 立即停止动画
   void stop() {
     if (_controller != null && _controller!.isAnimating) {
-      _animation?.removeListener(_updatePositions);
+      _animation?.removeListener(_updateAnimation);
       _controller?.stop();
       _controller?.dispose();
       _controller = null;

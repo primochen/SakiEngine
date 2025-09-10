@@ -95,7 +95,91 @@ class GameManager {
   // 角色位置动画管理器
   CharacterPositionAnimator? _characterPositionAnimator;
   
-  /// 检测并播放角色位置变化动画
+  /// 检测并播放角色属性变化动画（用于pose切换）
+  Future<void> _checkAndAnimatePoseAttributeChanges({
+    required String characterId,
+    required String? oldPositionId,
+    required String? newPositionId,
+  }) async {
+    if (_tickerProvider == null || oldPositionId == newPositionId) return;
+    
+    // 获取旧的和新的pose配置
+    final oldPoseConfig = oldPositionId != null ? _poseConfigs[oldPositionId] : null;
+    final newPoseConfig = newPositionId != null ? _poseConfigs[newPositionId] : null;
+    
+    if (oldPoseConfig == null || newPoseConfig == null) return;
+    
+    // 比较属性，创建变化描述
+    final fromAttributes = <String, double>{
+      'xcenter': oldPoseConfig.xcenter,
+      'ycenter': oldPoseConfig.ycenter,
+      'scale': oldPoseConfig.scale,
+      'alpha': 1.0, // 暂时硬编码，后续可扩展
+    };
+    
+    final toAttributes = <String, double>{
+      'xcenter': newPoseConfig.xcenter,
+      'ycenter': newPoseConfig.ycenter,
+      'scale': newPoseConfig.scale,
+      'alpha': 1.0, // 暂时硬编码，后续可扩展
+    };
+    
+    final attributeChange = CharacterAttributeChange(
+      characterId: characterId,
+      fromAttributes: fromAttributes,
+      toAttributes: toAttributes,
+    );
+    
+    // 如果没有变化，跳过动画
+    if (!attributeChange.hasChanges) return;
+    
+    //print('[PoseAttributeAnimation] 检测到属性变化: $characterId');
+    //print('[PoseAttributeAnimation] 从 $oldPositionId 到 $newPositionId');
+    //print('[PoseAttributeAnimation] 属性变化: $fromAttributes -> $toAttributes');
+    
+    // 停止之前的动画
+    _characterPositionAnimator?.stop();
+    _characterPositionAnimator = CharacterPositionAnimator();
+    
+    // 开始属性补间动画
+    await _characterPositionAnimator!.animateAttributeChanges(
+      attributeChanges: [attributeChange],
+      vsync: _tickerProvider!,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      onUpdate: (attributesMap) {
+        // 更新角色的动画属性
+        final updatedCharacters = Map<String, CharacterState>.from(_currentState.characters);
+        final attributes = attributesMap[characterId];
+        
+        if (attributes != null) {
+          final character = updatedCharacters[characterId];
+          if (character != null) {
+            updatedCharacters[characterId] = character.copyWith(
+              animationProperties: attributes,
+            );
+            
+            // 立即更新状态以显示动画效果
+            _currentState = _currentState.copyWith(characters: updatedCharacters);
+            _gameStateController.add(_currentState);
+          }
+        }
+      },
+      onComplete: () {
+        //print('[PoseAttributeAnimation] 属性动画完成: $characterId');
+        // 动画完成后，清除动画属性，让角色使用新pose的正常属性
+        final updatedCharacters = Map<String, CharacterState>.from(_currentState.characters);
+        final character = updatedCharacters[characterId];
+        if (character != null) {
+          updatedCharacters[characterId] = character.copyWith(
+            animationProperties: null, // 清除动画属性，回到新pose的基础位置
+          );
+          _currentState = _currentState.copyWith(characters: updatedCharacters);
+          _gameStateController.add(_currentState);
+        }
+      },
+    );
+  }
   Future<void> _checkAndAnimateCharacterPositions(Map<String, CharacterState> newCharacters) async {
     if (_tickerProvider == null) return;
     
@@ -652,9 +736,13 @@ class GameManager {
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
             
-            // 如果位置发生变化，检测并触发动画
+            // 如果位置发生变化，播放pose属性变化动画
             if (node.position != null && node.position != currentCharacterState.positionId) {
-              await _checkAndAnimateCharacterPositions(newCharacters);
+              await _checkAndAnimatePoseAttributeChanges(
+                characterId: finalCharacterKey,
+                oldPositionId: currentCharacterState.positionId,
+                newPositionId: node.position,
+              );
             }
             
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
@@ -777,9 +865,13 @@ class GameManager {
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
             
-            // 如果位置发生变化，检测并触发动画
+            // 如果位置发生变化，播放pose属性变化动画
             if (node.position != null && node.position != currentCharacterState.positionId) {
-              await _checkAndAnimateCharacterPositions(newCharacters);
+              await _checkAndAnimatePoseAttributeChanges(
+                characterId: finalCharacterKey,
+                oldPositionId: currentCharacterState.positionId,
+                newPositionId: node.position,
+              );
             }
             
             //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}, position=${updatedCharacter.positionId}');
