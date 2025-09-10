@@ -8,7 +8,9 @@
       "Bash(dart analyze:*)",
       "Bash(npm:*)",
       "Bash(tree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Read(//Users/dfsteve/Downloads/igiari/**)",
+      "Bash(ffmpeg:*)"
     ],
     "deny": [],
     "ask": []
