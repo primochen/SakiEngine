@@ -1407,10 +1407,22 @@ class GameManager {
     final characterState = _currentState.characters[characterId];
     if (characterState == null) return;
     
-    final poseConfig = _poseConfigs[characterState.positionId];
+    // 应用自动分布逻辑，获取实际的分布后位置
+    final characterOrder = _currentState.characters.keys.toList();
+    final distributedPoseConfigs = CharacterAutoDistribution.calculateAutoDistribution(
+      _currentState.characters,
+      _poseConfigs,
+      characterOrder,
+    );
+    
+    // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
+    final autoDistributedPoseId = '${characterId}_auto_distributed';
+    final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ?? 
+                        distributedPoseConfigs[characterState.positionId] ?? 
+                        _poseConfigs[characterState.positionId];
     if (poseConfig == null) return;
     
-    // 获取基础属性
+    // 获取基础属性（使用自动站位后的实际位置）
     final baseProperties = {
       'xcenter': poseConfig.xcenter,
       'ycenter': poseConfig.ycenter,
@@ -1438,23 +1450,11 @@ class GameManager {
       },
       onComplete: () {
         //print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
-        // 将动画最终状态应用到角色的基础配置
-        final finalProperties = animController.currentProperties;
-        final positionId = characterState.positionId;
-        if (positionId != null && _poseConfigs.containsKey(positionId)) {
-          final currentPoseConfig = _poseConfigs[positionId]!;
-          _poseConfigs[positionId] = PoseConfig(
-            id: currentPoseConfig.id,
-            xcenter: finalProperties['xcenter'] ?? currentPoseConfig.xcenter,
-            ycenter: finalProperties['ycenter'] ?? currentPoseConfig.ycenter,
-            scale: finalProperties['scale'] ?? currentPoseConfig.scale,
-            anchor: currentPoseConfig.anchor,
-          );
-        }
-        // 保持动画属性，不清除
+        // 动画完成后，清除动画属性，让角色回到原本的位置
+        // 不修改原始的pose配置，避免影响其他使用相同positionId的角色
         final newCharacters = Map.of(_currentState.characters);
         newCharacters[characterId] = characterState.copyWith(
-          animationProperties: finalProperties,
+          animationProperties: null, // 清除动画属性，回到基础位置
         );
         _currentState = _currentState.copyWith(
           characters: newCharacters,

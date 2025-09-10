@@ -334,7 +334,7 @@ scene kurokajitsu
 hide kurokajitsu
 scene kichi
 l "这是？"
-ls odoroki "你失忆了？这些也不是新食材啊，都是用了好多次的。"
+ls pose1 eve "你失忆了？这些也不是新食材啊，都是用了好多次的。"
 lg angry an jump "啊？你说的是这些果子吗？我也不知道叫什么，反正不能吃就对了。"
 lg what "千万不要偷偷吃啊！这里最近的医院也是很远的。"
 l "[size=1.4]我看起来像很贪吃的人吗？[/size]"////对话框震动，文字变大
