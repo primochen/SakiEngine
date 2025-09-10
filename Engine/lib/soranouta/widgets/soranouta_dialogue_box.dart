@@ -233,6 +233,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
         children: [
           // 主对话框内容
           SoranoutaDialogueContent(
+            speaker: widget.speaker,
             dialogue: widget.dialogue,
             dialogueStyle: dialogueStyle,
             screenSize: screenSize,

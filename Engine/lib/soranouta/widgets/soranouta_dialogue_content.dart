@@ -6,6 +6,7 @@ import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 
 /// 主对话框内容组件
 class SoranoutaDialogueContent extends StatefulWidget {
+  final String? speaker;
   final String dialogue;
   final TextStyle dialogueStyle;
   final Size screenSize;
@@ -24,6 +25,7 @@ class SoranoutaDialogueContent extends StatefulWidget {
 
   const SoranoutaDialogueContent({
     super.key,
+    this.speaker,
     required this.dialogue,
     required this.dialogueStyle,
     required this.screenSize,
@@ -168,6 +170,7 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
                                   color: SettingsManager().currentDarkMode
                                       ? Colors.white.withValues(alpha: 0.8)
                                       : widget.config.themeColors.primary.withValues(alpha: 0.7),
+                                  speaker: widget.speaker,
                                 ),
                               ),
                             ),

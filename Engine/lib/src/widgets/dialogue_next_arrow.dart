@@ -8,12 +8,14 @@ class DialogueNextArrow extends StatefulWidget {
   final bool visible;
   final double fontSize;
   final Color? color;
+  final String? speaker;
   
   const DialogueNextArrow({
     super.key,
     required this.visible,
     required this.fontSize,
     this.color,
+    this.speaker,
   });
 
   @override
@@ -54,20 +56,42 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
     final effectiveColor = widget.color ?? defaultColor;
     final size = widget.fontSize*1.6;
 
+    // 判断是否应该显示下划线而不是箭头
+    // 除了"l"（林澄）和旁白（null或空字符串）以外，都显示下划线
+    final bool shouldShowUnderscore = widget.speaker != null && 
+                                      widget.speaker!.isNotEmpty && 
+                                      widget.speaker != 'l' &&
+                                      widget.speaker != '林澄';
+
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
-        // 使用正弦波确保首尾帧平滑相接
-        final breathOffset = sin(_animationController.value * 2.0 * pi) * 4.0; // 左右移动4像素
-        
-        return Transform.translate(
-          offset: Offset(breathOffset, 0),
-          child: Icon(
-            Icons.keyboard_arrow_right_rounded,
-            color: effectiveColor,
-            size: size,
-          ),
-        );
+        if (shouldShowUnderscore) {
+          // 显示下划线符号，使用呼吸效果（透明度变化）
+          final breathAlpha = (sin(_animationController.value * 2.0 * pi) * 0.3 + 0.7).clamp(0.4, 1.0);
+          return Transform.translate(
+            offset: Offset(0, -size * 0.2), // 向上偏移30%的字体大小
+            child: Text(
+              '_',
+              style: TextStyle(
+                color: effectiveColor.withValues(alpha: breathAlpha),
+                fontSize: size*0.8,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        } else {
+          // 显示箭头，使用左右移动效果
+          final breathOffset = sin(_animationController.value * 2.0 * pi) * 4.0; // 左右移动4像素
+          return Transform.translate(
+            offset: Offset(breathOffset, 0),
+            child: Icon(
+              Icons.keyboard_arrow_right_rounded,
+              color: effectiveColor,
+              size: size,
+            ),
+          );
+        }
       },
     );
   }
