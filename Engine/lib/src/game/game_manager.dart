@@ -17,6 +17,7 @@ import 'package:sakiengine/src/utils/character_position_animator.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
+import 'package:sakiengine/src/utils/webp_preload_cache.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 /// 音乐区间类
@@ -245,7 +246,43 @@ class GameManager {
     }
   }
 
-  /// 查找具有相同resourceId的现有角色key
+  /// 分析脚本并预加载anime资源
+  Future<void> _analyzeAndPreloadAnimeResources() async {
+    print('[GameManager] 开始分析和预加载anime资源');
+    print('[GameManager] 脚本节点总数: ${_script.children.length}');
+    
+    final animeResources = <String>{};
+    
+    // 遍历整个脚本，收集所有anime命令
+    for (int i = 0; i < _script.children.length; i++) {
+      final node = _script.children[i];
+      if (node is AnimeNode) {
+        print('[GameManager] 发现anime节点[$i]: ${node.animeName}');
+        animeResources.add(node.animeName);
+      }
+    }
+    
+    print('[GameManager] 发现 ${animeResources.length} 个anime资源需要预加载: $animeResources');
+    
+    if (animeResources.isEmpty) {
+      print('[GameManager] 没有anime资源需要预加载');
+      return;
+    }
+    
+    // 并发预加载所有anime资源
+    final futures = animeResources.map((animeName) {
+      print('[GameManager] 开始预加载: $animeName');
+      return WebPPreloadCache().preloadWebP(animeName);
+    }).toList();
+    
+    try {
+      await Future.wait(futures);
+      print('[GameManager] 所有anime资源预加载完成');
+    } catch (e) {
+      print('[GameManager] anime资源预加载出现错误: $e');
+      rethrow;
+    }
+  }
   String? _findExistingCharacterKey(String resourceId) {
     //print('[GameManager] 查找resourceId=$resourceId的角色，当前角色列表: ${_currentState.characters.keys}');
     for (final entry in _currentState.characters.entries) {
@@ -426,14 +463,20 @@ class GameManager {
   }
 
   Future<void> startGame(String scriptName) async {
+    print('[GameManager] startGame 被调用，脚本名: $scriptName');
+    
     // 平滑清除主菜单音乐
     await MusicManager().clearBackgroundMusic(
       fadeOut: true,
       fadeDuration: const Duration(milliseconds: 1000),
     );
+    print('[GameManager] 音乐清除完成');
     
     await _loadConfigs();
+    print('[GameManager] 配置加载完成');
+    
     await GlobalVariableManager().init(); // 初始化全局变量管理器
+    print('[GameManager] 全局变量管理器初始化完成');
     
     // 打印所有全局变量的值
     final allVars = GlobalVariableManager().getAllVariables();
@@ -448,9 +491,26 @@ class GameManager {
     print('=== 全局变量状态结束 ===');
     
     await AnimationManager.loadAnimations(); // 加载动画
+    print('[GameManager] 动画管理器加载完成');
+    
     _script = await _scriptMerger.getMergedScript();
+    print('[GameManager] 脚本合并完成，节点数: ${_script.children.length}');
+    
     _buildLabelIndexMap();
+    print('[GameManager] 标签索引构建完成');
+    
     _buildMusicRegions(); // 构建音乐区间
+    print('[GameManager] 音乐区间构建完成');
+    
+    // 预加载anime资源（同步执行，确保能看到错误）
+    print('[GameManager] 准备开始预加载anime资源...');
+    try {
+      await _analyzeAndPreloadAnimeResources();
+      print('[GameManager] anime资源预加载流程完成');
+    } catch (e) {
+      print('[GameManager] 预加载anime资源失败: $e');
+    }
+    
     _currentState = GameState.initial();
     _dialogueHistory = [];
     
@@ -1209,17 +1269,38 @@ class GameManager {
   }
 
   Future<void> restoreFromSnapshot(String scriptName, GameStateSnapshot snapshot, {bool shouldReExecute = true}) async {
+    print('[GameManager] restoreFromSnapshot 被调用，脚本名: $scriptName');
     //print('📚 restoreFromSnapshot: scriptName = $scriptName');
     //print('📚 restoreFromSnapshot: snapshot.scriptIndex = ${snapshot.scriptIndex}');
     //print('📚 restoreFromSnapshot: isNvlMode = ${snapshot.isNvlMode}');
     //print('📚 restoreFromSnapshot: nvlDialogues count = ${snapshot.nvlDialogues.length}');
     
     await _loadConfigs();
+    print('[GameManager] 存档恢复：配置加载完成');
+    
     await GlobalVariableManager().init(); // 初始化全局变量管理器
+    print('[GameManager] 存档恢复：全局变量管理器初始化完成');
+    
     await AnimationManager.loadAnimations(); // 加载动画
+    print('[GameManager] 存档恢复：动画管理器加载完成');
+    
     _script = await _scriptMerger.getMergedScript();
+    print('[GameManager] 存档恢复：脚本合并完成，节点数: ${_script.children.length}');
+    
     _buildLabelIndexMap();
+    print('[GameManager] 存档恢复：标签索引构建完成');
+    
     _buildMusicRegions(); // 构建音乐区间
+    print('[GameManager] 存档恢复：音乐区间构建完成');
+    
+    // 预加载anime资源（同步执行）
+    print('[GameManager] 存档恢复：准备开始预加载anime资源...');
+    try {
+      await _analyzeAndPreloadAnimeResources();
+      print('[GameManager] 存档恢复：anime资源预加载流程完成');
+    } catch (e) {
+      print('[GameManager] 存档恢复：预加载anime资源失败: $e');
+    }
     //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
     
     _scriptIndex = snapshot.scriptIndex;

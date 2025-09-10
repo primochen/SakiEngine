@@ -107,6 +107,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _setupConsoleSequenceDetector();
 
     if (widget.saveSlotToLoad != null) {
+      print('[GamePlayScreen] 从存档加载，走存档路径');
       _currentScript = widget.saveSlotToLoad!.currentScript;
       //print('🎮 读取存档: currentScript = $_currentScript');
       //print('🎮 存档中的scriptIndex = ${widget.saveSlotToLoad!.snapshot.scriptIndex}');
@@ -120,6 +121,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         _gameManager.setContext(context, this as TickerProvider);
       });
     } else {
+      print('[GamePlayScreen] 新游戏启动，调用startGame，脚本: $_currentScript');
       _gameManager.startGame(_currentScript);
       // 延迟设置context，确保组件已mounted
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:path/path.dart' as p;
+import 'package:sakiengine/src/utils/webp_preload_cache.dart';
 
 /// WebP动图播放组件
 /// 支持WebP动画的播放和控制
@@ -127,6 +128,62 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
     try {
       print('[AnimatedWebPImage] 开始加载WebP动图: ${widget.assetPath}');
       
+      // 从资源路径提取资源名称
+      String assetName = widget.assetPath;
+      if (assetName.startsWith('assets/')) {
+        assetName = p.basenameWithoutExtension(assetName);
+      } else if (assetName.contains('/')) {
+        assetName = p.basename(assetName);
+        if (assetName.contains('.')) {
+          assetName = p.basenameWithoutExtension(assetName);
+        }
+      }
+      
+      // 首先尝试从预加载缓存获取
+      final cache = WebPPreloadCache();
+      if (cache.isCached(assetName)) {
+        print('[AnimatedWebPImage] 从缓存加载: $assetName');
+        final cachedFrames = cache.getCachedFrames(assetName)!;
+        final cachedDuration = cache.getCachedDuration(assetName)!;
+        
+        // 将ui.Image包装为ImageInfo
+        _frames = cachedFrames.map((frame) => ImageInfo(image: frame)).toList();
+        
+        // 创建动画控制器
+        if (_frames.length > 1) {
+          _animationController = AnimationController(
+            duration: widget.frameDuration ?? cachedDuration,
+            vsync: this,
+          );
+          
+          if (widget.autoPlay) {
+            if (widget.loop) {
+              _animationController.repeat();
+            } else {
+              _animationController.forward();
+            }
+          }
+          
+          print('[AnimatedWebPImage] 缓存动图加载完成: ${_frames.length}帧, 时长: ${cachedDuration.inMilliseconds}ms');
+        } else {
+          _animationController = AnimationController(
+            duration: const Duration(milliseconds: 100),
+            vsync: this,
+          );
+          print('[AnimatedWebPImage] 缓存静图加载完成');
+        }
+        
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      
+      // 缓存未命中，使用原有逻辑加载
+      print('[AnimatedWebPImage] 缓存未命中，直接加载: ${widget.assetPath}');
+      
       // 使用新的字节加载函数
       final bytes = await _loadWebPBytes();
       if (bytes == null) {
@@ -149,11 +206,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
           _frames.add(ImageInfo(image: frame.image));
           totalDuration += frame.duration;
         }
-        
-        // 计算平均帧时长
-        final averageFrameDuration = Duration(
-          microseconds: totalDuration.inMicroseconds ~/ frameCount
-        );
         
         // 创建动画控制器
         _animationController = AnimationController(
