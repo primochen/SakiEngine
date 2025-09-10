@@ -331,6 +331,7 @@ class SksParser {
       String? character;
       String? pose;
       String? expression;
+      String? position;
       String? animation;
       int? repeatCount;
       
@@ -344,11 +345,14 @@ class SksParser {
           if (parts.length > 1) {
             final attrs = parts.sublist(1);
             
-            // 查找an和repeat关键字位置
+            // 查找at、an和repeat关键字位置
+            int atIndex = -1;
             int anIndex = -1;
             int repeatIndex = -1;
             for (int i = 0; i < attrs.length; i++) {
-              if (attrs[i] == 'an') {
+              if (attrs[i] == 'at') {
+                atIndex = i;
+              } else if (attrs[i] == 'an') {
                 anIndex = i;
               } else if (attrs[i] == 'repeat') {
                 repeatIndex = i;
@@ -370,8 +374,27 @@ class SksParser {
               if (anIndex + 1 < endIndex) {
                 animation = attrs[anIndex + 1];
               }
-              regularAttrs = attrs.sublist(0, anIndex);
+              
+              if (atIndex >= 0 && atIndex < anIndex) {
+                // at在an之前：character pose expression at position an animation
+                final attributeParts = attrs.sublist(0, atIndex);
+                regularAttrs = attributeParts;
+                if (atIndex + 1 < anIndex) {
+                  position = attrs[atIndex + 1];
+                }
+              } else {
+                // 没有at或at在an之后（无效）
+                regularAttrs = attrs.sublist(0, anIndex);
+              }
+            } else if (atIndex >= 0 && atIndex < endIndex) {
+              // 有at但没有an：character pose expression at position
+              final attributeParts = attrs.sublist(0, atIndex);
+              regularAttrs = attributeParts;
+              if (atIndex + 1 < endIndex) {
+                position = attrs[atIndex + 1];
+              }
             } else {
+              // 没有特殊语法，都是普通属性
               regularAttrs = attrs.sublist(0, endIndex);
             }
             
@@ -394,6 +417,7 @@ class SksParser {
         conditionValue: conditionValue,
         pose: pose,
         expression: expression,
+        position: position,
         animation: animation,
         repeatCount: repeatCount,
       );
@@ -431,17 +455,21 @@ class SksParser {
     final character = parts[0];
     String? pose;
     String? expression;
+    String? position;
     int? repeatCount;
     
-    // 解析pose、expression、animation和repeat属性
+    // 解析pose、expression、position、animation和repeat属性
     if (parts.length > 1) {
         final attrs = parts.sublist(1);
         
-        // 查找an和repeat关键字位置
+        // 查找at、an和repeat关键字位置
+        int atIndex = -1;
         int anIndex = -1;
         int repeatIndex = -1;
         for (int i = 0; i < attrs.length; i++) {
-          if (attrs[i] == 'an') {
+          if (attrs[i] == 'at') {
+            atIndex = i;
+          } else if (attrs[i] == 'an') {
             anIndex = i;
           } else if (attrs[i] == 'repeat') {
             repeatIndex = i;
@@ -464,8 +492,27 @@ class SksParser {
           if (anIndex + 1 < endIndex) {
             animation = attrs[anIndex + 1];
           }
-          regularAttrs = attrs.sublist(0, anIndex);
+          
+          if (atIndex >= 0 && atIndex < anIndex) {
+            // at在an之前：character pose expression at position an animation
+            final attributeParts = attrs.sublist(0, atIndex);
+            regularAttrs = attributeParts;
+            if (atIndex + 1 < anIndex) {
+              position = attrs[atIndex + 1];
+            }
+          } else {
+            // 没有at或at在an之后（无效）
+            regularAttrs = attrs.sublist(0, anIndex);
+          }
+        } else if (atIndex >= 0 && atIndex < endIndex) {
+          // 有at但没有an：character pose expression at position
+          final attributeParts = attrs.sublist(0, atIndex);
+          regularAttrs = attributeParts;
+          if (atIndex + 1 < endIndex) {
+            position = attrs[atIndex + 1];
+          }
         } else {
+          // 没有特殊语法，都是普通属性
           regularAttrs = attrs.sublist(0, endIndex);
         }
         
@@ -478,9 +525,9 @@ class SksParser {
           }
         }
         
-        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, animation: animation, repeatCount: repeatCount);
+        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount);
     }
     
-    return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression);
+    return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, position: position);
   }
 } 

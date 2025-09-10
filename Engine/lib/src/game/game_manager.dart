@@ -642,14 +642,21 @@ class GameManager {
           currentCharacterState = _currentState.characters[finalCharacterKey];
           
           if (currentCharacterState != null) {
-            // 角色已存在，更新表情和姿势
+            // 角色已存在，更新表情、姿势和位置
             final newCharacters = Map.of(_currentState.characters);
             final updatedCharacter = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
+              positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
               clearAnimationProperties: false,
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
+            
+            // 如果位置发生变化，检测并触发动画
+            if (node.position != null && node.position != currentCharacterState.positionId) {
+              await _checkAndAnimateCharacterPositions(newCharacters);
+            }
+            
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
             
@@ -661,7 +668,7 @@ class GameManager {
             // 角色不存在，创建新角色
             currentCharacterState = CharacterState(
               resourceId: characterConfig.resourceId,
-              positionId: characterConfig.defaultPoseId,
+              positionId: node.position ?? characterConfig.defaultPoseId, // 优先使用指定的position，否则使用默认值
             );
             
             final newCharacters = Map.of(_currentState.characters);
@@ -670,6 +677,10 @@ class GameManager {
               expression: node.expression,
               clearAnimationProperties: false,
             );
+            
+            // 检测角色位置变化并触发动画（如果需要）
+            await _checkAndAnimateCharacterPositions(newCharacters);
+            
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
             
@@ -755,16 +766,23 @@ class GameManager {
           //print('[GameManager] 查找角色 $finalCharacterKey: ${currentCharacterState != null ? "找到" : "未找到"}');
           
           if (currentCharacterState != null) {
-            // 角色已存在，更新表情和姿势
-            //print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}');
+            // 角色已存在，更新表情、姿势和位置
+            //print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}, position=${node.position}');
             final newCharacters = Map.of(_currentState.characters);
             final updatedCharacter = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
+              positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
               clearAnimationProperties: false,
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
-            //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}');
+            
+            // 如果位置发生变化，检测并触发动画
+            if (node.position != null && node.position != currentCharacterState.positionId) {
+              await _checkAndAnimateCharacterPositions(newCharacters);
+            }
+            
+            //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}, position=${updatedCharacter.positionId}');
             _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
             _gameStateController.add(_currentState);
             //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
@@ -778,7 +796,7 @@ class GameManager {
             //print('[GameManager] 创建新角色 $finalCharacterKey');
             currentCharacterState = CharacterState(
               resourceId: characterConfig.resourceId,
-              positionId: characterConfig.defaultPoseId,
+              positionId: node.position ?? characterConfig.defaultPoseId, // 优先使用指定的position，否则使用默认值
             );
             
             final newCharacters = Map.of(_currentState.characters);

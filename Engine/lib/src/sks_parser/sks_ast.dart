@@ -35,9 +35,10 @@ class SayNode implements SksNode {
   final String dialogue;
   final String? pose;
   final String? expression;
+  final String? position;
   final String? animation;
   final int? repeatCount;
-  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.animation, this.repeatCount});
+  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.position, this.animation, this.repeatCount});
 }
 
 class ChoiceOptionNode {
@@ -116,6 +117,7 @@ class ConditionalSayNode implements SksNode {
   final bool conditionValue;
   final String? pose;
   final String? expression;
+  final String? position;
   final String? animation;
   final int? repeatCount;
   
@@ -126,6 +128,7 @@ class ConditionalSayNode implements SksNode {
     required this.conditionValue,
     this.pose,
     this.expression,
+    this.position,
     this.animation,
     this.repeatCount,
   });
