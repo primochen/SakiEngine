@@ -267,10 +267,9 @@ class AssetManager {
           if (file is File) {
             final fileNameWithoutExt = p.basenameWithoutExtension(file.path);
             if (fileNameWithoutExt.toLowerCase() == fileNameToSearch.toLowerCase()) {
-              final relativePath = p.relative(file.path, from: gamePath);
-              // 在发布模式下，Flutter 需要 'assets/' 前缀
-              final assetPath = p.join('assets', relativePath).replaceAll('\\', '/');
-              _imageCache[name] = assetPath; // 使用原始名称作为缓存的键
+              // Debug模式下直接返回绝对路径，用于FileImage
+              final assetPath = file.path.replaceAll('\\', '/');
+              _imageCache[name] = assetPath;
               //print("Found asset in file system: $name -> $assetPath");
               return assetPath;
             }

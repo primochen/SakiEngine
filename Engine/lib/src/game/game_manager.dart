@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
@@ -1363,7 +1364,13 @@ class GameManager {
         final assetPath = await AssetManager().findAsset('backgrounds/${newBackground.replaceAll(' ', '-')}');
         if (assetPath != null && _context != null) {
           // 预加载图片到缓存
-          await precacheImage(AssetImage(assetPath), _context!);
+          if (kDebugMode && !assetPath.startsWith('assets/')) {
+            // Debug模式下，如果是绝对路径，使用FileImage
+            await precacheImage(FileImage(File(assetPath)), _context!);
+          } else {
+            // 发布模式或assets路径，使用AssetImage
+            await precacheImage(AssetImage(assetPath), _context!);
+          }
           //print('[GameManager] 预加载背景图片完成: $newBackground');
         }
       } catch (e) {
