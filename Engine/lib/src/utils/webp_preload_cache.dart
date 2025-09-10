@@ -26,11 +26,11 @@ class WebPPreloadCache {
     _loadingCompleters[assetName] = completer;
 
     try {
-      print('[WebPPreloadCache] 开始预加载: $assetName');
-      
       final assetPath = await AssetManager().findAsset(assetName);
       if (assetPath == null) {
-        print('[WebPPreloadCache] 资源不存在: $assetName');
+        if (kDebugMode) {
+          print('[WebPPreloadCache] 资源不存在: $assetName');
+        }
         completer.complete();
         _loadingCompleters.remove(assetName);
         return;
@@ -38,7 +38,9 @@ class WebPPreloadCache {
 
       final bytes = await _loadWebPBytes(assetPath);
       if (bytes == null) {
-        print('[WebPPreloadCache] 加载字节失败: $assetName');
+        if (kDebugMode) {
+          print('[WebPPreloadCache] 加载字节失败: $assetName');
+        }
         completer.complete();
         _loadingCompleters.remove(assetName);
         return;
@@ -46,8 +48,6 @@ class WebPPreloadCache {
 
       final codec = await ui.instantiateImageCodec(bytes);
       final frameCount = codec.frameCount;
-      
-      print('[WebPPreloadCache] WebP帧数: $frameCount for $assetName');
       
       if (frameCount > 1) {
         final frames = <ui.Image>[];
@@ -61,17 +61,17 @@ class WebPPreloadCache {
         
         _frameCache[assetName] = frames;
         _durationCache[assetName] = totalDuration;
-        print('[WebPPreloadCache] 动图预加载完成: $assetName, 总时长: ${totalDuration.inMilliseconds}ms');
       } else {
         final frame = await codec.getNextFrame();
         _frameCache[assetName] = [frame.image];
         _durationCache[assetName] = const Duration(milliseconds: 100);
-        print('[WebPPreloadCache] 静图预加载完成: $assetName');
       }
 
       completer.complete();
     } catch (e) {
-      print('[WebPPreloadCache] 预加载失败 $assetName: $e');
+      if (kDebugMode) {
+        print('[WebPPreloadCache] 预加载失败 $assetName: $e');
+      }
       completer.completeError(e);
     } finally {
       _loadingCompleters.remove(assetName);
@@ -110,7 +110,6 @@ class WebPPreloadCache {
         }
       }
       _durationCache.remove(assetName);
-      print('[WebPPreloadCache] 清除缓存: $assetName');
     } else {
       for (final frames in _frameCache.values) {
         for (final frame in frames) {
@@ -119,7 +118,6 @@ class WebPPreloadCache {
       }
       _frameCache.clear();
       _durationCache.clear();
-      print('[WebPPreloadCache] 清除所有缓存');
     }
   }
 

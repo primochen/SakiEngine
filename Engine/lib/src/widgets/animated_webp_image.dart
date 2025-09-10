@@ -126,8 +126,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
 
   Future<void> _loadWebPFrames() async {
     try {
-      print('[AnimatedWebPImage] 开始加载WebP动图: ${widget.assetPath}');
-      
       // 从资源路径提取资源名称
       String assetName = widget.assetPath;
       if (assetName.startsWith('assets/')) {
@@ -142,7 +140,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
       // 首先尝试从预加载缓存获取
       final cache = WebPPreloadCache();
       if (cache.isCached(assetName)) {
-        print('[AnimatedWebPImage] 从缓存加载: $assetName');
         final cachedFrames = cache.getCachedFrames(assetName)!;
         final cachedDuration = cache.getCachedDuration(assetName)!;
         
@@ -163,14 +160,11 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
               _animationController.forward();
             }
           }
-          
-          print('[AnimatedWebPImage] 缓存动图加载完成: ${_frames.length}帧, 时长: ${cachedDuration.inMilliseconds}ms');
         } else {
           _animationController = AnimationController(
             duration: const Duration(milliseconds: 100),
             vsync: this,
           );
-          print('[AnimatedWebPImage] 缓存静图加载完成');
         }
         
         if (mounted) {
@@ -182,7 +176,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
       }
       
       // 缓存未命中，使用原有逻辑加载
-      print('[AnimatedWebPImage] 缓存未命中，直接加载: ${widget.assetPath}');
       
       // 使用新的字节加载函数
       final bytes = await _loadWebPBytes();
@@ -193,8 +186,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
       // 使用Flutter的图像解码器
       final codec = await ui.instantiateImageCodec(bytes);
       final frameCount = codec.frameCount;
-      
-      print('[AnimatedWebPImage] WebP帧数: $frameCount');
       
       if (frameCount > 1) {
         // 这是一个动图
@@ -220,8 +211,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
             _animationController.forward();
           }
         }
-        
-        print('[AnimatedWebPImage] WebP动图加载完成，总时长: ${totalDuration.inMilliseconds}ms');
       } else {
         // 这是一个静态图片
         final frame = await codec.getNextFrame();
@@ -231,8 +220,6 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
           duration: const Duration(milliseconds: 100),
           vsync: this,
         );
-        
-        print('[AnimatedWebPImage] 加载静态WebP图片');
       }
       
       if (mounted) {
@@ -241,7 +228,9 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
         });
       }
     } catch (e) {
-      print('[AnimatedWebPImage] 加载WebP失败: $e');
+      if (kDebugMode) {
+        print('[AnimatedWebPImage] 加载WebP失败: $e');
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -257,8 +246,8 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
       return SizedBox(
         width: widget.width,
         height: widget.height,
-        child: const Center(
-          child: CircularProgressIndicator(),
+        child: Container(
+          color: Colors.black, // 黑屏替代转圈加载
         ),
       );
     }
