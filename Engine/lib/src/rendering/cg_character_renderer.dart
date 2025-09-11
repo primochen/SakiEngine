@@ -212,17 +212,9 @@ class CgDissolvePainter extends CustomPainter {
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
     try {
-      // 如果没有之前的图片（首次显示），从透明开始
-      if (imageFrom == imageTo) {
-        // 首次显示：简单的透明度渐变，使用BoxFit.cover效果铺满整个画布
-        final paint = ui.Paint()
-          ..color = Colors.white.withOpacity(progress)
-          ..isAntiAlias = true
-          ..filterQuality = FilterQuality.high;
-        
-        // 计算BoxFit.cover的缩放和偏移
-        final imageSize = Size(imageTo.width.toDouble(), imageTo.height.toDouble());
-        final targetSize = size;
+      // 通用的BoxFit.cover计算函数
+      ui.Rect _calculateCoverRect(ui.Image image, ui.Size targetSize) {
+        final imageSize = Size(image.width.toDouble(), image.height.toDouble());
         
         // 计算缩放比例
         final scaleX = targetSize.width / imageSize.width;
@@ -237,34 +229,62 @@ class CgDissolvePainter extends CustomPainter {
         final offsetX = (targetSize.width - scaledWidth) / 2;
         final offsetY = (targetSize.height - scaledHeight) / 2;
         
+        return ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
+      }
+
+      // 如果没有之前的图片（首次显示），从透明开始
+      if (imageFrom == imageTo) {
+        // 首次显示：简单的透明度渐变，使用BoxFit.cover效果铺满整个画布
+        final paint = ui.Paint()
+          ..color = Colors.white.withOpacity(progress)
+          ..isAntiAlias = true
+          ..filterQuality = FilterQuality.high;
+        
+        final imageRect = _calculateCoverRect(imageTo, size);
+        
         // 绘制图像
         canvas.drawImageRect(
           imageTo,
-          ui.Rect.fromLTWH(0, 0, imageSize.width, imageSize.height),
-          ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight),
+          ui.Rect.fromLTWH(0, 0, imageTo.width.toDouble(), imageTo.height.toDouble()),
+          imageRect,
           paint,
         );
         return;
       }
 
-      // 差分切换：使用dissolve效果，也要应用BoxFit.cover
-      final shader = program.fragmentShader();
-      shader
-        ..setFloat(0, progress)
-        ..setFloat(1, size.width)
-        ..setFloat(2, size.height)
-        ..setFloat(3, imageFrom.width.toDouble())
-        ..setFloat(4, imageFrom.height.toDouble())
-        ..setFloat(5, imageTo.width.toDouble())
-        ..setFloat(6, imageTo.height.toDouble())
-        ..setImageSampler(0, imageFrom)
-        ..setImageSampler(1, imageTo);
-
-      final paint = ui.Paint()
-        ..shader = shader
+      // 差分切换：使用dissolve效果，但我们需要手动绘制两个图像并应用BoxFit.cover
+      // 而不是直接使用shader，因为shader会拉伸图像
+      
+      // 计算两个图像的显示区域
+      final fromRect = _calculateCoverRect(imageFrom, size);
+      final toRect = _calculateCoverRect(imageTo, size);
+      
+      // 先绘制fromImage
+      final fromPaint = ui.Paint()
+        ..color = Colors.white.withOpacity(1.0 - progress)
         ..isAntiAlias = true
         ..filterQuality = FilterQuality.high;
-      canvas.drawRect(ui.Rect.fromLTWH(0, 0, size.width, size.height), paint);
+      
+      canvas.drawImageRect(
+        imageFrom,
+        ui.Rect.fromLTWH(0, 0, imageFrom.width.toDouble(), imageFrom.height.toDouble()),
+        fromRect,
+        fromPaint,
+      );
+      
+      // 再绘制toImage
+      final toPaint = ui.Paint()
+        ..color = Colors.white.withOpacity(progress)
+        ..isAntiAlias = true
+        ..filterQuality = FilterQuality.high;
+      
+      canvas.drawImageRect(
+        imageTo,
+        ui.Rect.fromLTWH(0, 0, imageTo.width.toDouble(), imageTo.height.toDouble()),
+        toRect,
+        toPaint,
+      );
+      
     } catch (e) {
       print("Error painting CG dissolve shader: $e");
     }
