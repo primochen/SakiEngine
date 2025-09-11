@@ -266,24 +266,54 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     }
   }
 
+  int _getCurrentGridColumnCount(BuildContext context) {
+    final screenRatio = MediaQuery.of(context).size.height / MediaQuery.of(context).size.width;
+    if (screenRatio > 1.5) {
+      return 2;
+    } else if (screenRatio > 1.0) {
+      return 3;
+    } else {
+      return 4;
+    }
+  }
+
   Future<void> _handleMove(int fromSlotId, int direction) async {
+    final columnCount = _getCurrentGridColumnCount(context);
     int toSlotId;
     String directionText;
     
+    // 计算当前存档位在网格中的行列位置（从0开始）
+    final fromRow = (fromSlotId - 1) ~/ columnCount;
+    final fromCol = (fromSlotId - 1) % columnCount;
+    
     switch (direction) {
       case 0: // 上
-        toSlotId = fromSlotId - 3;
+        final toRow = fromRow - 1;
+        if (toRow < 0) {
+          _notificationOverlayKey.currentState?.show('已经在第一行，无法向上移动');
+          return;
+        }
+        toSlotId = toRow * columnCount + fromCol + 1;
         directionText = '上方';
         break;
       case 1: // 下
-        toSlotId = fromSlotId + 3;
+        final toRow = fromRow + 1;
+        toSlotId = toRow * columnCount + fromCol + 1;
         directionText = '下方';
         break;
       case 2: // 左
+        if (fromCol == 0) {
+          _notificationOverlayKey.currentState?.show('已经在最左侧，无法向左移动');
+          return;
+        }
         toSlotId = fromSlotId - 1;
         directionText = '左侧';
         break;
       case 3: // 右
+        if (fromCol == columnCount - 1) {
+          _notificationOverlayKey.currentState?.show('已经在最右侧，无法向右移动');
+          return;
+        }
         toSlotId = fromSlotId + 1;
         directionText = '右侧';
         break;
