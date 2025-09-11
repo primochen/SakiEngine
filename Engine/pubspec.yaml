@@ -30,7 +30,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flame: ^1.19.0 # Add flame dependency
 
   # Add flutter_animate dependency (using specific version constraint)
   flutter_animate: ^4.5.0 # Use a specific constraint like ^4.0.0 or newer
