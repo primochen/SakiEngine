@@ -81,8 +81,27 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       }
       _totalPages.value = initialPages;
       
-      // 加载第一页
-      await _loadSlotsForPage(1);
+      // 加载所有包含存档的页面，确保现有存档都被加载
+      if (_existingSlotIds != null && _existingSlotIds!.isNotEmpty) {
+        final Set<int> pagesToLoad = {};
+        for (final slotId in _existingSlotIds!) {
+          final page = ((slotId - 1) / _slotsPerPage).floor() + 1;
+          pagesToLoad.add(page);
+        }
+        
+        // 加载所有相关页面
+        for (final page in pagesToLoad) {
+          await _loadSlotsForPage(page);
+        }
+        
+        // 如果第一页没有被加载，也要加载它以显示空档位
+        if (!pagesToLoad.contains(1)) {
+          await _loadSlotsForPage(1);
+        }
+      } else {
+        // 没有任何存档时，只加载第一页
+        await _loadSlotsForPage(1);
+      }
     } catch (e) {
       _notificationOverlayKey.currentState?.show('初始化存档列表失败: $e');
     }
@@ -272,7 +291,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         return;
     }
     
-    if (toSlotId < 1 || toSlotId > 12) {
+    if (toSlotId < 1) {
       _notificationOverlayKey.currentState?.show('无法移动到档位 ${toSlotId.toString().padLeft(2, '0')}');
       return;
     }
