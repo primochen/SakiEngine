@@ -271,7 +271,7 @@ class GameManager {
       await Future.wait(futures);
     } catch (e) {
       if (kDebugMode) {
-        print('[GameManager] anime资源预加载出现错误: $e');
+        //print('[GameManager] anime资源预加载出现错误: $e');
       }
       rethrow;
     }
@@ -487,7 +487,7 @@ class GameManager {
       await _analyzeAndPreloadAnimeResources();
     } catch (e) {
       if (kDebugMode) {
-        print('[GameManager] 预加载anime资源失败: $e');
+        //print('[GameManager] 预加载anime资源失败: $e');
       }
     }
     
@@ -543,7 +543,7 @@ class GameManager {
   void next() async {
     // 检查是否需要清除anime覆盖层（在用户交互时）
     if (_currentState.animeOverlay != null && !_currentState.animeKeep) {
-      print('[GameManager] 用户点击继续，清除anime覆盖层: ${_currentState.animeOverlay}');
+      //print('[GameManager] 用户点击继续，清除anime覆盖层: ${_currentState.animeOverlay}');
       _currentState = _currentState.copyWith(
         clearAnimeOverlay: true,
         everShownCharacters: _everShownCharacters,
@@ -604,7 +604,7 @@ class GameManager {
         final shouldClearCG = !isNewBackgroundCG && _currentState.cgCharacters.isNotEmpty;
         
         if (shouldClearCG) {
-          print('[GameManager] 切换到非CG背景，清空CG状态');
+          //print('[GameManager] 切换到非CG背景，清空CG状态');
         }
         
         // 检查下一个节点是否是FxNode，如果是则一起处理
@@ -684,7 +684,7 @@ class GameManager {
       }
 
       if (node is AnimeNode) {
-        print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}, keep: ${node.keep}');
+        //print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}, keep: ${node.keep}');
         
         // 直接设置新的anime，不需要清除检查（因为这是设置anime的命令）
         _currentState = _currentState.copyWith(
@@ -710,7 +710,7 @@ class GameManager {
       if (node is ShowNode) {
         // 检查是否有CG正在显示，如果有则跳过立绘显示
         if (_currentState.cgCharacters.isNotEmpty) {
-          print('[GameManager] CG正在显示，跳过ShowNode: ${node.character}');
+          //print('[GameManager] CG正在显示，跳过ShowNode: ${node.character}');
           _scriptIndex++;
           continue;
         }
@@ -774,7 +774,7 @@ class GameManager {
       }
 
       if (node is CgNode) {
-        print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        //print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
         
         // CG显示命令，类似ShowNode但渲染方式像scene一样铺满
         final characterConfig = _characterConfigs[node.character];
@@ -783,12 +783,12 @@ class GameManager {
         String finalCharacterKey; // 最终使用的角色key
         
         if (characterConfig != null) {
-          print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          //print('[GameManager] 使用角色配置: ${characterConfig.id}');
           resourceId = characterConfig.resourceId;
           positionId = characterConfig.defaultPoseId ?? 'pose';
           finalCharacterKey = resourceId; // 使用resourceId作为key
         } else {
-          print('[GameManager] 直接使用资源ID: ${node.character}');
+          //print('[GameManager] 直接使用资源ID: ${node.character}');
           resourceId = node.character;
           positionId = node.position ?? 'pose';
           finalCharacterKey = node.character; // 使用原始名称作为key
@@ -808,7 +808,7 @@ class GameManager {
           everShownCharacters: _everShownCharacters
         );
         
-        print('[GameManager] 已清除背景，准备显示CG角色');
+        //print('[GameManager] 已清除背景，准备显示CG角色');
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
@@ -820,7 +820,7 @@ class GameManager {
           positionId: positionId,
         );
         
-        print('[GameManager] CG更新: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
+        //print('[GameManager] CG更新: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
 
         newCgCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: newPose,
@@ -835,7 +835,7 @@ class GameManager {
         );
         _gameStateController.add(_currentState);
         
-        print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
+        //print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
         
         // 如果有动画，启动动画播放（非阻塞）
         if (node.animation != null) {
@@ -1369,7 +1369,7 @@ class GameManager {
       await _analyzeAndPreloadAnimeResources();
     } catch (e) {
       if (kDebugMode) {
-        print('[GameManager] 存档恢复：预加载anime资源失败: $e');
+        //print('[GameManager] 存档恢复：预加载anime资源失败: $e');
       }
     }
     //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
@@ -1595,10 +1595,10 @@ class GameManager {
           }
           //print('[GameManager] 预加载背景图片完成: $newBackground -> $assetPath');
         } else {
-          print('[GameManager] 警告: 无法找到背景图片进行预加载: $newBackground');
+          //print('[GameManager] 警告: 无法找到背景图片进行预加载: $newBackground');
         }
       } catch (e) {
-        print('[GameManager] 预加载背景图片失败: $e');
+        //print('[GameManager] 预加载背景图片失败: $e');
       }
     }
     
@@ -1782,7 +1782,7 @@ class GameManager {
       // 发送状态更新
       _gameStateController.add(_currentState);
     } else {
-      print('[GameManager] 当前场景没有检测到动画');
+      //print('[GameManager] 当前场景没有检测到动画');
     }
   }
   void stopAllSounds() {
@@ -1868,7 +1868,7 @@ class GameManager {
 
   /// 播放场景动画
   Future<void> _startSceneAnimation(String animationName, int? repeatCount) async {
-    print('[GameManager] 开始播放场景动画: $animationName, repeat: $repeatCount');
+    //print('[GameManager] 开始播放场景动画: $animationName, repeat: $repeatCount');
     
     // 停止之前的场景动画
     _sceneAnimationController?.dispose();
@@ -1894,7 +1894,7 @@ class GameManager {
         _gameStateController.add(_currentState);
       },
       onComplete: () {
-        print('[GameManager] 场景动画 $animationName 播放完成');
+        //print('[GameManager] 场景动画 $animationName 播放完成');
         // 保持动画的最终状态，不清除动画属性
         final finalProperties = _sceneAnimationController?.currentProperties;
         if (finalProperties != null) {

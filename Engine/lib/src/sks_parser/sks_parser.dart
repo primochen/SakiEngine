@@ -190,7 +190,7 @@ class SksParser {
             }
           }
           
-          print('[SksParser] 解析anime命令: $animeName, loop: $isLoop, keep: $keepAfterComplete, transition: $transitionType, timer: $timerValue');
+          //print('[SksParser] 解析anime命令: $animeName, loop: $isLoop, keep: $keepAfterComplete, transition: $transitionType, timer: $timerValue');
           nodes.add(AnimeNode(animeName, loop: isLoop, keep: keepAfterComplete, transitionType: transitionType, timer: timerValue));
           break;
         case 'show':
@@ -283,7 +283,7 @@ class SksParser {
           nodes.add(ShowNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
           break;
         case 'cg':
-          print('[SksParser] 解析cg命令: $trimmedLine');
+          //print('[SksParser] 解析cg命令: $trimmedLine');
           final character = parts[1];
           
           // CG显示命令，支持与show相同的参数，但渲染方式像scene一样铺满
@@ -379,7 +379,7 @@ class SksParser {
             }
           }
           
-          print('[SksParser] CG解析结果: character=$character, pose=$pose, expression=$expression, position=$position, animation=$animation');
+          //print('[SksParser] CG解析结果: character=$character, pose=$pose, expression=$expression, position=$position, animation=$animation');
           nodes.add(CgNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
           break;
         case 'hide':

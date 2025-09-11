@@ -135,6 +135,29 @@ class TypewriterAnimationManager extends ChangeNotifier {
       return;
     }
     
+    // 检查是否是瞬间显示的段落
+    if (currentSegment.isInstantDisplay) {
+      // 瞬间显示整个段落
+      _currentSegmentCharIndex = currentSegment.text.length;
+      _currentCharIndex += currentSegment.text.length;
+      _displayedText = _cleanedText.substring(0, _currentCharIndex);
+      
+      if (_currentCharIndex >= _cleanedText.length) {
+        _completeTyping();
+        notifyListeners();
+        return;
+      }
+      
+      // 立即进入下一个段落
+      _currentSegmentIndex++;
+      _currentSegmentCharIndex = 0;
+      notifyListeners();
+      
+      // 继续处理下一个段落，不等待
+      _startTypewriterAnimation();
+      return;
+    }
+    
     // 普通文本段
     if (_currentSegmentCharIndex >= currentSegment.text.length) {
       _currentSegmentIndex++;

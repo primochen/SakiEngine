@@ -200,9 +200,6 @@ class ImageLoader {
         final bytes = await file.readAsBytes();
         final codec = await ui.instantiateImageCodec(bytes);
         final frame = await codec.getNextFrame();
-        if (kDebugMode) {
-          print('从外部文件加载图像: $fileSystemPath');
-        }
         return frame.image;
       }
       
@@ -221,9 +218,6 @@ class ImageLoader {
           final bytes = await foundFile.readAsBytes();
           final codec = await ui.instantiateImageCodec(bytes);
           final frame = await codec.getNextFrame();
-          if (kDebugMode) {
-            print('通过AssetManager从外部文件加载图像: $foundFileSystemPath');
-          }
           return frame.image;
         }
       }
