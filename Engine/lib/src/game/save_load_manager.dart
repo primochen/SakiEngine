@@ -161,6 +161,66 @@ class SaveLoadManager {
     return saveSlots;
   }
 
+  /// 获取指定范围的存档位信息（懒加载支持）
+  Future<List<SaveSlot?>> listSaveSlotsInRange(int startSlotId, int endSlotId) async {
+    final directory = await getSavesDirectory();
+    final result = <SaveSlot?>[];
+    
+    for (int slotId = startSlotId; slotId <= endSlotId; slotId++) {
+      try {
+        final slot = await loadGame(slotId);
+        result.add(slot);
+      } catch (e) {
+        result.add(null);
+      }
+    }
+    
+    return result;
+  }
+
+  /// 获取所有存在的存档位ID（用于快速检测存档分布）
+  Future<List<int>> getExistingSaveSlotIds() async {
+    final directory = await getSavesDirectory();
+    final files = await Directory(directory).list().toList();
+    final existingIds = <int>[];
+    
+    for (var fileEntity in files) {
+      if (fileEntity is File && fileEntity.path.endsWith('.sakisav')) {
+        try {
+          // 从文件名提取ID: save_123.sakisav -> 123
+          final fileName = p.basenameWithoutExtension(fileEntity.path);
+          if (fileName.startsWith('save_')) {
+            final idStr = fileName.substring(5);
+            final id = int.tryParse(idStr);
+            if (id != null) {
+              existingIds.add(id);
+            }
+          }
+        } catch (e) {
+          // 忽略解析错误的文件名
+        }
+      }
+    }
+    
+    existingIds.sort();
+    return existingIds;
+  }
+
+  /// 获取下一个可用的存档位ID
+  Future<int> getNextAvailableSlotId() async {
+    final existingIds = await getExistingSaveSlotIds();
+    if (existingIds.isEmpty) return 1;
+    
+    // 查找第一个空隙
+    for (int i = 1; i <= existingIds.last + 1; i++) {
+      if (!existingIds.contains(i)) {
+        return i;
+      }
+    }
+    
+    return existingIds.last + 1;
+  }
+
   Future<void> deleteSave(int slotId) async {
     final saveSlot = await loadGame(slotId);
     if (saveSlot?.isLocked == true) {
