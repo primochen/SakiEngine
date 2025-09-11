@@ -541,6 +541,16 @@ class GameManager {
   }
 
   void next() async {
+    // 检查是否需要清除anime覆盖层（在用户交互时）
+    if (_currentState.animeOverlay != null && !_currentState.animeKeep) {
+      print('[GameManager] 用户点击继续，清除anime覆盖层: ${_currentState.animeOverlay}');
+      _currentState = _currentState.copyWith(
+        clearAnimeOverlay: true,
+        everShownCharacters: _everShownCharacters,
+      );
+      _gameStateController.add(_currentState);
+    }
+    
     // 在用户点击继续时检查音乐区间
     await _checkMusicRegionAtCurrentIndex();
     _executeScript();
@@ -676,6 +686,7 @@ class GameManager {
       if (node is AnimeNode) {
         print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}, keep: ${node.keep}');
         
+        // 直接设置新的anime，不需要清除检查（因为这是设置anime的命令）
         _currentState = _currentState.copyWith(
           animeOverlay: node.animeName,
           animeLoop: node.loop,
@@ -689,6 +700,7 @@ class GameManager {
         if (node.timer != null && node.timer! > 0) {
           _isWaitingForTimer = true;
           _startSceneTimer(node.timer!);
+          return; // 等待计时器结束
         }
         
         _scriptIndex++;
