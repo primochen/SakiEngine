@@ -277,6 +277,50 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     }
   }
 
+  String _formatScriptName(String scriptName) {
+    if (scriptName.isEmpty) return '';
+    
+    // 处理特殊脚本名
+    if (scriptName == 'start') {
+      return '--序章--';
+    }
+    
+    // 处理章节脚本名 (cpx_xxx 格式)
+    final chapterMatch = RegExp(r'^cp(\d+)(_.*)?$').firstMatch(scriptName);
+    if (chapterMatch != null) {
+      final chapterNum = int.parse(chapterMatch.group(1)!);
+      final chapterName = _getChapterName(chapterNum);
+      return '--第$chapterName章--';
+    }
+    
+    // 处理其他特殊脚本
+    if (scriptName.startsWith('epilogue')) {
+      return '--尾声--';
+    }
+    if (scriptName.startsWith('prologue')) {
+      return '--序章--';
+    }
+    if (scriptName.startsWith('ending')) {
+      return '--结局--';
+    }
+    
+    // 默认返回原文件名
+    return scriptName;
+  }
+  
+  String _getChapterName(int chapterNum) {
+    const chapterNames = [
+      '零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
+      '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十'
+    ];
+    
+    if (chapterNum < chapterNames.length) {
+      return chapterNames[chapterNum];
+    } else {
+      return chapterNum.toString(); // 超过20章用阿拉伯数字
+    }
+  }
+
   Future<void> _handleMove(int fromSlotId, int direction) async {
     final columnCount = _getCurrentGridColumnCount(context);
     int toSlotId;
@@ -430,6 +474,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
                 key: ValueKey('slot_$slotId'),
                 slotId: slotId,
                 saveSlot: saveSlot,
+                formattedScriptName: saveSlot != null ? _formatScriptName(saveSlot.currentScript) : '',
                 config: config,
                 uiScale: uiScale,
                 textScale: textScale,
@@ -501,6 +546,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 class _SaveSlotCard extends StatefulWidget {
   final int slotId;
   final SaveSlot? saveSlot;
+  final String formattedScriptName;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
   final VoidCallback? onToggleLock;
@@ -513,6 +559,7 @@ class _SaveSlotCard extends StatefulWidget {
     super.key,
     required this.slotId,
     this.saveSlot,
+    required this.formattedScriptName,
     required this.onTap,
     this.onDelete,
     this.onToggleLock,
@@ -724,6 +771,21 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
               ),
           ],
         ),
+        // 脚本文件名显示
+        if (widget.saveSlot != null && widget.formattedScriptName.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: 2 * uiScale),
+            child: Text(
+              widget.formattedScriptName,
+              style: config.reviewTitleTextStyle.copyWith(
+                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
+                color: config.themeColors.primary.withOpacity(0.6 * opacity),
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         SizedBox(height: 6 * uiScale),
         // 内容区域 - 使用Expanded确保不会溢出
         Expanded(
