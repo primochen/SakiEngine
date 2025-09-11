@@ -156,6 +156,8 @@ class ScriptMerger {
       return 'Background: ${node.background}';
     } else if (node is ShowNode) {
       return 'Show: ${node.character} (${node.pose ?? 'default'}, ${node.expression ?? 'default'})';
+    } else if (node is CgNode) {
+      return 'CG: ${node.character} (${node.pose ?? 'default'}, ${node.expression ?? 'default'})';
     } else if (node is HideNode) {
       return 'Hide: ${node.character}';
     } else if (node is JumpNode) {

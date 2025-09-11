@@ -36,6 +36,16 @@ class ShowNode implements SksNode {
   ShowNode(this.character, {this.pose, this.expression, this.position, this.animation, this.repeatCount});
 }
 
+class CgNode implements SksNode {
+  final String character;
+  final String? pose;
+  final String? expression;
+  final String? position;
+  final String? animation;
+  final int? repeatCount;
+  CgNode(this.character, {this.pose, this.expression, this.position, this.animation, this.repeatCount});
+}
+
 class HideNode implements SksNode {
   final String character;
   HideNode(this.character);

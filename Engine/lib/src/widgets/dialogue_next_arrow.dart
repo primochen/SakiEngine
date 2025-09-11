@@ -32,7 +32,7 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
     super.initState();
     
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500), // 加快到1.5秒
+      duration: const Duration(milliseconds: 2400), // 改为2.4秒，让每个90度旋转约600ms
       vsync: this,
     )..repeat();
   }
@@ -101,17 +101,54 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
     }
   }
 
-  /// 构建下划线
+  /// 构建下划线（改为循环箭头）
   Widget _buildUnderscore(Color effectiveColor, double size) {
-    final breathAlpha = (sin(_animationController.value * 2.0 * pi) * 0.3 + 0.7).clamp(0.4, 1.0);
-    return Transform.translate(
-      offset: Offset(0, -size * 0.2), // 向上偏移20%的字体大小
-      child: Text(
-        '_',
-        style: TextStyle(
-          color: effectiveColor.withValues(alpha: breathAlpha),
-          fontSize: size*0.8,
-          fontWeight: FontWeight.bold,
+    // 计算旋转角度 - 每个周期分为4个90度旋转，每次旋转后停顿
+    final double cycleValue = _animationController.value * 4; // 0-4的范围，对应4个90度旋转
+    final int stepIndex = cycleValue.floor(); // 当前在第几个步骤 (0,1,2,3)
+    final double stepProgress = cycleValue - stepIndex; // 当前步骤内的进度 (0.0-1.0)
+    
+    // 发条式动画：前60%时间快速旋转，后40%时间停顿
+    double rotationProgress;
+    double scaleProgress;
+    
+    if (stepProgress < 0.4) {
+      // 旋转阶段：使用easeOutCubic让旋转有冲劲然后减速
+      final double t = stepProgress / 0.6;
+      rotationProgress = 1 - (1 - t) * (1 - t) * (1 - t);
+      
+      // 缩放动画：开始膨胀，然后压缩，最后弹回
+      if (t < 0.3) {
+        // 前30%：膨胀阶段 (1.0 -> 1.2)
+        scaleProgress = 1.0 + (t / 0.3) * 0.2;
+      } else if (t < 0.7) {
+        // 中40%：压缩阶段 (1.2 -> 0.85)
+        final double compressT = (t - 0.3) / 0.4;
+        scaleProgress = 1.2 - compressT * 0.35;
+      } else {
+        // 后30%：弹回阶段 (0.85 -> 1.0)
+        final double bounceT = (t - 0.7) / 0.3;
+        // 使用弹性缓动
+        final double elasticBounce = 1 - (1 - bounceT) * (1 - bounceT) * (1 - bounceT);
+        scaleProgress = 0.85 + elasticBounce * 0.15;
+      }
+    } else {
+      // 停顿阶段：保持完成状态
+      rotationProgress = 1.0;
+      scaleProgress = 1.0;
+    }
+        
+    // 计算实际旋转角度（每次旋转90度）
+    final double rotation = (stepIndex + rotationProgress) * 90 * (pi / 180);
+    
+    return Transform.scale(
+      scale: scaleProgress,
+      child: Transform.rotate(
+        angle: rotation,
+        child: Icon(
+          Icons.autorenew_rounded,
+          color: effectiveColor,
+          size: size*0.75, // 稍微小一点以匹配原来的下划线大小
         ),
       ),
     );

@@ -131,10 +131,16 @@
             "patterns": [
                 {
                     "name": "keyword.control.sks",
-                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx|with|an|play|stop)\\b"
+                    "match": "\\b(label|scene|show|at|menu|endmenu|jump|if|else|endif|return|nvl|endnvl|nvlm|endnvlm|timer|fx|with|an|play|stop|anime|cg)\\b"
                 },
                 {
                     "include": "#scene-syntax"
+                },
+                {
+                    "include": "#anime-syntax"
+                },
+                {
+                    "include": "#cg-syntax"
                 },
                 {
                     "include": "#fx-syntax"
@@ -332,6 +338,41 @@
                 {
                     "name": "constant.other.animation.sks",
                     "match": "\\b(pulse|fade|wave|none)\\b"
+                }
+            ]
+        },
+        "anime-syntax": {
+            "patterns": [
+                {
+                    "name": "meta.anime-command.sks",
+                    "match": "^\\s*(anime)\\s+([\\w\\-_]+)(?:\\s+(keep|loop))*\\s*$",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.sks"
+                        },
+                        "2": {
+                            "name": "entity.name.type.animation-file.sks"
+                        },
+                        "3": {
+                            "name": "constant.other.anime-parameter.sks"
+                        }
+                    }
+                }
+            ]
+        },
+        "cg-syntax": {
+            "patterns": [
+                {
+                    "name": "meta.cg-command.sks",
+                    "match": "^\\s*(cg)\\s+([\\w\\-_#.]+)\\s*$",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.sks"
+                        },
+                        "2": {
+                            "name": "entity.name.type.cg-file.sks"
+                        }
+                    }
                 }
             ]
         },

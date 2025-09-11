@@ -85,7 +85,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
       builder: (builderContext, snapshot) {
         if (!snapshot.hasData) {
           return Scaffold(
-            body: Center(child: Container(color: Colors.black)),
+            body: Center(child: Container(color: const Color.fromARGB(0, 0, 0, 0))),
           );
         }
 

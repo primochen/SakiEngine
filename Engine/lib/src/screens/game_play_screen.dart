@@ -18,6 +18,7 @@ import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
+import 'package:sakiengine/src/rendering/cg_character_renderer.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
@@ -681,6 +682,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
         ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+        // CG角色渲染，像scene一样铺满屏幕
+        ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
         // 添加anime覆盖层
         if (gameState.animeOverlay != null)
           _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),

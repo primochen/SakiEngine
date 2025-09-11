@@ -39,63 +39,146 @@ class SaveLoadScreen extends StatefulWidget {
 class _SaveLoadScreenState extends State<SaveLoadScreen> {
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
   final SaveLoadManager _saveLoadManager = SaveLoadManager();
-  late Future<List<SaveSlot>> _saveSlotsFuture;
   final ScrollController _scrollController = ScrollController();
-  List<SaveSlot> _cachedSaveSlots = [];
-  bool _isInitialized = false;
+  
+  // 懒加载相关
+  static const int _slotsPerPage = 24; // 每页24个存档位（4列x6行）
+  final Map<int, SaveSlot?> _cachedSlots = {}; // 缓存已加载的存档位
+  final ValueNotifier<int> _totalPages = ValueNotifier<int>(1); // 当前总页数
+  bool _isLoadingMore = false;
+  List<int>? _existingSlotIds; // 缓存存在的存档ID
 
   @override
   void initState() {
     super.initState();
-    _loadSaveSlots();
+    _initializeSaveSlots();
+    _scrollController.addListener(_onScroll);
   }
 
-  void _loadSaveSlots() {
-    if (mounted) {
-      setState(() {
-        _saveSlotsFuture = _saveLoadManager.listSaveSlots().then((slots) {
-          _cachedSaveSlots = List.from(slots);
-          _isInitialized = true;
-          return slots;
-        });
-      });
+  @override
+  void dispose() {
+    _totalPages.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreSlots();
     }
+  }
+
+  Future<void> _initializeSaveSlots() async {
+    try {
+      // 获取所有存在的存档ID
+      _existingSlotIds = await _saveLoadManager.getExistingSaveSlotIds();
+      
+      // 计算初始页数（至少1页，如果有存档则基于最大ID计算）
+      int initialPages = 1;
+      if (_existingSlotIds != null && _existingSlotIds!.isNotEmpty) {
+        final maxSlotId = _existingSlotIds!.last;
+        initialPages = (maxSlotId / _slotsPerPage).ceil();
+      }
+      _totalPages.value = initialPages;
+      
+      // 加载所有包含存档的页面，确保现有存档都被加载
+      if (_existingSlotIds != null && _existingSlotIds!.isNotEmpty) {
+        final Set<int> pagesToLoad = {};
+        for (final slotId in _existingSlotIds!) {
+          final page = ((slotId - 1) / _slotsPerPage).floor() + 1;
+          pagesToLoad.add(page);
+        }
+        
+        // 加载所有相关页面
+        for (final page in pagesToLoad) {
+          await _loadSlotsForPage(page);
+        }
+        
+        // 如果第一页没有被加载，也要加载它以显示空档位
+        if (!pagesToLoad.contains(1)) {
+          await _loadSlotsForPage(1);
+        }
+      } else {
+        // 没有任何存档时，只加载第一页
+        await _loadSlotsForPage(1);
+      }
+    } catch (e) {
+      _notificationOverlayKey.currentState?.show('初始化存档列表失败: $e');
+    }
+  }
+
+  Future<void> _loadSlotsForPage(int page) async {
+    final startSlotId = (page - 1) * _slotsPerPage + 1;
+    final endSlotId = page * _slotsPerPage;
+    
+    try {
+      final slots = await _saveLoadManager.listSaveSlotsInRange(startSlotId, endSlotId);
+      
+      // 更新缓存
+      for (int i = 0; i < slots.length; i++) {
+        final slotId = startSlotId + i;
+        _cachedSlots[slotId] = slots[i];
+      }
+      
+      setState(() {}); // 触发重绘显示新加载的数据
+    } catch (e) {
+      print('加载第$page页存档失败: $e');
+    }
+  }
+
+  Future<void> _loadMoreSlots() async {
+    if (_isLoadingMore) return;
+    
+    _isLoadingMore = true;
+    final nextPage = _totalPages.value + 1;
+    
+    await _loadSlotsForPage(nextPage);
+    _totalPages.value = nextPage;
+    
+    _isLoadingMore = false;
+  }
+
+  int _getTotalSlotCount() {
+    return _totalPages.value * _slotsPerPage;
   }
 
   Future<void> _updateSingleSlot(int slotId, SaveSlot? newSlotData) async {
     if (!mounted) return;
     
-    setState(() {
-      if (newSlotData == null) {
-        _cachedSaveSlots.removeWhere((slot) => slot.id == slotId);
-      } else {
-        final existingIndex = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId);
-        if (existingIndex >= 0) {
-          _cachedSaveSlots[existingIndex] = newSlotData;
-        } else {
-          _cachedSaveSlots.add(newSlotData);
-        }
+    // 直接更新缓存
+    _cachedSlots[slotId] = newSlotData;
+    
+    // 如果是新存档，更新存在的存档ID列表
+    if (newSlotData != null && _existingSlotIds != null) {
+      if (!_existingSlotIds!.contains(slotId)) {
+        _existingSlotIds!.add(slotId);
+        _existingSlotIds!.sort();
       }
-    });
+    } else if (newSlotData == null && _existingSlotIds != null) {
+      _existingSlotIds!.remove(slotId);
+    }
+    
+    setState(() {});
   }
 
   Future<void> _swapSlots(int slotId1, int slotId2) async {
     if (!mounted) return;
     
-    final slot1Index = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId1);
-    final slot2Index = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId2);
+    final slot1 = _cachedSlots[slotId1];
+    final slot2 = _cachedSlots[slotId2];
     
-    setState(() {
-      if (slot1Index >= 0 && slot2Index >= 0) {
-        final temp = _cachedSaveSlots[slot1Index];
-        _cachedSaveSlots[slot1Index] = _cachedSaveSlots[slot2Index].copyWith(id: slotId1);
-        _cachedSaveSlots[slot2Index] = temp.copyWith(id: slotId2);
-      } else if (slot1Index >= 0) {
-        _cachedSaveSlots[slot1Index] = _cachedSaveSlots[slot1Index].copyWith(id: slotId2);
-      } else if (slot2Index >= 0) {
-        _cachedSaveSlots[slot2Index] = _cachedSaveSlots[slot2Index].copyWith(id: slotId1);
-      }
-    });
+    if (slot1 != null && slot2 != null) {
+      _cachedSlots[slotId1] = slot2.copyWith(id: slotId1);
+      _cachedSlots[slotId2] = slot1.copyWith(id: slotId2);
+    } else if (slot1 != null) {
+      _cachedSlots[slotId1] = null;
+      _cachedSlots[slotId2] = slot1.copyWith(id: slotId2);
+    } else if (slot2 != null) {
+      _cachedSlots[slotId1] = slot2.copyWith(id: slotId1);
+      _cachedSlots[slotId2] = null;
+    }
+    
+    setState(() {});
   }
 
   Future<void> _handleSave(int slotId) async {
@@ -105,18 +188,21 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       final snapshot = widget.gameManager!.saveStateSnapshot();
       await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot, widget.gameManager!.poseConfigs);
       
-      _notificationOverlayKey.currentState?.show('保存成功');
+      // 只更新单个存档位，避免全局重绘
+      final updatedSlots = await _saveLoadManager.listSaveSlots();
+      final newSlot = updatedSlots.firstWhere((slot) => slot.id == slotId, 
+        orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())));
       
-      // 重新加载以获取最新的存档数据（包括新保存的截图）
-      _loadSaveSlots();
-
-      Timer(const Duration(milliseconds: 550), () {
-        if (mounted) {
-          widget.onClose();
-        }
-      });
+      if (newSlot.id != -1) {
+        await _updateSingleSlot(slotId, newSlot);
+      }
     } catch (e) {
-      _notificationOverlayKey.currentState?.show('保存失败: $e');
+      final message = e.toString();
+      if (message.contains('存档已锁定，无法覆盖')) {
+        _notificationOverlayKey.currentState?.show('存档已锁定，无法覆盖');
+      } else {
+        _notificationOverlayKey.currentState?.show('保存失败: $e');
+      }
     }
   }
 
@@ -156,7 +242,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   Future<void> _handleDelete(int slotId) async {
     try {
       await _saveLoadManager.deleteSave(slotId);
-      _notificationOverlayKey.currentState?.show('存档已删除');
+      //_notificationOverlayKey.currentState?.show('存档已删除');
       await _updateSingleSlot(slotId, null);
     } catch (e) {
       _notificationOverlayKey.currentState?.show('删除失败: $e');
@@ -167,11 +253,11 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     try {
       final success = await _saveLoadManager.toggleSaveLock(slotId);
       if (success) {
-        final existingSlots = await _saveSlotsFuture;
-        final slot = existingSlots.firstWhere((s) => s.id == slotId);
-        final isNowLocked = !slot.isLocked;
-        _notificationOverlayKey.currentState?.show(isNowLocked ? '存档已锁定' : '存档已解锁');
-        await _updateSingleSlot(slotId, slot.copyWith(isLocked: isNowLocked));
+        final currentSlot = _cachedSlots[slotId];
+        if (currentSlot != null) {
+          final isNowLocked = !currentSlot.isLocked;
+          await _updateSingleSlot(slotId, currentSlot.copyWith(isLocked: isNowLocked));
+        }
       } else {
         _notificationOverlayKey.currentState?.show('操作失败');
       }
@@ -180,24 +266,98 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     }
   }
 
+  int _getCurrentGridColumnCount(BuildContext context) {
+    final screenRatio = MediaQuery.of(context).size.height / MediaQuery.of(context).size.width;
+    if (screenRatio > 1.5) {
+      return 2;
+    } else if (screenRatio > 1.0) {
+      return 3;
+    } else {
+      return 4;
+    }
+  }
+
+  String _formatScriptName(String scriptName) {
+    if (scriptName.isEmpty) return '';
+    
+    // 处理特殊脚本名
+    if (scriptName == 'start') {
+      return '--序章--';
+    }
+    
+    // 处理章节脚本名 (cpx_xxx 格式)
+    final chapterMatch = RegExp(r'^cp(\d+)(_.*)?$').firstMatch(scriptName);
+    if (chapterMatch != null) {
+      final chapterNum = int.parse(chapterMatch.group(1)!);
+      final chapterName = _getChapterName(chapterNum);
+      return '--第$chapterName章--';
+    }
+    
+    // 处理其他特殊脚本
+    if (scriptName.startsWith('epilogue')) {
+      return '--尾声--';
+    }
+    if (scriptName.startsWith('prologue')) {
+      return '--序章--';
+    }
+    if (scriptName.startsWith('ending')) {
+      return '--结局--';
+    }
+    
+    // 默认返回原文件名
+    return scriptName;
+  }
+  
+  String _getChapterName(int chapterNum) {
+    const chapterNames = [
+      '零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
+      '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十'
+    ];
+    
+    if (chapterNum < chapterNames.length) {
+      return chapterNames[chapterNum];
+    } else {
+      return chapterNum.toString(); // 超过20章用阿拉伯数字
+    }
+  }
+
   Future<void> _handleMove(int fromSlotId, int direction) async {
+    final columnCount = _getCurrentGridColumnCount(context);
     int toSlotId;
     String directionText;
     
+    // 计算当前存档位在网格中的行列位置（从0开始）
+    final fromRow = (fromSlotId - 1) ~/ columnCount;
+    final fromCol = (fromSlotId - 1) % columnCount;
+    
     switch (direction) {
       case 0: // 上
-        toSlotId = fromSlotId - 3;
+        final toRow = fromRow - 1;
+        if (toRow < 0) {
+          _notificationOverlayKey.currentState?.show('已经在第一行，无法向上移动');
+          return;
+        }
+        toSlotId = toRow * columnCount + fromCol + 1;
         directionText = '上方';
         break;
       case 1: // 下
-        toSlotId = fromSlotId + 3;
+        final toRow = fromRow + 1;
+        toSlotId = toRow * columnCount + fromCol + 1;
         directionText = '下方';
         break;
       case 2: // 左
+        if (fromCol == 0) {
+          _notificationOverlayKey.currentState?.show('已经在最左侧，无法向左移动');
+          return;
+        }
         toSlotId = fromSlotId - 1;
         directionText = '左侧';
         break;
       case 3: // 右
+        if (fromCol == columnCount - 1) {
+          _notificationOverlayKey.currentState?.show('已经在最右侧，无法向右移动');
+          return;
+        }
         toSlotId = fromSlotId + 1;
         directionText = '右侧';
         break;
@@ -205,40 +365,38 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         return;
     }
     
-    if (toSlotId < 1 || toSlotId > 12) {
+    if (toSlotId < 1) {
       _notificationOverlayKey.currentState?.show('无法移动到档位 ${toSlotId.toString().padLeft(2, '0')}');
       return;
     }
     
     try {
-      final existingSlots = await _saveSlotsFuture;
-      final targetSlot = existingSlots.firstWhere(
-        (s) => s.id == toSlotId,
-        orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
-      );
+      final targetSlot = _cachedSlots[toSlotId];
       
       final bool success;
-      if (targetSlot.id == -1) {
+      if (targetSlot == null) {
         success = await _saveLoadManager.moveSave(fromSlotId, toSlotId);
         if (success) {
-          _notificationOverlayKey.currentState?.show('已移动到${directionText}档位');
+          //_notificationOverlayKey.currentState?.show('已移动到$directionText档位');
         } else {
           _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
       } else {
         success = await _saveLoadManager.swapSaves(fromSlotId, toSlotId);
         if (success) {
-          _notificationOverlayKey.currentState?.show('已与${directionText}档位交换');
+         //_notificationOverlayKey.currentState?.show('已与$directionText档位交换');
         } else {
           _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
       }
       
       if (success) {
-        if (targetSlot.id == -1) {
-          final slot = existingSlots.firstWhere((s) => s.id == fromSlotId);
-          await _updateSingleSlot(fromSlotId, null);
-          await _updateSingleSlot(toSlotId, slot.copyWith(id: toSlotId));
+        if (targetSlot == null) {
+          final sourceSlot = _cachedSlots[fromSlotId];
+          if (sourceSlot != null) {
+            await _updateSingleSlot(fromSlotId, null);
+            await _updateSingleSlot(toSlotId, sourceSlot.copyWith(id: toSlotId));
+          }
         } else {
           await _swapSlots(fromSlotId, toSlotId);
         }
@@ -275,17 +433,10 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   }
 
   Widget _buildGridContent(double uiScale, double textScale, SakiEngineConfig config) {
-    return FutureBuilder<List<SaveSlot>>(
-      future: _saveSlotsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: Container(color: Colors.black));
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('读取存档失败: ${snapshot.error}', style: TextStyle(color: config.themeColors.primary, fontSize: 16 * textScale)));
-        }
-
-        final savedSlots = _isInitialized ? _cachedSaveSlots : (snapshot.data ?? []);
+    return ValueListenableBuilder<int>(
+      valueListenable: _totalPages,
+      builder: (context, totalPages, child) {
+        final totalSlotCount = _getTotalSlotCount();
         
         return ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
@@ -293,25 +444,37 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
             controller: _scrollController,
             padding: EdgeInsets.all(32 * uiScale),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 1 : 
-                              MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2 : 3,
+              crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 2 : 
+                              MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 3 : 4,
               childAspectRatio: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 2.4 : 
                                  MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2.2 : 2.25,
               crossAxisSpacing: 20 * uiScale,
               mainAxisSpacing: 20 * uiScale,
             ),
-            itemCount: 12,
+            itemCount: totalSlotCount + (_isLoadingMore ? 1 : 0), // 加载更多时显示加载指示器
             itemBuilder: (context, index) {
+              // 如果是最后一个项目且正在加载，显示加载指示器
+              if (index >= totalSlotCount) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20 * uiScale),
+                    child: CircularProgressIndicator(
+                      color: config.themeColors.primary,
+                      strokeWidth: 2 * uiScale,
+                    ),
+                  ),
+                );
+              }
+              
               final slotId = index + 1;
-              final saveSlot = savedSlots.firstWhere(
-                (s) => s.id == slotId,
-                orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
-              );
-              final isSlotEmpty = saveSlot.id == -1;
-
+              final saveSlot = _cachedSlots[slotId];
+              final isSlotEmpty = saveSlot == null;
+              
               return _SaveSlotCard(
+                key: ValueKey('slot_$slotId'),
                 slotId: slotId,
-                saveSlot: isSlotEmpty ? null : saveSlot,
+                saveSlot: saveSlot,
+                formattedScriptName: saveSlot != null ? _formatScriptName(saveSlot.currentScript) : '',
                 config: config,
                 uiScale: uiScale,
                 textScale: textScale,
@@ -347,24 +510,34 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: 12 * uiScale),
       decoration: BoxDecoration(
-        color: config.themeColors.primary.withOpacity(0.05),
+        color: config.themeColors.primary.withValues(alpha: 0.05),
         border: Border(
           top: BorderSide(
-            color: config.themeColors.primary.withOpacity(0.2),
+            color: config.themeColors.primary.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
       ),
-      child: Center(
-        child: Text(
-          '选择一个栏位以${widget.mode == SaveLoadMode.save ? "覆盖" : "读取"}进度',
-          style: config.reviewTitleTextStyle.copyWith(
-            fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.4,
-            color: config.themeColors.primary.withOpacity(0.7),
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.normal,
-          ),
-        ),
+      child: ValueListenableBuilder<int>(
+        valueListenable: _totalPages,
+        builder: (context, totalPages, child) {
+          final totalSlots = _getTotalSlotCount();
+          final existingCount = _existingSlotIds?.length ?? 0;
+          
+          return Center(
+            child: Text(
+              widget.mode == SaveLoadMode.save 
+                ? '选择一个栏位以覆盖进度 • 已显示 $totalSlots 个存档位 • 已使用 $existingCount 个'
+                : '选择一个栏位以读取进度 • 已显示 $totalSlots 个存档位 • 已使用 $existingCount 个',
+              style: config.reviewTitleTextStyle.copyWith(
+                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.4,
+                color: config.themeColors.primary.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -373,6 +546,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
 class _SaveSlotCard extends StatefulWidget {
   final int slotId;
   final SaveSlot? saveSlot;
+  final String formattedScriptName;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
   final VoidCallback? onToggleLock;
@@ -382,8 +556,10 @@ class _SaveSlotCard extends StatefulWidget {
   final double textScale;
 
   const _SaveSlotCard({
+    super.key,
     required this.slotId,
     this.saveSlot,
+    required this.formattedScriptName,
     required this.onTap,
     this.onDelete,
     this.onToggleLock,
@@ -427,15 +603,8 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
   @override
   void didUpdateWidget(covariant _SaveSlotCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 只在必要时重绘
-    if (widget.saveSlot?.screenshotData != oldWidget.saveSlot?.screenshotData ||
-        widget.saveSlot?.saveTime != oldWidget.saveSlot?.saveTime ||
-        widget.saveSlot?.isLocked != oldWidget.saveSlot?.isLocked ||
-        widget.saveSlot?.dialoguePreview != oldWidget.saveSlot?.dialoguePreview) {
-      if (mounted) {
-        setState(() {});
-      }
-    }
+    // 由于使用了 ValueKey，Flutter 会自动优化重绘
+    // 只有当 saveSlot 的关键数据发生变化时才需要重绘
   }
 
   Widget _buildScreenshot() {
@@ -489,9 +658,17 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
               children: [
                 Padding(
                   padding: EdgeInsets.all(12.0 * uiScale),
-                  child: widget.saveSlot != null
-                      ? _buildDataCard(uiScale, widget.textScale, config)
-                      : _buildEmptyCard(uiScale, widget.textScale, config),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 内容区域
+                      Expanded(
+                        child: widget.saveSlot != null
+                            ? _buildDataCard(uiScale, widget.textScale, config)
+                            : _buildEmptyCard(uiScale, widget.textScale, config),
+                      ),
+                    ],
+                  ),
                 ),
                 if ((widget.onMove != null || widget.onDelete != null || widget.onToggleLock != null) && widget.saveSlot != null)
                   Positioned(
@@ -568,61 +745,92 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 标题行
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               '档位 ${widget.slotId.toString().padLeft(2, '0')}',
               style: config.reviewTitleTextStyle.copyWith(
-                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.5,
+                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.45,
                 color: config.themeColors.primary.withOpacity(opacity),
                 fontWeight: FontWeight.bold,
               ),
             ),
             if (widget.saveSlot != null)
-              Text(
-                DateFormat('yyyy-MM-dd HH:mm').format(widget.saveSlot!.saveTime),
-                style: config.reviewTitleTextStyle.copyWith(
-                  fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.35,
-                  color: config.themeColors.primary.withOpacity(0.6 * opacity),
-                  fontWeight: FontWeight.normal,
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 章节名显示在时间左侧
+                    if (widget.formattedScriptName.isNotEmpty)
+                      Flexible(
+                        child: Text(
+                          widget.formattedScriptName,
+                          style: config.reviewTitleTextStyle.copyWith(
+                            fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
+                            color: config.themeColors.primary.withOpacity(0.6 * opacity),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (widget.formattedScriptName.isNotEmpty)
+                      SizedBox(width: 8 * uiScale),
+                    // 时间显示在右侧
+                    Text(
+                      DateFormat('MM-dd HH:mm').format(widget.saveSlot!.saveTime),
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
+                        color: config.themeColors.primary.withOpacity(0.6 * opacity),
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],
         ),
-        SizedBox(height: 8 * uiScale),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 16,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(0 * uiScale),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: _buildScreenshot(),
+        // 移除之前独立的脚本文件名显示
+        SizedBox(height: 6 * uiScale),
+        // 内容区域 - 使用Expanded确保不会溢出
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 截图区域 - 使用更小的宽高比
+              Expanded(
+                flex: 14,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(0 * uiScale),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 10, // 从16:9改为16:10，减少高度
+                    child: Opacity(
+                      opacity: opacity,
+                      child: _buildScreenshot(),
+                    ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(width: 12 * uiScale),
-            Expanded(
-              flex: 11,
-              child: Text(
-                RichTextParser.cleanText(widget.saveSlot!.dialoguePreview),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: config.reviewTitleTextStyle.copyWith(
-                  fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.4,
-                  color: config.themeColors.onSurface.withOpacity(0.8 * opacity),
-                  fontWeight: FontWeight.normal,
-                  height: 1.4,
+              SizedBox(width: 8 * uiScale), // 减少间距
+              // 文本区域
+              Expanded(
+                flex: 13,
+                child: Text(
+                  RichTextParser.cleanText(widget.saveSlot!.dialoguePreview),
+                  maxLines: 3, // 减少行数从4到3
+                  overflow: TextOverflow.ellipsis,
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.36, // 稍微减小字体
+                    color: config.themeColors.onSurface.withOpacity(0.8 * opacity),
+                    fontWeight: FontWeight.normal,
+                    height: 1.2, // 减少行高从1.4到1.2
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -635,34 +843,36 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
         Text(
           '档位 ${widget.slotId.toString().padLeft(2, '0')}',
           style: config.reviewTitleTextStyle.copyWith(
-            fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.5,
+            fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.45,
             color: config.themeColors.primary.withOpacity(0.5),
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: 8 * uiScale),
+        SizedBox(height: 6 * uiScale),
         Expanded(
-            child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.add_circle_outline,
-                size: 32 * uiScale,
-                color: config.themeColors.primary.withOpacity(0.3),
-              ),
-              SizedBox(height: 8 * uiScale),
-              Text(
-                '空档位',
-                style: config.reviewTitleTextStyle.copyWith(
-                  fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.4,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min, // 防止溢出
+              children: [
+                Icon(
+                  Icons.add_box_sharp,
+                  size: 24 * uiScale, // 减小图标大小
                   color: config.themeColors.primary.withOpacity(0.3),
-                  fontWeight: FontWeight.normal,
                 ),
-              ),
-            ],
+                SizedBox(height: 4 * uiScale), // 减少间距
+                Text(
+                  '空档位',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.36,
+                    color: config.themeColors.primary.withOpacity(0.3),
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ))
+        ),
       ],
     );
   }

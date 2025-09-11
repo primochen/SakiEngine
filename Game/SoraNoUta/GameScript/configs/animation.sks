@@ -31,6 +31,11 @@ ease 0.3 ycenter-0.02
 ease 0.3 ycenter+0.02
 ease 0.15 ycenter+0.0
 
+topin
+ease 0.2 ycenter-0.08
+ease 0.2 ycenter+0.01
+ease 0.1 ycenter-0.01
+ease 0.1 ycenter+0
 backjump
 ease 0.3 ycenter+0 scale-0
 ease 0.3 ycenter-0.05 scale+0.3
@@ -67,6 +72,10 @@ ease 0.05 xcenter+0.02
 ease 0.05 xcenter-0.02
 ease 0.05 xcenter+0.02
 ease 0.05 xcenter-0.02
+
+shake2
+ease 0.05 xcenter+0.005
+ease 0.05 xcenter-0.005
 
 bounce
 ease 0.15 ycenter-0.08

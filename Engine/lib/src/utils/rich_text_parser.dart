@@ -11,8 +11,9 @@ class TextSegment {
   final String text;
   final double? sizeMultiplier;
   final double? waitSeconds;
+  final bool isInstantDisplay; // 新增：是否瞬间显示
   
-  TextSegment(this.text, {this.sizeMultiplier, this.waitSeconds});
+  TextSegment(this.text, {this.sizeMultiplier, this.waitSeconds, this.isInstantDisplay = false});
 }
 
 class RichTextParser {
@@ -20,12 +21,14 @@ class RichTextParser {
     return text
         .replaceAll(RegExp(r'\[size=[0-9.]+\]'), '')
         .replaceAll('[/size]', '')
-        .replaceAll(RegExp(r'\[w=[0-9.]+\]'), '');
+        .replaceAll(RegExp(r'\[w=[0-9.]+\]'), '')
+        .replaceAll('[pass]', '')
+        .replaceAll('[/pass]', '');
   }
   
   static List<TextSegment> parseTextSegments(String text) {
     final List<TextSegment> segments = [];
-    final combinedRegex = RegExp(r'\[size=([0-9.]+)\](.*?)\[/size\]|\[w=([0-9.]+)\]');
+    final combinedRegex = RegExp(r'\[size=([0-9.]+)\](.*?)\[/size\]|\[w=([0-9.]+)\]|\[pass\](.*?)\[/pass\]');
     
     int lastEnd = 0;
     double? currentSizeMultiplier;
@@ -39,7 +42,7 @@ class RichTextParser {
         }
       }
       
-      if (match.group(1) != null) {
+      if (match.group(1) != null && match.group(2) != null) {
         // 这是一个size标签
         final sizeValue = double.tryParse(match.group(1)!) ?? 1.0;
         final taggedText = match.group(2)!;
@@ -52,6 +55,12 @@ class RichTextParser {
         // 这是一个w标签
         final waitValue = double.tryParse(match.group(3)!) ?? 0.0;
         segments.add(TextSegment('', waitSeconds: waitValue, sizeMultiplier: currentSizeMultiplier));
+      } else if (match.group(4) != null) {
+        // 这是一个pass标签
+        final passText = match.group(4)!;
+        // pass标签内的文本仍然可能包含其他标签，需要递归解析
+        final innerSegments = _parseInnerSegments(passText, currentSizeMultiplier, isInstantDisplay: true);
+        segments.addAll(innerSegments);
       }
       
       lastEnd = match.end;
@@ -68,7 +77,7 @@ class RichTextParser {
     return segments;
   }
   
-  static List<TextSegment> _parseInnerSegments(String text, double sizeMultiplier) {
+  static List<TextSegment> _parseInnerSegments(String text, double? sizeMultiplier, {bool isInstantDisplay = false}) {
     final List<TextSegment> segments = [];
     final waitRegex = RegExp(r'\[w=([0-9.]+)\]');
     
@@ -79,13 +88,13 @@ class RichTextParser {
       if (match.start > lastEnd) {
         final normalText = text.substring(lastEnd, match.start);
         if (normalText.isNotEmpty) {
-          segments.add(TextSegment(normalText, sizeMultiplier: sizeMultiplier));
+          segments.add(TextSegment(normalText, sizeMultiplier: sizeMultiplier, isInstantDisplay: isInstantDisplay));
         }
       }
       
       // 添加等待段
       final waitValue = double.tryParse(match.group(1)!) ?? 0.0;
-      segments.add(TextSegment('', waitSeconds: waitValue, sizeMultiplier: sizeMultiplier));
+      segments.add(TextSegment('', waitSeconds: waitValue, sizeMultiplier: sizeMultiplier, isInstantDisplay: isInstantDisplay));
       
       lastEnd = match.end;
     }
@@ -94,7 +103,7 @@ class RichTextParser {
     if (lastEnd < text.length) {
       final remainingText = text.substring(lastEnd);
       if (remainingText.isNotEmpty) {
-        segments.add(TextSegment(remainingText, sizeMultiplier: sizeMultiplier));
+        segments.add(TextSegment(remainingText, sizeMultiplier: sizeMultiplier, isInstantDisplay: isInstantDisplay));
       }
     }
     
