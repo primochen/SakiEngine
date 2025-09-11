@@ -9,6 +9,7 @@ import 'package:sakiengine/src/widgets/game_style_switch.dart';
 import 'package:sakiengine/src/widgets/game_style_slider.dart';
 import 'package:sakiengine/src/widgets/game_style_scrollbar.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
+import 'package:sakiengine/src/widgets/typewriter_preview.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -835,6 +836,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.6),
             ),
+          ),
+          // 添加实时预览
+          TypewriterPreview(
+            charsPerSecond: _typewriterCharsPerSecond,
+            skipPunctuationDelay: _skipPunctuationDelay,
+            config: config,
+            scale: scale,
           ),
         ],
       ),
