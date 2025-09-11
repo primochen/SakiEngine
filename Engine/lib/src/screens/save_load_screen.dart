@@ -41,7 +41,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   final SaveLoadManager _saveLoadManager = SaveLoadManager();
   late Future<List<SaveSlot>> _saveSlotsFuture;
   final ScrollController _scrollController = ScrollController();
-  List<SaveSlot> _cachedSaveSlots = [];
+  final ValueNotifier<List<SaveSlot>> _saveSlotNotifier = ValueNotifier<List<SaveSlot>>([]);
   bool _isInitialized = false;
 
   @override
@@ -50,11 +50,17 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     _loadSaveSlots();
   }
 
+  @override
+  void dispose() {
+    _saveSlotNotifier.dispose();
+    super.dispose();
+  }
+
   void _loadSaveSlots() {
     if (mounted) {
       setState(() {
         _saveSlotsFuture = _saveLoadManager.listSaveSlots().then((slots) {
-          _cachedSaveSlots = List.from(slots);
+          _saveSlotNotifier.value = List.from(slots);
           _isInitialized = true;
           return slots;
         });
@@ -65,37 +71,37 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   Future<void> _updateSingleSlot(int slotId, SaveSlot? newSlotData) async {
     if (!mounted) return;
     
-    setState(() {
-      if (newSlotData == null) {
-        _cachedSaveSlots.removeWhere((slot) => slot.id == slotId);
+    final currentSlots = List<SaveSlot>.from(_saveSlotNotifier.value);
+    if (newSlotData == null) {
+      currentSlots.removeWhere((slot) => slot.id == slotId);
+    } else {
+      final existingIndex = currentSlots.indexWhere((slot) => slot.id == slotId);
+      if (existingIndex >= 0) {
+        currentSlots[existingIndex] = newSlotData;
       } else {
-        final existingIndex = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId);
-        if (existingIndex >= 0) {
-          _cachedSaveSlots[existingIndex] = newSlotData;
-        } else {
-          _cachedSaveSlots.add(newSlotData);
-        }
+        currentSlots.add(newSlotData);
       }
-    });
+    }
+    _saveSlotNotifier.value = currentSlots;
   }
 
   Future<void> _swapSlots(int slotId1, int slotId2) async {
     if (!mounted) return;
     
-    final slot1Index = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId1);
-    final slot2Index = _cachedSaveSlots.indexWhere((slot) => slot.id == slotId2);
+    final currentSlots = List<SaveSlot>.from(_saveSlotNotifier.value);
+    final slot1Index = currentSlots.indexWhere((slot) => slot.id == slotId1);
+    final slot2Index = currentSlots.indexWhere((slot) => slot.id == slotId2);
     
-    setState(() {
-      if (slot1Index >= 0 && slot2Index >= 0) {
-        final temp = _cachedSaveSlots[slot1Index];
-        _cachedSaveSlots[slot1Index] = _cachedSaveSlots[slot2Index].copyWith(id: slotId1);
-        _cachedSaveSlots[slot2Index] = temp.copyWith(id: slotId2);
-      } else if (slot1Index >= 0) {
-        _cachedSaveSlots[slot1Index] = _cachedSaveSlots[slot1Index].copyWith(id: slotId2);
-      } else if (slot2Index >= 0) {
-        _cachedSaveSlots[slot2Index] = _cachedSaveSlots[slot2Index].copyWith(id: slotId1);
-      }
-    });
+    if (slot1Index >= 0 && slot2Index >= 0) {
+      final temp = currentSlots[slot1Index];
+      currentSlots[slot1Index] = currentSlots[slot2Index].copyWith(id: slotId1);
+      currentSlots[slot2Index] = temp.copyWith(id: slotId2);
+    } else if (slot1Index >= 0) {
+      currentSlots[slot1Index] = currentSlots[slot1Index].copyWith(id: slotId2);
+    } else if (slot2Index >= 0) {
+      currentSlots[slot2Index] = currentSlots[slot2Index].copyWith(id: slotId1);
+    }
+    _saveSlotNotifier.value = currentSlots;
   }
 
   Future<void> _handleSave(int slotId) async {
@@ -107,8 +113,14 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       
       _notificationOverlayKey.currentState?.show('保存成功');
       
-      // 重新加载以获取最新的存档数据（包括新保存的截图）
-      _loadSaveSlots();
+      // 只更新单个存档位，避免全局重绘
+      final updatedSlots = await _saveLoadManager.listSaveSlots();
+      final newSlot = updatedSlots.firstWhere((slot) => slot.id == slotId, 
+        orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())));
+      
+      if (newSlot.id != -1) {
+        await _updateSingleSlot(slotId, newSlot);
+      }
 
       Timer(const Duration(milliseconds: 550), () {
         if (mounted) {
@@ -167,7 +179,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     try {
       final success = await _saveLoadManager.toggleSaveLock(slotId);
       if (success) {
-        final existingSlots = await _saveSlotsFuture;
+        final existingSlots = _saveSlotNotifier.value;
         final slot = existingSlots.firstWhere((s) => s.id == slotId);
         final isNowLocked = !slot.isLocked;
         _notificationOverlayKey.currentState?.show(isNowLocked ? '存档已锁定' : '存档已解锁');
@@ -211,7 +223,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     }
     
     try {
-      final existingSlots = await _saveSlotsFuture;
+      final existingSlots = _saveSlotNotifier.value;
       final targetSlot = existingSlots.firstWhere(
         (s) => s.id == toSlotId,
         orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
@@ -221,14 +233,14 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       if (targetSlot.id == -1) {
         success = await _saveLoadManager.moveSave(fromSlotId, toSlotId);
         if (success) {
-          _notificationOverlayKey.currentState?.show('已移动到${directionText}档位');
+          _notificationOverlayKey.currentState?.show('已移动到$directionText档位');
         } else {
           _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
       } else {
         success = await _saveLoadManager.swapSaves(fromSlotId, toSlotId);
         if (success) {
-          _notificationOverlayKey.currentState?.show('已与${directionText}档位交换');
+          _notificationOverlayKey.currentState?.show('已与$directionText档位交换');
         } else {
           _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
@@ -279,64 +291,74 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       future: _saveSlotsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: Container(color: Colors.black));
+          return Center(child: Container(color: const Color.fromARGB(0, 0, 0, 0)));
         }
         if (snapshot.hasError) {
           return Center(child: Text('读取存档失败: ${snapshot.error}', style: TextStyle(color: config.themeColors.primary, fontSize: 16 * textScale)));
         }
 
-        final savedSlots = _isInitialized ? _cachedSaveSlots : (snapshot.data ?? []);
+        // 只在初始化时使用 FutureBuilder 的数据，之后使用 ValueListenableBuilder
+        if (!_isInitialized && snapshot.hasData) {
+          _saveSlotNotifier.value = snapshot.data!;
+          _isInitialized = true;
+        }
         
-        return ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-          child: GridView.builder(
-            controller: _scrollController,
-            padding: EdgeInsets.all(32 * uiScale),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 1 : 
-                              MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2 : 3,
-              childAspectRatio: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 2.4 : 
-                                 MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2.2 : 2.25,
-              crossAxisSpacing: 20 * uiScale,
-              mainAxisSpacing: 20 * uiScale,
-            ),
-            itemCount: 12,
-            itemBuilder: (context, index) {
-              final slotId = index + 1;
-              final saveSlot = savedSlots.firstWhere(
-                (s) => s.id == slotId,
-                orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
-              );
-              final isSlotEmpty = saveSlot.id == -1;
+        return ValueListenableBuilder<List<SaveSlot>>(
+          valueListenable: _saveSlotNotifier,
+          builder: (context, savedSlots, child) {
+            return ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: GridView.builder(
+                controller: _scrollController,
+                padding: EdgeInsets.all(32 * uiScale),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 1 : 
+                                  MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2 : 3,
+                  childAspectRatio: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 2.4 : 
+                                     MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2.2 : 2.25,
+                  crossAxisSpacing: 20 * uiScale,
+                  mainAxisSpacing: 20 * uiScale,
+                ),
+                itemCount: 12,
+                itemBuilder: (context, index) {
+                  final slotId = index + 1;
+                  final saveSlot = savedSlots.firstWhere(
+                    (s) => s.id == slotId,
+                    orElse: () => SaveSlot(id: -1, saveTime: DateTime.now(), currentScript: '', dialoguePreview: '', snapshot: GameStateSnapshot(scriptIndex: 0, currentState: GameState.initial())),
+                  );
+                  final isSlotEmpty = saveSlot.id == -1;
 
-              return _SaveSlotCard(
-                slotId: slotId,
-                saveSlot: isSlotEmpty ? null : saveSlot,
-                config: config,
-                uiScale: uiScale,
-                textScale: textScale,
-                onTap: () {
-                  if (widget.mode == SaveLoadMode.save) {
-                    _handleSave(slotId);
-                  } else if (!isSlotEmpty) {
-                    _handleLoad(saveSlot);
-                  }
+                  return _SaveSlotCard(
+                    key: ValueKey('slot_$slotId'),
+                    slotId: slotId,
+                    saveSlot: isSlotEmpty ? null : saveSlot,
+                    config: config,
+                    uiScale: uiScale,
+                    textScale: textScale,
+                    onTap: () {
+                      if (widget.mode == SaveLoadMode.save) {
+                        _handleSave(slotId);
+                      } else if (!isSlotEmpty) {
+                        _handleLoad(saveSlot);
+                      }
+                    },
+                    onDelete: isSlotEmpty ? null : () async {
+                      final shouldDelete = await _showDeleteConfirmDialog(slotId);
+                      if (shouldDelete == true) {
+                        await _handleDelete(slotId);
+                      }
+                    },
+                    onToggleLock: isSlotEmpty ? null : () async {
+                      await _handleToggleLock(slotId);
+                    },
+                    onMove: isSlotEmpty ? null : (direction) async {
+                      await _handleMove(slotId, direction);
+                    },
+                  );
                 },
-                onDelete: isSlotEmpty ? null : () async {
-                  final shouldDelete = await _showDeleteConfirmDialog(slotId);
-                  if (shouldDelete == true) {
-                    await _handleDelete(slotId);
-                  }
-                },
-                onToggleLock: isSlotEmpty ? null : () async {
-                  await _handleToggleLock(slotId);
-                },
-                onMove: isSlotEmpty ? null : (direction) async {
-                  await _handleMove(slotId, direction);
-                },
-              );
-            },
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -382,6 +404,7 @@ class _SaveSlotCard extends StatefulWidget {
   final double textScale;
 
   const _SaveSlotCard({
+    super.key,
     required this.slotId,
     this.saveSlot,
     required this.onTap,
@@ -427,15 +450,8 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
   @override
   void didUpdateWidget(covariant _SaveSlotCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 只在必要时重绘
-    if (widget.saveSlot?.screenshotData != oldWidget.saveSlot?.screenshotData ||
-        widget.saveSlot?.saveTime != oldWidget.saveSlot?.saveTime ||
-        widget.saveSlot?.isLocked != oldWidget.saveSlot?.isLocked ||
-        widget.saveSlot?.dialoguePreview != oldWidget.saveSlot?.dialoguePreview) {
-      if (mounted) {
-        setState(() {});
-      }
-    }
+    // 由于使用了 ValueKey，Flutter 会自动优化重绘
+    // 只有当 saveSlot 的关键数据发生变化时才需要重绘
   }
 
   Widget _buildScreenshot() {

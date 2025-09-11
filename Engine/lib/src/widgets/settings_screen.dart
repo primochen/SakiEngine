@@ -163,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildLoadingContent() {
     return Center(
-      child: Container(color: Colors.black),
+      child: Container(color: const Color.fromARGB(0, 0, 0, 0)),
     );
   }
 
