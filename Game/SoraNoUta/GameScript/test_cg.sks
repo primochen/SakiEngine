@@ -1,0 +1,23 @@
+label test_cg_start
+
+// 测试新的 cg 语法
+cg xiayo1 pose1 happy
+
+"测试 CG 语法：现在应该看到 xiayo1 以 CG 模式显示，铺满整个屏幕。"
+
+// 测试 cg 和 show 的区别
+show xiayo1 pose2 sad at right
+
+"现在应该看到普通的 show 角色显示在右侧，而 CG 仍然在背景铺满屏幕。"
+
+// 清空所有角色
+hide xiayo1
+
+"现在普通角色已隐藏，但 CG 角色可能仍然显示。"
+
+// 测试切换不同的 CG
+cg xiayo2 pose1 happy
+
+"现在切换到了 xiayo2 的 CG 显示。"
+
+return

@@ -744,6 +744,66 @@ class GameManager {
         continue;
       }
 
+      if (node is CgNode) {
+        print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        // CG显示命令，类似ShowNode但渲染方式像scene一样铺满
+        final characterConfig = _characterConfigs[node.character];
+        String resourceId;
+        String positionId;
+        String finalCharacterKey; // 最终使用的角色key
+        
+        if (characterConfig != null) {
+          print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          resourceId = characterConfig.resourceId;
+          positionId = characterConfig.defaultPoseId ?? 'pose';
+          finalCharacterKey = resourceId; // 使用resourceId作为key
+        } else {
+          print('[GameManager] 直接使用资源ID: ${node.character}');
+          resourceId = node.character;
+          positionId = node.position ?? 'pose';
+          finalCharacterKey = node.character; // 使用原始名称作为key
+        }
+
+        // 跟踪角色是否曾经显示过
+        _everShownCharacters.add(finalCharacterKey);
+
+        final newCgCharacters = Map.of(_currentState.cgCharacters);
+        
+        final currentCharacterState = _currentState.cgCharacters[finalCharacterKey] ?? CharacterState(
+          resourceId: resourceId,
+          positionId: positionId,
+        );
+
+        // 确保pose和expression的值被正确设置
+        final newPose = node.pose ?? 'pose1';
+        final newExpression = node.expression ?? 'happy';
+        
+        print('[GameManager] CG更新: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
+
+        newCgCharacters[finalCharacterKey] = currentCharacterState.copyWith(
+          pose: newPose,
+          expression: newExpression,
+          clearAnimationProperties: false,
+        );
+        
+        _currentState = _currentState.copyWith(
+          cgCharacters: newCgCharacters, 
+          clearDialogueAndSpeaker: true, 
+          everShownCharacters: _everShownCharacters
+        );
+        _gameStateController.add(_currentState);
+        
+        print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
+        
+        // 如果有动画，启动动画播放（非阻塞）
+        if (node.animation != null) {
+          _playCharacterAnimation(finalCharacterKey, node.animation!, repeatCount: node.repeatCount);
+        }
+        
+        _scriptIndex++;
+        continue;
+      }
+
       if (node is HideNode) {
         final newCharacters = Map.of(_currentState.characters);
         final character = newCharacters[node.character];
@@ -1871,6 +1931,7 @@ class GameState {
   final String? animeOverlay; // 新增：anime覆盖动画名称
   final bool animeLoop; // 新增：anime是否循环播放
   final bool animeKeep; // 新增：anime完成后是否保留
+  final Map<String, CharacterState> cgCharacters; // 新增：CG角色状态，像scene一样铺满显示
 
   GameState({
     this.background,
@@ -1891,6 +1952,7 @@ class GameState {
     this.animeOverlay, // 新增
     this.animeLoop = false, // 新增，默认不循环
     this.animeKeep = false, // 新增，默认不保留
+    this.cgCharacters = const {}, // 新增：CG角色状态，默认为空
   });
 
   factory GameState.initial() {
@@ -1925,6 +1987,8 @@ class GameState {
     bool? animeLoop, // 新增
     bool? animeKeep, // 新增
     bool clearAnimeOverlay = false, // 新增
+    Map<String, CharacterState>? cgCharacters, // 新增：CG角色状态
+    bool clearCgCharacters = false, // 新增：是否清空CG角色
   }) {
     return GameState(
       background: background ?? this.background,
@@ -1947,6 +2011,7 @@ class GameState {
       animeOverlay: clearAnimeOverlay ? null : (animeOverlay ?? this.animeOverlay), // 新增
       animeLoop: animeLoop ?? this.animeLoop, // 新增
       animeKeep: animeKeep ?? this.animeKeep, // 新增
+      cgCharacters: clearCgCharacters ? <String, CharacterState>{} : (cgCharacters ?? this.cgCharacters), // 新增
     );
   }
 }

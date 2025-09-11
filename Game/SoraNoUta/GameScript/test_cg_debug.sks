@@ -1,0 +1,12 @@
+label test_cg_debug
+
+// 测试 CG 解析
+cg cgcp0_1 1
+
+"第一个 CG 命令完成"
+
+cg cgcp0_1 2  
+
+"第二个 CG 命令完成"
+
+return

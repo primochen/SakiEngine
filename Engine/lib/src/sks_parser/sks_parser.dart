@@ -282,6 +282,106 @@ class SksParser {
           
           nodes.add(ShowNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
           break;
+        case 'cg':
+          print('[SksParser] 解析cg命令: $trimmedLine');
+          final character = parts[1];
+          
+          // CG显示命令，支持与show相同的参数，但渲染方式像scene一样铺满
+          
+          String? pose;
+          String? expression;
+          String? position;
+          String? animation;
+          int? repeatCount;
+          
+          // 支持an语法和repeat语法:
+          // cg xiayo1 pose1 happy at pose an jump repeat 3
+          // cg x happy an jump repeat 3
+          
+          int atIndex = -1;
+          int anIndex = -1;
+          int repeatIndex = -1;
+          
+          for (int i = 2; i < parts.length; i++) {
+            if (parts[i] == 'at') {
+              atIndex = i;
+            } else if (parts[i] == 'an') {
+              anIndex = i;
+            } else if (parts[i] == 'repeat') {
+              repeatIndex = i;
+              break;
+            }
+          }
+          
+          // 解析repeat参数
+          if (repeatIndex >= 0 && repeatIndex + 1 < parts.length) {
+            repeatCount = int.tryParse(parts[repeatIndex + 1]);
+          }
+          
+          int endIndex = repeatIndex >= 0 ? repeatIndex : parts.length;
+          
+          if (anIndex >= 0 && anIndex < endIndex) {
+            // 有an动画语法
+            if (anIndex + 1 < endIndex) {
+              animation = parts[anIndex + 1];
+            }
+            
+            if (atIndex >= 0 && atIndex < anIndex) {
+              // cg character pose1 happy at pose an jump repeat 3
+              final attributeParts = parts.sublist(2, atIndex);
+              if (attributeParts.isNotEmpty) {
+                pose = attributeParts[0];
+                if (attributeParts.length > 1) {
+                  expression = attributeParts[1];
+                }
+              }
+              if (atIndex + 1 < anIndex) {
+                position = parts[atIndex + 1];
+              }
+            } else {
+              // cg x happy an jump repeat 3
+              final attributeParts = parts.sublist(2, anIndex);
+              if (attributeParts.isNotEmpty) {
+                expression = attributeParts[0];
+              }
+            }
+          } else if (atIndex >= 0 && atIndex < endIndex) {
+            // 原有at语法，无动画
+            final attributeParts = parts.sublist(2, atIndex);
+            if (attributeParts.isNotEmpty) {
+              pose = attributeParts[0];
+              if (attributeParts.length > 1) {
+                expression = attributeParts[1];
+              }
+            }
+            if (atIndex + 1 < endIndex) {
+              position = parts[atIndex + 1];
+            }
+          } else {
+            // 简单的参数解析（没有特殊关键词）
+            // 检查是否有pose:前缀的参数
+            final attributeParts = parts.sublist(2, endIndex);
+            
+            bool hasPosePrefix = false;
+            for (int i = 0; i < attributeParts.length; i++) {
+              if (attributeParts[i].startsWith('pose:')) {
+                pose = attributeParts[i].substring(5);
+                hasPosePrefix = true;
+              } else if (attributeParts[i].startsWith('expression:')) {
+                expression = attributeParts[i].substring(11);
+              }
+            }
+            
+            // 如果没有pose:前缀，所有参数都是expression（差分图）
+            if (!hasPosePrefix && attributeParts.isNotEmpty) {
+              // 将所有参数作为expression
+              expression = attributeParts.join(' ');
+            }
+          }
+          
+          print('[SksParser] CG解析结果: character=$character, pose=$pose, expression=$expression, position=$position, animation=$animation');
+          nodes.add(CgNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
+          break;
         case 'hide':
           nodes.add(HideNode(parts[1]));
           break;
