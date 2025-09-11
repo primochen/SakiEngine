@@ -111,8 +111,6 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       final snapshot = widget.gameManager!.saveStateSnapshot();
       await _saveLoadManager.saveGame(slotId, widget.gameManager!.currentScriptFile, snapshot, widget.gameManager!.poseConfigs);
       
-      _notificationOverlayKey.currentState?.show('保存成功');
-      
       // 只更新单个存档位，避免全局重绘
       final updatedSlots = await _saveLoadManager.listSaveSlots();
       final newSlot = updatedSlots.firstWhere((slot) => slot.id == slotId, 
@@ -121,14 +119,13 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       if (newSlot.id != -1) {
         await _updateSingleSlot(slotId, newSlot);
       }
-
-      Timer(const Duration(milliseconds: 550), () {
-        if (mounted) {
-          widget.onClose();
-        }
-      });
     } catch (e) {
-      _notificationOverlayKey.currentState?.show('保存失败: $e');
+      final message = e.toString();
+      if (message.contains('存档已锁定，无法覆盖')) {
+        _notificationOverlayKey.currentState?.show('存档已锁定，无法覆盖');
+      } else {
+        _notificationOverlayKey.currentState?.show('保存失败: $e');
+      }
     }
   }
 
@@ -168,7 +165,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   Future<void> _handleDelete(int slotId) async {
     try {
       await _saveLoadManager.deleteSave(slotId);
-      _notificationOverlayKey.currentState?.show('存档已删除');
+      //_notificationOverlayKey.currentState?.show('存档已删除');
       await _updateSingleSlot(slotId, null);
     } catch (e) {
       _notificationOverlayKey.currentState?.show('删除失败: $e');
@@ -182,7 +179,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
         final existingSlots = _saveSlotNotifier.value;
         final slot = existingSlots.firstWhere((s) => s.id == slotId);
         final isNowLocked = !slot.isLocked;
-        _notificationOverlayKey.currentState?.show(isNowLocked ? '存档已锁定' : '存档已解锁');
+        //_notificationOverlayKey.currentState?.show(isNowLocked ? '存档已锁定' : '存档已解锁');
         await _updateSingleSlot(slotId, slot.copyWith(isLocked: isNowLocked));
       } else {
         _notificationOverlayKey.currentState?.show('操作失败');
@@ -233,14 +230,14 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       if (targetSlot.id == -1) {
         success = await _saveLoadManager.moveSave(fromSlotId, toSlotId);
         if (success) {
-          _notificationOverlayKey.currentState?.show('已移动到$directionText档位');
+          //_notificationOverlayKey.currentState?.show('已移动到$directionText档位');
         } else {
           _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
       } else {
         success = await _saveLoadManager.swapSaves(fromSlotId, toSlotId);
         if (success) {
-          _notificationOverlayKey.currentState?.show('已与$directionText档位交换');
+         //_notificationOverlayKey.currentState?.show('已与$directionText档位交换');
         } else {
           _notificationOverlayKey.currentState?.show('无法移动被锁定的存档');
         }
