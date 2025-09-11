@@ -798,31 +798,17 @@ class GameManager {
         final newPose = node.pose ?? 'pose1';
         final newExpression = node.expression ?? 'happy';
         
-        // 构建完整的背景名称，用于scene层显示
-        String backgroundName = resourceId;
-        if (node.pose != null) {
-          // 如果有pose，添加pose信息
-          backgroundName = '$resourceId $newPose';
-          if (node.expression != null) {
-            backgroundName = '$resourceId $newPose $newExpression';
-          }
-        } else if (node.expression != null) {
-          // 如果只有expression（差分图），只添加expression
-          backgroundName = '$resourceId $newExpression';
-        }
-        
-        print('[GameManager] CG背景名称: $backgroundName');
-        
-        // 首先将CG图像设置为背景，避免切换时露出下面的scene
+        // CG只通过CG角色系统处理，不设置为背景
+        // 先清除背景，确保CG角色层可以正常显示
         _currentState = _currentState.copyWith(
-          background: backgroundName,
+          background: null, // 清除背景，让CG角色层显示
           clearSceneFilter: true,
           clearSceneLayers: true,
           clearSceneAnimation: true,
           everShownCharacters: _everShownCharacters
         );
-        _gameStateController.add(_currentState);
-        print('[GameManager] CG背景已设置: $backgroundName');
+        
+        print('[GameManager] 已清除背景，准备显示CG角色');
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);

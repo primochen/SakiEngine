@@ -49,19 +49,12 @@ class CgCharacterRenderer {
 
           final layerInfos = snapshot.data!;
 
-          // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
-          final layers = layerInfos.map((layerInfo) {
-            return CgCharacterLayer(
-              key: ValueKey('cg_${characterState.resourceId}-${layerInfo.layerType}'),
-              assetName: layerInfo.assetName,
-              isFadingOut: characterState.isFadingOut,
-            );
-          }).toList();
-
-          // CG角色直接返回层叠的图层，不使用pose配置的位置，而是铺满整个屏幕
-          return Stack(
-            fit: StackFit.expand, // 铺满整个屏幕
-            children: layers,
+          // 使用同步CG显示组件来处理首次显示的同步问题
+          return SynchronizedCgDisplay(
+            key: ValueKey('sync_cg_${characterState.resourceId}'),
+            layerInfos: layerInfos,
+            resourceId: characterState.resourceId,
+            isFadingOut: characterState.isFadingOut,
           );
         },
       );
@@ -74,12 +67,16 @@ class CgCharacterLayer extends StatefulWidget {
   final String assetName;
   final bool isFadingOut;
   final VoidCallback? onFadeOutComplete;
+  final VoidCallback? onReady; // 图层准备好时的回调
+  final bool showImmediately; // 是否立即显示
   
   const CgCharacterLayer({
     super.key, 
     required this.assetName,
     this.isFadingOut = false,
     this.onFadeOutComplete,
+    this.onReady,
+    this.showImmediately = true,
   });
 
   @override
@@ -153,6 +150,13 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
           _currentImage = image;
         });
         
+        // 确保在下一帧再通知准备好了，这样setState已经完成
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            widget.onReady?.call();
+          }
+        });
+        
         // 始终触发动画
         _controller.forward(from: 0.0);
       }
@@ -169,6 +173,11 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
 
   @override
   Widget build(BuildContext context) {
+    // 如果不应该立即显示，先返回空组件
+    if (!widget.showImmediately) {
+      return const SizedBox.shrink();
+    }
+
     if (_currentImage == null || _dissolveProgram == null) {
       return const SizedBox.shrink();
     }
@@ -295,5 +304,95 @@ class CgDissolvePainter extends CustomPainter {
     return progress != oldDelegate.progress ||
         imageFrom != oldDelegate.imageFrom ||
         imageTo != oldDelegate.imageTo;
+  }
+}
+
+/// 同步CG显示组件，只在首次显示时等待所有图层准备好
+class SynchronizedCgDisplay extends StatefulWidget {
+  final List<CharacterLayerInfo> layerInfos;
+  final String resourceId;
+  final bool isFadingOut;
+  
+  const SynchronizedCgDisplay({
+    super.key,
+    required this.layerInfos,
+    required this.resourceId,
+    this.isFadingOut = false,
+  });
+
+  @override
+  State<SynchronizedCgDisplay> createState() => _SynchronizedCgDisplayState();
+}
+
+class _SynchronizedCgDisplayState extends State<SynchronizedCgDisplay> {
+  static final Set<String> _displayedCgs = <String>{}; // 跟踪已经显示过的CG
+  bool _isFirstDisplay = false;
+  bool _allLayersReady = false;
+  final Map<String, bool> _layerReadyStatus = {};
+  bool _canShowLayers = false; // 控制是否可以显示图层的标志
+
+  @override
+  void initState() {
+    super.initState();
+    _isFirstDisplay = !_displayedCgs.contains(widget.resourceId);
+    
+    //print('[SynchronizedCgDisplay] 初始化 ${widget.resourceId}, 是否首次显示: $_isFirstDisplay');
+    
+    if (_isFirstDisplay) {
+      // 初始化所有图层的状态为未准备好
+      for (final layerInfo in widget.layerInfos) {
+        _layerReadyStatus[layerInfo.layerType] = false;
+      }
+      _canShowLayers = false; // 首次显示时，不允许显示图层
+      //print('[SynchronizedCgDisplay] 首次显示，等待图层: ${_layerReadyStatus.keys.toList()}');
+    } else {
+      // 不是首次显示，直接标记为准备好
+      _allLayersReady = true;
+      _canShowLayers = true; // 非首次显示时，立即允许显示
+      //print('[SynchronizedCgDisplay] 非首次显示，立即允许显示');
+    }
+  }
+
+  void _onLayerReady(String layerType) {
+    if (!_isFirstDisplay) return;
+    
+    //print('[SynchronizedCgDisplay] 图层准备完成: $layerType for ${widget.resourceId}');
+    
+    setState(() {
+      _layerReadyStatus[layerType] = true;
+      _allLayersReady = _layerReadyStatus.values.every((ready) => ready);
+      
+      //print('[SynchronizedCgDisplay] 所有图层状态: $_layerReadyStatus');
+      
+      if (_allLayersReady) {
+        // 标记这个CG已经显示过了
+        _displayedCgs.add(widget.resourceId);
+        _canShowLayers = true; // 现在允许显示所有图层
+        //print('[SynchronizedCgDisplay] 所有图层准备完成，现在允许显示 ${widget.resourceId}');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    //print('[SynchronizedCgDisplay] 构建Widget - 可以显示图层: $_canShowLayers');
+    
+    // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
+    final layers = widget.layerInfos.map((layerInfo) {
+      return CgCharacterLayer(
+        key: ValueKey('cg_${widget.resourceId}-${layerInfo.layerType}'),
+        assetName: layerInfo.assetName,
+        isFadingOut: widget.isFadingOut,
+        onReady: _isFirstDisplay ? () => _onLayerReady(layerInfo.layerType) : null,
+        // 使用标志来控制显示
+        showImmediately: _canShowLayers,
+      );
+    }).toList();
+
+    // CG角色直接返回层叠的图层，不使用pose配置的位置，而是铺满整个屏幕
+    return Stack(
+      fit: StackFit.expand, // 铺满整个屏幕
+      children: layers,
+    );
   }
 }
