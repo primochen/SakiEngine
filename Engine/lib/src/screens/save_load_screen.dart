@@ -759,33 +759,40 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
             ),
             if (widget.saveSlot != null)
               Flexible(
-                child: Text(
-                  DateFormat('MM-dd HH:mm').format(widget.saveSlot!.saveTime),
-                  style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
-                    color: config.themeColors.primary.withOpacity(0.6 * opacity),
-                    fontWeight: FontWeight.normal,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 章节名显示在时间左侧
+                    if (widget.formattedScriptName.isNotEmpty)
+                      Flexible(
+                        child: Text(
+                          widget.formattedScriptName,
+                          style: config.reviewTitleTextStyle.copyWith(
+                            fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
+                            color: config.themeColors.primary.withOpacity(0.6 * opacity),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (widget.formattedScriptName.isNotEmpty)
+                      SizedBox(width: 8 * uiScale),
+                    // 时间显示在右侧
+                    Text(
+                      DateFormat('MM-dd HH:mm').format(widget.saveSlot!.saveTime),
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
+                        color: config.themeColors.primary.withOpacity(0.6 * opacity),
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],
         ),
-        // 脚本文件名显示
-        if (widget.saveSlot != null && widget.formattedScriptName.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.only(top: 2 * uiScale),
-            child: Text(
-              widget.formattedScriptName,
-              style: config.reviewTitleTextStyle.copyWith(
-                fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.32,
-                color: config.themeColors.primary.withOpacity(0.6 * opacity),
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+        // 移除之前独立的脚本文件名显示
         SizedBox(height: 6 * uiScale),
         // 内容区域 - 使用Expanded确保不会溢出
         Expanded(
