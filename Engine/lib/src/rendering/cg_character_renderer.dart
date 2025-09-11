@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
@@ -168,7 +169,7 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
 
   @override
   Widget build(BuildContext context) {
-    if (_currentImage == null) {
+    if (_currentImage == null || _dissolveProgram == null) {
       return const SizedBox.shrink();
     }
 
@@ -177,17 +178,14 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
       builder: (context, child) {
         return LayoutBuilder(
           builder: (context, constraints) {
-            // CG图像使用与scene相同的BoxFit.cover方式铺满屏幕，保持比例
-            return ClipRect(
-              child: FadeTransition(
-                opacity: _animation,
-                child: RawImage(
-                  image: _currentImage!,
-                  fit: BoxFit.cover, // 像scene一样使用cover方式
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
-                  filterQuality: FilterQuality.high,
-                ),
+            // CG图像使用dissolve shader进行差分渐变，然后用BoxFit.cover铺满屏幕
+            return CustomPaint(
+              size: Size(constraints.maxWidth, constraints.maxHeight),
+              painter: CgDissolvePainter(
+                program: _dissolveProgram!,
+                progress: _animation.value,
+                imageFrom: _previousImage ?? _currentImage!,
+                imageTo: _currentImage!,
               ),
             );
           },
@@ -216,23 +214,40 @@ class CgDissolvePainter extends CustomPainter {
     try {
       // 如果没有之前的图片（首次显示），从透明开始
       if (imageFrom == imageTo) {
-        // 首次显示：简单的透明度渐变，并铺满整个画布
+        // 首次显示：简单的透明度渐变，使用BoxFit.cover效果铺满整个画布
         final paint = ui.Paint()
           ..color = Colors.white.withOpacity(progress)
           ..isAntiAlias = true
           ..filterQuality = FilterQuality.high;
         
-        // 像scene背景一样填充整个区域
+        // 计算BoxFit.cover的缩放和偏移
+        final imageSize = Size(imageTo.width.toDouble(), imageTo.height.toDouble());
+        final targetSize = size;
+        
+        // 计算缩放比例
+        final scaleX = targetSize.width / imageSize.width;
+        final scaleY = targetSize.height / imageSize.height;
+        final scale = math.max(scaleX, scaleY); // cover模式取较大的缩放比例
+        
+        // 计算缩放后的尺寸
+        final scaledWidth = imageSize.width * scale;
+        final scaledHeight = imageSize.height * scale;
+        
+        // 计算居中偏移
+        final offsetX = (targetSize.width - scaledWidth) / 2;
+        final offsetY = (targetSize.height - scaledHeight) / 2;
+        
+        // 绘制图像
         canvas.drawImageRect(
           imageTo,
-          ui.Rect.fromLTWH(0, 0, imageTo.width.toDouble(), imageTo.height.toDouble()),
-          ui.Rect.fromLTWH(0, 0, size.width, size.height),
+          ui.Rect.fromLTWH(0, 0, imageSize.width, imageSize.height),
+          ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight),
           paint,
         );
         return;
       }
 
-      // 差分切换：使用dissolve效果
+      // 差分切换：使用dissolve效果，也要应用BoxFit.cover
       final shader = program.fragmentShader();
       shader
         ..setFloat(0, progress)

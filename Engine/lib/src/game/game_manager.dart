@@ -588,6 +588,15 @@ class GameManager {
       }
 
       if (node is BackgroundNode) {
+        // 检查是否要清空CG状态
+        // 如果新背景不是CG且当前有CG显示，则清空CG
+        final isNewBackgroundCG = node.background.toLowerCase().contains('cg');
+        final shouldClearCG = !isNewBackgroundCG && _currentState.cgCharacters.isNotEmpty;
+        
+        if (shouldClearCG) {
+          print('[GameManager] 切换到非CG背景，清空CG状态');
+        }
+        
         // 检查下一个节点是否是FxNode，如果是则一起处理
         SceneFilter? sceneFilter;
         int nextIndex = _scriptIndex + 1;
@@ -624,7 +633,7 @@ class GameManager {
             //print('[GameManager] CG到CG转场，使用默认dissolve效果');
           }
           
-          _transitionToNewBackground(node.background, sceneFilter, node.layers, finalTransitionType, node.animation, node.repeatCount).then((_) {
+          _transitionToNewBackground(node.background, sceneFilter, node.layers, finalTransitionType, node.animation, node.repeatCount, shouldClearCG).then((_) {
             // 转场完成后启动计时器
             _startSceneTimer(timerDuration);
           });
@@ -643,6 +652,7 @@ class GameManager {
               sceneAnimationRepeat: node.repeatCount,
               sceneAnimationProperties: (node.animation != null && !isSameBackground) ? <String, double>{} : null,
               clearSceneAnimation: node.animation == null,
+              clearCgCharacters: shouldClearCG, // 如果需要，清空CG角色
               everShownCharacters: _everShownCharacters);
           _gameStateController.add(_currentState);
           
@@ -686,6 +696,13 @@ class GameManager {
       }
 
       if (node is ShowNode) {
+        // 检查是否有CG正在显示，如果有则跳过立绘显示
+        if (_currentState.cgCharacters.isNotEmpty) {
+          print('[GameManager] CG正在显示，跳过ShowNode: ${node.character}');
+          _scriptIndex++;
+          continue;
+        }
+        
         //print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
         // 优先使用角色配置，如果没有配置则直接使用资源ID
         final characterConfig = _characterConfigs[node.character];
@@ -746,6 +763,7 @@ class GameManager {
 
       if (node is CgNode) {
         print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        
         // CG显示命令，类似ShowNode但渲染方式像scene一样铺满
         final characterConfig = _characterConfigs[node.character];
         String resourceId;
@@ -764,6 +782,36 @@ class GameManager {
           finalCharacterKey = node.character; // 使用原始名称作为key
         }
 
+        // 确保pose和expression的值被正确设置
+        final newPose = node.pose ?? 'pose1';
+        final newExpression = node.expression ?? 'happy';
+        
+        // 构建完整的背景名称，用于scene层显示
+        String backgroundName = resourceId;
+        if (node.pose != null) {
+          // 如果有pose，添加pose信息
+          backgroundName = '$resourceId $newPose';
+          if (node.expression != null) {
+            backgroundName = '$resourceId $newPose $newExpression';
+          }
+        } else if (node.expression != null) {
+          // 如果只有expression（差分图），只添加expression
+          backgroundName = '$resourceId $newExpression';
+        }
+        
+        print('[GameManager] CG背景名称: $backgroundName');
+        
+        // 首先将CG图像设置为背景，避免切换时露出下面的scene
+        _currentState = _currentState.copyWith(
+          background: backgroundName,
+          clearSceneFilter: true,
+          clearSceneLayers: true,
+          clearSceneAnimation: true,
+          everShownCharacters: _everShownCharacters
+        );
+        _gameStateController.add(_currentState);
+        print('[GameManager] CG背景已设置: $backgroundName');
+
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
 
@@ -773,10 +821,6 @@ class GameManager {
           resourceId: resourceId,
           positionId: positionId,
         );
-
-        // 确保pose和expression的值被正确设置
-        final newPose = node.pose ?? 'pose1';
-        final newExpression = node.expression ?? 'happy';
         
         print('[GameManager] CG更新: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
 
@@ -1512,6 +1556,12 @@ class GameManager {
 
   /// 检查当前背景是否为CG
   bool _isCurrentBackgroundCG() {
+    // 新的CG检测逻辑：检查是否有CG角色正在显示
+    if (_currentState.cgCharacters.isNotEmpty) {
+      return true;
+    }
+    
+    // 保留原有逻辑作为兜底（向后兼容）
     final currentBg = _currentState.background;
     if (currentBg == null) return false;
     
@@ -1520,7 +1570,7 @@ class GameManager {
   }
 
   /// 使用转场效果切换背景
-  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount]) async {
+  Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount, bool? clearCG]) async {
     if (_context == null) return;
     
     ////print('[GameManager] 开始scene转场到背景: $newBackground, 转场类型: ${transitionType ?? "fade"}');
@@ -1613,6 +1663,7 @@ class GameManager {
           sceneLayers: layers,
           clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
           clearCharacters: true,
+          clearCgCharacters: clearCG ?? false, // 清空CG角色
           sceneAnimation: animation,
           sceneAnimationRepeat: repeatCount,
           sceneAnimationProperties: null, // 不设置空对象，避免闪烁
@@ -1649,6 +1700,7 @@ class GameManager {
               sceneLayers: layers,
               clearSceneLayers: layers == null, // 如果是单图层，清除多图层数据
               clearCharacters: true,
+              clearCgCharacters: clearCG ?? false, // 清空CG角色
               sceneAnimation: animation,
               sceneAnimationRepeat: repeatCount,
               sceneAnimationProperties: null, // 不设置空对象，避免闪烁
@@ -1670,6 +1722,7 @@ class GameManager {
               sceneLayers: layers,
               clearSceneLayers: layers == null,
               clearCharacters: true,
+              clearCgCharacters: clearCG ?? false, // 清空CG角色
               sceneAnimation: animation,
               sceneAnimationRepeat: repeatCount,
               sceneAnimationProperties: null,
