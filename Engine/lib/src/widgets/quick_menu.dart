@@ -30,6 +30,8 @@ class _QuickMenuState extends State<QuickMenu>
     with TickerProviderStateMixin {
   String? _hoveredButtonText;
   int? _hoveredButtonIndex;
+  int _lastValidButtonIndex = 0; // 保存最后一个有效的按钮索引
+  String _lastValidButtonText = ''; // 保存最后一个有效的按钮文本
   final GlobalKey _menuKey = GlobalKey();
   
   // 自动隐藏相关状态
@@ -206,6 +208,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             _hoveredButtonIndex = hovering ? 0 : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = 0;
+                              _lastValidButtonText = text;
+                            }
                           }),
                         ),
                         _buildDivider(scale, config),
@@ -218,6 +224,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             _hoveredButtonIndex = hovering ? 1 : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = 1;
+                              _lastValidButtonText = text;
+                            }
                           }),
                         ),
                         _buildDivider(scale, config),
@@ -230,6 +240,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             _hoveredButtonIndex = hovering ? 2 : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = 2;
+                              _lastValidButtonText = text;
+                            }
                           }),
                         ),
                         _buildDivider(scale, config),
@@ -242,6 +256,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             _hoveredButtonIndex = hovering ? 3 : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = 3;
+                              _lastValidButtonText = text;
+                            }
                           }),
                         ),
                         _buildDivider(scale, config),
@@ -254,6 +272,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             _hoveredButtonIndex = hovering ? 4 : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = 4;
+                              _lastValidButtonText = text;
+                            }
                           }),
                         ),
                         _buildDivider(scale, config),
@@ -266,6 +288,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             _hoveredButtonIndex = hovering ? 5 : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = 5;
+                              _lastValidButtonText = text;
+                            }
                           }),
                         ),
                       ],
@@ -277,14 +303,14 @@ class _QuickMenuState extends State<QuickMenu>
           ),
         ),
         
-        if (_hoveredButtonText != null && _hoveredButtonIndex != null)
-          AnimatedTooltip(
-            text: _hoveredButtonText!,
-            scale: scale,
-            config: config,
-            menuKey: _menuKey,
-            buttonIndex: _hoveredButtonIndex!,
-          ),
+        AnimatedTooltip(
+          text: _hoveredButtonText ?? _lastValidButtonText,
+          scale: scale,
+          config: config,
+          menuKey: _menuKey,
+          buttonIndex: _hoveredButtonIndex ?? _lastValidButtonIndex,
+          isVisible: _hoveredButtonText != null && _hoveredButtonIndex != null,
+        ),
       ],
     );
   }
