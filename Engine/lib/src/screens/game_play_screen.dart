@@ -42,6 +42,8 @@ import 'package:sakiengine/src/utils/expression_selector_manager.dart';
 import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
+import 'package:sakiengine/src/utils/fast_forward_manager.dart';
+import 'package:sakiengine/src/widgets/fast_forward_indicator.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -76,12 +78,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   HotKey? _developerPanelHotKey; // Shift+D快捷键
   KeySequenceDetector? _consoleSequenceDetector; // console序列检测器
   ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
+  FastForwardManager? _fastForwardManager; // 快进管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
   // 跟踪上一次的NVL状态，用于检测转场
   bool _previousIsNvlMode = false;
   bool _previousIsNvlMovieMode = false;
+  
+  // 快进状态
+  bool _isFastForwarding = false;
   
   // 加载淡出动画控制
   late AnimationController _loadingFadeController;
@@ -127,6 +133,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 初始化console序列检测器（发行版也可用，方便玩家复制日志）
     _setupConsoleSequenceDetector();
+    
+    // 初始化快进管理器
+    _setupFastForwardManager();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -253,6 +262,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _expressionSelectorManager?.dispose();
     // 清理console序列检测器
     _consoleSequenceDetector?.dispose();
+    // 清理快进管理器
+    _fastForwardManager?.dispose();
     // 清理加载淡出动画控制器
     _loadingFadeController.dispose();
     
@@ -434,6 +445,35 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     print('发行版用户可通过连续按下 c-o-n-s-o-l-e 来打开日志面板复制日志');
   }
 
+  // 设置快进管理器
+  void _setupFastForwardManager() {
+    _fastForwardManager = FastForwardManager(
+      dialogueProgressionManager: _dialogueProgressionManager,
+      onFastForwardStateChanged: (isFastForwarding) {
+        if (mounted) {
+          setState(() {
+            _isFastForwarding = isFastForwarding;
+          });
+        }
+      },
+      canFastForward: () {
+        // 检查是否有弹窗或菜单显示，如果有则不能快进
+        final hasOverlayOpen = _isShowingMenu || 
+            _showSaveOverlay || 
+            _showLoadOverlay || 
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel || 
+            _showDebugPanel || 
+            _showExpressionSelector;
+        return !hasOverlayOpen;
+      },
+    );
+    
+    _fastForwardManager!.startListening();
+    print('快进管理器已初始化 - 按住Ctrl键可快进对话');
+  }
+
   // 显示通知消息
   void _showNotificationMessage(String message) {
     _notificationOverlayKey.currentState?.show(message);
@@ -471,7 +511,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         }
       },
       child: Focus(
-        autofocus: false,
+        autofocus: true, // 确保能接收键盘事件
+        onKeyEvent: (node, event) {
+          // 处理快进键盘事件
+          if (_fastForwardManager != null) {
+            final handled = _fastForwardManager!.handleKeyEvent(event);
+            if (handled) {
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
         child: Scaffold(
           body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
@@ -598,6 +648,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     expressionSelectorManager: _expressionSelectorManager,
                     createDialogueBox: _createDialogueBox,
                     showNotificationMessage: _showNotificationMessage,
+                  ),
+                  // 快进指示器 - 不会被隐藏
+                  FastForwardIndicator(
+                    isFastForwarding: _isFastForwarding,
                   ),
                   // 加载淡出覆盖层 - 不会被隐藏
                   AnimatedBuilder(
