@@ -16,6 +16,7 @@ class SettingsManager extends ChangeNotifier {
   static const String _typewriterSpeedKey = 'typewriter_chars_per_second';
   static const String _skipPunctuationDelayKey = 'skip_punctuation_delay';
   static const String _speakerAnimationKey = 'speaker_animation';
+  static const String _autoHideQuickMenuKey = 'auto_hide_quick_menu';
   
   // 默认值
   static const double defaultDialogOpacity = 0.9;
@@ -26,6 +27,7 @@ class SettingsManager extends ChangeNotifier {
   static const double defaultTypewriterCharsPerSecond = 50.0;
   static const bool defaultSkipPunctuationDelay = false;
   static const bool defaultSpeakerAnimation = true;
+  static const bool defaultAutoHideQuickMenu = false;
 
   SharedPreferences? _prefs;
   double _currentDialogOpacity = defaultDialogOpacity;
@@ -36,6 +38,7 @@ class SettingsManager extends ChangeNotifier {
   double _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
   bool _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
   bool _currentSpeakerAnimation = defaultSpeakerAnimation;
+  bool _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -48,6 +51,7 @@ class SettingsManager extends ChangeNotifier {
     _currentTypewriterCharsPerSecond = _prefs?.getDouble(_typewriterSpeedKey) ?? defaultTypewriterCharsPerSecond;
     _currentSkipPunctuationDelay = _prefs?.getBool(_skipPunctuationDelayKey) ?? defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = _prefs?.getBool(_speakerAnimationKey) ?? defaultSpeakerAnimation;
+    _currentAutoHideQuickMenu = _prefs?.getBool(_autoHideQuickMenuKey) ?? defaultAutoHideQuickMenu;
   }
 
   // 对话框不透明度
@@ -148,6 +152,21 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 自动隐藏快捷菜单设置
+  Future<bool> getAutoHideQuickMenu() async {
+    await init();
+    return _currentAutoHideQuickMenu;
+  }
+
+  bool get currentAutoHideQuickMenu => _currentAutoHideQuickMenu;
+
+  Future<void> setAutoHideQuickMenu(bool enabled) async {
+    await init();
+    _currentAutoHideQuickMenu = enabled;
+    await _prefs?.setBool(_autoHideQuickMenuKey, enabled);
+    notifyListeners();
+  }
+
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
@@ -157,6 +176,7 @@ class SettingsManager extends ChangeNotifier {
     _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
     _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = defaultSpeakerAnimation;
+    _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
     
     await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
     await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
@@ -164,6 +184,7 @@ class SettingsManager extends ChangeNotifier {
     await _prefs?.setDouble(_typewriterSpeedKey, defaultTypewriterCharsPerSecond);
     await _prefs?.setBool(_skipPunctuationDelayKey, defaultSkipPunctuationDelay);
     await _prefs?.setBool(_speakerAnimationKey, defaultSpeakerAnimation);
+    await _prefs?.setBool(_autoHideQuickMenuKey, defaultAutoHideQuickMenu);
     
     // 应用默认全屏设置
     await windowManager.setFullScreen(defaultIsFullscreen);

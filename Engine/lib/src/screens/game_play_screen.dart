@@ -41,6 +41,7 @@ import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
 import 'package:sakiengine/src/utils/expression_selector_manager.dart';
 import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
+import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -519,9 +520,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                       _showLoadOverlay || 
                       _showReviewOverlay ||
                       _showSettings ||
-                      _showDeveloperPanel || // 添加开发者面板检查
-                      _showDebugPanel || // 添加调试面板检查
-                      _showExpressionSelector; // 添加表情选择器检查
+                      _showDeveloperPanel || 
+                      _showDebugPanel || 
+                      _showExpressionSelector;
                   
                   // 处理标准的PointerScrollEvent（鼠标滚轮）
                   if (pointerSignal is PointerScrollEvent) {
@@ -565,164 +566,38 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   _dialogueProgressionManager.progressDialogue();
                 }
               },
-              // UI层 - 可以被隐藏的UI元素
+              // UI层 - 使用GameUILayer组件
               child: Stack(
                 children: [
-                  // 对话框 - 使用 AnimatedSwitcher 为对话框切换添加过渡动画
-                  HideableUI(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      transitionBuilder: (Widget child, Animation<double> animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.1),
-                              end: Offset.zero,
-                            ).animate(CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOut,
-                            )),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: gameState.dialogue != null && !gameState.isNvlMode
-                          ? _createDialogueBox(
-                              key: const ValueKey('normal_dialogue'),
-                              speaker: gameState.speaker,
-                              dialogue: gameState.dialogue!,
-                            )
-                          : const SizedBox.shrink(key: ValueKey('no_dialogue')),
-                    ),
-                  ),
-                  // 选择菜单
-                  if (gameState.currentNode is MenuNode)
-                    HideableUI(
-                      child: ChoiceMenu(
-                        menuNode: gameState.currentNode as MenuNode,
-                        onChoiceSelected: (String targetLabel) {
-                          _gameManager.jumpToLabel(targetLabel);
-                        },
-                      ),
-                    ),
-                  // NVL 模式覆盖层 - 使用 AnimatedSwitcher 添加过渡动画
-                  HideableUI(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
-                      transitionBuilder: (Widget child, Animation<double> animation) {
-                        // 电影模式和普通旁白模式都只使用淡入淡出，不再有上移动画
-                        return FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        );
-                      },
-                      child: gameState.isNvlMode
-                          ? NvlScreen(
-                              key: _nvlScreenKey,
-                              nvlDialogues: gameState.nvlDialogues,
-                              isMovieMode: gameState.isNvlMovieMode,
-                              progressionManager: _dialogueProgressionManager,
-                            )
-                          : const SizedBox.shrink(key: ValueKey('no_nvl')),
-                    ),
-                  ),
-                  HideableUI(
-                    child: QuickMenu(
-                      onSave: () => setState(() => _showSaveOverlay = true),
-                      onLoad: () => setState(() => _showLoadOverlay = true),
-                      onReview: () => setState(() => _showReviewOverlay = true),
-                      onSettings: () => setState(() => _showSettings = true),
-                      onBack: _handleQuickMenuBack,
-                      onPreviousDialogue: _handlePreviousDialogue,
-                    ),
-                  ),
-                  if (_showReviewOverlay)
-                    HideableUI(
-                      child: ReviewOverlay(
-                        dialogueHistory: _gameManager.getDialogueHistory(),
-                        onClose: () => setState(() => _showReviewOverlay = false),
-                        onJumpToEntry: _jumpToHistoryEntry,
-                      ),
-                    ),
-                  if (_showSaveOverlay)
-                    HideableUI(
-                      child: SaveLoadScreen(
-                        mode: SaveLoadMode.save,
-                        gameManager: _gameManager,
-                        onClose: () => setState(() => _showSaveOverlay = false),
-                      ),
-                    ),
-                  if (_showLoadOverlay)
-                    HideableUI(
-                      child: SaveLoadScreen(
-                        mode: SaveLoadMode.load,
-                        onClose: () => setState(() => _showLoadOverlay = false),
-                        onLoadSlot: widget.onLoadGame ?? (saveSlot) {
-                          // 如果没有回调，使用传统的导航方式（兼容性）
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => GamePlayScreen(saveSlotToLoad: saveSlot),
-                            ),
-                            (route) => false,
-                          );
-                        },
-                      ),
-                    ),
-                  if (_showSettings)
-                    HideableUI(
-                      child: SettingsScreen(
-                        onClose: () => setState(() => _showSettings = false),
-                      ),
-                    ),
-                  // 开发者面板 (仅Debug模式)
-                  if (kDebugMode && _showDeveloperPanel)
-                    HideableUI(
-                      child: DeveloperPanel(
-                        onClose: () => setState(() => _showDeveloperPanel = false),
-                        gameManager: _gameManager,
-                        onReload: () => _gameManager.hotReload(_currentScript),
-                      ),
-                    ),
-                  // 调试面板 (发行版也可用，方便玩家复制日志)
-                  if (_showDebugPanel)
-                    HideableUI(
-                      child: DebugPanelDialog(
-                        onClose: () => setState(() => _showDebugPanel = false),
-                      ),
-                    ),
-                  // 表情选择器 (仅Debug模式)
-                  if (kDebugMode && _showExpressionSelector)
-                    HideableUI(
-                      child: Builder(
-                        builder: (context) {
-                          final speakerInfo = _expressionSelectorManager?.getCurrentSpeakerInfo();
-                          if (speakerInfo == null) {
-                            return const SizedBox.shrink();
-                          }
-                          return ExpressionSelectorDialog(
-                            characterId: speakerInfo.characterId,
-                            characterName: speakerInfo.speakerName,
-                            currentPose: speakerInfo.currentPose,
-                            currentExpression: speakerInfo.currentExpression,
-                            currentDialogue: _gameManager.currentDialogueText,
-                            onSelectionChanged: (pose, expression) {
-                              _expressionSelectorManager?.handleExpressionSelectionChanged(
-                                speakerInfo.characterId,
-                                pose,
-                                expression,
-                              );
-                            },
-                            onClose: () => setState(() => _showExpressionSelector = false),
-                          );
-                        },
-                      ),
-                    ),
-                  HideableUI(
-                    child: NotificationOverlay(
-                      key: _notificationOverlayKey,
-                      scale: context.scaleFor(ComponentType.ui),
-                    ),
+                  GameUILayer(
+                    gameState: gameState,
+                    gameManager: _gameManager,
+                    dialogueProgressionManager: _dialogueProgressionManager,
+                    currentScript: _currentScript,
+                    nvlScreenKey: _nvlScreenKey,
+                    showReviewOverlay: _showReviewOverlay,
+                    showSaveOverlay: _showSaveOverlay,
+                    showLoadOverlay: _showLoadOverlay,
+                    showSettings: _showSettings,
+                    showDeveloperPanel: _showDeveloperPanel,
+                    showDebugPanel: _showDebugPanel,
+                    showExpressionSelector: _showExpressionSelector,
+                    isShowingMenu: _isShowingMenu,
+                    onToggleReview: () => setState(() => _showReviewOverlay = !_showReviewOverlay),
+                    onToggleSave: () => setState(() => _showSaveOverlay = !_showSaveOverlay),
+                    onToggleLoad: () => setState(() => _showLoadOverlay = !_showLoadOverlay),
+                    onToggleSettings: () => setState(() => _showSettings = !_showSettings),
+                    onToggleDeveloperPanel: () => setState(() => _showDeveloperPanel = !_showDeveloperPanel),
+                    onToggleDebugPanel: () => setState(() => _showDebugPanel = !_showDebugPanel),
+                    onToggleExpressionSelector: () => setState(() => _showExpressionSelector = !_showExpressionSelector),
+                    onHandleQuickMenuBack: _handleQuickMenuBack,
+                    onHandlePreviousDialogue: _handlePreviousDialogue,
+                    onJumpToHistoryEntry: _jumpToHistoryEntry,
+                    onLoadGame: widget.onLoadGame,
+                    onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
+                    expressionSelectorManager: _expressionSelectorManager,
+                    createDialogueBox: _createDialogueBox,
+                    showNotificationMessage: _showNotificationMessage,
                   ),
                   // 加载淡出覆盖层 - 不会被隐藏
                   AnimatedBuilder(
