@@ -434,11 +434,16 @@ class _HoverTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double buttonPadding = 12.0;
-    const double dividerHeight = 1.0;
+    // 更新按钮尺寸参数以匹配新的正方形按钮
+    const double buttonSize = 48.0; // 正方形按钮尺寸
+    const double buttonVerticalMargin = 4.0; // 按钮上下边距
+    const double dividerHeight = 0.0; // 分割线高度(设为0)
     
-    final buttonHeight = (config.quickMenuTextStyle.fontSize! * 1.3) + (buttonPadding * 2);
-    double topOffset = 20 * scale + (buttonIndex * (buttonHeight * scale + dividerHeight)) + (buttonHeight * scale / 2) - 15 * scale;
+    // 计算每个按钮单元的总高度(按钮 + 上下边距)
+    final buttonUnitHeight = (buttonSize + buttonVerticalMargin * 2) * scale;
+    
+    // 计算气泡的垂直位置：菜单顶部偏移 + 按钮索引 * 单元高度 + 按钮中心位置
+    double topOffset = 20 * scale + (buttonIndex * buttonUnitHeight) + (buttonSize * scale / 2) - 15 * scale;
 
     return Positioned(
       left: (20 + 60) * scale,
