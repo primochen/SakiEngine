@@ -291,11 +291,9 @@ class _QuickMenuState extends State<QuickMenu>
   Widget _buildDivider(double scale, SakiEngineConfig config) {
     return Container(
       width: 40 * scale,
-      margin: EdgeInsets.symmetric(
-        horizontal: 8 * scale,
-        vertical: 4 * scale,
-      ),
+      margin: EdgeInsets.symmetric(horizontal: 8 * scale),
       child: Divider(
+        height: 0,
         thickness: 1.5 * scale,
         color: config.themeColors.primary.withValues(alpha: 0.6),
       ),
@@ -368,46 +366,50 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerPro
     
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onPressed,
-        onHover: (hovering) {
-          setState(() => _isHovered = hovering);
-          widget.onHover(hovering, widget.text);
-          
-          if (hovering) {
-            _animationController.forward();
-          } else {
-            _animationController.reverse();
-          }
-        },
-        hoverColor: config.themeColors.primary.withValues(alpha: 0.1),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: EdgeInsets.symmetric(horizontal: 2 * scale), // 添加水平间距，防止覆盖分割线
-          padding: EdgeInsets.symmetric(
-            horizontal: 14 * scale, // 减少padding来补偿margin
-            vertical: 12 * scale,
-          ),
-          decoration: BoxDecoration(
-            color: _isHovered 
-                ? config.themeColors.primary.withValues(alpha: 0.05)
-                : Colors.transparent,
-          ),
-          child: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _scaleAnimation.value,
-                child: Transform.rotate(
-                  angle: _rotationAnimation.value,
-                  child: Icon(
-                    widget.icon,
-                    color: config.themeColors.primary,
-                    size: config.quickMenuTextStyle.fontSize! * scale * 1.3,
+      child: Container(
+        width: 48 * scale,
+        height: 48 * scale,
+        margin: EdgeInsets.symmetric(horizontal: 2 * scale, vertical: 4 * scale),
+        child: InkWell(
+          onTap: widget.onPressed,
+          onHover: (hovering) {
+            setState(() => _isHovered = hovering);
+            widget.onHover(hovering, widget.text);
+            
+            if (hovering) {
+              _animationController.forward();
+            } else {
+              _animationController.reverse();
+            }
+          },
+          hoverColor: config.themeColors.primary.withValues(alpha: 0.1),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 48 * scale,
+            height: 48 * scale,
+            decoration: BoxDecoration(
+              color: _isHovered 
+                  ? config.themeColors.primary.withValues(alpha: 0.05)
+                  : Colors.transparent,
+            ),
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Center(
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: Transform.rotate(
+                      angle: _rotationAnimation.value,
+                      child: Icon(
+                        widget.icon,
+                        color: config.themeColors.primary,
+                        size: config.quickMenuTextStyle.fontSize! * scale * 1.3,
+                      ),
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
