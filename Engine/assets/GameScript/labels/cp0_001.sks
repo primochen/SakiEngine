@@ -775,5 +775,5 @@ cg cgcp0_2 2
 l "怎么了？"
 stop music 
 cg cgcp0_2 4
-x "你到底是谁？"////闭嘴
+x "[pass]你到底是谁？[/pass]"////闭嘴
 return
