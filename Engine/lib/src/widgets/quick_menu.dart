@@ -290,14 +290,14 @@ class _QuickMenuState extends State<QuickMenu>
 
   Widget _buildDivider(double scale, SakiEngineConfig config) {
     return Container(
+      width: 40 * scale,
       margin: EdgeInsets.symmetric(
-        horizontal: 12 * scale,
-        vertical: 2 * scale,
+        horizontal: 8 * scale,
+        vertical: 4 * scale,
       ),
       child: Divider(
-        height: 8,
-        thickness: 2,
-        color: Colors.grey.shade600, // 用灰色，无论深色浅色主题都能看到
+        thickness: 1.5 * scale,
+        color: config.themeColors.primary.withValues(alpha: 0.6),
       ),
     );
   }
@@ -383,8 +383,9 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerPro
         hoverColor: config.themeColors.primary.withValues(alpha: 0.1),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          margin: EdgeInsets.symmetric(horizontal: 2 * scale), // 添加水平间距，防止覆盖分割线
           padding: EdgeInsets.symmetric(
-            horizontal: 16 * scale,
+            horizontal: 14 * scale, // 减少padding来补偿margin
             vertical: 12 * scale,
           ),
           decoration: BoxDecoration(
@@ -401,7 +402,7 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerPro
                   angle: _rotationAnimation.value,
                   child: Icon(
                     widget.icon,
-                    color: config.themeColors.primary.withValues(alpha: 0.8),
+                    color: config.themeColors.primary,
                     size: config.quickMenuTextStyle.fontSize! * scale * 1.3,
                   ),
                 ),
