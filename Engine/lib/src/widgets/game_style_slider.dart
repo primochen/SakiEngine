@@ -184,78 +184,124 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
                   children: [
-                    // 背景轨道
-                    Container(
-                      width: availableWidth,
-                      height: trackHeight,
-                      decoration: BoxDecoration(
-                        color: widget.config.themeColors.surface.withOpacity(0.5),
-                        border: Border.all(
-                          color: _isHovered || _isDragging
-                            ? widget.config.themeColors.primary.withOpacity(0.6)
-                            : widget.config.themeColors.primary.withOpacity(0.3),
-                          width: 2 * widget.scale,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 2 * widget.scale,
-                            offset: Offset(0, 1 * widget.scale),
-                          ),
-                        ],
-                      ),
+                    // 背景轨道（可点击）
+                    GestureDetector(
+                      onTapDown: (details) {
+                        final RenderBox box = context.findRenderObject() as RenderBox;
+                        final localPosition = box.globalToLocal(details.globalPosition);
+                        final adjustedPosition = localPosition.dx - thumbSize / 2;
+                        final progress = (adjustedPosition / availableWidth).clamp(0.0, 1.0);
+                        final newValue = widget.min + (widget.max - widget.min) * progress;
+                        
+                        if (widget.divisions != null) {
+                          final step = (widget.max - widget.min) / widget.divisions!;
+                          final roundedValue = (newValue / step).round() * step;
+                          widget.onChanged(roundedValue.clamp(widget.min, widget.max));
+                        } else {
+                          widget.onChanged(newValue);
+                        }
+                        
+                        // 添加点击反馈动画
+                        _handleDragStart();
+                        Future.delayed(const Duration(milliseconds: 150), () {
+                          _handleDragEnd();
+                        });
+                      },
                       child: Container(
-                        margin: EdgeInsets.all(2 * widget.scale),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.05),
-                              Colors.transparent,
-                              Colors.white.withOpacity(0.05),
-                            ],
-                            stops: const [0.0, 0.5, 1.0],
-                          ),
-                        ),
-                      ),
-                    ),
-                    
-                    // 进度轨道
-                    Positioned(
-                      left: 0,
-                      child: Container(
-                        width: availableWidth * _normalizedValue,
+                        width: availableWidth,
                         height: trackHeight,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              _trackColorAnimation.value!.withOpacity(0.6),
-                              _trackColorAnimation.value!.withOpacity(0.9),
-                            ],
-                            stops: const [0.0, 1.0],
+                          color: widget.config.themeColors.surface.withOpacity(0.5),
+                          border: Border.all(
+                            color: _isHovered || _isDragging
+                              ? widget.config.themeColors.primary.withOpacity(0.6)
+                              : widget.config.themeColors.primary.withOpacity(0.3),
+                            width: 2 * widget.scale,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: widget.config.themeColors.primary.withOpacity(
-                                0.3 * _glowAnimation.value * _pulseAnimation.value,
-                              ),
-                              blurRadius: 8 * widget.scale * _pulseAnimation.value,
-                              offset: Offset(0, 0),
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 2 * widget.scale,
+                              offset: Offset(0, 1 * widget.scale),
                             ),
                           ],
                         ),
                         child: Container(
+                          margin: EdgeInsets.all(2 * widget.scale),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.white.withOpacity(0.1),
+                                Colors.black.withOpacity(0.05),
                                 Colors.transparent,
-                                Colors.black.withOpacity(0.1),
+                                Colors.white.withOpacity(0.05),
                               ],
                               stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // 进度轨道（也可点击）
+                    Positioned(
+                      left: 0,
+                      child: GestureDetector(
+                        onTapDown: (details) {
+                          final RenderBox box = context.findRenderObject() as RenderBox;
+                          final localPosition = box.globalToLocal(details.globalPosition);
+                          final adjustedPosition = localPosition.dx - thumbSize / 2;
+                          final progress = (adjustedPosition / availableWidth).clamp(0.0, 1.0);
+                          final newValue = widget.min + (widget.max - widget.min) * progress;
+                          
+                          if (widget.divisions != null) {
+                            final step = (widget.max - widget.min) / widget.divisions!;
+                            final roundedValue = (newValue / step).round() * step;
+                            widget.onChanged(roundedValue.clamp(widget.min, widget.max));
+                          } else {
+                            widget.onChanged(newValue);
+                          }
+                          
+                          // 添加点击反馈动画
+                          _handleDragStart();
+                          Future.delayed(const Duration(milliseconds: 150), () {
+                            _handleDragEnd();
+                          });
+                        },
+                        child: Container(
+                          width: availableWidth * _normalizedValue,
+                          height: trackHeight,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                _trackColorAnimation.value!.withOpacity(0.6),
+                                _trackColorAnimation.value!.withOpacity(0.9),
+                              ],
+                              stops: const [0.0, 1.0],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.config.themeColors.primary.withOpacity(
+                                  0.3 * _glowAnimation.value * _pulseAnimation.value,
+                                ),
+                                blurRadius: 8 * widget.scale * _pulseAnimation.value,
+                                offset: Offset(0, 0),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.white.withOpacity(0.1),
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.1),
+                                ],
+                                stops: const [0.0, 0.5, 1.0],
+                              ),
                             ),
                           ),
                         ),
