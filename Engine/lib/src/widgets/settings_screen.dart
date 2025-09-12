@@ -36,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _typewriterCharsPerSecond = SettingsManager.defaultTypewriterCharsPerSecond;
   bool _skipPunctuationDelay = SettingsManager.defaultSkipPunctuationDelay;
   bool _speakerAnimation = SettingsManager.defaultSpeakerAnimation;
+  bool _autoHideQuickMenu = SettingsManager.defaultAutoHideQuickMenu;
   
   // 音频设置
   bool _musicEnabled = true;
@@ -72,6 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _typewriterCharsPerSecond = await SettingsManager().getTypewriterCharsPerSecond();
       _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
       _speakerAnimation = await SettingsManager().getSpeakerAnimation();
+      _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
       
       // 加载音频设置
       _musicEnabled = _musicManager.isMusicEnabled;
@@ -116,6 +118,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateSpeakerAnimation(bool value) async {
     setState(() => _speakerAnimation = value);
     await _settingsManager.setSpeakerAnimation(value);
+  }
+
+  Future<void> _updateAutoHideQuickMenu(bool value) async {
+    setState(() => _autoHideQuickMenu = value);
+    await _settingsManager.setAutoHideQuickMenu(value);
   }
 
   Future<void> _updateMusicEnabled(bool value) async {
@@ -253,6 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SizedBox(height: 40 * scale),
             _buildSpeakerAnimationToggle(config, scale),
             SizedBox(height: 40 * scale),
+            _buildAutoHideQuickMenuSetting(config, scale),
+            SizedBox(height: 40 * scale),
             _buildTypewriterSpeedSlider(config, scale),
             SizedBox(height: 40 * scale), // 底部间距
           ],
@@ -314,6 +323,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildDarkModeToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildSpeakerAnimationToggle(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildAutoHideQuickMenuSetting(config, scale),
                       SizedBox(height: 40 * scale),
                       // 可以在这里添加更多右列设置项
                     ],
@@ -731,6 +742,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
           GameStyleSwitch(
             value: _speakerAnimation,
             onChanged: _updateSpeakerAnimation,
+            scale: scale,
+            config: config,
+            trueText: '开启',
+            falseText: '关闭',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoHideQuickMenuSetting(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.auto_awesome,
+            color: config.themeColors.primary,
+            size: 20 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '自动隐藏快捷菜单',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  '无交互时自动将快捷菜单收缩到屏幕边缘',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: _autoHideQuickMenu,
+            onChanged: _updateAutoHideQuickMenu,
             scale: scale,
             config: config,
             trueText: '开启',
