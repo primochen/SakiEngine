@@ -290,9 +290,15 @@ class _QuickMenuState extends State<QuickMenu>
 
   Widget _buildDivider(double scale, SakiEngineConfig config) {
     return Container(
-      height: 1,
-      margin: EdgeInsets.symmetric(horizontal: 8 * scale),
-      color: config.themeColors.primary.withValues(alpha: 0.2),
+      margin: EdgeInsets.symmetric(
+        horizontal: 12 * scale,
+        vertical: 2 * scale,
+      ),
+      child: Divider(
+        height: 8,
+        thickness: 2,
+        color: Colors.grey.shade600, // 用灰色，无论深色浅色主题都能看到
+      ),
     );
   }
 }
@@ -318,8 +324,42 @@ class _QuickMenuButton extends StatefulWidget {
   State<_QuickMenuButton> createState() => _QuickMenuButtonState();
 }
 
-class _QuickMenuButtonState extends State<_QuickMenuButton> {
+class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerProviderStateMixin {
   bool _isHovered = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutBack,
+    ));
+    
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.1, // 轻微旋转
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -333,6 +373,12 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> {
         onHover: (hovering) {
           setState(() => _isHovered = hovering);
           widget.onHover(hovering, widget.text);
+          
+          if (hovering) {
+            _animationController.forward();
+          } else {
+            _animationController.reverse();
+          }
         },
         hoverColor: config.themeColors.primary.withValues(alpha: 0.1),
         child: AnimatedContainer(
@@ -346,10 +392,21 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> {
                 ? config.themeColors.primary.withValues(alpha: 0.05)
                 : Colors.transparent,
           ),
-          child: Icon(
-            widget.icon,
-            color: config.themeColors.primary.withValues(alpha: 0.8),
-            size: config.quickMenuTextStyle.fontSize! * scale * 1.3,
+          child: AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Transform.rotate(
+                  angle: _rotationAnimation.value,
+                  child: Icon(
+                    widget.icon,
+                    color: config.themeColors.primary.withValues(alpha: 0.8),
+                    size: config.quickMenuTextStyle.fontSize! * scale * 1.3,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
