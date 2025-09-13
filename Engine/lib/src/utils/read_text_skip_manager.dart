@@ -87,17 +87,25 @@ class ReadTextSkipManager {
   
   /// 执行跳过步骤
   void _performSkipStep() {
+    //print('📖 [DEBUG] _performSkipStep被调用');
+    
     // 检查是否还在跳过状态
-    if (!_isSkipping) return;
+    if (!_isSkipping) {
+      //print('📖 [DEBUG] 不在跳过状态，返回');
+      return;
+    }
     
     // 再次检查是否可以跳过
     if (canSkip != null && !canSkip!()) {
+      //print('📖 [DEBUG] canSkip返回false，停止跳过');
       stopSkipping();
       return;
     }
     
-    // 检查当前对话是否已读
+    // 检查当前对话是否已读（推进前检查）
     final currentState = gameManager.currentState;
+    //print('📖 [DEBUG] 当前状态: dialogue="${currentState.dialogue}", speaker="${currentState.speaker}"');
+    
     if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
       final isCurrentRead = readTextTracker.isRead(
         currentState.speaker, 
@@ -113,9 +121,19 @@ class ReadTextSkipManager {
         stopSkipping();
         return;
       }
+    } else {
+      // 如果当前没有对话内容，稍等片刻让对话加载
+      //print('📖 [DEBUG] 当前没有对话内容，稍等片刻让对话加载');
+      Future.delayed(Duration(milliseconds: 50), () {
+        if (_isSkipping) {
+          _performSkipStep();
+        }
+      });
+      return;
     }
     
-    // 推进对话
+    // 推进对话（只有确认已读后才推进）
+    //print('📖 [DEBUG] 对话已读，准备推进');
     try {
       dialogueProgressionManager.progressDialogue();
     } catch (e) {

@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 /// 已读文本跟踪器
 /// 
@@ -16,12 +20,21 @@ class ReadTextTracker extends ChangeNotifier {
   // 使用对话内容的哈希值作为唯一标识
   final Set<String> _readDialogues = <String>{};
   
-  // 存储键名
-  static const String _storageKey = 'read_dialogues';
+  // 二进制文件配置
+  static const String _fileName = '.sakiread';
+  static const String _magicNumber = 'SAKI';
+  static const int _version = 1;
   
-  /// 初始化，从本地存储加载已读记录
+  /// 初始化，从二进制文件加载已读记录
   Future<void> initialize() async {
+    print('[ReadTextTracker] ========== 开始初始化 ==========');
+    print('[ReadTextTracker] 实例hashCode: $hashCode');
+    print('[ReadTextTracker] 初始化前已读数量: ${_readDialogues.length}');
+    _readDialogues.clear(); // 确保清空任何现有数据
+    print('[ReadTextTracker] 清空后已读数量: ${_readDialogues.length}');
     await _loadFromStorage();
+    print('[ReadTextTracker] 初始化完成，最终已读数量: ${_readDialogues.length}');
+    print('[ReadTextTracker] ========== 初始化结束 ==========');
   }
   
   /// 标记对话为已读
@@ -57,7 +70,9 @@ class ReadTextTracker extends ChangeNotifier {
     if (dialogue.trim().isEmpty) return false;
     
     final identifier = _createIdentifier(speaker, dialogue, scriptIndex);
-    return _readDialogues.contains(identifier);
+    final result = _readDialogues.contains(identifier);
+    print('[ReadTextTracker] 检查是否已读: "$identifier" = $result (实例${hashCode}, 总数${_readDialogues.length})');
+    return result;
   }
   
   /// 创建对话的唯一标识符
@@ -73,39 +88,126 @@ class ReadTextTracker extends ChangeNotifier {
   /// 获取已读对话数量
   int get readCount => _readDialogues.length;
   
-  /// 清除所有已读记录
+  /// 清除所有已读记录（删除.sakiread文件）
   Future<void> clearAllReadRecords() async {
     print('[ReadTextTracker] 清除前: ${_readDialogues.length} 条已读记录');
     print('[ReadTextTracker] 当前实例hashCode: ${hashCode}');
-    print('[ReadTextTracker] 清除前的前5个记录: ${_readDialogues.take(5).toList()}');
     
-    _readDialogues.clear();
-    await _saveToStorage();
-    
-    print('[ReadTextTracker] 清除后: ${_readDialogues.length} 条已读记录');
-    print('[ReadTextTracker] 清除操作完成');
+    try {
+      final filePath = await _getReadFilePath();
+      final file = File(filePath);
+      
+      if (await file.exists()) {
+        await file.delete();
+        print('[ReadTextTracker] 成功删除.sakiread文件: $filePath');
+      } else {
+        print('[ReadTextTracker] .sakiread文件不存在，无需删除');
+      }
+      
+      _readDialogues.clear();
+      print('[ReadTextTracker] 清除后: ${_readDialogues.length} 条已读记录');
+      print('[ReadTextTracker] 清除操作完成');
+      
+    } catch (e) {
+      print('[ReadTextTracker] 删除.sakiread文件失败: $e');
+      // 即使删除文件失败，也清空内存中的数据
+      _readDialogues.clear();
+    }
     
     notifyListeners();
   }
   
-  /// 从本地存储加载已读记录
+  /// 获取.sakiread文件路径
+  Future<String> _getReadFilePath() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final projectName = await _getCurrentProjectName();
+      final savesDir = Directory('${directory.path}/SakiEngine/Saves/$projectName');
+      if (!await savesDir.exists()) {
+        await savesDir.create(recursive: true);
+      }
+      return p.join(savesDir.path, _fileName);
+    } catch (e) {
+      print('[ReadTextTracker] 获取文件路径失败: $e');
+      rethrow;
+    }
+  }
+  
+  /// 获取当前项目名称（复制自SaveLoadManager逻辑）
+  Future<String> _getCurrentProjectName() async {
+    try {
+      const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+      if (fromDefine.isNotEmpty) {
+        return p.basename(fromDefine);
+      }
+      
+      final fromEnv = Platform.environment['SAKI_GAME_PATH'];
+      if (fromEnv != null && fromEnv.isNotEmpty) {
+        return p.basename(fromEnv);
+      }
+      
+      return 'DefaultProject';
+    } catch (e) {
+      return 'DefaultProject';
+    }
+  }
+
+  /// 从二进制文件加载已读记录
   Future<void> _loadFromStorage() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      print('[ReadTextTracker] 开始加载，存储键: $_storageKey');
-      final jsonString = prefs.getString(_storageKey) ?? '';
-      print('[ReadTextTracker] 从存储读取的原始字符串: "$jsonString"');
-      print('[ReadTextTracker] 字符串长度: ${jsonString.length}');
+      final filePath = await _getReadFilePath();
+      final file = File(filePath);
       
-      if (jsonString.isNotEmpty) {
-        final List<dynamic> readList = jsonDecode(jsonString);
-        print('[ReadTextTracker] 解析后的列表: $readList');
-        _readDialogues.clear();
-        _readDialogues.addAll(readList.cast<String>());
-        print('[ReadTextTracker] 从存储加载: ${_readDialogues.length} 条已读记录');
-      } else {
-        print('[ReadTextTracker] 存储为空，无已读记录');
+      print('[ReadTextTracker] 尝试加载文件: $filePath');
+      
+      if (!await file.exists()) {
+        print('[ReadTextTracker] .sakiread文件不存在，无已读记录');
+        return;
       }
+      
+      final bytes = await file.readAsBytes();
+      print('[ReadTextTracker] 读取到 ${bytes.length} 字节数据');
+      
+      if (bytes.length < 12) { // 至少需要魔法数字(4) + 版本(4) + 计数(4)
+        print('[ReadTextTracker] 文件太小，可能损坏');
+        return;
+      }
+      
+      final buffer = bytes.buffer.asByteData();
+      int offset = 0;
+      
+      // 检查魔法数字
+      final magic = String.fromCharCodes(bytes.sublist(0, 4));
+      offset += 4;
+      if (magic != _magicNumber) {
+        print('[ReadTextTracker] 魔法数字不匹配: $magic');
+        return;
+      }
+      
+      // 检查版本
+      final version = buffer.getInt32(offset, Endian.little);
+      offset += 4;
+      if (version != _version) {
+        print('[ReadTextTracker] 版本不匹配: $version');
+        return;
+      }
+      
+      // 读取已读记录数量
+      final count = buffer.getInt32(offset, Endian.little);
+      offset += 4;
+      print('[ReadTextTracker] 准备加载 $count 条已读记录');
+      
+      _readDialogues.clear();
+      
+      // 读取每个哈希值
+      for (int i = 0; i < count; i++) {
+        if (offset + 4 > bytes.length) break;
+        final hashCode = buffer.getInt32(offset, Endian.little);
+        offset += 4;
+        _readDialogues.add(hashCode.toString());
+      }
+      
+      print('[ReadTextTracker] 从二进制文件加载: ${_readDialogues.length} 条已读记录');
     } catch (e) {
       print('[ReadTextTracker] 加载已读记录异常: $e');
       if (kDebugMode) {
@@ -114,20 +216,43 @@ class ReadTextTracker extends ChangeNotifier {
     }
   }
   
-  /// 保存已读记录到本地存储
+  /// 保存已读记录到二进制文件
   Future<void> _saveToStorage() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = jsonEncode(_readDialogues.toList());
-      print('[ReadTextTracker] 准备保存JSON: $jsonString');
+      final filePath = await _getReadFilePath();
+      final file = File(filePath);
       
-      final success = await prefs.setString(_storageKey, jsonString);
-      print('[ReadTextTracker] SharedPreferences保存结果: $success');
-      print('[ReadTextTracker] 保存到存储: ${_readDialogues.length} 条已读记录');
+      // 计算所需缓冲区大小
+      final bufferSize = 4 + 4 + 4 + (_readDialogues.length * 4); // 魔法数字 + 版本 + 计数 + 哈希值数组
+      final buffer = Uint8List(bufferSize);
+      final byteData = buffer.buffer.asByteData();
       
-      // 验证是否真的保存成功
-      final verification = prefs.getString(_storageKey);
-      print('[ReadTextTracker] 验证读取: ${verification?.length ?? 0} 字符');
+      int offset = 0;
+      
+      // 写入魔法数字
+      for (int i = 0; i < _magicNumber.length; i++) {
+        buffer[offset + i] = _magicNumber.codeUnitAt(i);
+      }
+      offset += 4;
+      
+      // 写入版本
+      byteData.setInt32(offset, _version, Endian.little);
+      offset += 4;
+      
+      // 写入已读记录数量
+      byteData.setInt32(offset, _readDialogues.length, Endian.little);
+      offset += 4;
+      
+      // 写入所有哈希值
+      for (final hashString in _readDialogues) {
+        final hashCode = int.parse(hashString);
+        byteData.setInt32(offset, hashCode, Endian.little);
+        offset += 4;
+      }
+      
+      await file.writeAsBytes(buffer);
+      print('[ReadTextTracker] 保存到二进制文件: ${_readDialogues.length} 条已读记录 ($bufferSize 字节)');
+      print('[ReadTextTracker] 文件路径: $filePath');
     } catch (e) {
       print('[ReadTextTracker] 保存已读记录失败: $e');
       if (kDebugMode) {
@@ -136,25 +261,28 @@ class ReadTextTracker extends ChangeNotifier {
     }
   }
   
-  /// 导出已读记录（用于备份）
+  /// 导出已读记录（备份.sakiread文件）
   Map<String, dynamic> exportReadRecords() {
     return {
-      'version': 1,
+      'version': _version,
       'readCount': _readDialogues.length,
       'readDialogues': _readDialogues.toList(),
       'exportTime': DateTime.now().toIso8601String(),
+      'storageType': 'binary_file', // 标记存储类型
     };
   }
   
-  /// 导入已读记录（用于恢复）
+  /// 导入已读记录（从备份恢复并保存到.sakiread文件）
   Future<void> importReadRecords(Map<String, dynamic> data) async {
     try {
       final List<dynamic> readList = data['readDialogues'] ?? [];
       _readDialogues.clear();
       _readDialogues.addAll(readList.cast<String>());
-      await _saveToStorage();
+      await _saveToStorage(); // 保存到二进制文件
       notifyListeners();
+      print('[ReadTextTracker] 成功导入 ${_readDialogues.length} 条已读记录');
     } catch (e) {
+      print('[ReadTextTracker] 导入已读记录失败: $e');
       if (kDebugMode) {
         print('导入已读记录失败: $e');
       }

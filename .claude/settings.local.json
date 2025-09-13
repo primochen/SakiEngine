@@ -10,7 +10,8 @@
       "Bash(tree:*)",
       "Bash(find:*)",
       "Read(//Users/dfsteve/Downloads/igiari/**)",
-      "Bash(ffmpeg:*)"
+      "Bash(ffmpeg:*)",
+      "Read(//Users/dfsteve/Documents/SakiEngine/**)"
     ],
     "deny": [],
     "ask": []
