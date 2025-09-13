@@ -169,8 +169,15 @@ class _GameUILayerState extends State<GameUILayer> {
         // NVL 模式覆盖层 - 使用 AnimatedSwitcher 添加过渡动画
         HideableUI(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
+            duration: widget.gameState.isFastForwarding 
+                ? Duration.zero // 快进模式下跳过动画
+                : const Duration(milliseconds: 400),
             transitionBuilder: (Widget child, Animation<double> animation) {
+              // 快进模式下跳过淡入淡出动画，直接显示
+              if (widget.gameState.isFastForwarding) {
+                return child;
+              }
+              
               return FadeTransition(
                 opacity: animation,
                 child: child,
@@ -182,6 +189,7 @@ class _GameUILayerState extends State<GameUILayer> {
                     nvlDialogues: widget.gameState.nvlDialogues,
                     isMovieMode: widget.gameState.isNvlMovieMode,
                     progressionManager: widget.dialogueProgressionManager,
+                    isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
                   )
                 : const SizedBox.shrink(key: ValueKey('no_nvl')),
           ),
