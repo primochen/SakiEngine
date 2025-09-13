@@ -21,7 +21,7 @@ class ReadTextTracker extends ChangeNotifier {
   final Set<String> _readDialogues = <String>{};
   
   // 二进制文件配置
-  static const String _fileName = '.sakiread';
+  static const String _fileName = 'saki.sakiread';
   static const String _magicNumber = 'SAKI';
   static const int _version = 1;
   
