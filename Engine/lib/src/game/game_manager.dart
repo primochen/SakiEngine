@@ -643,6 +643,7 @@ class GameManager {
               sceneLayers: node.layers,
               clearSceneLayers: node.layers == null,
               clearDialogueAndSpeaker: !isSameBackground,
+              clearCharacters: !isSameBackground, // 新增：非相同背景时清除所有角色立绘
               sceneAnimation: node.animation,
               sceneAnimationRepeat: node.repeatCount,
               sceneAnimationProperties: (node.animation != null && !isSameBackground) ? <String, double>{} : null,

@@ -8,11 +8,13 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 class ChoiceMenu extends StatefulWidget {
   final MenuNode menuNode;
   final Function(String) onChoiceSelected;
+  final bool isFastForwarding; // 新增：快进状态
 
   const ChoiceMenu({
     super.key,
     required this.menuNode,
     required this.onChoiceSelected,
+    this.isFastForwarding = false, // 新增：默认不快进
   });
 
   @override
@@ -50,7 +52,12 @@ class _ChoiceMenuState extends State<ChoiceMenu>
     ));
 
     // 开始入场动画
-    _controller.forward();
+    if (widget.isFastForwarding) {
+      // 快进模式下直接跳到结尾
+      _controller.value = 1.0;
+    } else {
+      _controller.forward();
+    }
   }
 
   @override
@@ -61,9 +68,16 @@ class _ChoiceMenuState extends State<ChoiceMenu>
 
   // 处理选择时的退出动画
   void _handleChoice(String targetLabel) async {
-    await _controller.reverse();
-    if (mounted) {
-      widget.onChoiceSelected(targetLabel);
+    if (widget.isFastForwarding) {
+      // 快进模式下跳过退出动画
+      if (mounted) {
+        widget.onChoiceSelected(targetLabel);
+      }
+    } else {
+      await _controller.reverse();
+      if (mounted) {
+        widget.onChoiceSelected(targetLabel);
+      }
     }
   }
 
@@ -90,13 +104,17 @@ class _ChoiceMenuState extends State<ChoiceMenu>
                         final index = entry.key;
                         final choice = entry.value;
                         return TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 100 + index * 50),
+                          duration: widget.isFastForwarding 
+                              ? Duration.zero // 快进模式下跳过动画
+                              : Duration(milliseconds: 100 + index * 50),
                           tween: Tween(begin: 0.0, end: 1.0),
                           builder: (context, value, child) {
+                            // 快进模式下直接显示完成状态
+                            final animValue = widget.isFastForwarding ? 1.0 : value;
                             return Transform.translate(
-                              offset: Offset(0, 20 * (1 - value)),
+                              offset: Offset(0, 20 * (1 - animValue)),
                               child: Opacity(
-                                opacity: value,
+                                opacity: animValue,
                                 child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12 * scale),
                                   child: _ChoiceButton(

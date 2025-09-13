@@ -120,8 +120,15 @@ class _GameUILayerState extends State<GameUILayer> {
         // 对话框 - 使用 AnimatedSwitcher 为对话框切换添加过渡动画
         HideableUI(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
+            duration: widget.gameState.isFastForwarding 
+                ? Duration.zero // 快进模式下跳过动画
+                : const Duration(milliseconds: 300),
             transitionBuilder: (Widget child, Animation<double> animation) {
+              // 快进模式下跳过滑动动画，直接显示
+              if (widget.gameState.isFastForwarding) {
+                return child;
+              }
+              
               return FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
@@ -155,6 +162,7 @@ class _GameUILayerState extends State<GameUILayer> {
               onChoiceSelected: (String targetLabel) {
                 widget.gameManager.jumpToLabel(targetLabel);
               },
+              isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
             ),
           ),
         
