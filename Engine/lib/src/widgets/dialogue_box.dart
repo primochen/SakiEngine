@@ -6,6 +6,7 @@ import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_shake_effect.dart';
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
+import 'package:sakiengine/src/widgets/read_status_indicator.dart';
 import 'package:sakiengine/src/widgets/dialogue_background.dart';
 import 'package:sakiengine/src/widgets/dialogue_speaker_header.dart';
 import 'package:sakiengine/src/widgets/dialogue_content.dart';
@@ -205,6 +206,11 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                 isHovered: _isHovered,
                 dialogOpacity: _dialogOpacity,
                 uiScale: uiScale,
+                overlay: ReadStatusIndicator(
+                  isRead: _isRead,
+                  uiScale: uiScale,
+                  textScale: textScale,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -213,7 +219,6 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                       speaker: widget.speaker,
                       uiScale: uiScale,
                       textScale: textScale,
-                      isRead: _isRead,
                     ),
                     DialogueContent(
                       dialogue: widget.dialogue,

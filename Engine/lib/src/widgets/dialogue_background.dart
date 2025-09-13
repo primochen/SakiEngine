@@ -11,6 +11,7 @@ class DialogueBackground extends StatelessWidget {
   final bool isHovered;
   final double dialogOpacity;
   final double uiScale;
+  final Widget? overlay; // 新增：覆盖层组件（如已读标记）
 
   const DialogueBackground({
     super.key,
@@ -18,6 +19,7 @@ class DialogueBackground extends StatelessWidget {
     required this.isHovered,
     required this.dialogOpacity,
     required this.uiScale,
+    this.overlay,
   });
 
   @override
@@ -89,6 +91,8 @@ class DialogueBackground extends StatelessWidget {
               color: config.themeColors.background.withOpacity(config.baseWindowAlpha * 0.3),
               child: child,
             ),
+            // 覆盖层：已读标记等
+            if (overlay != null) overlay!,
           ],
         ),
       ),

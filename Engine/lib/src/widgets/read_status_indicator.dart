@@ -3,7 +3,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 
 /// 已读状态指示器
 /// 
-/// 显示一个小的"已读"标记，放在对话框的左上角
+/// 显示一个小的"已读"标记，相对定位在容器的左上角
 class ReadStatusIndicator extends StatelessWidget {
   final bool isRead;
   final double uiScale;
@@ -24,21 +24,26 @@ class ReadStatusIndicator extends StatelessWidget {
 
     final config = SakiEngineConfig();
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 6.0 * uiScale,
-        vertical: 2.0 * uiScale,
-      ),
-      decoration: BoxDecoration(
-        color: config.themeColors.primary.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(4.0 * uiScale),
-      ),
-      child: Text(
-        '已读',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 10.0 * textScale,
-          fontWeight: FontWeight.bold,
+    return Positioned(
+      // 相对于Stack容器的左上角定位
+      top: 8.0 * uiScale,
+      left: 8.0 * uiScale,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: 6.0 * uiScale,
+          vertical: 2.0 * uiScale,
+        ),
+        decoration: BoxDecoration(
+          color: config.themeColors.primary.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(4.0 * uiScale),
+        ),
+        child: Text(
+          '已读',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10.0 * textScale,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
