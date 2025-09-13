@@ -566,7 +566,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               // 使用post frame callback延迟处理，避免在build中调用setState
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  _fastForwardManager?.forceStopFastForward();
+                  // 只需要停止FastForwardManager，不需要再次调用forceStopFastForward
+                  // 因为GameManager已经处理了状态更新
+                  _fastForwardManager?.stopFastForward();
                   setState(() {
                     _isFastForwarding = false;
                   });
@@ -1013,11 +1015,7 @@ class _CharacterLayerState extends State<_CharacterLayer>
     
     if (oldWidget.assetName != widget.assetName) {
       _previousImage = _currentImage;
-      _loadImage().then((_) {
-        if (mounted) {
-          _controller.forward(from: 0.0);
-        }
-      });
+      _loadImage(); // 移除.then回调，因为_loadImage内部已处理动画触发
     }
   }
 
@@ -1026,12 +1024,17 @@ class _CharacterLayerState extends State<_CharacterLayer>
     if (assetPath != null && mounted) {
       final image = await ImageLoader.loadImage(assetPath);
       if (mounted && image != null) {
-        setState(() {
-          _currentImage = image;
+        // 使用post frame callback避免在build期间调用setState
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _currentImage = image;
+            });
+            
+            // 始终触发动画
+            _controller.forward(from: 0.0);
+          }
         });
-        
-        // 始终触发动画
-        _controller.forward(from: 0.0);
       }
     }
   }

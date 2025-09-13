@@ -341,38 +341,17 @@ class AssetManager {
     try {
       final gamePath = await _getGamePath();
       final charactersDir = Directory(p.join(gamePath, 'Assets', 'images', 'characters'));
-      
-      if (kDebugMode) {
-        print("AssetManager: 查找角色 $characterId 的图层文件");
-        print("AssetManager: 游戏路径: $gamePath");
-        print("AssetManager: 角色文件夹路径: ${charactersDir.path}");
-        print("AssetManager: 角色文件夹是否存在: ${await charactersDir.exists()}");
-      }
-      
       if (!await charactersDir.exists()) {
-        if (kDebugMode) {
-          print("AssetManager: 角色文件夹不存在，返回空列表");
-        }
         return availableLayers;
       }
       
       final prefix = '$characterId-';
       final imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.avif'];
-      
-      if (kDebugMode) {
-        print("AssetManager: 查找前缀: $prefix");
-      }
-      
       var fileCount = 0;
       await for (final file in charactersDir.list()) {
         if (file is File) {
           final fileName = p.basename(file.path);
           fileCount++;
-          
-          if (kDebugMode && fileCount <= 20) { // 只打印前20个文件避免日志过多
-            print("AssetManager: 检查文件: $fileName");
-          }
-          
           final fileNameWithoutExt = p.basenameWithoutExtension(fileName);
           
           // 检查是否以指定角色ID开头且是图片文件
@@ -382,19 +361,10 @@ class AssetManager {
             final layerName = fileNameWithoutExt.substring(prefix.length);
             if (layerName.isNotEmpty) {
               availableLayers.add(layerName);
-              if (kDebugMode) {
-                print("AssetManager: 找到匹配文件: $fileName -> 图层: $layerName");
-              }
             }
           }
         }
       }
-      
-      if (kDebugMode) {
-        print("AssetManager: 总共检查了 $fileCount 个文件");
-        print("AssetManager: 找到 ${availableLayers.length} 个 $characterId 的图层");
-      }
-      
       // 按字母顺序排序
       availableLayers.sort();
       

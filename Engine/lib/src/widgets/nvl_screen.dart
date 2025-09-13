@@ -229,8 +229,13 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
   void _onTypewriterStateChanged() {
     if (mounted) {
       final isCompleted = _currentTypewriterController?.isCompleted ?? false;
-      setState(() {
-        _isLastDialogueComplete = isCompleted;
+      // 使用post frame callback避免在build期间调用setState
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _isLastDialogueComplete = isCompleted;
+          });
+        }
       });
     }
   }
@@ -368,8 +373,13 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
                   autoStart: true,
                   controller: _getOrCreateTypewriterController(index),
                   onComplete: () {
-                    setState(() {
-                      _isLastDialogueComplete = true;
+                    // 使用post frame callback避免在build期间调用setState
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _isLastDialogueComplete = true;
+                        });
+                      }
                     });
                   },
                 )

@@ -357,7 +357,12 @@ class _TypewriterTextState extends State<TypewriterText>
         _typewriterController.state == TypewriterState.skipped) {
       widget.onComplete?.call();
     }
-    setState(() {}); // 更新UI
+    // 使用post frame callback避免在build期间调用setState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {}); // 更新UI
+      }
+    });
   }
 
   @override
