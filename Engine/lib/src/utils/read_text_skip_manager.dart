@@ -93,6 +93,8 @@ class ReadTextSkipManager {
         gameManager.currentScriptIndex
       );
       
+      print('📖 检查对话: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" 是否已读: $isCurrentRead (脚本索引: ${gameManager.currentScriptIndex})');
+      
       // 如果当前对话未读，停止跳过
       if (!isCurrentRead) {
         print('📖 遇到未读文本，停止跳过');

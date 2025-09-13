@@ -1,5 +1,6 @@
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/utils/read_text_tracker.dart';
 
 /// 对话推进管理器
 /// 
@@ -21,6 +22,9 @@ class DialogueProgressionManager {
   /// 
   /// 所有推进对话的操作都应该调用这个方法，而不是直接调用 gameManager.next()
   void progressDialogue() {
+    // 在推进对话前，先标记当前对话为已读（如果有对话内容的话）
+    _markCurrentDialogueAsRead();
+    
     // 检查是否有活跃的打字机动画
     if (_currentTypewriter != null && _currentTypewriter!.isTyping) {
       // 如果正在打字，先跳过动画显示完整文本
@@ -28,6 +32,19 @@ class DialogueProgressionManager {
     } else {
       // 如果没有打字机动画或动画已完成，推进到下一句对话
       gameManager.next();
+    }
+  }
+  
+  /// 标记当前对话为已读
+  void _markCurrentDialogueAsRead() {
+    final currentState = gameManager.currentState;
+    if (currentState.dialogue != null && currentState.dialogue!.trim().isNotEmpty) {
+      print('📖 标记为已读: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" (脚本索引: ${gameManager.currentScriptIndex})');
+      ReadTextTracker.instance.markAsRead(
+        currentState.speaker,
+        currentState.dialogue!,
+        gameManager.currentScriptIndex,
+      );
     }
   }
   

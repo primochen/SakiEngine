@@ -205,14 +205,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     required String dialogue,
     required bool isFastForwarding, // 新增快进状态参数
   }) {
-    // 标记对话为已读
-    if (dialogue.trim().isNotEmpty) {
-      ReadTextTracker.instance.markAsRead(
-        speaker, 
-        dialogue, 
-        _gameManager.currentScriptIndex
-      );
-    }
+    // 不在这里标记为已读！应该在用户推进对话时才标记
     
     // 根据项目名称选择对话框
     if (_projectName == 'SoraNoUta') {
