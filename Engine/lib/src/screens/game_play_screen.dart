@@ -727,6 +727,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onHandleQuickMenuBack: _handleQuickMenuBack,
                     onHandlePreviousDialogue: _handlePreviousDialogue,
                     onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
+                    onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
                     onLoadGame: widget.onLoadGame,
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),

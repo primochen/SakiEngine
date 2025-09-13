@@ -14,6 +14,7 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback onPreviousDialogue;
   final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
   final bool isFastForwarding; // 新增：快进状态
+  final VoidCallback? onThemeToggle; // 新增：主题切换回调
 
   const QuickMenu({
     super.key,
@@ -25,6 +26,7 @@ class QuickMenu extends StatefulWidget {
     required this.onPreviousDialogue,
     this.onSkipRead, // 新增：跳过已读文本回调（可选）
     this.isFastForwarding = false, // 默认不快进
+    this.onThemeToggle, // 新增：主题切换回调（可选）
   });
 
   @override
@@ -44,6 +46,9 @@ class _QuickMenuState extends State<QuickMenu>
   bool _isMenuHidden = false;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  
+  // 主题相关状态
+  bool _isDarkMode = false; // 新增：当前主题状态
   
   // 常量
   static const Duration _animationDuration = Duration(milliseconds: 200);
@@ -68,6 +73,7 @@ class _QuickMenuState extends State<QuickMenu>
     
     // 加载设置并监听变化
     _loadAutoHideSetting();
+    _loadThemeSetting(); // 新增：加载主题设置
     SettingsManager().addListener(_onSettingsChanged);
     
     // 初始状态：如果开启自动隐藏，则隐藏菜单
@@ -108,6 +114,23 @@ class _QuickMenuState extends State<QuickMenu>
 
   void _onSettingsChanged() {
     _loadAutoHideSetting();
+    _loadThemeSetting(); // 新增：监听主题变化
+  }
+
+  void _loadThemeSetting() async {
+    final darkMode = await SettingsManager().getDarkMode();
+    if (mounted) {
+      setState(() {
+        _isDarkMode = darkMode;
+      });
+    }
+  }
+
+  void _toggleTheme() async {
+    if (widget.onThemeToggle != null) {
+      await SettingsManager().setDarkMode(!_isDarkMode);
+      widget.onThemeToggle!();
+    }
   }
 
   void _hideMenu() {
@@ -288,6 +311,26 @@ class _QuickMenuState extends State<QuickMenu>
                           ),
                           _buildDivider(scale, config),
                         ],
+                        // 新增：主题切换按钮
+                        if (widget.onThemeToggle != null) ...[
+                          _QuickMenuButton(
+                            text: _isDarkMode ? '浅色' : '深色',
+                            icon: _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                            onPressed: _toggleTheme,
+                            scale: scale,
+                            config: config,
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              final themeButtonIndex = widget.onSkipRead != null ? 5 : 4;
+                              _hoveredButtonIndex = hovering ? themeButtonIndex : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = themeButtonIndex;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         _QuickMenuButton(
                           text: '设置',
                           icon: Icons.settings_outlined,
@@ -296,9 +339,12 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? (widget.onSkipRead != null ? 5 : 4) : null;
+                            final settingsButtonIndex = widget.onSkipRead != null 
+                                ? (widget.onThemeToggle != null ? 6 : 5)
+                                : (widget.onThemeToggle != null ? 5 : 4);
+                            _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
                             if (hovering) {
-                              _lastValidButtonIndex = widget.onSkipRead != null ? 5 : 4;
+                              _lastValidButtonIndex = settingsButtonIndex;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -312,9 +358,12 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? (widget.onSkipRead != null ? 6 : 5) : null;
+                            final returnButtonIndex = widget.onSkipRead != null 
+                                ? (widget.onThemeToggle != null ? 7 : 6)
+                                : (widget.onThemeToggle != null ? 6 : 5);
+                            _hoveredButtonIndex = hovering ? returnButtonIndex : null;
                             if (hovering) {
-                              _lastValidButtonIndex = widget.onSkipRead != null ? 6 : 5;
+                              _lastValidButtonIndex = returnButtonIndex;
                               _lastValidButtonText = text;
                             }
                           }),
