@@ -9,6 +9,7 @@ import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/widgets/read_status_indicator.dart';
 import 'soranouta_dialogue_content.dart';
 import 'soranouta_speaker_widget.dart';
+import 'binary_read_indicator.dart';
 
 class SoranoUtaDialogueBox extends StatefulWidget {
   final String? speaker;
@@ -360,6 +361,14 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
           
           // 已读标签 - 使用坐标计算
           if (_isRead) _buildReadStatusTag(),
+          
+          // 二进制已读指示器 - 左下角
+          BinaryReadIndicator(
+            speaker: widget.speaker,
+            uiScale: uiScale,
+            textScale: textScale,
+            positioned: true,
+          ),
         ],
         ),
       ),
