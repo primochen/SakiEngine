@@ -1057,6 +1057,7 @@ class GameManager {
           _currentState = _currentState.copyWith(
             dialogue: node.dialogue,
             speaker: characterConfig?.name,
+            speakerAlias: node.character, // 传入角色简写
             currentNode: null,
             clearDialogueAndSpeaker: false,
             forceNullSpeaker: node.character == null,
@@ -1090,6 +1091,7 @@ class GameManager {
             // 直接更新对话内容，不处理角色状态
             _currentState = _currentState.copyWith(
               speaker: characterConfig?.name ?? node.character,
+              speakerAlias: node.character, // 传入角色简写
               dialogue: node.dialogue,
               everShownCharacters: _everShownCharacters,
             );
@@ -1206,6 +1208,7 @@ class GameManager {
             _currentState = _currentState.copyWith(
               dialogue: node.dialogue,
               speaker: characterConfig?.name,
+              speakerAlias: node.character, // 传入角色简写
               currentNode: null,
               clearDialogueAndSpeaker: false,
               forceNullSpeaker: node.character == null,
@@ -2042,6 +2045,7 @@ class GameState {
   final Map<String, CharacterState> characters;
   final String? dialogue;
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final SksNode? currentNode;
   final bool isNvlMode;
   final bool isNvlMovieMode;
@@ -2064,6 +2068,7 @@ class GameState {
     this.characters = const {},
     this.dialogue,
     this.speaker,
+    this.speakerAlias, // 新增：角色简写
     this.currentNode,
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
@@ -2092,6 +2097,7 @@ class GameState {
     Map<String, CharacterState>? characters,
     String? dialogue,
     String? speaker,
+    String? speakerAlias, // 新增：角色简写参数
     SksNode? currentNode,
     bool clearDialogueAndSpeaker = false,
     bool clearCharacters = false,
@@ -2125,6 +2131,9 @@ class GameState {
       speaker: forceNullSpeaker
           ? null
           : (clearDialogueAndSpeaker ? null : (speaker ?? this.speaker)),
+      speakerAlias: forceNullSpeaker
+          ? null
+          : (clearDialogueAndSpeaker ? null : (speakerAlias ?? this.speakerAlias)), // 新增：角色简写处理
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
       isNvlMode: isNvlMode ?? this.isNvlMode,
       isNvlMovieMode: isNvlMovieMode ?? this.isNvlMovieMode,

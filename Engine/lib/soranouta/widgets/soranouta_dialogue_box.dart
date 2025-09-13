@@ -13,6 +13,7 @@ import 'binary_read_indicator.dart';
 
 class SoranoUtaDialogueBox extends StatefulWidget {
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final String dialogue;
   final DialogueProgressionManager? progressionManager;
   final bool isFastForwarding; // 新增：快进状态
@@ -21,6 +22,7 @@ class SoranoUtaDialogueBox extends StatefulWidget {
   const SoranoUtaDialogueBox({
     super.key,
     this.speaker,
+    this.speakerAlias, // 新增：可选的角色简写参数
     required this.dialogue,
     this.progressionManager,
     this.isFastForwarding = false, // 新增：默认不快进
@@ -365,6 +367,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
           // 二进制已读指示器 - 左下角
           BinaryReadIndicator(
             speaker: widget.speaker,
+            speakerAlias: widget.speakerAlias, // 传入角色简写
             uiScale: uiScale,
             textScale: textScale,
             positioned: true,

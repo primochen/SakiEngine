@@ -27,14 +27,14 @@ class ReadTextTracker extends ChangeNotifier {
   
   /// 初始化，从二进制文件加载已读记录
   Future<void> initialize() async {
-    print('[ReadTextTracker] ========== 开始初始化 ==========');
-    print('[ReadTextTracker] 实例hashCode: $hashCode');
-    print('[ReadTextTracker] 初始化前已读数量: ${_readDialogues.length}');
+    //print('[ReadTextTracker] ========== 开始初始化 ==========');
+    //print('[ReadTextTracker] 实例hashCode: $hashCode');
+    //print('[ReadTextTracker] 初始化前已读数量: ${_readDialogues.length}');
     _readDialogues.clear(); // 确保清空任何现有数据
-    print('[ReadTextTracker] 清空后已读数量: ${_readDialogues.length}');
+    //print('[ReadTextTracker] 清空后已读数量: ${_readDialogues.length}');
     await _loadFromStorage();
-    print('[ReadTextTracker] 初始化完成，最终已读数量: ${_readDialogues.length}');
-    print('[ReadTextTracker] ========== 初始化结束 ==========');
+    //print('[ReadTextTracker] 初始化完成，最终已读数量: ${_readDialogues.length}');
+    //print('[ReadTextTracker] ========== 初始化结束 ==========');
   }
   
   /// 标记对话为已读
@@ -43,22 +43,22 @@ class ReadTextTracker extends ChangeNotifier {
   /// [scriptIndex] 脚本索引（用于更精确的标识）
   void markAsRead(String? speaker, String dialogue, int scriptIndex) {
     if (dialogue.trim().isEmpty) {
-      print('[ReadTextTracker] 跳过空对话');
+      //print('[ReadTextTracker] 跳过空对话');
       return;
     }
     
     // 创建唯一标识符，结合说话者、对话内容和脚本索引
     final identifier = _createIdentifier(speaker, dialogue, scriptIndex);
-    print('[ReadTextTracker] 生成标识符: $identifier');
+    //print('[ReadTextTracker] 生成标识符: $identifier');
     
     if (!_readDialogues.contains(identifier)) {
       _readDialogues.add(identifier);
-      print('[ReadTextTracker] 新增已读: $identifier (总数: ${_readDialogues.length})');
-      print('[ReadTextTracker] 当前实例hashCode: ${hashCode}');
+      //print('[ReadTextTracker] 新增已读: $identifier (总数: ${_readDialogues.length})');
+      //print('[ReadTextTracker] 当前实例hashCode: ${hashCode}');
       _saveToStorage();
       notifyListeners();
     } else {
-      print('[ReadTextTracker] 已存在，跳过: $identifier');
+      //print('[ReadTextTracker] 已存在，跳过: $identifier');
     }
   }
   
@@ -71,7 +71,7 @@ class ReadTextTracker extends ChangeNotifier {
     
     final identifier = _createIdentifier(speaker, dialogue, scriptIndex);
     final result = _readDialogues.contains(identifier);
-    print('[ReadTextTracker] 检查是否已读: "$identifier" = $result (实例${hashCode}, 总数${_readDialogues.length})');
+    //print('[ReadTextTracker] 检查是否已读: "$identifier" = $result (实例${hashCode}, 总数${_readDialogues.length})');
     return result;
   }
   
@@ -90,8 +90,8 @@ class ReadTextTracker extends ChangeNotifier {
   
   /// 清除所有已读记录（删除.sakiread文件）
   Future<void> clearAllReadRecords() async {
-    print('[ReadTextTracker] 清除前: ${_readDialogues.length} 条已读记录');
-    print('[ReadTextTracker] 当前实例hashCode: ${hashCode}');
+    //print('[ReadTextTracker] 清除前: ${_readDialogues.length} 条已读记录');
+    //print('[ReadTextTracker] 当前实例hashCode: ${hashCode}');
     
     try {
       final filePath = await _getReadFilePath();
@@ -99,17 +99,17 @@ class ReadTextTracker extends ChangeNotifier {
       
       if (await file.exists()) {
         await file.delete();
-        print('[ReadTextTracker] 成功删除.sakiread文件: $filePath');
+        //print('[ReadTextTracker] 成功删除.sakiread文件: $filePath');
       } else {
-        print('[ReadTextTracker] .sakiread文件不存在，无需删除');
+        //print('[ReadTextTracker] .sakiread文件不存在，无需删除');
       }
       
       _readDialogues.clear();
-      print('[ReadTextTracker] 清除后: ${_readDialogues.length} 条已读记录');
-      print('[ReadTextTracker] 清除操作完成');
+      //print('[ReadTextTracker] 清除后: ${_readDialogues.length} 条已读记录');
+      //print('[ReadTextTracker] 清除操作完成');
       
     } catch (e) {
-      print('[ReadTextTracker] 删除.sakiread文件失败: $e');
+      //print('[ReadTextTracker] 删除.sakiread文件失败: $e');
       // 即使删除文件失败，也清空内存中的数据
       _readDialogues.clear();
     }
@@ -128,7 +128,7 @@ class ReadTextTracker extends ChangeNotifier {
       }
       return p.join(savesDir.path, _fileName);
     } catch (e) {
-      print('[ReadTextTracker] 获取文件路径失败: $e');
+      //print('[ReadTextTracker] 获取文件路径失败: $e');
       rethrow;
     }
   }
@@ -158,18 +158,18 @@ class ReadTextTracker extends ChangeNotifier {
       final filePath = await _getReadFilePath();
       final file = File(filePath);
       
-      print('[ReadTextTracker] 尝试加载文件: $filePath');
+      //print('[ReadTextTracker] 尝试加载文件: $filePath');
       
       if (!await file.exists()) {
-        print('[ReadTextTracker] .sakiread文件不存在，无已读记录');
+        //print('[ReadTextTracker] .sakiread文件不存在，无已读记录');
         return;
       }
       
       final bytes = await file.readAsBytes();
-      print('[ReadTextTracker] 读取到 ${bytes.length} 字节数据');
+      //print('[ReadTextTracker] 读取到 ${bytes.length} 字节数据');
       
       if (bytes.length < 12) { // 至少需要魔法数字(4) + 版本(4) + 计数(4)
-        print('[ReadTextTracker] 文件太小，可能损坏');
+        //print('[ReadTextTracker] 文件太小，可能损坏');
         return;
       }
       
@@ -180,7 +180,7 @@ class ReadTextTracker extends ChangeNotifier {
       final magic = String.fromCharCodes(bytes.sublist(0, 4));
       offset += 4;
       if (magic != _magicNumber) {
-        print('[ReadTextTracker] 魔法数字不匹配: $magic');
+        //print('[ReadTextTracker] 魔法数字不匹配: $magic');
         return;
       }
       
@@ -188,14 +188,14 @@ class ReadTextTracker extends ChangeNotifier {
       final version = buffer.getInt32(offset, Endian.little);
       offset += 4;
       if (version != _version) {
-        print('[ReadTextTracker] 版本不匹配: $version');
+        //print('[ReadTextTracker] 版本不匹配: $version');
         return;
       }
       
       // 读取已读记录数量
       final count = buffer.getInt32(offset, Endian.little);
       offset += 4;
-      print('[ReadTextTracker] 准备加载 $count 条已读记录');
+      //print('[ReadTextTracker] 准备加载 $count 条已读记录');
       
       _readDialogues.clear();
       
@@ -207,9 +207,9 @@ class ReadTextTracker extends ChangeNotifier {
         _readDialogues.add(hashCode.toString());
       }
       
-      print('[ReadTextTracker] 从二进制文件加载: ${_readDialogues.length} 条已读记录');
+      //print('[ReadTextTracker] 从二进制文件加载: ${_readDialogues.length} 条已读记录');
     } catch (e) {
-      print('[ReadTextTracker] 加载已读记录异常: $e');
+      //print('[ReadTextTracker] 加载已读记录异常: $e');
       if (kDebugMode) {
         print('加载已读记录失败: $e');
       }
@@ -251,10 +251,10 @@ class ReadTextTracker extends ChangeNotifier {
       }
       
       await file.writeAsBytes(buffer);
-      print('[ReadTextTracker] 保存到二进制文件: ${_readDialogues.length} 条已读记录 ($bufferSize 字节)');
-      print('[ReadTextTracker] 文件路径: $filePath');
+      //print('[ReadTextTracker] 保存到二进制文件: ${_readDialogues.length} 条已读记录 ($bufferSize 字节)');
+      //print('[ReadTextTracker] 文件路径: $filePath');
     } catch (e) {
-      print('[ReadTextTracker] 保存已读记录失败: $e');
+      //print('[ReadTextTracker] 保存已读记录失败: $e');
       if (kDebugMode) {
         print('保存已读记录失败: $e');
       }
@@ -280,9 +280,9 @@ class ReadTextTracker extends ChangeNotifier {
       _readDialogues.addAll(readList.cast<String>());
       await _saveToStorage(); // 保存到二进制文件
       notifyListeners();
-      print('[ReadTextTracker] 成功导入 ${_readDialogues.length} 条已读记录');
+      //print('[ReadTextTracker] 成功导入 ${_readDialogues.length} 条已读记录');
     } catch (e) {
-      print('[ReadTextTracker] 导入已读记录失败: $e');
+      //print('[ReadTextTracker] 导入已读记录失败: $e');
       if (kDebugMode) {
         print('导入已读记录失败: $e');
       }

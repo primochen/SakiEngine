@@ -202,6 +202,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   Widget _createDialogueBox({
     Key? key,
     String? speaker,
+    String? speakerAlias, // 新增：角色简写参数
     required String dialogue,
     required bool isFastForwarding, // 新增快进状态参数
     required int scriptIndex, // 新增脚本索引参数
@@ -213,6 +214,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       return SoranoUtaDialogueBox(
         key: key,
         speaker: speaker,
+        speakerAlias: speakerAlias, // 传递角色简写
         dialogue: dialogue,
         progressionManager: _dialogueProgressionManager,
         isFastForwarding: isFastForwarding, // 传递快进状态

@@ -7,6 +7,7 @@ import 'dart:convert';
 /// 1 -> -    0 -> \
 class BinaryReadIndicator extends StatelessWidget {
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final double uiScale;
   final double textScale;
   final bool positioned;
@@ -14,6 +15,7 @@ class BinaryReadIndicator extends StatelessWidget {
   const BinaryReadIndicator({
     super.key,
     required this.speaker,
+    this.speakerAlias, // 新增：可选的角色简写参数
     required this.uiScale,
     required this.textScale,
     this.positioned = true,
@@ -22,47 +24,17 @@ class BinaryReadIndicator extends StatelessWidget {
   /// 将字符串转换为二进制符号表示
   String _convertToBinarySymbols(String text) {
     final bytes = utf8.encode(text);
-    final binaryString = bytes
-        .map((byte) => byte.toRadixString(2).padLeft(8, '0'))
-        .join();
-    
-    return binaryString
-        .replaceAll('1', '-')
-        .replaceAll('0', r'\');
-  }
+    final binaryString =
+        bytes.map((byte) => byte.toRadixString(2).padLeft(8, '0')).join();
 
-  /// 根据角色名称获取对应的简称
-  String? _getSpeakerAlias(String speakerName) {
-    // 根据 characters.sks 的映射关系
-    switch (speakerName) {
-      case '主角': return 'main';
-      case '旁白': return 'nr';
-      case '空白': return 'n';
-      case '???': return 'nan';
-      case '林澄母亲': return 'lm';
-      case '林澄': return 'l';
-      case '夏悠': return 'x';
-      case '刘守真': return 'ls';
-      case '李宫娜': return 'lg';
-      case '老师': return 'sensei';
-      case '老婆婆': return 'oba';
-      default: return null;
-    }
+    return binaryString.replaceAll('1', '-').replaceAll('0', r'\');
   }
 
   /// 根据说话人简称确定显示内容
   String _getDisplayText() {
-    if (speaker == null || speaker!.isEmpty) {
-      return _convertToBinarySymbols('system');
-    }
-
-    final alias = _getSpeakerAlias(speaker!);
-    if (alias == null) {
-      return _convertToBinarySymbols('ai'); // 未知角色默认显示ai
-    }
-
-    // 特殊处理：旁白角色不显示
-    if (alias == 'nr' || alias == 'n') {
+    // 直接使用传入的简写，如果没有则默认为ai
+    final alias = speakerAlias ?? 'unknown';    // 特殊处理：旁白角色不显示
+    if (alias == 'nr' || alias == 'n' || alias == 'unknown') {
       return _convertToBinarySymbols('system');
     }
 
@@ -78,13 +50,13 @@ class BinaryReadIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayText = _getDisplayText();
-    
+
     if (displayText.isEmpty) {
       return const SizedBox.shrink();
     }
 
     final config = SakiEngineConfig();
-    
+
     final indicator = Container(
       padding: EdgeInsets.symmetric(
         horizontal: 6.0 * uiScale,
@@ -104,7 +76,7 @@ class BinaryReadIndicator extends StatelessWidget {
       child: Text(
         displayText,
         style: TextStyle(
-          fontSize:24.0 * textScale,
+          fontSize: 24.0 * textScale,
           color: config.themeColors.surface,
           fontFamily: 'monospace',
           letterSpacing: -0.2,
