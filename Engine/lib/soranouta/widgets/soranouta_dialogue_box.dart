@@ -5,6 +5,8 @@ import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_shake_effect.dart';
+import 'package:sakiengine/src/utils/read_text_tracker.dart';
+import 'package:sakiengine/src/widgets/read_status_indicator.dart';
 import 'soranouta_dialogue_content.dart';
 import 'soranouta_speaker_widget.dart';
 
@@ -13,6 +15,7 @@ class SoranoUtaDialogueBox extends StatefulWidget {
   final String dialogue;
   final DialogueProgressionManager? progressionManager;
   final bool isFastForwarding; // 新增：快进状态
+  final int scriptIndex; // 新增：脚本索引，用于已读状态检查
 
   const SoranoUtaDialogueBox({
     super.key,
@@ -20,6 +23,7 @@ class SoranoUtaDialogueBox extends StatefulWidget {
     required this.dialogue,
     this.progressionManager,
     this.isFastForwarding = false, // 新增：默认不快进
+    required this.scriptIndex, // 新增：必需的脚本索引
   });
 
   @override
@@ -31,6 +35,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
   bool _isHovered = false;
   bool _isDialogueComplete = false;
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
+  bool _isRead = false; // 新增：已读状态
 
   // 打字机动画管理器
   late TypewriterAnimationManager _typewriterController;
@@ -61,6 +66,13 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
   @override
   void initState() {
     super.initState();
+
+    // 检查已读状态
+    _isRead = ReadTextTracker.instance.isRead(
+      widget.speaker,
+      widget.dialogue,
+      widget.scriptIndex,
+    );
 
     // 初始化打字机动画管理器
     _typewriterController = TypewriterAnimationManager();
@@ -185,8 +197,15 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       }
     }
 
-    // 如果对话内容发生变化，重新开始文本淡入和打字机动画
-    if (widget.dialogue != oldWidget.dialogue) {
+    // 如果对话内容或脚本索引发生变化，重新检查已读状态并开始文本淡入和打字机动画
+    if (widget.dialogue != oldWidget.dialogue || widget.scriptIndex != oldWidget.scriptIndex) {
+      // 重新检查已读状态
+      _isRead = ReadTextTracker.instance.isRead(
+        widget.speaker,
+        widget.dialogue,
+        widget.scriptIndex,
+      );
+      
       // 快进模式下跳过淡入动画
       if (widget.isFastForwarding) {
         _textFadeController.value = 1.0; // 直接设为完成状态
@@ -255,10 +274,12 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       enabled: true,
       intensity: 4.0 * uiScale,
       duration: const Duration(milliseconds: 600),
-      child: Stack(
-        children: [
-          // 主对话框内容
-          SoranoutaDialogueContent(
+      child: Opacity(
+        opacity: _isRead ? 0.5 : 1.0, // 已读对话降低透明度为一半
+        child: Stack(
+          children: [
+            // 主对话框内容
+            SoranoutaDialogueContent(
             speaker: widget.speaker,
             dialogue: widget.dialogue,
             dialogueStyle: dialogueStyle,
@@ -289,7 +310,15 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
             enableAnimation: _enableSpeakerAnimation,
             wipeAnimation: _speakerWipeAnimation,
           ),
+
+          // 已读标记层
+          ReadStatusIndicator(
+            isRead: _isRead,
+            uiScale: uiScale,
+            textScale: textScale,
+          ),
         ],
+        ),
       ),
     );
   }

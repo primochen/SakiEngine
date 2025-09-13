@@ -204,6 +204,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     String? speaker,
     required String dialogue,
     required bool isFastForwarding, // 新增快进状态参数
+    required int scriptIndex, // 新增脚本索引参数
   }) {
     // 不在这里标记为已读！应该在用户推进对话时才标记
     
@@ -215,6 +216,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         dialogue: dialogue,
         progressionManager: _dialogueProgressionManager,
         isFastForwarding: isFastForwarding, // 传递快进状态
+        scriptIndex: scriptIndex, // 传递脚本索引
       );
     }
     
@@ -225,6 +227,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       dialogue: dialogue,
       progressionManager: _dialogueProgressionManager,
       isFastForwarding: isFastForwarding, // 传递快进状态
+      scriptIndex: scriptIndex, // 传递脚本索引
     );
   }
 

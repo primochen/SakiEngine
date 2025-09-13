@@ -82,11 +82,13 @@ class SoranoutaModule extends DefaultGameModule {
     String? speaker,
     required String dialogue,
     DialogueProgressionManager? progressionManager,
+    required int scriptIndex, // 新增：脚本索引参数
   }) {
     return SoranoUtaDialogueBox(
       speaker: speaker,
       dialogue: dialogue,
       progressionManager: progressionManager,
+      scriptIndex: scriptIndex, // 传递脚本索引
     );
   }
 
