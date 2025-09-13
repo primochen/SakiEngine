@@ -159,7 +159,7 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Opacity(
-                  opacity: widget.isRead ? 0.5 : 1.0, // 已读文本透明度为一半
+                  opacity: widget.isRead ? 0.7 : 1.0, // 已读文本透明度调整为0.7
                   child: FadeTransition(
                     opacity: widget.textFadeAnimation,
                     child: RichText(

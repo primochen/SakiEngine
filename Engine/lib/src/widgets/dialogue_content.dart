@@ -44,7 +44,7 @@ class DialogueContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Opacity(
-                opacity: isRead ? 0.5 : 1.0, // 已读文本透明度为一半
+                opacity: isRead ? 0.7 : 1.0, // 已读文本透明度调整为0.7
                 child: FadeTransition(
                   opacity: textFadeAnimation,
                   child: RichText(
