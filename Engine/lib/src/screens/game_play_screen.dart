@@ -43,6 +43,8 @@ import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
 import 'package:sakiengine/src/utils/fast_forward_manager.dart';
+import 'package:sakiengine/src/utils/read_text_tracker.dart';
+import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -78,6 +80,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   KeySequenceDetector? _consoleSequenceDetector; // console序列检测器
   ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
   FastForwardManager? _fastForwardManager; // 快进管理器
+  ReadTextSkipManager? _readTextSkipManager; // 已读文本快进管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
@@ -135,6 +138,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 初始化快进管理器
     _setupFastForwardManager();
+    
+    // 初始化已读文本跟踪器和已读文本快进管理器
+    _setupReadTextTracking();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -199,6 +205,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     required String dialogue,
     required bool isFastForwarding, // 新增快进状态参数
   }) {
+    // 标记对话为已读
+    if (dialogue.trim().isNotEmpty) {
+      ReadTextTracker.instance.markAsRead(
+        speaker, 
+        dialogue, 
+        _gameManager.currentScriptIndex
+      );
+    }
+    
     // 根据项目名称选择对话框
     if (_projectName == 'SoraNoUta') {
       return SoranoUtaDialogueBox(
@@ -266,6 +281,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _consoleSequenceDetector?.dispose();
     // 清理快进管理器
     _fastForwardManager?.dispose();
+    
+    // 清理已读文本快进管理器
+    _readTextSkipManager?.dispose();
+    
     // 清理加载淡出动画控制器
     _loadingFadeController.dispose();
     
@@ -482,6 +501,48 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _fastForwardManager!.startListening();
     print('快进管理器已初始化 - 按住Ctrl键可快进对话');
   }
+  
+  // 设置已读文本跟踪
+  void _setupReadTextTracking() async {
+    // 初始化已读文本跟踪器
+    await ReadTextTracker.instance.initialize();
+    
+    // 初始化已读文本快进管理器
+    _readTextSkipManager = ReadTextSkipManager(
+      gameManager: _gameManager,
+      dialogueProgressionManager: _dialogueProgressionManager,
+      readTextTracker: ReadTextTracker.instance,
+      onSkipStateChanged: (isSkipping) {
+        // 更新UI状态
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              // 可以添加已读文本快进的UI状态更新
+            });
+          }
+        });
+      },
+      canSkip: () {
+        // 检查是否有弹窗或菜单显示，如果有则不能快进
+        final hasOverlayOpen = _isShowingMenu || 
+            _showSaveOverlay || 
+            _showLoadOverlay || 
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel || 
+            _showDebugPanel || 
+            _showExpressionSelector;
+        return !hasOverlayOpen;
+      },
+    );
+    
+    print('已读文本跟踪器已初始化 - 快捷菜单中的快进按钮只会跳过已读文本');
+  }
+
+  // 处理跳过已读文本
+  void _handleSkipReadText() {
+    _readTextSkipManager?.toggleSkipping();
+  }
 
   // 显示通知消息
   void _showNotificationMessage(String message) {
@@ -666,6 +727,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onToggleExpressionSelector: () => setState(() => _showExpressionSelector = !_showExpressionSelector),
                     onHandleQuickMenuBack: _handleQuickMenuBack,
                     onHandlePreviousDialogue: _handlePreviousDialogue,
+                    onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
                     onLoadGame: widget.onLoadGame,
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),

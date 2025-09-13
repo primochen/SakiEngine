@@ -50,6 +50,7 @@ class GameUILayer extends StatefulWidget {
   final VoidCallback onToggleExpressionSelector;
   final VoidCallback onHandleQuickMenuBack;
   final VoidCallback onHandlePreviousDialogue;
+  final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
   final Function(DialogueHistoryEntry) onJumpToHistoryEntry;
   final Function(SaveSlot)? onLoadGame;
   final VoidCallback onProgressDialogue;
@@ -87,6 +88,7 @@ class GameUILayer extends StatefulWidget {
     required this.onToggleExpressionSelector,
     required this.onHandleQuickMenuBack,
     required this.onHandlePreviousDialogue,
+    this.onSkipRead, // 新增：跳过已读文本回调（可选）
     required this.onJumpToHistoryEntry,
     required this.onLoadGame,
     required this.onProgressDialogue,
@@ -205,6 +207,7 @@ class _GameUILayerState extends State<GameUILayer> {
             onSettings: widget.onToggleSettings,
             onBack: widget.onHandleQuickMenuBack,
             onPreviousDialogue: widget.onHandlePreviousDialogue,
+            onSkipRead: widget.onSkipRead, // 新增：传递跳过已读文本回调
           ),
         ),
         

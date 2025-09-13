@@ -11,6 +11,7 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback onSettings;
   final VoidCallback onBack;
   final VoidCallback onPreviousDialogue;
+  final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
 
   const QuickMenu({
     super.key,
@@ -20,6 +21,7 @@ class QuickMenu extends StatefulWidget {
     required this.onSettings,
     required this.onBack,
     required this.onPreviousDialogue,
+    this.onSkipRead, // 新增：跳过已读文本回调（可选）
   });
 
   @override
@@ -263,6 +265,25 @@ class _QuickMenuState extends State<QuickMenu>
                           }),
                         ),
                         _buildDivider(scale, config),
+                        // 新增：快进按钮（跳过已读文本）
+                        if (widget.onSkipRead != null) ...[
+                          _QuickMenuButton(
+                            text: '快进',
+                            icon: Icons.fast_forward_outlined,
+                            onPressed: widget.onSkipRead!,
+                            scale: scale,
+                            config: config,
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              _hoveredButtonIndex = hovering ? 4 : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = 4;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         _QuickMenuButton(
                           text: '设置',
                           icon: Icons.settings_outlined,
@@ -271,9 +292,9 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 4 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onSkipRead != null ? 5 : 4) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 4;
+                              _lastValidButtonIndex = widget.onSkipRead != null ? 5 : 4;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -287,9 +308,9 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 5 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onSkipRead != null ? 6 : 5) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 5;
+                              _lastValidButtonIndex = widget.onSkipRead != null ? 6 : 5;
                               _lastValidButtonText = text;
                             }
                           }),
