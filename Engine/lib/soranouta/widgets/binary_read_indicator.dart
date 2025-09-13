@@ -31,23 +31,47 @@ class BinaryReadIndicator extends StatelessWidget {
         .replaceAll('0', r'\');
   }
 
+  /// 根据角色名称获取对应的简称
+  String? _getSpeakerAlias(String speakerName) {
+    // 根据 characters.sks 的映射关系
+    switch (speakerName) {
+      case '主角': return 'main';
+      case '旁白': return 'nr';
+      case '空白': return 'n';
+      case '???': return 'nan';
+      case '林澄母亲': return 'lm';
+      case '林澄': return 'l';
+      case '夏悠': return 'x';
+      case '刘守真': return 'ls';
+      case '李宫娜': return 'lg';
+      case '老师': return 'sensei';
+      case '老婆婆': return 'oba';
+      default: return null;
+    }
+  }
+
   /// 根据说话人简称确定显示内容
   String _getDisplayText() {
     if (speaker == null || speaker!.isEmpty) {
-      return '';
-    }
-
-    // 特殊处理：旁白角色不显示
-    if (speaker == 'nr' || speaker == 'n') {
       return _convertToBinarySymbols('system');
     }
 
-    // characters.sks 角色显示 admin 转换后的符号
-    if (speaker == 'l') {
+    final alias = _getSpeakerAlias(speaker!);
+    if (alias == null) {
+      return _convertToBinarySymbols('ai'); // 未知角色默认显示ai
+    }
+
+    // 特殊处理：旁白角色不显示
+    if (alias == 'nr' || alias == 'n') {
+      return _convertToBinarySymbols('system');
+    }
+
+    // l (林澄) 显示 admin 转换后的符号
+    if (alias == 'l') {
       return _convertToBinarySymbols('admin');
     }
 
-    // 其他说话人显示 npc 转换后的符号
+    // 其他说话人显示 ai 转换后的符号
     return _convertToBinarySymbols('ai');
   }
 
