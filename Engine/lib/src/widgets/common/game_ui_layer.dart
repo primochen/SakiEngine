@@ -57,7 +57,7 @@ class GameUILayer extends StatefulWidget {
   final ExpressionSelectorManager? expressionSelectorManager;
   
   // 对话框创建函数
-  final Widget Function({Key? key, String? speaker, required String dialogue}) createDialogueBox;
+  final Widget Function({Key? key, String? speaker, required String dialogue, required bool isFastForwarding}) createDialogueBox;
   
   // 通知显示回调
   final Function(String) showNotificationMessage;
@@ -141,6 +141,7 @@ class _GameUILayerState extends State<GameUILayer> {
                     key: const ValueKey('normal_dialogue'),
                     speaker: widget.gameState.speaker,
                     dialogue: widget.gameState.dialogue!,
+                    isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
                   )
                 : const SizedBox.shrink(key: ValueKey('no_dialogue')),
           ),

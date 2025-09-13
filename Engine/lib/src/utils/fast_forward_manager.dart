@@ -17,8 +17,8 @@ class FastForwardManager {
   Timer? _fastForwardTimer;
   
   // 快进配置
-  static const Duration _fastForwardInterval = Duration(milliseconds: 200); // 快进间隔，200ms推进一次
-  static const Duration _initialDelay = Duration(milliseconds: 100); // 初始延迟，避免误触
+  static const Duration _fastForwardInterval = Duration(milliseconds: 50); // 快进间隔，50ms推进一次，非常快
+  static const Duration _initialDelay = Duration(milliseconds: 50); // 初始延迟减少，更快响应
   
   // Ctrl键状态监听
   bool _isCtrlPressed = false;
@@ -27,11 +27,13 @@ class FastForwardManager {
   // 状态回调
   final ValueChanged<bool>? onFastForwardStateChanged;
   final bool Function()? canFastForward; // 检查是否可以快进的回调
+  final Function(bool)? setGameManagerFastForward; // 设置GameManager快进状态的回调
   
   FastForwardManager({
     required this.dialogueProgressionManager,
     this.onFastForwardStateChanged,
     this.canFastForward,
+    this.setGameManagerFastForward,
   });
   
   /// 获取当前快进状态
@@ -102,6 +104,7 @@ class FastForwardManager {
     print('🚀 开始快进');
     _isFastForwarding = true;
     onFastForwardStateChanged?.call(true);
+    setGameManagerFastForward?.call(true); // 通知GameManager进入快进模式
     
     // 立即执行第一次推进
     _performFastForwardStep();
@@ -119,6 +122,7 @@ class FastForwardManager {
     print('⏹️ 停止快进');
     _isFastForwarding = false;
     onFastForwardStateChanged?.call(false);
+    setGameManagerFastForward?.call(false); // 通知GameManager退出快进模式
     
     _fastForwardTimer?.cancel();
     _fastForwardTimer = null;

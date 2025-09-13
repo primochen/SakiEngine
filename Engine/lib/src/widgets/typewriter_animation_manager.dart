@@ -27,6 +27,7 @@ class TypewriterAnimationManager extends ChangeNotifier {
   // 配置参数 - 简化为两个参数
   double _charsPerSecond = 50.0; // 每秒字符数
   bool _skipPunctuation = false; // 是否跳过标点符号停顿
+  bool _fastForwardMode = false; // 快进模式，跳过打字机效果
   
   // 静态变量用于全局通知
   static final List<TypewriterAnimationManager> _instances = [];
@@ -39,6 +40,15 @@ class TypewriterAnimationManager extends ChangeNotifier {
   bool get isCompleted => _state == TypewriterState.completed || _state == TypewriterState.skipped;
   bool get isTyping => _state == TypewriterState.typing;
   double get progress => _cleanedText.isEmpty ? 0.0 : _currentCharIndex / _cleanedText.length;
+  
+  /// 设置快进模式
+  void setFastForwardMode(bool enabled) {
+    _fastForwardMode = enabled;
+    // 如果开启快进模式且正在打字，立即跳到结尾
+    if (enabled && _state == TypewriterState.typing) {
+      skipToEnd();
+    }
+  }
   
   List<TextSpan> getTextSpans(TextStyle baseStyle) {
     return RichTextParser.createPartialTextSpans(_originalText, _displayedText, baseStyle);
@@ -99,6 +109,15 @@ class TypewriterAnimationManager extends ChangeNotifier {
     _currentSegmentIndex = 0;
     _currentSegmentCharIndex = 0;
     _state = TypewriterState.typing;
+    
+    // 快进模式下直接显示完整文本
+    if (_fastForwardMode) {
+      _displayedText = _cleanedText;
+      _currentCharIndex = _cleanedText.length;
+      _state = TypewriterState.completed;
+      notifyListeners();
+      return;
+    }
     
     // 如果滑块拉满(200字符/秒)，直接显示完整文本（瞬间模式）
     if (_charsPerSecond >= 200.0) {

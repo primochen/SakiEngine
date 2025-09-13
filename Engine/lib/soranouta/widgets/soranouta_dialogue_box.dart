@@ -12,12 +12,14 @@ class SoranoUtaDialogueBox extends StatefulWidget {
   final String? speaker;
   final String dialogue;
   final DialogueProgressionManager? progressionManager;
+  final bool isFastForwarding; // 新增：快进状态
 
   const SoranoUtaDialogueBox({
     super.key,
     this.speaker,
     required this.dialogue,
     this.progressionManager,
+    this.isFastForwarding = false, // 新增：默认不快进
   });
 
   @override
@@ -119,7 +121,16 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
 
     // 开始文本淡入和打字机动画
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _textFadeController.forward();
+      // 设置打字机的快进模式
+      _typewriterController.setFastForwardMode(widget.isFastForwarding);
+      
+      // 快进模式下跳过淡入动画
+      if (widget.isFastForwarding) {
+        _textFadeController.value = 1.0; // 直接设为完成状态
+      } else {
+        _textFadeController.forward();
+      }
+      
       if (widget.speaker != null &&
           widget.speaker!.isNotEmpty &&
           _enableSpeakerAnimation) {
@@ -153,6 +164,15 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       oldWidget.progressionManager?.registerTypewriter(null);
       widget.progressionManager?.registerTypewriter(_typewriterController);
     }
+    
+    // 如果快进状态发生变化，更新打字机快进模式
+    if (widget.isFastForwarding != oldWidget.isFastForwarding) {
+      _typewriterController.setFastForwardMode(widget.isFastForwarding);
+      // 快进模式下跳过文本淡入动画
+      if (widget.isFastForwarding) {
+        _textFadeController.value = 1.0; // 直接设为完成状态
+      }
+    }
 
     // 如果说话人发生变化，重新开始说话人擦除动画
     if (widget.speaker != oldWidget.speaker) {
@@ -167,8 +187,14 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
 
     // 如果对话内容发生变化，重新开始文本淡入和打字机动画
     if (widget.dialogue != oldWidget.dialogue) {
-      _textFadeController.reset();
-      _textFadeController.forward();
+      // 快进模式下跳过淡入动画
+      if (widget.isFastForwarding) {
+        _textFadeController.value = 1.0; // 直接设为完成状态
+      } else {
+        _textFadeController.reset();
+        _textFadeController.forward();
+      }
+      
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }

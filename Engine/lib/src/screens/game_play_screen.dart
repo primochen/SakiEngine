@@ -198,6 +198,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     Key? key,
     String? speaker,
     required String dialogue,
+    required bool isFastForwarding, // 新增快进状态参数
   }) {
     // 根据项目名称选择对话框
     if (_projectName == 'SoraNoUta') {
@@ -206,6 +207,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         speaker: speaker,
         dialogue: dialogue,
         progressionManager: _dialogueProgressionManager,
+        isFastForwarding: isFastForwarding, // 传递快进状态
       );
     }
     
@@ -215,6 +217,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       speaker: speaker,
       dialogue: dialogue,
       progressionManager: _dialogueProgressionManager,
+      isFastForwarding: isFastForwarding, // 传递快进状态
     );
   }
 
@@ -467,6 +470,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDebugPanel || 
             _showExpressionSelector;
         return !hasOverlayOpen;
+      },
+      setGameManagerFastForward: (isFastForwarding) {
+        // 通知GameManager快进状态变化
+        _gameManager.setFastForwardMode(isFastForwarding);
       },
     );
     
