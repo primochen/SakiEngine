@@ -101,7 +101,7 @@ class FastForwardManager {
       return;
     }
     
-    print('🚀 开始快进');
+    //print('🚀 开始快进');
     _isFastForwarding = true;
     onFastForwardStateChanged?.call(true);
     setGameManagerFastForward?.call(true); // 通知GameManager进入快进模式
@@ -119,7 +119,7 @@ class FastForwardManager {
   void _stopFastForward() {
     if (!_isFastForwarding) return;
     
-    print('⏹️ 停止快进');
+    //print('⏹️  停止快进');
     _isFastForwarding = false;
     onFastForwardStateChanged?.call(false);
     setGameManagerFastForward?.call(false); // 通知GameManager退出快进模式

@@ -210,6 +210,7 @@ class _GameUILayerState extends State<GameUILayer> {
             onBack: widget.onHandleQuickMenuBack,
             onPreviousDialogue: widget.onHandlePreviousDialogue,
             onSkipRead: widget.onSkipRead, // 新增：传递跳过已读文本回调
+            isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
           ),
         ),
         

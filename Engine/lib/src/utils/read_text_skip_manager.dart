@@ -55,9 +55,9 @@ class ReadTextSkipManager {
       return;
     }
     
-    print('📖 开始跳过已读文本 - ReadTextSkipManager实例hashCode: ${hashCode}');
-    print('📖 ReadTextTracker实例hashCode: ${readTextTracker.hashCode}');
-    print('📖 ReadTextTracker当前已读数量: ${readTextTracker.readCount}');
+    //print('📖 开始跳过已读文本 - ReadTextSkipManager实例hashCode: ${hashCode}');
+    //print('📖 ReadTextTracker实例hashCode: ${readTextTracker.hashCode}');
+    //print('📖 ReadTextTracker当前已读数量: ${readTextTracker.readCount}');
     _isSkipping = true;
     onSkipStateChanged?.call(true);
     
@@ -74,7 +74,7 @@ class ReadTextSkipManager {
   void stopSkipping() {
     if (!_isSkipping) return;
     
-    print('⏹️ 停止跳过已读文本');
+    //print('⏹️  停止跳过已读文本');
     _isSkipping = false;
     onSkipStateChanged?.call(false);
     
@@ -87,24 +87,24 @@ class ReadTextSkipManager {
   
   /// 执行跳过步骤
   void _performSkipStep() {
-    //print('📖 [DEBUG] _performSkipStep被调用');
+    ////print('📖 [DEBUG] _performSkipStep被调用');
     
     // 检查是否还在跳过状态
     if (!_isSkipping) {
-      //print('📖 [DEBUG] 不在跳过状态，返回');
+      ////print('📖 [DEBUG] 不在跳过状态，返回');
       return;
     }
     
     // 再次检查是否可以跳过
     if (canSkip != null && !canSkip!()) {
-      //print('📖 [DEBUG] canSkip返回false，停止跳过');
+      ////print('📖 [DEBUG] canSkip返回false，停止跳过');
       stopSkipping();
       return;
     }
     
     // 检查当前对话是否已读（推进前检查）
     final currentState = gameManager.currentState;
-    //print('📖 [DEBUG] 当前状态: dialogue="${currentState.dialogue}", speaker="${currentState.speaker}"');
+    ////print('📖 [DEBUG] 当前状态: dialogue="${currentState.dialogue}", speaker="${currentState.speaker}"');
     
     if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
       final isCurrentRead = readTextTracker.isRead(
@@ -113,17 +113,17 @@ class ReadTextSkipManager {
         gameManager.currentScriptIndex
       );
       
-      print('📖 检查对话: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" 是否已读: $isCurrentRead (脚本索引: ${gameManager.currentScriptIndex})');
+      //print('📖 检查对话: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" 是否已读: $isCurrentRead (脚本索引: ${gameManager.currentScriptIndex})');
       
       // 如果当前对话未读，停止跳过
       if (!isCurrentRead) {
-        print('📖 遇到未读文本，停止跳过');
+        //print('📖 遇到未读文本，停止跳过');
         stopSkipping();
         return;
       }
     } else {
       // 如果当前没有对话内容，稍等片刻让对话加载
-      //print('📖 [DEBUG] 当前没有对话内容，稍等片刻让对话加载');
+      ////print('📖 [DEBUG] 当前没有对话内容，稍等片刻让对话加载');
       Future.delayed(Duration(milliseconds: 50), () {
         if (_isSkipping) {
           _performSkipStep();
@@ -133,7 +133,7 @@ class ReadTextSkipManager {
     }
     
     // 推进对话（只有确认已读后才推进）
-    //print('📖 [DEBUG] 对话已读，准备推进');
+    ////print('📖 [DEBUG] 对话已读，准备推进');
     try {
       dialogueProgressionManager.progressDialogue();
     } catch (e) {

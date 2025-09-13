@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
@@ -12,6 +13,7 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onPreviousDialogue;
   final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
+  final bool isFastForwarding; // 新增：快进状态
 
   const QuickMenu({
     super.key,
@@ -22,6 +24,7 @@ class QuickMenu extends StatefulWidget {
     required this.onBack,
     required this.onPreviousDialogue,
     this.onSkipRead, // 新增：跳过已读文本回调（可选）
+    this.isFastForwarding = false, // 默认不快进
   });
 
   @override
@@ -273,6 +276,7 @@ class _QuickMenuState extends State<QuickMenu>
                             onPressed: widget.onSkipRead!,
                             scale: scale,
                             config: config,
+                            isPressed: widget.isFastForwarding, // 传递快进状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
                               _hoveredButtonIndex = hovering ? 4 : null;
@@ -356,6 +360,7 @@ class _QuickMenuButton extends StatefulWidget {
   final double scale;
   final SakiEngineConfig config;
   final Function(bool, String) onHover;
+  final bool isPressed; // 新增：按钮是否处于按下状态
 
   const _QuickMenuButton({
     required this.text,
@@ -364,17 +369,22 @@ class _QuickMenuButton extends StatefulWidget {
     required this.scale,
     required this.config,
     required this.onHover,
+    this.isPressed = false, // 默认不按下
   });
 
   @override
   State<_QuickMenuButton> createState() => _QuickMenuButtonState();
 }
 
-class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerProviderStateMixin {
+class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderStateMixin {
   bool _isHovered = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
+  
+  // 新增：按下状态的动画控制器
+  late AnimationController _pressedAnimationController;
+  late Animation<double> _pressedIconAnimation;
 
   @override
   void initState() {
@@ -394,16 +404,48 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerPro
     
     _rotationAnimation = Tween<double>(
       begin: 0.0,
-      end: 0.1, // 轻微旋转
+      end: 0.1,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
+    
+    // 按下状态动画
+    _pressedAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    
+    _pressedIconAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_pressedAnimationController);
+    
+    // 如果初始就是按下状态，启动动画
+    if (widget.isPressed) {
+      _pressedAnimationController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_QuickMenuButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 监听按下状态变化
+    if (widget.isPressed != oldWidget.isPressed) {
+      if (widget.isPressed) {
+        _pressedAnimationController.repeat(reverse: true);
+      } else {
+        _pressedAnimationController.stop();
+        _pressedAnimationController.reset();
+      }
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _pressedAnimationController.dispose(); // 清理新的动画控制器
     super.dispose();
   }
 
@@ -436,21 +478,40 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with SingleTickerPro
             width: 48 * scale,
             height: 48 * scale,
             decoration: BoxDecoration(
-              color: _isHovered 
-                  ? config.themeColors.primary.withValues(alpha: 0.05)
-                  : Colors.transparent,
+              color: widget.isPressed
+                  ? config.themeColors.primary.withValues(alpha: 0.3) // 加深按下状态的背景色
+                  : _isHovered 
+                      ? config.themeColors.primary.withValues(alpha: 0.05)
+                      : Colors.transparent,
             ),
             child: AnimatedBuilder(
-              animation: _animationController,
+              animation: Listenable.merge([_animationController, _pressedAnimationController]),
               builder: (context, child) {
+                // 按下状态时的图标动画效果
+                double iconScale = _scaleAnimation.value;
+                double iconRotation = _rotationAnimation.value;
+                
+                if (widget.isPressed) {
+                  // 按下状态时播放脉冲动画 - 使用往复动画值
+                  final pulseScale = 1.0 + (0.3 * _pressedIconAnimation.value); // 增加脉冲幅度
+                  iconScale = iconScale * pulseScale;
+                  
+                  // 快进图标特有的动画：左右微动 - 使用往复动画
+                  if (widget.text == '快进') {
+                    iconRotation += 0.1 * (_pressedIconAnimation.value - 0.5) * 2; // 更明显的左右摆动
+                  }
+                }
+                
                 return Center(
                   child: Transform.scale(
-                    scale: _scaleAnimation.value,
+                    scale: iconScale,
                     child: Transform.rotate(
-                      angle: _rotationAnimation.value,
+                      angle: iconRotation,
                       child: Icon(
                         widget.icon,
-                        color: config.themeColors.primary,
+                        color: widget.isPressed 
+                            ? config.themeColors.primary.withValues(alpha: 0.9) // 按下时图标颜色更鲜艳
+                            : config.themeColors.primary,
                         size: config.quickMenuTextStyle.fontSize! * scale * 1.3,
                       ),
                     ),

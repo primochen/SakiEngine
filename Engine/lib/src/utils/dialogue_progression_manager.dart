@@ -39,7 +39,7 @@ class DialogueProgressionManager {
   void _markCurrentDialogueAsRead() {
     final currentState = gameManager.currentState;
     if (currentState.dialogue != null && currentState.dialogue!.trim().isNotEmpty) {
-      print('📖 标记为已读: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" (脚本索引: ${gameManager.currentScriptIndex})');
+      //print('📖 标记为已读: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" (脚本索引: ${gameManager.currentScriptIndex})');
       ReadTextTracker.instance.markAsRead(
         currentState.speaker,
         currentState.dialogue!,
