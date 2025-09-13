@@ -64,7 +64,7 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
           onEnter: (_) => widget.onHoverChanged(true),
           onExit: (_) => widget.onHoverChanged(false),
           child: Container(
-            key: widget.dialogueKey, // 将key应用到实际的对话框Container
+            key: widget.dialogueKey, // 重新添加key来获取位置
             width: widget.screenSize.width * 0.85,
             height: widget.screenSize.height * 0.35 / 1.5,
             margin: EdgeInsets.all(16.0 * widget.uiScale),

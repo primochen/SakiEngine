@@ -8,12 +8,14 @@ class ReadStatusIndicator extends StatelessWidget {
   final bool isRead;
   final double uiScale;
   final double textScale;
+  final bool positioned; // 新增：是否自动定位
 
   const ReadStatusIndicator({
     super.key,
     required this.isRead,
     required this.uiScale,
     required this.textScale,
+    this.positioned = true, // 默认自动定位
   });
 
   @override
@@ -23,31 +25,37 @@ class ReadStatusIndicator extends StatelessWidget {
     }
 
     final config = SakiEngineConfig();
-
-    return Positioned(
-      // 相对于Stack容器的左上角定位
-      top: 8.0 * uiScale,
-      left: 8.0 * uiScale,
-      child: Transform.rotate(
-        angle: -45 * 3.14159 / 180, // 逆时针旋转45度（弧度）
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 18.0 * uiScale,
-            vertical: 4.0 * uiScale,
-          ),
-          decoration: BoxDecoration(
-            color: config.themeColors.primary.withOpacity(0.8),
-          ),
-          child: Text(
-            '已读',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14.0 * textScale,
-              fontWeight: FontWeight.bold,
-            ),
+    
+    final indicator = Transform.rotate(
+      angle: 0, // 逆时针旋转45度（弧度）
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: 18.0 * uiScale,
+          vertical: 4.0 * uiScale,
+        ),
+        decoration: BoxDecoration(
+          color: config.themeColors.onSurface,
+        ),
+        child: Text(
+          '已读',
+          style: TextStyle(
+            color: config.themeColors.surface,
+            fontSize: 14.0 * textScale,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
     );
+
+    if (positioned) {
+      return Positioned(
+        // 相对于Stack容器的左上角定位
+        top: 0.0 * uiScale,
+        left: 0 * uiScale,
+        child: indicator,
+      );
+    } else {
+      return indicator;
+    }
   }
 }
