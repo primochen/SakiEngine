@@ -1,6 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'dart:math' as math;
+
+/// 带波动效果的文本组件
+class WaveText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  final AnimationController animationController;
+  
+  const WaveText({
+    super.key,
+    required this.text,
+    required this.style,
+    required this.animationController,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animationController,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: _buildAnimatedCharacters(),
+        );
+      },
+    );
+  }
+  
+  List<Widget> _buildAnimatedCharacters() {
+    List<Widget> widgets = [];
+    
+    for (int i = 0; i < text.length; i++) {
+      final char = text[i];
+      
+      // 只对点号应用波动效果
+      if (char == '.') {
+        // 为每个点创建不同的相位偏移，产生波浪效果
+        final phaseOffset = i * 0.3;
+        final animationValue = animationController.value * 2 * math.pi;
+        final offsetY = math.sin(animationValue + phaseOffset) * 3.0;
+        
+        widgets.add(
+          Transform.translate(
+            offset: Offset(0, offsetY),
+            child: Text(
+              char,
+              style: style,
+            ),
+          ),
+        );
+      } else {
+        widgets.add(
+          Text(
+            char,
+            style: style,
+          ),
+        );
+      }
+    }
+    
+    return widgets;
+  }
+}
 
 /// 通用指示器组件
 /// 
@@ -27,6 +92,7 @@ class _CommonIndicatorState extends State<CommonIndicator>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _iconAnimationController;
+  late AnimationController _textAnimationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
   late Animation<double> _iconScaleAnimation;
@@ -44,6 +110,12 @@ class _CommonIndicatorState extends State<CommonIndicator>
     // 图标动画控制器 - 持续循环
     _iconAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    // 文字波动动画控制器 - 示波器效果
+    _textAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
     
@@ -90,10 +162,12 @@ class _CommonIndicatorState extends State<CommonIndicator>
   
   void _startIconAnimation() {
     _iconAnimationController.repeat(reverse: true);
+    _textAnimationController.repeat();
   }
   
   void _stopIconAnimation() {
     _iconAnimationController.stop();
+    _textAnimationController.stop();
   }
   
   @override
@@ -115,6 +189,7 @@ class _CommonIndicatorState extends State<CommonIndicator>
   void dispose() {
     _animationController.dispose();
     _iconAnimationController.dispose();
+    _textAnimationController.dispose();
     super.dispose();
   }
   
@@ -124,7 +199,7 @@ class _CommonIndicatorState extends State<CommonIndicator>
     final scale = context.scaleFor(ComponentType.menu);
     
     return AnimatedBuilder(
-      animation: Listenable.merge([_animationController, _iconAnimationController]),
+      animation: Listenable.merge([_animationController, _iconAnimationController, _textAnimationController]),
       builder: (context, child) {
         // 不可见时完全隐藏
         if (!widget.isVisible && _opacityAnimation.value <= 0.0) {
@@ -175,12 +250,14 @@ class _CommonIndicatorState extends State<CommonIndicator>
                     ),
                   ),
                   SizedBox(width: 8 * scale), // 从 6 增加到 8
-                  Text(
-                    widget.text,
+                  // 带波动效果的文本
+                  WaveText(
+                    text: widget.text,
                     style: config.quickMenuTextStyle.copyWith(
                       color: config.themeColors.primary,
                       fontSize: config.quickMenuTextStyle.fontSize! * scale,
                     ),
+                    animationController: _textAnimationController,
                   ),
                 ],
               ),
