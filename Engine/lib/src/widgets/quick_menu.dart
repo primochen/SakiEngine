@@ -423,7 +423,7 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
     
     // 如果初始就是按下状态，启动动画
     if (widget.isPressed) {
-      _pressedAnimationController.repeat(reverse: true);
+      _pressedAnimationController.repeat();
     }
   }
 
@@ -434,7 +434,7 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
     // 监听按下状态变化
     if (widget.isPressed != oldWidget.isPressed) {
       if (widget.isPressed) {
-        _pressedAnimationController.repeat(reverse: true);
+        _pressedAnimationController.repeat();
       } else {
         _pressedAnimationController.stop();
         _pressedAnimationController.reset();
@@ -492,13 +492,13 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
                 double iconRotation = _rotationAnimation.value;
                 
                 if (widget.isPressed) {
-                  // 按下状态时播放脉冲动画 - 使用往复动画值
-                  final pulseScale = 1.0 + (0.3 * _pressedIconAnimation.value); // 增加脉冲幅度
+                  // 按下状态时播放脉冲动画 - 使用正弦波实现真正的往复
+                  final pulseScale = 1.0 + 0.3 * sin(_pressedIconAnimation.value * pi);
                   iconScale = iconScale * pulseScale;
                   
-                  // 快进图标特有的动画：左右微动 - 使用往复动画
+                  // 快进图标特有的动画：左右微动 - 使用正弦波
                   if (widget.text == '快进') {
-                    iconRotation += 0.1 * (_pressedIconAnimation.value - 0.5) * 2; // 更明显的左右摆动
+                    iconRotation += 0.1 * sin(_pressedIconAnimation.value * pi * 2); // 左右摆动
                   }
                 }
                 
