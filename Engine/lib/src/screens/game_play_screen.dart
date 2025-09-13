@@ -674,10 +674,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     createDialogueBox: _createDialogueBox,
                     showNotificationMessage: _showNotificationMessage,
                   ),
-                  // 快进指示器 - 不会被隐藏
-                  FastForwardIndicator(
-                    isFastForwarding: _isFastForwarding,
-                  ),
                   // 加载淡出覆盖层 - 不会被隐藏
                   AnimatedBuilder(
                     animation: _loadingFadeAnimation,
