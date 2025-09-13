@@ -16,6 +16,7 @@ class ReadTextSkipManager {
   // 快进状态
   bool _isSkipping = false;
   Timer? _skipTimer;
+  StreamSubscription<GameState>? _gameStateSubscription;
   
   // 快进配置 - 比强制快进稍慢，让用户看清内容
   static const Duration _skipInterval = Duration(milliseconds: 100); // 比强制快进慢一些
@@ -31,7 +32,16 @@ class ReadTextSkipManager {
     required this.readTextTracker,
     this.onSkipStateChanged,
     this.canSkip,
-  });
+  }) {
+    // 监听GameManager状态变化
+    _gameStateSubscription = gameManager.gameStateStream.listen((gameState) {
+      // 如果GameManager的快进状态为false，但我们还在跳过，强制停止跳过
+      if (!gameState.isFastForwarding && _isSkipping) {
+        print('[ReadTextSkip] GameManager停止快进，同步停止已读文本跳过');
+        stopSkipping();
+      }
+    });
+  }
   
   /// 获取当前快进状态
   bool get isSkipping => _isSkipping;
@@ -45,7 +55,9 @@ class ReadTextSkipManager {
       return;
     }
     
-    print('📖 开始跳过已读文本');
+    print('📖 开始跳过已读文本 - ReadTextSkipManager实例hashCode: ${hashCode}');
+    print('📖 ReadTextTracker实例hashCode: ${readTextTracker.hashCode}');
+    print('📖 ReadTextTracker当前已读数量: ${readTextTracker.readCount}');
     _isSkipping = true;
     onSkipStateChanged?.call(true);
     
@@ -147,5 +159,7 @@ class ReadTextSkipManager {
   /// 清理资源
   void dispose() {
     stopSkipping();
+    _gameStateSubscription?.cancel();
+    _gameStateSubscription = null;
   }
 }

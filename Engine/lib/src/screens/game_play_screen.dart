@@ -534,6 +534,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   // 处理跳过已读文本
   void _handleSkipReadText() {
+    print('🎯 快进按钮被点击 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
     _readTextSkipManager?.toggleSkipping();
   }
 
