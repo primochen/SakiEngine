@@ -28,21 +28,23 @@ class ReadStatusIndicator extends StatelessWidget {
       // 相对于Stack容器的左上角定位
       top: 8.0 * uiScale,
       left: 8.0 * uiScale,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 6.0 * uiScale,
-          vertical: 2.0 * uiScale,
-        ),
-        decoration: BoxDecoration(
-          color: config.themeColors.primary.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(4.0 * uiScale),
-        ),
-        child: Text(
-          '已读',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 10.0 * textScale,
-            fontWeight: FontWeight.bold,
+      child: Transform.rotate(
+        angle: -45 * 3.14159 / 180, // 逆时针旋转45度（弧度）
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 18.0 * uiScale,
+            vertical: 4.0 * uiScale,
+          ),
+          decoration: BoxDecoration(
+            color: config.themeColors.primary.withOpacity(0.8),
+          ),
+          child: Text(
+            '已读',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14.0 * textScale,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),

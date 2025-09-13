@@ -17,6 +17,7 @@ class DialogueContent extends StatelessWidget {
   final bool enableTypewriter;
   final bool isDialogueComplete;
   final double uiScale;
+  final bool isRead;
 
   const DialogueContent({
     super.key,
@@ -28,6 +29,7 @@ class DialogueContent extends StatelessWidget {
     required this.enableTypewriter,
     required this.isDialogueComplete,
     required this.uiScale,
+    required this.isRead,
   });
 
   @override
@@ -41,22 +43,24 @@ class DialogueContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              FadeTransition(
-                opacity: textFadeAnimation,
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      ...(enableTypewriter 
-                        ? typewriterController.getTextSpans(dialogueStyle)
-                        : RichTextParser.createTextSpans(dialogue, dialogueStyle)),
-                      if (isDialogueComplete)
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Padding(
-                            padding: EdgeInsets.only(left: uiScale),
-                            child: DialogueNextArrow(
-                              visible: isDialogueComplete,
-                              fontSize: dialogueStyle.fontSize!,
+              Opacity(
+                opacity: isRead ? 0.5 : 1.0, // 已读文本透明度为一半
+                child: FadeTransition(
+                  opacity: textFadeAnimation,
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        ...(enableTypewriter 
+                          ? typewriterController.getTextSpans(dialogueStyle)
+                          : RichTextParser.createTextSpans(dialogue, dialogueStyle)),
+                        if (isDialogueComplete)
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: uiScale),
+                              child: DialogueNextArrow(
+                                visible: isDialogueComplete,
+                                fontSize: dialogueStyle.fontSize!,
                               color: config.themeColors.primary.withOpacity(0.7),
                               speaker: speaker,
                             ),
@@ -64,6 +68,7 @@ class DialogueContent extends StatelessWidget {
                         ),
                     ],
                   ),
+                ),
                 ),
               ),
             ],

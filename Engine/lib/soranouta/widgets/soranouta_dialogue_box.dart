@@ -274,10 +274,8 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       enabled: true,
       intensity: 4.0 * uiScale,
       duration: const Duration(milliseconds: 600),
-      child: Opacity(
-        opacity: _isRead ? 0.5 : 1.0, // 已读对话降低透明度为一半
-        child: Stack(
-          children: [
+      child: Stack(
+        children: [
             // 主对话框内容
             SoranoutaDialogueContent(
             speaker: widget.speaker,
@@ -296,6 +294,12 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
             typewriterController: _typewriterController,
             textFadeAnimation: _textFadeAnimation,
             blinkAnimation: _blinkAnimation,
+            isRead: _isRead,
+            readStatusOverlay: ReadStatusIndicator(
+              isRead: _isRead,
+              uiScale: uiScale,
+              textScale: textScale,
+            ),
           ),
           
           // 说话人显示组件
@@ -310,15 +314,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
             enableAnimation: _enableSpeakerAnimation,
             wipeAnimation: _speakerWipeAnimation,
           ),
-
-          // 已读标记层
-          ReadStatusIndicator(
-            isRead: _isRead,
-            uiScale: uiScale,
-            textScale: textScale,
-          ),
         ],
-        ),
       ),
     );
   }

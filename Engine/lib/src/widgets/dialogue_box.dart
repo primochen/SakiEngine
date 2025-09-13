@@ -200,21 +200,19 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
           child: MouseRegion(
             onEnter: (_) => setState(() => _isHovered = true),
             onExit: (_) => setState(() => _isHovered = false),
-            child: Opacity(
-              opacity: _isRead ? 0.5 : 1.0,
-              child: DialogueBackground(
-                isHovered: _isHovered,
-                dialogOpacity: _dialogOpacity,
+            child: DialogueBackground(
+              isHovered: _isHovered,
+              dialogOpacity: _dialogOpacity,
+              uiScale: uiScale,
+              overlay: ReadStatusIndicator(
+                isRead: _isRead,
                 uiScale: uiScale,
-                overlay: ReadStatusIndicator(
-                  isRead: _isRead,
-                  uiScale: uiScale,
-                  textScale: textScale,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                textScale: textScale,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                     DialogueSpeakerHeader(
                       speaker: widget.speaker,
                       uiScale: uiScale,
@@ -229,6 +227,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
                       enableTypewriter: _enableTypewriter,
                       isDialogueComplete: _isDialogueComplete,
                       uiScale: uiScale,
+                      isRead: _isRead,
                     ),
                   ],
                 ),
@@ -236,7 +235,6 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
             ),
           ),
         ),
-      ),
     );
   }
 }
