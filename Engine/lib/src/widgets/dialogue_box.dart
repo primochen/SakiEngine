@@ -230,6 +230,47 @@ class _DialogueBoxState extends State<DialogueBox>
     }
   }
 
+  Widget _buildReadStatusTag() {
+    final RenderBox? renderBox = _dialogueKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) {
+      return const SizedBox.shrink();
+    }
+    
+    final position = renderBox.localToGlobal(Offset.zero);
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    // 计算旋转后的标签尺寸以正确对齐中心点
+    final labelWidth = 36.0 * uiScale + 18.0 * 2 * uiScale;
+    final labelHeight = 14.0 * textScale + 4.0 * 2 * uiScale;
+    
+    final diagonal = (labelWidth + labelHeight) / 2;
+    final centerOffsetX = diagonal * 0.5;
+    final centerOffsetY = diagonal * 0.3;
+    
+    final finalLeft = position.dx - centerOffsetX;
+    final finalTop = position.dy - centerOffsetY;
+    
+    // 转换为相对于Stack的坐标
+    final stackPosition = context.findRenderObject() as RenderBox?;
+    if (stackPosition == null) return const SizedBox.shrink();
+    
+    final stackGlobalPosition = stackPosition.localToGlobal(Offset.zero);
+    final relativeLeft = finalLeft - stackGlobalPosition.dx;
+    final relativeTop = finalTop - stackGlobalPosition.dy;
+    
+    return Positioned(
+      left: relativeLeft + 20*uiScale,
+      top: relativeTop + 20*uiScale,
+      child: ReadStatusIndicator(
+        isRead: _isRead,
+        uiScale: uiScale,
+        textScale: textScale,
+        positioned: false, // 不要自动定位，我们手动定位
+      ),
+    );
+  }
+
   void _onTypewriterStateChanged() {
     if (mounted) {
       setState(() {
@@ -278,36 +319,43 @@ class _DialogueBoxState extends State<DialogueBox>
           child: MouseRegion(
             onEnter: (_) => setState(() => _isHovered = true),
             onExit: (_) => setState(() => _isHovered = false),
-            child: Container(
-              key: _dialogueKey, // 添加key来获取位置
-              child: DialogueBackground(
-                isHovered: _isHovered,
-                dialogOpacity: _dialogOpacity,
-                uiScale: uiScale,
-                overlay: null, // 移除原来的已读标签
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DialogueSpeakerHeader(
-                      speaker: widget.speaker,
-                      uiScale: uiScale,
-                      textScale: textScale,
+            child: Stack(
+              clipBehavior: Clip.none, // 允许子组件超出边界
+              children: [
+                Container(
+                  key: _dialogueKey, // 添加key来获取位置
+                  child: DialogueBackground(
+                    isHovered: _isHovered,
+                    dialogOpacity: _dialogOpacity,
+                    uiScale: uiScale,
+                    overlay: null, // 移除原来的已读标签
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DialogueSpeakerHeader(
+                          speaker: widget.speaker,
+                          uiScale: uiScale,
+                          textScale: textScale,
+                        ),
+                        DialogueContent(
+                          dialogue: widget.dialogue,
+                          speaker: widget.speaker,
+                          dialogueStyle: dialogueStyle,
+                          typewriterController: _typewriterController,
+                          textFadeAnimation: _textFadeAnimation,
+                          enableTypewriter: _enableTypewriter,
+                          isDialogueComplete: _isDialogueComplete,
+                          uiScale: uiScale,
+                          isRead: _isRead,
+                        ),
+                      ],
                     ),
-                    DialogueContent(
-                      dialogue: widget.dialogue,
-                      speaker: widget.speaker,
-                      dialogueStyle: dialogueStyle,
-                      typewriterController: _typewriterController,
-                      textFadeAnimation: _textFadeAnimation,
-                      enableTypewriter: _enableTypewriter,
-                      isDialogueComplete: _isDialogueComplete,
-                      uiScale: uiScale,
-                      isRead: _isRead,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                // 已读标签 - 使用坐标计算
+                if (_isRead) _buildReadStatusTag(),
+              ],
             ),
           ),
         ),

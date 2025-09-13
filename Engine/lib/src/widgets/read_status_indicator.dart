@@ -27,7 +27,7 @@ class ReadStatusIndicator extends StatelessWidget {
     final config = SakiEngineConfig();
     
     final indicator = Transform.rotate(
-      angle: 0, // 逆时针旋转45度（弧度）
+      angle: 0, 
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: 18.0 * uiScale,
@@ -35,6 +35,13 @@ class ReadStatusIndicator extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: config.themeColors.onSurface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              offset: Offset(2.0 * uiScale, 2.0 * uiScale), // 右下偏移
+              blurRadius: 4.0 * uiScale,
+            ),
+          ],
         ),
         child: Text(
           '已读',
