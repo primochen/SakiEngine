@@ -31,17 +31,22 @@ class DialogueBox extends StatefulWidget {
   State<DialogueBox> createState() => _DialogueBoxState();
 }
 
-class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin {
+class _DialogueBoxState extends State<DialogueBox>
+    with TickerProviderStateMixin {
   bool _isHovered = false;
   bool _isDialogueComplete = false;
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
   bool _isRead = false;
-  
+
   late TypewriterAnimationManager _typewriterController;
   final bool _enableTypewriter = true;
-  
+
   late AnimationController _textFadeController;
   late Animation<double> _textFadeAnimation;
+
+  // 用于获取对话框位置的GlobalKey
+  final GlobalKey _dialogueKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
 
   void _onSettingsChanged() {
     if (mounted) {
@@ -75,7 +80,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-    
+
     _textFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -86,28 +91,32 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
 
     // 监听设置变化
     SettingsManager().addListener(_onSettingsChanged);
-    
+
     // 加载设置
     _loadSettings();
-    
+
     // 开始文本淡入和打字机动画
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _typewriterController.setFastForwardMode(widget.isFastForwarding);
-      
+
       if (widget.isFastForwarding) {
         _textFadeController.value = 1.0;
       } else {
         _textFadeController.forward();
       }
-      
+
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
+
+      // 创建overlay
+      _updateOverlay();
     });
   }
 
   @override
   void dispose() {
+    _removeOverlay();
     widget.progressionManager?.registerTypewriter(null);
     SettingsManager().removeListener(_onSettingsChanged);
     _typewriterController.removeListener(_onTypewriterStateChanged);
@@ -116,39 +125,108 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     super.dispose();
   }
 
+  void _createOverlay() {
+    if (!_isRead || _overlayEntry != null) return;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => _buildReadStatusOverlay(),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _updateOverlay() {
+    if (_isRead) {
+      if (_overlayEntry == null) {
+        _createOverlay();
+      } else {
+        _overlayEntry!.markNeedsBuild();
+      }
+    } else {
+      _removeOverlay();
+    }
+  }
+
+  Widget _buildReadStatusOverlay() {
+    final RenderBox? renderBox =
+        _dialogueKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return const SizedBox.shrink();
+
+    final position = renderBox.localToGlobal(Offset.zero);
+    final config = SakiEngineConfig();
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
+
+    return Positioned(
+      left: position.dx - 9.0 * uiScale, // 调整位置使标签中心对齐到对话框左上角
+      top: position.dy - 14.0 * uiScale,
+      child: Transform.rotate(
+        angle: -45 * 3.14159 / 180,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 18.0 * uiScale,
+            vertical: 4.0 * uiScale,
+          ),
+          decoration: BoxDecoration(
+            color: config.themeColors.primary.withOpacity(0.8),
+          ),
+          child: Text(
+            '已读',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14.0 * textScale,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void didUpdateWidget(DialogueBox oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     if (widget.progressionManager != oldWidget.progressionManager) {
       oldWidget.progressionManager?.registerTypewriter(null);
       widget.progressionManager?.registerTypewriter(_typewriterController);
     }
-    
+
     if (widget.isFastForwarding != oldWidget.isFastForwarding) {
       _typewriterController.setFastForwardMode(widget.isFastForwarding);
       if (widget.isFastForwarding) {
         _textFadeController.value = 1.0;
       }
     }
-    
-    if (widget.dialogue != oldWidget.dialogue || widget.scriptIndex != oldWidget.scriptIndex) {
+
+    if (widget.dialogue != oldWidget.dialogue ||
+        widget.scriptIndex != oldWidget.scriptIndex) {
       _isRead = ReadTextTracker.instance.isRead(
         widget.speaker,
         widget.dialogue,
         widget.scriptIndex,
       );
-      
+
       if (widget.isFastForwarding) {
         _textFadeController.value = 1.0;
       } else {
         _textFadeController.reset();
         _textFadeController.forward();
       }
-      
+
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
+
+      // 更新overlay
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateOverlay();
+      });
     }
   }
 
@@ -163,7 +241,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   Future<void> _loadSettings() async {
     final settings = SettingsManager();
     final opacity = await settings.getDialogOpacity();
-    
+
     if (mounted) {
       setState(() {
         _dialogOpacity = opacity;
@@ -200,19 +278,17 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
           child: MouseRegion(
             onEnter: (_) => setState(() => _isHovered = true),
             onExit: (_) => setState(() => _isHovered = false),
-            child: DialogueBackground(
-              isHovered: _isHovered,
-              dialogOpacity: _dialogOpacity,
-              uiScale: uiScale,
-              overlay: ReadStatusIndicator(
-                isRead: _isRead,
+            child: Container(
+              key: _dialogueKey, // 添加key来获取位置
+              child: DialogueBackground(
+                isHovered: _isHovered,
+                dialogOpacity: _dialogOpacity,
                 uiScale: uiScale,
-                textScale: textScale,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                overlay: null, // 移除原来的已读标签
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     DialogueSpeakerHeader(
                       speaker: widget.speaker,
                       uiScale: uiScale,
@@ -235,6 +311,7 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
             ),
           ),
         ),
+      ),
     );
   }
 }

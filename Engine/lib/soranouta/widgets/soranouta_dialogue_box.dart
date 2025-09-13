@@ -35,7 +35,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
   bool _isHovered = false;
   bool _isDialogueComplete = false;
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
-  bool _isRead = false; // 新增：已读状态
+  bool _isRead = false;
 
   // 打字机动画管理器
   late TypewriterAnimationManager _typewriterController;
@@ -53,6 +53,10 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
   // 等待键入字符闪烁动画控制器
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
+  
+  // 用于获取对话框位置的GlobalKey
+  final GlobalKey _dialogueKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
 
   void _onSettingsChanged() {
     if (mounted) {
@@ -151,11 +155,15 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
+      
+      // 创建overlay
+      _updateOverlay();
     });
   }
 
   @override
   void dispose() {
+    _removeOverlay();
     // 从推进管理器注销打字机
     widget.progressionManager?.registerTypewriter(null);
     SettingsManager().removeListener(_onSettingsChanged);
@@ -165,6 +173,91 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
     _speakerWipeController.dispose();
     _blinkController.dispose();
     super.dispose();
+  }
+
+  void _createOverlay() {
+    if (!_isRead || _overlayEntry != null) return;
+    
+    _overlayEntry = OverlayEntry(
+      builder: (context) => _buildReadStatusOverlay(),
+    );
+    
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _updateOverlay() {
+    if (_isRead) {
+      if (_overlayEntry == null) {
+        _createOverlay();
+      } else {
+        _overlayEntry!.markNeedsBuild();
+      }
+    } else {
+      _removeOverlay();
+    }
+  }
+
+  Widget _buildReadStatusOverlay() {
+    final RenderBox? renderBox = _dialogueKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) {
+      print('SoranoUta: RenderBox is null');
+      return const SizedBox.shrink();
+    }
+    
+    final position = renderBox.localToGlobal(Offset.zero);
+    final config = SakiEngineConfig();
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    print('SoranoUta 对话框位置: dx=${position.dx}, dy=${position.dy}');
+    
+    // 计算旋转后的标签尺寸以正确对齐中心点
+    final labelWidth = 36.0 * uiScale + 18.0 * 2 * uiScale; // 大约的文本宽度 + padding
+    final labelHeight = 14.0 * textScale + 4.0 * 2 * uiScale; // 文本高度 + padding
+    
+    // 旋转45度后，需要考虑对角线长度来计算中心偏移
+    final diagonal = (labelWidth + labelHeight) / 2;
+    final centerOffsetX = diagonal * 0.5; // 调整系数
+    final centerOffsetY = diagonal * 0.3;
+    
+    final finalLeft = position.dx - centerOffsetX;
+    final finalTop = position.dy - centerOffsetY;
+    
+    print('SoranoUta 标签位置: left=$finalLeft, top=$finalTop');
+    
+    return Positioned(
+      left: finalLeft,
+      top: finalTop,
+      child: Transform.rotate(
+        angle: -45 * 3.14159 / 180,
+        child: Material( // 添加Material包装去除黄色双横线
+          color: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: 18.0 * uiScale,
+              vertical: 4.0 * uiScale,
+            ),
+            decoration: BoxDecoration(
+              color: config.themeColors.primary.withOpacity(0.8),
+            ),
+            child: Text(
+              '已读',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14.0 * textScale,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.none, // 明确去除装饰线
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -217,6 +310,11 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
+      
+      // 更新overlay
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateOverlay();
+      });
     }
   }
 
@@ -269,13 +367,14 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       height: 1.1,
     );
 
-    return DialogueShakeEffect(
-      dialogue: widget.dialogue,
-      enabled: true,
-      intensity: 4.0 * uiScale,
-      duration: const Duration(milliseconds: 600),
-      child: Stack(
-        children: [
+    return Container(
+      child: DialogueShakeEffect(
+        dialogue: widget.dialogue,
+        enabled: true,
+        intensity: 4.0 * uiScale,
+        duration: const Duration(milliseconds: 600),
+        child: Stack(
+          children: [
             // 主对话框内容
             SoranoutaDialogueContent(
             speaker: widget.speaker,
@@ -295,11 +394,8 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
             textFadeAnimation: _textFadeAnimation,
             blinkAnimation: _blinkAnimation,
             isRead: _isRead,
-            readStatusOverlay: ReadStatusIndicator(
-              isRead: _isRead,
-              uiScale: uiScale,
-              textScale: textScale,
-            ),
+            readStatusOverlay: null,
+            dialogueKey: _dialogueKey, // 传递key给内部组件
           ),
           
           // 说话人显示组件
@@ -315,6 +411,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
             wipeAnimation: _speakerWipeAnimation,
           ),
         ],
+        ),
       ),
     );
   }
