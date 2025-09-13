@@ -16,7 +16,7 @@ import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
-import 'package:sakiengine/src/widgets/fast_forward_indicator.dart';
+import 'package:sakiengine/src/widgets/common/common_indicator.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
@@ -208,14 +208,19 @@ class _GameUILayerState extends State<GameUILayer> {
           ),
         ),
         
-        // 快进指示器
+        // 快进指示器 - 垂直居中
         if (widget.gameState.isFastForwarding)
           Positioned(
             left: 20 * context.scaleFor(ComponentType.menu),
-            top: 350 * context.scaleFor(ComponentType.menu), // 快捷菜单下方
-            child: HideableUI(
-              child: FastForwardIndicator(
-                isFastForwarding: widget.gameState.isFastForwarding,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: HideableUI(
+                child: CommonIndicator(
+                  isVisible: widget.gameState.isFastForwarding,
+                  icon: Icons.fast_forward_rounded, // 使用圆滑的图标
+                  text: '正在快进......',
+                ),
               ),
             ),
           ),

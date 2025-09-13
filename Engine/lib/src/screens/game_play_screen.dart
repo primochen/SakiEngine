@@ -43,7 +43,6 @@ import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
 import 'package:sakiengine/src/utils/fast_forward_manager.dart';
-import 'package:sakiengine/src/widgets/fast_forward_indicator.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;

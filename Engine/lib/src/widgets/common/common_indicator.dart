@@ -2,28 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 
-/// 快进状态指示器
+/// 通用指示器组件
 /// 
-/// 在快捷菜单下方显示快进状态的指示器
-class FastForwardIndicator extends StatefulWidget {
-  final bool isFastForwarding;
+/// 可以显示各种状态的指示器，如快进、自动播放等
+class CommonIndicator extends StatefulWidget {
+  final bool isVisible;
+  final IconData icon;
+  final String text;
   final Duration animationDuration;
   
-  const FastForwardIndicator({
+  const CommonIndicator({
     super.key,
-    required this.isFastForwarding,
+    required this.isVisible,
+    required this.icon,
+    required this.text,
     this.animationDuration = const Duration(milliseconds: 300),
   });
   
   @override
-  State<FastForwardIndicator> createState() => _FastForwardIndicatorState();
+  State<CommonIndicator> createState() => _CommonIndicatorState();
 }
 
-class _FastForwardIndicatorState extends State<FastForwardIndicator>
-    with SingleTickerProviderStateMixin {
+class _CommonIndicatorState extends State<CommonIndicator>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _iconAnimationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
+  late Animation<double> _iconScaleAnimation;
+  late Animation<double> _iconRotationAnimation;
   
   @override
   void initState() {
@@ -31,6 +38,12 @@ class _FastForwardIndicatorState extends State<FastForwardIndicator>
     
     _animationController = AnimationController(
       duration: widget.animationDuration,
+      vsync: this,
+    );
+    
+    // 图标动画控制器 - 持续循环
+    _iconAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
     
@@ -50,38 +63,58 @@ class _FastForwardIndicatorState extends State<FastForwardIndicator>
       curve: Curves.easeInOut,
     ));
     
+    // 图标缩放动画 - 轻微的脉冲效果
+    _iconScaleAnimation = Tween<double>(
+      begin: 0.9,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _iconAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // 图标轻微旋转动画
+    _iconRotationAnimation = Tween<double>(
+      begin: -0.05,
+      end: 0.05,
+    ).animate(CurvedAnimation(
+      parent: _iconAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
     // 根据初始状态设置动画
-    if (widget.isFastForwarding) {
+    if (widget.isVisible) {
       _animationController.forward();
-      _startPulseAnimation();
+      _startIconAnimation();
     }
+  }
+  
+  void _startIconAnimation() {
+    _iconAnimationController.repeat(reverse: true);
+  }
+  
+  void _stopIconAnimation() {
+    _iconAnimationController.stop();
   }
   
   @override
-  void didUpdateWidget(FastForwardIndicator oldWidget) {
+  void didUpdateWidget(CommonIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    if (oldWidget.isFastForwarding != widget.isFastForwarding) {
-      if (widget.isFastForwarding) {
+    if (oldWidget.isVisible != widget.isVisible) {
+      if (widget.isVisible) {
         _animationController.forward();
-        _startPulseAnimation();
+        _startIconAnimation();
       } else {
         _animationController.reverse();
+        _stopIconAnimation();
       }
-    }
-  }
-  
-  void _startPulseAnimation() {
-    // 快进时不使用脉冲动画，保持稳定显示
-    if (widget.isFastForwarding) {
-      _animationController.stop();
-      _animationController.value = 1.0; // 保持完全显示
     }
   }
   
   @override
   void dispose() {
     _animationController.dispose();
+    _iconAnimationController.dispose();
     super.dispose();
   }
   
@@ -91,21 +124,21 @@ class _FastForwardIndicatorState extends State<FastForwardIndicator>
     final scale = context.scaleFor(ComponentType.menu);
     
     return AnimatedBuilder(
-      animation: _animationController,
+      animation: Listenable.merge([_animationController, _iconAnimationController]),
       builder: (context, child) {
-        // 快进时始终显示，不快进时淡出
-        if (!widget.isFastForwarding && _opacityAnimation.value <= 0.0) {
+        // 不可见时完全隐藏
+        if (!widget.isVisible && _opacityAnimation.value <= 0.0) {
           return const SizedBox.shrink();
         }
         
         return Transform.scale(
           scale: _scaleAnimation.value,
           child: Opacity(
-            opacity: widget.isFastForwarding ? 1.0 : _opacityAnimation.value,
+            opacity: widget.isVisible ? 1.0 : _opacityAnimation.value,
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: 12 * scale, 
-                vertical: 8 * scale
+                horizontal: 14 * scale, // 从 12 增加到 14
+                vertical: 10 * scale    // 从 8 增加到 10
               ),
               decoration: BoxDecoration(
                 color: config.themeColors.background.withValues(alpha: 0.9),
@@ -129,14 +162,21 @@ class _FastForwardIndicatorState extends State<FastForwardIndicator>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.fast_forward,
-                    color: config.themeColors.primary,
-                    size: 18 * scale,
+                  // 带动画效果的图标
+                  Transform.scale(
+                    scale: _iconScaleAnimation.value,
+                    child: Transform.rotate(
+                      angle: _iconRotationAnimation.value,
+                      child: Icon(
+                        widget.icon,
+                        color: config.themeColors.primary,
+                        size: 40 * scale, // 从 18 增加到 24
+                      ),
+                    ),
                   ),
-                  SizedBox(width: 6 * scale),
+                  SizedBox(width: 8 * scale), // 从 6 增加到 8
                   Text(
-                    '正在快进......',
+                    widget.text,
                     style: config.quickMenuTextStyle.copyWith(
                       color: config.themeColors.primary,
                       fontSize: config.quickMenuTextStyle.fontSize! * scale,
