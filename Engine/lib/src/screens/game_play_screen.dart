@@ -453,11 +453,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _fastForwardManager = FastForwardManager(
       dialogueProgressionManager: _dialogueProgressionManager,
       onFastForwardStateChanged: (isFastForwarding) {
-        if (mounted) {
-          setState(() {
-            _isFastForwarding = isFastForwarding;
-          });
-        }
+        // 使用post frame callback延迟处理，避免在build期间调用setState
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isFastForwarding = isFastForwarding;
+            });
+          }
+        });
       },
       canFastForward: () {
         // 检查是否有弹窗或菜单显示，如果有则不能快进
@@ -557,6 +560,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             // 更新状态跟踪
             _previousIsNvlMode = gameState.isNvlMode;
             _previousIsNvlMovieMode = gameState.isNvlMovieMode;
+            
+            // 同步快进状态：如果GameManager停止了快进，同步到FastForwardManager和UI
+            if (_isFastForwarding && !gameState.isFastForwarding) {
+              // 使用post frame callback延迟处理，避免在build中调用setState
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _fastForwardManager?.forceStopFastForward();
+                  setState(() {
+                    _isFastForwarding = false;
+                  });
+                }
+              });
+            }
             
             // 更新选项显示状态
             WidgetsBinding.instance.addPostFrameCallback((_) {

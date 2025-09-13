@@ -170,6 +170,13 @@ class FastForwardManager {
     }
   }
   
+  /// 强制停止快进（由外部逻辑调用，如检测到章节场景）
+  void forceStopFastForward() {
+    _isCtrlPressed = false;
+    _stopFastForward();
+    print('[FastForward] 快进被强制停止（检测到重要场景）');
+  }
+  
   /// 清理资源
   void dispose() {
     _stopFastForward();

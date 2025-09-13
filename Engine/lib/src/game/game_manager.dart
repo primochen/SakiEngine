@@ -325,6 +325,36 @@ class GameManager {
     _gameStateController.add(_currentState);
     //print('[FastForward] 快进模式: ${enabled ? "开启" : "关闭"}');
   }
+  
+  /// 检测背景名称是否包含章节信息
+  /// 检测规则：包含以下关键字之一（不区分大小写）：
+  /// - "chapter" 
+  /// - "ch" (后跟数字)
+  /// - "ep" (episode的缩写)
+  /// - "prologue" (序章)
+  /// - "epilogue" (尾声)
+  bool _containsChapter(String backgroundName) {
+    final lowerName = backgroundName.toLowerCase();
+    
+    // 检测常见的章节标识
+    if (lowerName.contains('chapter') || 
+        lowerName.contains('prologue') || 
+        lowerName.contains('epilogue')) {
+      return true;
+    }
+    
+    // 检测 ch + 数字 的模式（如 ch1, ch01, chapter1 等）
+    if (RegExp(r'\bch\d+\b').hasMatch(lowerName)) {
+      return true;
+    }
+    
+    // 检测 ep + 数字 的模式（如 ep1, ep01 等）
+    if (RegExp(r'\bep\d+\b').hasMatch(lowerName)) {
+      return true;
+    }
+    
+    return false;
+  }
 
   GameManager({this.onReturn}) {
     _currentState = GameState.initial(); // 提前初始化，避免late变量访问错误
@@ -611,6 +641,14 @@ class GameManager {
       }
 
       if (node is BackgroundNode) {
+        // 检测是否包含chapter，如果是则停止快进
+        if (_isFastForwardMode && _containsChapter(node.background)) {
+          print('[GameManager] 检测到chapter场景，停止快进: ${node.background}');
+          setFastForwardMode(false);
+          // 通知UI层快进状态已改变，这样快进指示器会消失
+          // GameState已在setFastForwardMode中更新
+        }
+        
         // 检查是否要清空CG状态
         // 如果新背景不是CG且当前有CG显示，则清空CG
         final isNewBackgroundCG = node.background.toLowerCase().contains('cg');
