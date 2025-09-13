@@ -1415,6 +1415,7 @@ class GameManager {
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
       nvlDialogues: List.from(_currentState.nvlDialogues),
+      isFastForwardMode: _isFastForwardMode, // 保存快进状态
     );
   }
 
@@ -1447,6 +1448,10 @@ class GameManager {
     _isProcessing = false;
     _isWaitingForTimer = false;
     
+    // 修复快进回退bug：强制重置快进状态为非快进
+    // 回退到历史状态时，应该始终处于正常播放模式，而不是快进模式
+    setFastForwardMode(false);
+    
     // 取消当前活跃的计时器
     _currentTimer?.cancel();
     _currentTimer = null;
@@ -1461,6 +1466,7 @@ class GameManager {
       isNvlMovieMode: snapshot.isNvlMovieMode,
       nvlDialogues: snapshot.nvlDialogues,
       everShownCharacters: _everShownCharacters,
+      isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
     );
     
     // 立即发送状态更新以确保UI正确显示包括场景动画属性
@@ -1516,6 +1522,7 @@ class GameManager {
         isNvlMovieMode: _savedSnapshot!.isNvlMovieMode,
         nvlDialogues: _savedSnapshot!.nvlDialogues,
         everShownCharacters: _everShownCharacters,
+        isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
       );
       
       _isProcessing = false;
@@ -2194,6 +2201,7 @@ class GameStateSnapshot {
   final bool isNvlMode;
   final bool isNvlMovieMode;
   final List<NvlDialogue> nvlDialogues;
+  final bool isFastForwardMode; // 添加快进状态保存
 
   GameStateSnapshot({
     required this.scriptIndex,
@@ -2202,6 +2210,7 @@ class GameStateSnapshot {
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
     this.nvlDialogues = const [],
+    this.isFastForwardMode = false, // 默认非快进状态
   });
 
 }
