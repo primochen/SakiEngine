@@ -5,7 +5,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
 class BinarySerializer {
-  static const int _version = 1;
+  static const int _version = 2;
   static const String _magicNumber = 'SAKI';
 
   /// 将SaveSlot序列化为二进制数据
@@ -17,7 +17,7 @@ class BinarySerializer {
     buffer.addAll(_writeInt32(_version));
     
     // 写入基本信息
-    buffer.addAll(_writeInt32(saveSlot.id));
+    buffer.addAll(_writeInt64(saveSlot.id));
     buffer.addAll(_writeInt64(saveSlot.saveTime.millisecondsSinceEpoch));
     buffer.addAll(_writeString(saveSlot.currentScript));
     buffer.addAll(_writeString(saveSlot.dialoguePreview));
@@ -49,13 +49,20 @@ class BinarySerializer {
     final version = reader.readInt32();
     //print('Debug: 版本号: $version (当前支持: $_version)');
     
-    if (version != _version) {
-      throw FormatException('Unsupported version: $version');
+    if (version < 1 || version > _version) {
+      throw FormatException('Unsupported version: $version (supported: 1-$_version)');
     }
     
     // 读取基本信息
     //print('Debug: 读取基本信息...');
-    final id = reader.readInt32();
+    final int id;
+    if (version == 1) {
+      // 向后兼容：版本1使用32位ID
+      id = reader.readInt32();
+    } else {
+      // 版本2及以上使用64位ID
+      id = reader.readInt64();
+    }
     final saveTime = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
     final currentScript = reader.readString();
     final dialoguePreview = reader.readNullableString();

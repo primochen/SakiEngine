@@ -80,13 +80,17 @@ class SoranoutaModule extends DefaultGameModule {
   @override
   Widget createDialogueBox({
     String? speaker,
+    String? speakerAlias, // 新增：角色简写参数
     required String dialogue,
     DialogueProgressionManager? progressionManager,
+    required int scriptIndex, // 新增：脚本索引参数
   }) {
     return SoranoUtaDialogueBox(
       speaker: speaker,
+      speakerAlias: speakerAlias, // 传递角色简写
       dialogue: dialogue,
       progressionManager: progressionManager,
+      scriptIndex: scriptIndex, // 传递脚本索引
     );
   }
 

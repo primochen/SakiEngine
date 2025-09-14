@@ -40,8 +40,10 @@ abstract class GameModule {
   /// 对话框组件工厂
   Widget createDialogueBox({
     String? speaker,
+    String? speakerAlias, // 新增：角色简写参数
     required String dialogue,
     DialogueProgressionManager? progressionManager,
+    required int scriptIndex, // 新增：脚本索引参数
   });
 
   /// 自定义配置（可选）
@@ -139,13 +141,16 @@ class DefaultGameModule implements GameModule {
   @override
   Widget createDialogueBox({
     String? speaker,
+    String? speakerAlias, // 新增：角色简写参数
     required String dialogue,
     DialogueProgressionManager? progressionManager,
+    required int scriptIndex, // 新增：脚本索引参数
   }) {
     return DialogueBox(
       speaker: speaker,
       dialogue: dialogue,
       progressionManager: progressionManager,
+      scriptIndex: scriptIndex, // 传递脚本索引
     );
   }
 

@@ -46,8 +46,32 @@ ease 0.3 ycenter-0.05 scale+0.3
 ease 0.3 ycenter+0 scale+0.3
 ease 0.3 ycenter+0 scale-0
 cgjump
-ease 0.3 ycenter-0.02 scale+0.1
-ease 0.3 ycenter+0 scale+0.1
+scale+0.1
+ease 0.3 ycenter-0.02
+ease 0.3 ycenter+0
+
+// 新的动画预设示例 - 支持您的语法需求
+enhanced_jump
+scale+0.15
+ycenter-0.05
+ease 0.2 ycenter-0.08
+ease 0.2 ycenter+0.05
+ease 0.1 ycenter+0
+
+dramatic_entrance
+xcenter-0.2
+scale+0.3
+alpha+0.5
+ease 0.5 xcenter+0.2
+ease 0.3 scale-0.1
+ease 0.2 alpha-0.5
+
+power_up
+scale+0.2
+ease 0.3 ycenter-0.02
+ease 0.3 ycenter+0.02
+ease 0.3 scale+0.1
+ease 0.3 scale-0.3
 
 zoomjumpin
 ease 0.3 ycenter-0.05 scale+0.3

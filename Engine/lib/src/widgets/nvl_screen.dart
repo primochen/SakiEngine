@@ -17,12 +17,14 @@ class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
   final DialogueProgressionManager? progressionManager;
   final bool isMovieMode;
+  final bool isFastForwarding; // 新增：快进状态
 
   const NvlScreen({
     super.key,
     required this.nvlDialogues,
     this.progressionManager,
     this.isMovieMode = false,
+    this.isFastForwarding = false, // 新增：默认不快进
   });
 
   @override
@@ -57,7 +59,9 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
   void initState() {
     super.initState();
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: widget.isFastForwarding 
+          ? Duration.zero // 快进模式下跳过动画
+          : const Duration(milliseconds: 300),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(
@@ -70,12 +74,16 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
     
     // 初始化电影黑边动画 - 创建两个独立的控制器
     _topBarController = AnimationController(
-      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
+      duration: widget.isFastForwarding 
+          ? Duration.zero // 快进模式下跳过动画
+          : const Duration(milliseconds: 400), // 从800ms加快到400ms
       vsync: this,
     );
     
     _bottomBarController = AnimationController(
-      duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
+      duration: widget.isFastForwarding 
+          ? Duration.zero // 快进模式下跳过动画
+          : const Duration(milliseconds: 400), // 从800ms加快到400ms
       vsync: this,
     );
     
@@ -97,16 +105,27 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
       curve: Curves.easeOutCubic,
     ));
     
-    _fadeController.forward();
+    // 快进模式下直接跳到最终状态
+    if (widget.isFastForwarding) {
+      _fadeController.value = 1.0;
+    } else {
+      _fadeController.forward();
+    }
     
     // 如果是电影模式，启动黑边动画并设置显示状态
     if (widget.isMovieMode) {
       _showCinematicBars = true;
-      // 让上下黑边有个小延迟，增加视觉层次
-      _topBarController.forward();
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _bottomBarController.forward();
-      });
+      if (widget.isFastForwarding) {
+        // 快进模式下直接设置最终状态
+        _topBarController.value = 1.0;
+        _bottomBarController.value = 1.0;
+      } else {
+        // 让上下黑边有个小延迟，增加视觉层次
+        _topBarController.forward();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _bottomBarController.forward();
+        });
+      }
     }
     
     // 自动滚动到底部
@@ -195,6 +214,9 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
     _currentTypewriterController = TypewriterAnimationManager();
     _currentTypewriterController!.initialize(this);
     
+    // 设置快进模式
+    _currentTypewriterController!.setFastForwardMode(widget.isFastForwarding);
+    
     // 添加监听器
     _currentTypewriterController!.addListener(_onTypewriterStateChanged);
     
@@ -207,8 +229,13 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
   void _onTypewriterStateChanged() {
     if (mounted) {
       final isCompleted = _currentTypewriterController?.isCompleted ?? false;
-      setState(() {
-        _isLastDialogueComplete = isCompleted;
+      // 使用post frame callback避免在build期间调用setState
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _isLastDialogueComplete = isCompleted;
+          });
+        }
       });
     }
   }
@@ -289,7 +316,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
     String displayText;
     if (dialogue.speaker != null) {
       // 有说话人：角色名: "对话内容"
-      displayText = '${dialogue.speaker}: “${dialogue.dialogue}”';//写给ai的话。不要把中文双引号改成英文双引号啊 显示出来很突兀
+      displayText = '${dialogue.speaker}: ${dialogue.dialogue}';//写给ai的话。不要把中文双引号改成英文双引号啊 显示出来很突兀
     } else {
       // 无说话人：直接显示内容（内心想法/旁白）
       displayText = dialogue.dialogue;
@@ -301,7 +328,9 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
     // 为每个对话创建独立的淡入动画
     if (!_textFadeControllers.containsKey(index)) {
       final controller = AnimationController(
-        duration: const Duration(milliseconds: 400),
+        duration: widget.isFastForwarding 
+            ? Duration.zero // 快进模式下跳过动画
+            : const Duration(milliseconds: 400),
         vsync: this,
       );
       _textFadeControllers[index] = controller;
@@ -316,7 +345,11 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
       // 立即启动淡入动画，避免累积延迟
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && controller.isCompleted == false) {
-          controller.forward();
+          if (widget.isFastForwarding) {
+            controller.value = 1.0; // 快进模式下直接设置最终状态
+          } else {
+            controller.forward();
+          }
         }
       });
     }
@@ -340,8 +373,13 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
                   autoStart: true,
                   controller: _getOrCreateTypewriterController(index),
                   onComplete: () {
-                    setState(() {
-                      _isLastDialogueComplete = true;
+                    // 使用post frame callback避免在build期间调用setState
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _isLastDialogueComplete = true;
+                        });
+                      }
                     });
                   },
                 )

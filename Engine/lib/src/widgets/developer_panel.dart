@@ -9,6 +9,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
+import 'package:sakiengine/src/utils/read_text_tracker.dart';
 
 class DeveloperPanel extends StatefulWidget {
   final VoidCallback onClose;
@@ -298,6 +299,94 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         print('开发者面板: 获取当前脚本名称失败: $e');
       }
       return 'start'; // 默认脚本
+    }
+  }
+
+  /// 清除已读状态
+  Future<void> _clearReadStatus() async {
+    final config = SakiEngineConfig();
+    
+    // 显示确认对话框
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: config.themeColors.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(config.baseWindowBorder),
+            side: BorderSide(
+              color: config.themeColors.primary.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          title: Text(
+            '清除已读状态',
+            style: TextStyle(
+              color: config.themeColors.primary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '确定要清除所有已读文本记录吗？\n\n清除后，快进按钮将无法跳过任何文本，直到重新阅读。',
+            style: TextStyle(
+              color: config.themeColors.onSurface,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                '取消',
+                style: TextStyle(color: config.themeColors.primary),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                '确定',
+                style: TextStyle(color: config.themeColors.primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        // 清除所有已读记录
+        await ReadTextTracker.instance.clearAllReadRecords();
+        
+        // 显示成功消息
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '已读状态已清除！快进功能将重新开始跟踪已读文本。',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: config.themeColors.primary,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        // 显示错误消息
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '清除失败：$e',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -837,6 +926,17 @@ class _DeveloperPanelState extends State<DeveloperPanel>
                 _showDebugPanel = true;
               });
             },
+            config: config,
+            uiScale: uiScale,
+            textScale: textScale,
+          ),
+          
+          SizedBox(height: 8 * uiScale),
+          
+          // 清除已读状态按钮
+          _buildStyledButton(
+            text: '清除已读状态',
+            onPressed: _clearReadStatus,
             config: config,
             uiScale: uiScale,
             textScale: textScale,

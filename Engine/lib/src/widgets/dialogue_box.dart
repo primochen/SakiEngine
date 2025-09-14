@@ -2,42 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
-import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
-import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
-import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/dialogue_shake_effect.dart';
+import 'package:sakiengine/src/utils/read_text_tracker.dart';
+import 'package:sakiengine/src/widgets/read_status_indicator.dart';
+import 'package:sakiengine/src/widgets/dialogue_background.dart';
+import 'package:sakiengine/src/widgets/dialogue_speaker_header.dart';
+import 'package:sakiengine/src/widgets/dialogue_content.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
   final String dialogue;
   final DialogueProgressionManager? progressionManager;
+  final bool isFastForwarding;
+  final int scriptIndex;
 
   const DialogueBox({
     super.key,
     this.speaker,
     required this.dialogue,
     this.progressionManager,
+    this.isFastForwarding = false,
+    required this.scriptIndex,
   });
 
   @override
   State<DialogueBox> createState() => _DialogueBoxState();
 }
 
-class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin {
+class _DialogueBoxState extends State<DialogueBox>
+    with TickerProviderStateMixin {
   bool _isHovered = false;
   bool _isDialogueComplete = false;
   double _dialogOpacity = SettingsManager.defaultDialogOpacity;
-  
-  // 打字机动画管理器
+  bool _isRead = false;
+
   late TypewriterAnimationManager _typewriterController;
-  bool _enableTypewriter = true;
-  
-  // 文本淡入动画控制器
+  final bool _enableTypewriter = true;
+
   late AnimationController _textFadeController;
   late Animation<double> _textFadeAnimation;
-  
+
+  // 用于获取对话框位置的GlobalKey
+  final GlobalKey _dialogueKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
   void _onSettingsChanged() {
     if (mounted) {
       setState(() {
@@ -50,6 +60,13 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   void initState() {
     super.initState();
 
+    // 检查已读状态
+    _isRead = ReadTextTracker.instance.isRead(
+      widget.speaker,
+      widget.dialogue,
+      widget.scriptIndex,
+    );
+
     // 初始化打字机动画管理器
     _typewriterController = TypewriterAnimationManager();
     _typewriterController.initialize(this);
@@ -58,13 +75,12 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     // 注册打字机到推进管理器
     widget.progressionManager?.registerTypewriter(_typewriterController);
 
-
     // 初始化文本淡入动画
     _textFadeController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-    
+
     _textFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -75,22 +91,32 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
 
     // 监听设置变化
     SettingsManager().addListener(_onSettingsChanged);
-    
+
     // 加载设置
     _loadSettings();
-    
+
     // 开始文本淡入和打字机动画
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _textFadeController.forward();
+      _typewriterController.setFastForwardMode(widget.isFastForwarding);
+
+      if (widget.isFastForwarding) {
+        _textFadeController.value = 1.0;
+      } else {
+        _textFadeController.forward();
+      }
+
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
+
+      // 创建overlay
+      _updateOverlay();
     });
   }
 
   @override
   void dispose() {
-    // 从推进管理器注销打字机
+    _removeOverlay();
     widget.progressionManager?.registerTypewriter(null);
     SettingsManager().removeListener(_onSettingsChanged);
     _typewriterController.removeListener(_onTypewriterStateChanged);
@@ -99,24 +125,150 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
     super.dispose();
   }
 
+  void _createOverlay() {
+    if (!_isRead || _overlayEntry != null) return;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => _buildReadStatusOverlay(),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _updateOverlay() {
+    if (_isRead) {
+      if (_overlayEntry == null) {
+        _createOverlay();
+      } else {
+        _overlayEntry!.markNeedsBuild();
+      }
+    } else {
+      _removeOverlay();
+    }
+  }
+
+  Widget _buildReadStatusOverlay() {
+    final RenderBox? renderBox =
+        _dialogueKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return const SizedBox.shrink();
+
+    final position = renderBox.localToGlobal(Offset.zero);
+    final config = SakiEngineConfig();
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
+
+    return Positioned(
+      left: position.dx - 9.0 * uiScale, // 调整位置使标签中心对齐到对话框左上角
+      top: position.dy - 14.0 * uiScale,
+      child: Transform.rotate(
+        angle: -45 * 3.14159 / 180,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 18.0 * uiScale,
+            vertical: 4.0 * uiScale,
+          ),
+          decoration: BoxDecoration(
+            color: config.themeColors.primary.withOpacity(0.8),
+          ),
+          child: Text(
+            '已读',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14.0 * textScale,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void didUpdateWidget(DialogueBox oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // 如果推进管理器发生变化，重新注册打字机
+
     if (widget.progressionManager != oldWidget.progressionManager) {
       oldWidget.progressionManager?.registerTypewriter(null);
       widget.progressionManager?.registerTypewriter(_typewriterController);
     }
-    
-    // 如果对话内容发生变化，重新开始文本淡入和打字机动画
-    if (widget.dialogue != oldWidget.dialogue) {
-      _textFadeController.reset();
-      _textFadeController.forward();
+
+    if (widget.isFastForwarding != oldWidget.isFastForwarding) {
+      _typewriterController.setFastForwardMode(widget.isFastForwarding);
+      if (widget.isFastForwarding) {
+        _textFadeController.value = 1.0;
+      }
+    }
+
+    if (widget.dialogue != oldWidget.dialogue ||
+        widget.scriptIndex != oldWidget.scriptIndex) {
+      _isRead = ReadTextTracker.instance.isRead(
+        widget.speaker,
+        widget.dialogue,
+        widget.scriptIndex,
+      );
+
+      if (widget.isFastForwarding) {
+        _textFadeController.value = 1.0;
+      } else {
+        _textFadeController.reset();
+        _textFadeController.forward();
+      }
+
       if (_enableTypewriter) {
         _typewriterController.startTyping(widget.dialogue);
       }
+
+      // 更新overlay
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateOverlay();
+      });
     }
+  }
+
+  Widget _buildReadStatusTag() {
+    final RenderBox? renderBox = _dialogueKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) {
+      return const SizedBox.shrink();
+    }
+    
+    final position = renderBox.localToGlobal(Offset.zero);
+    final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
+    
+    // 计算旋转后的标签尺寸以正确对齐中心点
+    final labelWidth = 36.0 * uiScale + 18.0 * 2 * uiScale;
+    final labelHeight = 14.0 * textScale + 4.0 * 2 * uiScale;
+    
+    final diagonal = (labelWidth + labelHeight) / 2;
+    final centerOffsetX = diagonal * 0.5;
+    final centerOffsetY = diagonal * 0.3;
+    
+    final finalLeft = position.dx - centerOffsetX;
+    final finalTop = position.dy - centerOffsetY;
+    
+    // 转换为相对于Stack的坐标
+    final stackPosition = context.findRenderObject() as RenderBox?;
+    if (stackPosition == null) return const SizedBox.shrink();
+    
+    final stackGlobalPosition = stackPosition.localToGlobal(Offset.zero);
+    final relativeLeft = finalLeft - stackGlobalPosition.dx;
+    final relativeTop = finalTop - stackGlobalPosition.dy;
+    
+    return Positioned(
+      left: relativeLeft + 20*uiScale,
+      top: relativeTop + 20*uiScale,
+      child: ReadStatusIndicator(
+        isRead: _isRead,
+        uiScale: uiScale,
+        textScale: textScale,
+        positioned: false, // 不要自动定位，我们手动定位
+      ),
+    );
   }
 
   void _onTypewriterStateChanged() {
@@ -130,35 +282,20 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
   Future<void> _loadSettings() async {
     final settings = SettingsManager();
     final opacity = await settings.getDialogOpacity();
-    // 可以添加打字机开关设置
-    // final enableTypewriter = await settings.getEnableTypewriter();
-    
+
     if (mounted) {
       setState(() {
         _dialogOpacity = opacity;
-        // _enableTypewriter = enableTypewriter;
       });
     }
   }
 
   void _handleTap() {
-    // 使用推进管理器统一处理对话推进
     widget.progressionManager?.progressDialogue();
-  }
-
-  bool _isTextOverflowing(BuildContext context, String text, TextStyle style, double maxWidth) {
-    final textPainter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    )..layout(maxWidth: maxWidth);
-
-    return textPainter.height > maxWidth;
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
     final config = SakiEngineConfig();
     final uiScale = context.scaleFor(ComponentType.ui);
     final textScale = context.scaleFor(ComponentType.text);
@@ -182,162 +319,45 @@ class _DialogueBoxState extends State<DialogueBox> with TickerProviderStateMixin
           child: MouseRegion(
             onEnter: (_) => setState(() => _isHovered = true),
             onExit: (_) => setState(() => _isHovered = false),
-          child: Container(
-            width: screenSize.width * 0.85,
-            height: screenSize.height * 0.25,
-            margin: EdgeInsets.all(16.0 * uiScale),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(config.baseWindowBorder > 0 
-                  ? config.baseWindowBorder * uiScale 
-                  : 0 * uiScale),
-              border: Border.all(
-                color: config.themeColors.primary.withOpacity(_isHovered ? 0.4 : 0.2),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 12 * uiScale,
-                  offset: Offset(0, 4 * uiScale),
+            child: Stack(
+              clipBehavior: Clip.none, // 允许子组件超出边界
+              children: [
+                Container(
+                  key: _dialogueKey, // 添加key来获取位置
+                  child: DialogueBackground(
+                    isHovered: _isHovered,
+                    dialogOpacity: _dialogOpacity,
+                    uiScale: uiScale,
+                    overlay: null, // 移除原来的已读标签
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DialogueSpeakerHeader(
+                          speaker: widget.speaker,
+                          uiScale: uiScale,
+                          textScale: textScale,
+                        ),
+                        DialogueContent(
+                          dialogue: widget.dialogue,
+                          speaker: widget.speaker,
+                          dialogueStyle: dialogueStyle,
+                          typewriterController: _typewriterController,
+                          textFadeAnimation: _textFadeAnimation,
+                          enableTypewriter: _enableTypewriter,
+                          isDialogueComplete: _isDialogueComplete,
+                          uiScale: uiScale,
+                          isRead: _isRead,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
+                // 已读标签 - 使用坐标计算
+                if (_isRead) _buildReadStatusTag(),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(config.baseWindowBorder > 0 
-                  ? config.baseWindowBorder * uiScale 
-                  : 0 * uiScale),
-              child: Stack(
-                children: [
-                  // 底层：纯色背景
-                  Container(
-                    width: double.infinity,
-                    height: double.infinity,
-                    color: config.themeColors.background.withOpacity(_dialogOpacity),
-                  ),
-                  // 中层：背景图片
-                  if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: config.baseWindowBackgroundAlpha * _dialogOpacity,
-                        child: ColorFiltered(
-                          colorFilter: ColorFilter.mode(
-                            Colors.transparent,
-                            config.baseWindowBackgroundBlendMode,
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.none,
-                            alignment: Alignment(
-                              (config.dialogueBackgroundXAlign - 0.5) * 2,
-                              (config.dialogueBackgroundYAlign - 0.5) * 2,
-                            ),
-                            child: Transform.scale(
-                              scale: config.dialogueBackgroundScale,
-                              child: SmartAssetImage(
-                                assetName: config.baseWindowBackground!,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          ),
-                        ),
-                      ),
-                  // 上层：半透明控件
-                  Container(
-                    color: config.themeColors.background.withOpacity(config.baseWindowAlpha * 0.3),
-                    child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 标题栏
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16 * uiScale,
-                    vertical: 12 * uiScale,
-                  ),
-                  decoration: BoxDecoration(
-                    color: config.themeColors.primary.withOpacity(0.05),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: config.themeColors.primary.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    widget.speaker ?? '', // 如果 speaker 为 null，则显示空字符串
-                    style: config.speakerTextStyle.copyWith(
-                      fontSize: config.speakerTextStyle.fontSize! * textScale,
-                      color: config.themeColors.primary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                
-                // 对话内容
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // 检查文本是否溢出
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          setState(() {
-                            _isDialogueComplete = !_isTextOverflowing(
-                              context, 
-                              widget.dialogue, 
-                              dialogueStyle, 
-                              constraints.maxWidth - 32 * uiScale
-                            );
-                          });
-                        }
-                      });
-
-                      return SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.all(16.0 * uiScale),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                               FadeTransition(
-                                 opacity: _textFadeAnimation,
-                                 child: RichText(
-                                   text: TextSpan(
-                                     children: [
-                                       ..._enableTypewriter 
-                                         ? _typewriterController.getTextSpans(dialogueStyle)
-                                         : RichTextParser.createTextSpans(widget.dialogue, dialogueStyle),
-                                       if (_isDialogueComplete)
-                                         WidgetSpan(
-                                           alignment: PlaceholderAlignment.middle,
-                                           child: Padding(
-                                             padding: EdgeInsets.only(left: uiScale),
-                                             child: DialogueNextArrow(
-                                               visible: _isDialogueComplete,
-                                               fontSize: dialogueStyle.fontSize!,
-                                               color: config.themeColors.primary.withOpacity(0.7),
-                                               speaker: widget.speaker,
-                                             ),
-                                           ),
-                                         ),
-                                     ],
-                                   ),
-                                 ),
-                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                  ],
-                ),
-              ),
-                ],
-              ),
-            ),
           ),
-        ),
         ),
       ),
     );

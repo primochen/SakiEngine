@@ -40,6 +40,12 @@ import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
 import 'package:sakiengine/src/utils/expression_selector_manager.dart';
 import 'package:sakiengine/src/utils/key_sequence_detector.dart';
+import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
+import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
+import 'package:sakiengine/src/utils/fast_forward_manager.dart';
+import 'package:sakiengine/src/utils/auto_play_manager.dart'; // 新增：自动播放管理器
+import 'package:sakiengine/src/utils/read_text_tracker.dart';
+import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -74,12 +80,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   HotKey? _developerPanelHotKey; // Shift+D快捷键
   KeySequenceDetector? _consoleSequenceDetector; // console序列检测器
   ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
+  FastForwardManager? _fastForwardManager; // 快进管理器
+  AutoPlayManager? _autoPlayManager; // 新增：自动播放管理器
+  ReadTextSkipManager? _readTextSkipManager; // 已读文本快进管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
   // 跟踪上一次的NVL状态，用于检测转场
   bool _previousIsNvlMode = false;
   bool _previousIsNvlMovieMode = false;
+  
+  // 快进状态
+  bool _isFastForwarding = false;
+  
+  // 自动播放状态
+  bool _isAutoPlaying = false;
   
   // 加载淡出动画控制
   late AnimationController _loadingFadeController;
@@ -125,6 +140,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 初始化console序列检测器（发行版也可用，方便玩家复制日志）
     _setupConsoleSequenceDetector();
+    
+    // 初始化快进管理器
+    _setupFastForwardManager();
+    
+    // 初始化自动播放管理器
+    _setupAutoPlayManager();
+    
+    // 初始化已读文本跟踪器和已读文本快进管理器
+    _setupReadTextTracking();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -186,15 +210,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   Widget _createDialogueBox({
     Key? key,
     String? speaker,
+    String? speakerAlias, // 新增：角色简写参数
     required String dialogue,
+    required bool isFastForwarding, // 新增快进状态参数
+    required int scriptIndex, // 新增脚本索引参数
   }) {
+    // 不在这里标记为已读！应该在用户推进对话时才标记
+    
     // 根据项目名称选择对话框
     if (_projectName == 'SoraNoUta') {
       return SoranoUtaDialogueBox(
         key: key,
         speaker: speaker,
+        speakerAlias: speakerAlias, // 传递角色简写
         dialogue: dialogue,
         progressionManager: _dialogueProgressionManager,
+        isFastForwarding: isFastForwarding, // 传递快进状态
+        scriptIndex: scriptIndex, // 传递脚本索引
       );
     }
     
@@ -204,6 +236,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       speaker: speaker,
       dialogue: dialogue,
       progressionManager: _dialogueProgressionManager,
+      isFastForwarding: isFastForwarding, // 传递快进状态
+      scriptIndex: scriptIndex, // 传递脚本索引
     );
   }
 
@@ -251,6 +285,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _expressionSelectorManager?.dispose();
     // 清理console序列检测器
     _consoleSequenceDetector?.dispose();
+    // 清理快进管理器
+    _fastForwardManager?.dispose();
+    
+    // 清理自动播放管理器
+    _autoPlayManager?.dispose();
+    
+    // 清理已读文本快进管理器
+    _readTextSkipManager?.dispose();
+    
     // 清理加载淡出动画控制器
     _loadingFadeController.dispose();
     
@@ -432,6 +475,125 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     print('发行版用户可通过连续按下 c-o-n-s-o-l-e 来打开日志面板复制日志');
   }
 
+  // 设置快进管理器
+  void _setupFastForwardManager() {
+    _fastForwardManager = FastForwardManager(
+      dialogueProgressionManager: _dialogueProgressionManager,
+      onFastForwardStateChanged: (isFastForwarding) {
+        // 使用post frame callback延迟处理，避免在build期间调用setState
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isFastForwarding = isFastForwarding;
+            });
+          }
+        });
+      },
+      canFastForward: () {
+        // 检查是否有弹窗或菜单显示，如果有则不能快进
+        final hasOverlayOpen = _isShowingMenu || 
+            _showSaveOverlay || 
+            _showLoadOverlay || 
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel || 
+            _showDebugPanel || 
+            _showExpressionSelector;
+        return !hasOverlayOpen;
+      },
+      setGameManagerFastForward: (isFastForwarding) {
+        // 通知GameManager快进状态变化
+        _gameManager.setFastForwardMode(isFastForwarding);
+      },
+    );
+    
+    _fastForwardManager!.startListening();
+    print('快进管理器已初始化 - 按住Ctrl键可快进对话');
+  }
+  
+  // 设置已读文本跟踪
+  void _setupReadTextTracking() async {
+    // 初始化已读文本跟踪器
+    await ReadTextTracker.instance.initialize();
+    
+    // 初始化已读文本快进管理器
+    _readTextSkipManager = ReadTextSkipManager(
+      gameManager: _gameManager,
+      dialogueProgressionManager: _dialogueProgressionManager,
+      readTextTracker: ReadTextTracker.instance,
+      onSkipStateChanged: (isSkipping) {
+        // 更新UI状态
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              // 可以添加已读文本快进的UI状态更新
+            });
+          }
+        });
+      },
+      canSkip: () {
+        // 检查是否有弹窗或菜单显示，如果有则不能快进
+        final hasOverlayOpen = _isShowingMenu || 
+            _showSaveOverlay || 
+            _showLoadOverlay || 
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel || 
+            _showDebugPanel || 
+            _showExpressionSelector;
+        return !hasOverlayOpen;
+      },
+    );
+    
+    print('已读文本跟踪器已初始化 - 快捷菜单中的快进按钮只会跳过已读文本');
+  }
+
+  // 设置自动播放管理器
+  void _setupAutoPlayManager() {
+    _autoPlayManager = AutoPlayManager(
+      dialogueProgressionManager: _dialogueProgressionManager,
+      onAutoPlayStateChanged: () {
+        // 使用post frame callback延迟处理，避免在build期间调用setState
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isAutoPlaying = _autoPlayManager!.isAutoPlaying;
+            });
+            // 同步到GameManager
+            _gameManager.setAutoPlayMode(_isAutoPlaying);
+          }
+        });
+      },
+      canAutoPlay: () {
+        // 检查是否有弹窗或菜单显示，如果有则不能自动播放
+        final hasOverlayOpen = _isShowingMenu || 
+            _showSaveOverlay || 
+            _showLoadOverlay || 
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel || 
+            _showDebugPanel || 
+            _showExpressionSelector ||
+            _isFastForwarding; // 快进时不能自动播放
+        return !hasOverlayOpen;
+      },
+    );
+    
+    print('自动播放管理器已初始化');
+  }
+
+  // 处理跳过已读文本
+  void _handleSkipReadText() {
+    print('🎯 快进按钮被点击 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
+    _readTextSkipManager?.toggleSkipping();
+  }
+
+  // 处理自动播放
+  void _handleAutoPlay() {
+    print('🎯 自动播放按钮被点击 - _autoPlayManager: ${_autoPlayManager?.hashCode}');
+    _autoPlayManager?.toggleAutoPlay();
+  }
+
   // 显示通知消息
   void _showNotificationMessage(String message) {
     _notificationOverlayKey.currentState?.show(message);
@@ -469,7 +631,29 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         }
       },
       child: Focus(
-        autofocus: false,
+        autofocus: true, // 确保能接收键盘事件
+        onKeyEvent: (node, event) {
+          // 处理快进键盘事件
+          if (_fastForwardManager != null) {
+            final handled = _fastForwardManager!.handleKeyEvent(event);
+            if (handled) {
+              return KeyEventResult.handled;
+            }
+          }
+          
+          // 处理回车和空格键推进剧情
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.enter || 
+                event.logicalKey == LogicalKeyboardKey.space) {
+              _gameManager.next();
+              // 通知自动播放管理器有手动推进
+              _autoPlayManager?.onManualProgress();
+              return KeyEventResult.handled;
+            }
+          }
+          
+          return KeyEventResult.ignored;
+        },
         child: Scaffold(
           body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
@@ -499,170 +683,143 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _previousIsNvlMode = gameState.isNvlMode;
             _previousIsNvlMovieMode = gameState.isNvlMovieMode;
             
+            // 同步快进状态：如果GameManager停止了快进，同步到FastForwardManager和UI
+            if (_isFastForwarding && !gameState.isFastForwarding) {
+              // 使用post frame callback延迟处理，避免在build中调用setState
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  // 只需要停止FastForwardManager，不需要再次调用forceStopFastForward
+                  // 因为GameManager已经处理了状态更新
+                  _fastForwardManager?.stopFastForward();
+                  setState(() {
+                    _isFastForwarding = false;
+                  });
+                }
+              });
+            }
+            
             // 更新选项显示状态
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
+                final newIsShowingMenu = gameState.currentNode is MenuNode;
+                if (!_isShowingMenu && newIsShowingMenu) {
+                  // 选择菜单出现，强制停止自动播放
+                  _autoPlayManager?.forceStopOnBlocking();
+                }
                 setState(() {
-                  _isShowingMenu = gameState.currentNode is MenuNode;
+                  _isShowingMenu = newIsShowingMenu;
                 });
               }
             });
             
-            return Listener(
-              onPointerSignal: (pointerSignal) {
+            return RightClickUIManager(
+              // 背景层 - 不会被隐藏的内容（场景、角色等）
+              backgroundChild: Listener(
+                onPointerSignal: (pointerSignal) {
+                  // 检查是否有弹窗或菜单显示
+                  final hasOverlayOpen = _isShowingMenu || 
+                      _showSaveOverlay || 
+                      _showLoadOverlay || 
+                      _showReviewOverlay ||
+                      _showSettings ||
+                      _showDeveloperPanel || 
+                      _showDebugPanel || 
+                      _showExpressionSelector;
+                  
+                  // 处理标准的PointerScrollEvent（鼠标滚轮）
+                  if (pointerSignal is PointerScrollEvent) {
+                    // 向上滚动: 前进剧情
+                    if (pointerSignal.scrollDelta.dy < 0) {
+                      if (!hasOverlayOpen) {
+                        _dialogueProgressionManager.progressDialogue();
+                      }
+                    }
+                    // 向下滚动: 回滚剧情
+                    else if (pointerSignal.scrollDelta.dy > 0) {
+                      if (!hasOverlayOpen) {
+                        _handlePreviousDialogue();
+                      }
+                    }
+                  }
+                  // 处理macOS触控板事件
+                  else if (pointerSignal.toString().contains('Scroll')) {
+                    // 触控板滚动事件，推进剧情
+                    if (!hasOverlayOpen) {
+                      _dialogueProgressionManager.progressDialogue();
+                    }
+                  }
+                },
+                child: _buildSceneWithFilter(gameState),
+              ),
+              // 左键点击回调 - 推进剧情
+              onLeftClick: () {
                 // 检查是否有弹窗或菜单显示
                 final hasOverlayOpen = _isShowingMenu || 
                     _showSaveOverlay || 
                     _showLoadOverlay || 
                     _showReviewOverlay ||
                     _showSettings ||
-                    _showDeveloperPanel || // 添加开发者面板检查
-                    _showDebugPanel || // 添加调试面板检查
-                    _showExpressionSelector; // 添加表情选择器检查
+                    _showDeveloperPanel ||
+                    _showDebugPanel ||
+                    _showExpressionSelector;
                 
-                // 处理标准的PointerScrollEvent（鼠标滚轮）
-                if (pointerSignal is PointerScrollEvent) {
-                  // 向上滚动: 前进剧情
-                  if (pointerSignal.scrollDelta.dy < 0) {
-                    if (!hasOverlayOpen) {
-                      _dialogueProgressionManager.progressDialogue();
-                    }
-                  }
-                  // 向下滚动: 回滚剧情
-                  else if (pointerSignal.scrollDelta.dy > 0) {
-                    if (!hasOverlayOpen) {
-                      _handlePreviousDialogue();
-                    }
-                  }
-                }
-                // 处理macOS触控板事件
-                else if (pointerSignal.toString().contains('Scroll')) {
-                  // 触控板滚动事件，推进剧情
-                  if (!hasOverlayOpen) {
-                    _dialogueProgressionManager.progressDialogue();
-                  }
+                // 只有在没有弹窗时才推进剧情
+                if (!hasOverlayOpen) {
+                  _dialogueProgressionManager.progressDialogue();
+                  // 通知自动播放管理器有手动推进
+                  _autoPlayManager?.onManualProgress();
                 }
               },
+              // UI层 - 使用GameUILayer组件
               child: Stack(
-              children: [
-                GestureDetector(
-                  onTap: (gameState.currentNode is MenuNode || _showDeveloperPanel) ? null : () {
-                    _dialogueProgressionManager.progressDialogue();
-                  },
-                  child: _buildSceneWithFilter(gameState),
-                ),
-                // NVL 模式覆盖层 - 使用 AnimatedSwitcher 添加过渡动画
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400), // 从800ms加快到400ms
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    // 电影模式和普通旁白模式都只使用淡入淡出，不再有上移动画
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
-                  },
-                  child: gameState.isNvlMode
-                      ? NvlScreen(
-                          key: _nvlScreenKey,
-                          nvlDialogues: gameState.nvlDialogues,
-                          isMovieMode: gameState.isNvlMovieMode,
-                          progressionManager: _dialogueProgressionManager,
-                        )
-                      : const SizedBox.shrink(key: ValueKey('no_nvl')),
-                ),
-                QuickMenu(
-                  onSave: () => setState(() => _showSaveOverlay = true),
-                  onLoad: () => setState(() => _showLoadOverlay = true),
-                  onReview: () => setState(() => _showReviewOverlay = true),
-                  onSettings: () => setState(() => _showSettings = true),
-                  onBack: _handleQuickMenuBack,
-                  onPreviousDialogue: _handlePreviousDialogue,
-                ),
-                if (_showReviewOverlay)
-                  ReviewOverlay(
-                    dialogueHistory: _gameManager.getDialogueHistory(),
-                    onClose: () => setState(() => _showReviewOverlay = false),
-                    onJumpToEntry: _jumpToHistoryEntry,
-                  ),
-                if (_showSaveOverlay)
-                  SaveLoadScreen(
-                    mode: SaveLoadMode.save,
+                children: [
+                  GameUILayer(
+                    gameState: gameState,
                     gameManager: _gameManager,
-                    onClose: () => setState(() => _showSaveOverlay = false),
+                    dialogueProgressionManager: _dialogueProgressionManager,
+                    currentScript: _currentScript,
+                    nvlScreenKey: _nvlScreenKey,
+                    showReviewOverlay: _showReviewOverlay,
+                    showSaveOverlay: _showSaveOverlay,
+                    showLoadOverlay: _showLoadOverlay,
+                    showSettings: _showSettings,
+                    showDeveloperPanel: _showDeveloperPanel,
+                    showDebugPanel: _showDebugPanel,
+                    showExpressionSelector: _showExpressionSelector,
+                    isShowingMenu: _isShowingMenu,
+                    onToggleReview: () => setState(() => _showReviewOverlay = !_showReviewOverlay),
+                    onToggleSave: () => setState(() => _showSaveOverlay = !_showSaveOverlay),
+                    onToggleLoad: () => setState(() => _showLoadOverlay = !_showLoadOverlay),
+                    onToggleSettings: () => setState(() => _showSettings = !_showSettings),
+                    onToggleDeveloperPanel: () => setState(() => _showDeveloperPanel = !_showDeveloperPanel),
+                    onToggleDebugPanel: () => setState(() => _showDebugPanel = !_showDebugPanel),
+                    onToggleExpressionSelector: () => setState(() => _showExpressionSelector = !_showExpressionSelector),
+                    onHandleQuickMenuBack: _handleQuickMenuBack,
+                    onHandlePreviousDialogue: _handlePreviousDialogue,
+                    onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
+                    onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
+                    onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
+                    onJumpToHistoryEntry: _jumpToHistoryEntry,
+                    onLoadGame: widget.onLoadGame,
+                    onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
+                    expressionSelectorManager: _expressionSelectorManager,
+                    createDialogueBox: _createDialogueBox,
+                    showNotificationMessage: _showNotificationMessage,
                   ),
-                if (_showLoadOverlay)
-                  SaveLoadScreen(
-                    mode: SaveLoadMode.load,
-                    onClose: () => setState(() => _showLoadOverlay = false),
-                    onLoadSlot: widget.onLoadGame ?? (saveSlot) {
-                      // 如果没有回调，使用传统的导航方式（兼容性）
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => GamePlayScreen(saveSlotToLoad: saveSlot),
-                        ),
-                        (route) => false,
-                      );
-                    },
-                  ),
-                if (_showSettings)
-                  SettingsScreen(
-                    onClose: () => setState(() => _showSettings = false),
-                  ),
-                // 开发者面板 (仅Debug模式)
-                if (kDebugMode && _showDeveloperPanel)
-                  DeveloperPanel(
-                    onClose: () => setState(() => _showDeveloperPanel = false),
-                    gameManager: _gameManager,
-                    onReload: () => _gameManager.hotReload(_currentScript),
-                  ),
-                // 调试面板 (发行版也可用，方便玩家复制日志)
-                if (_showDebugPanel)
-                  DebugPanelDialog(
-                    onClose: () => setState(() => _showDebugPanel = false),
-                  ),
-                // 表情选择器 (仅Debug模式)
-                if (kDebugMode && _showExpressionSelector)
-                  Builder(
-                    builder: (context) {
-                      final speakerInfo = _expressionSelectorManager?.getCurrentSpeakerInfo();
-                      if (speakerInfo == null) {
+                  // 加载淡出覆盖层 - 不会被隐藏
+                  AnimatedBuilder(
+                    animation: _loadingFadeAnimation,
+                    builder: (context, child) {
+                      if (_loadingFadeAnimation.value <= 0.0) {
                         return const SizedBox.shrink();
                       }
-                      return ExpressionSelectorDialog(
-                        characterId: speakerInfo.characterId,
-                        characterName: speakerInfo.speakerName,
-                        currentPose: speakerInfo.currentPose,
-                        currentExpression: speakerInfo.currentExpression,
-                        currentDialogue: _gameManager.currentDialogueText,
-                        onSelectionChanged: (pose, expression) {
-                          _expressionSelectorManager?.handleExpressionSelectionChanged(
-                            speakerInfo.characterId,
-                            pose,
-                            expression,
-                          );
-                        },
-                        onClose: () => setState(() => _showExpressionSelector = false),
+                      return Container(
+                        color: Colors.black.withOpacity(_loadingFadeAnimation.value),
                       );
                     },
                   ),
-                NotificationOverlay(
-                  key: _notificationOverlayKey,
-                  scale: context.scaleFor(ComponentType.ui),
-                ),
-                // 加载淡出覆盖层
-                AnimatedBuilder(
-                  animation: _loadingFadeAnimation,
-                  builder: (context, child) {
-                    if (_loadingFadeAnimation.value <= 0.0) {
-                      return const SizedBox.shrink();
-                    }
-                    return Container(
-                      color: Colors.black.withOpacity(_loadingFadeAnimation.value),
-                    );
-                  },
-                ),
-              ],
-            ),
+                ],
+              ),
             );
           },
         ),
@@ -687,39 +844,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         // 添加anime覆盖层
         if (gameState.animeOverlay != null)
           _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
-        // 使用 AnimatedSwitcher 为对话框切换添加过渡动画
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.1),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOut,
-                )),
-                child: child,
-              ),
-            );
-          },
-          child: gameState.dialogue != null && !gameState.isNvlMode
-              ? _createDialogueBox(
-                  key: const ValueKey('normal_dialogue'),
-                  speaker: gameState.speaker,
-                  dialogue: gameState.dialogue!,
-                )
-              : const SizedBox.shrink(key: ValueKey('no_dialogue')),
-        ),
-        if (gameState.currentNode is MenuNode)
-          ChoiceMenu(
-            menuNode: gameState.currentNode as MenuNode,
-            onChoiceSelected: (String targetLabel) {
-              _gameManager.jumpToLabel(targetLabel);
-            },
-          ),
       ],
     );
   }
@@ -1019,11 +1143,7 @@ class _CharacterLayerState extends State<_CharacterLayer>
     
     if (oldWidget.assetName != widget.assetName) {
       _previousImage = _currentImage;
-      _loadImage().then((_) {
-        if (mounted) {
-          _controller.forward(from: 0.0);
-        }
-      });
+      _loadImage(); // 移除.then回调，因为_loadImage内部已处理动画触发
     }
   }
 
@@ -1032,12 +1152,17 @@ class _CharacterLayerState extends State<_CharacterLayer>
     if (assetPath != null && mounted) {
       final image = await ImageLoader.loadImage(assetPath);
       if (mounted && image != null) {
-        setState(() {
-          _currentImage = image;
+        // 使用post frame callback避免在build期间调用setState
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _currentImage = image;
+            });
+            
+            // 始终触发动画
+            _controller.forward(from: 0.0);
+          }
         });
-        
-        // 始终触发动画
-        _controller.forward(from: 0.0);
       }
     }
   }

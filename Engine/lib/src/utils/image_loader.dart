@@ -58,8 +58,6 @@ class ImageLoader {
   /// 从资源路径加载图像
   static Future<ui.Image?> loadImage(String assetPath) async {
     try {
-      final lowercasePath = assetPath.toLowerCase();
-      
       // 在debug模式下，优先从外部文件系统加载
       if (kDebugMode) {
         final externalImage = await _loadExternalImage(assetPath);
@@ -70,57 +68,77 @@ class ImageLoader {
         print('外部图像加载失败，回退到assets: $assetPath');
       }
       
-      // 检查文件扩展名
-      if (lowercasePath.endsWith('.avif')) {
-        return await _loadAvifImageWithFallback(assetPath);
-      } else if (lowercasePath.endsWith('.webp')) {
-        // WebP有很好的透明通道支持，优先使用
-        return await _loadStandardImage(assetPath);
-      } else {
-        return await _loadStandardImage(assetPath);
-      }
+      // 统一使用AVIF加载器，它内部有完整的回退机制：AVIF → WebP → PNG
+      return await _loadAvifImageWithFallback(assetPath);
     } catch (e) {
       print('加载图像失败 $assetPath: $e');
       return null;
     }
   }
   
+  /// 根据文件格式选择合适的加载方法
+  static Future<ui.Image?> _loadImageByFormat(String assetPath) async {
+    final lowercasePath = assetPath.toLowerCase();
+    
+    if (lowercasePath.endsWith('.avif')) {
+      return await _loadAvifImage(assetPath);
+    } else {
+      return await _loadStandardImage(assetPath);
+    }
+  }
+
   /// 加载AVIF图像并提供回退机制
   static Future<ui.Image?> _loadAvifImageWithFallback(String assetPath) async {
+    print('[ImageLoader] 尝试加载图片: $assetPath');
+    
     final config = SakiEngineConfig();
     
-    // 根据配置决定优先级：WebP > PNG > AVIF
-    if (config.preferWebpOverAvif || config.preferPngOverAvif) {
-      // 先尝试WebP版本（如果启用）
+    // 首先尝试原始路径（无论什么格式）
+    try {
+      print('[ImageLoader] 尝试原始路径: $assetPath');
+      final originalImage = await _loadImageByFormat(assetPath);
+      if (originalImage != null) {
+        print('[ImageLoader] 原始路径加载成功: $assetPath');
+        return originalImage;
+      }
+    } catch (e) {
+      print('[ImageLoader] 原始路径加载失败: $assetPath, 错误: $e');
+    }
+    
+    // 如果原始路径失败，尝试回退格式（仅当原始是AVIF时）
+    if (assetPath.toLowerCase().endsWith('.avif')) {
+      // 根据配置决定优先级：WebP > PNG
       if (config.preferWebpOverAvif) {
         final webpPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.webp');
         try {
+          print('[ImageLoader] 尝试WebP回退: $webpPath');
           final webpImage = await _loadStandardImage(webpPath);
           if (webpImage != null) {
-            print('使用WebP替代AVIF: $webpPath');
+            print('[ImageLoader] WebP回退成功: $webpPath');
             return webpImage;
           }
         } catch (e) {
-          // WebP不存在，继续尝试PNG
+          print('[ImageLoader] WebP回退失败: $webpPath, 错误: $e');
         }
       }
       
-      // 再尝试PNG版本（如果启用）
       if (config.preferPngOverAvif) {
-        final pngPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.webp');
+        final pngPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.png');
         try {
+          print('[ImageLoader] 尝试PNG回退: $pngPath');
           final pngImage = await _loadStandardImage(pngPath);
           if (pngImage != null) {
-            print('使用PNG替代AVIF: $pngPath');
+            print('[ImageLoader] PNG回退成功: $pngPath');
             return pngImage;
           }
         } catch (e) {
-          // PNG不存在，最后使用AVIF
+          print('[ImageLoader] PNG回退失败: $pngPath, 错误: $e');
         }
       }
     }
     
-    return await _loadAvifImage(assetPath);
+    print('[ImageLoader] 所有尝试都失败，返回null: $assetPath');
+    return null;
   }
 
   /// 加载AVIF图像

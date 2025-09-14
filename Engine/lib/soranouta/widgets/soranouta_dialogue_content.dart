@@ -22,6 +22,9 @@ class SoranoutaDialogueContent extends StatefulWidget {
   final dynamic typewriterController;
   final Animation<double> textFadeAnimation;
   final Animation<double> blinkAnimation;
+  final Widget? readStatusOverlay;
+  final bool isRead;
+  final GlobalKey? dialogueKey;
 
   const SoranoutaDialogueContent({
     super.key,
@@ -41,6 +44,9 @@ class SoranoutaDialogueContent extends StatefulWidget {
     required this.typewriterController,
     required this.textFadeAnimation,
     required this.blinkAnimation,
+    this.readStatusOverlay,
+    required this.isRead,
+    this.dialogueKey,
   });
 
   @override
@@ -58,6 +64,7 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
           onEnter: (_) => widget.onHoverChanged(true),
           onExit: (_) => widget.onHoverChanged(false),
           child: Container(
+            key: widget.dialogueKey, // 重新添加key来获取位置
             width: widget.screenSize.width * 0.85,
             height: widget.screenSize.height * 0.35 / 1.5,
             margin: EdgeInsets.all(16.0 * widget.uiScale),
@@ -126,6 +133,8 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
                     ),
                   // 上层：文本区域
                   _buildTextArea(),
+                  // 覆盖层：已读状态指示器
+                  if (widget.readStatusOverlay != null) widget.readStatusOverlay!,
                 ],
               ),
             ),
@@ -149,33 +158,36 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                FadeTransition(
-                  opacity: widget.textFadeAnimation,
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        ...(widget.enableTypewriter
-                            ? widget.typewriterController.getTextSpans(widget.dialogueStyle)
-                            : RichTextParser.createTextSpans(widget.dialogue, widget.dialogueStyle)),
-                        if (widget.isDialogueComplete)
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.middle,
-                            child: Padding(
-                              padding: EdgeInsets.only(left: widget.uiScale),
+                Opacity(
+                  opacity: widget.isRead ? 0.7 : 1.0, // 已读文本透明度调整为0.7
+                  child: FadeTransition(
+                    opacity: widget.textFadeAnimation,
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          ...(widget.enableTypewriter
+                              ? widget.typewriterController.getTextSpans(widget.dialogueStyle)
+                              : RichTextParser.createTextSpans(widget.dialogue, widget.dialogueStyle)),
+                          if (widget.isDialogueComplete)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
                               child: Padding(
-                                padding: EdgeInsets.only(bottom: 7 * widget.uiScale),
-                                child: DialogueNextArrow(
-                                  visible: widget.isDialogueComplete,
-                                  fontSize: widget.dialogueStyle.fontSize!,
-                                  color: SettingsManager().currentDarkMode
-                                      ? Colors.white.withValues(alpha: 0.8)
-                                      : widget.config.themeColors.primary.withValues(alpha: 0.7),
-                                  speaker: widget.speaker,
+                                padding: EdgeInsets.only(left: widget.uiScale),
+                                child: Padding(
+                                  padding: EdgeInsets.only(bottom: 7 * widget.uiScale),
+                                  child: DialogueNextArrow(
+                                    visible: widget.isDialogueComplete,
+                                    fontSize: widget.dialogueStyle.fontSize!,
+                                    color: SettingsManager().currentDarkMode
+                                        ? Colors.white.withValues(alpha: 0.8)
+                                        : widget.config.themeColors.primary.withValues(alpha: 0.7),
+                                    speaker: widget.speaker,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

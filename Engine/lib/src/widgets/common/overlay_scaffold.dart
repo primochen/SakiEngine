@@ -4,6 +4,8 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
+import 'package:sakiengine/src/widgets/quick_menu.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class OverlayScaffold extends StatefulWidget {
   final String title;
@@ -29,10 +31,24 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _backdropAnimation;
+  
+  String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
 
   @override
   void initState() {
     super.initState();
+    
+    // 加载菜单显示模式设置
+    _loadMenuDisplayMode();
+    
+    // 监听设置变化
+    SettingsManager().addListener(_onSettingsChanged);
+    
+    // 当覆盖层打开时，自动隐藏快捷菜单
+    // 使用 addPostFrameCallback 避免在build阶段调用setState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      QuickMenu.hideOnOverlayOpen();
+    });
     
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 400),
@@ -68,8 +84,23 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
 
   @override
   void dispose() {
+    // 移除设置监听器
+    SettingsManager().removeListener(_onSettingsChanged);
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMenuDisplayMode() async {
+    final mode = await SettingsManager().getMenuDisplayMode();
+    if (mounted) {
+      setState(() {
+        _menuDisplayMode = mode;
+      });
+    }
+  }
+
+  void _onSettingsChanged() {
+    _loadMenuDisplayMode();
   }
 
   Future<void> _handleClose() async {
@@ -115,20 +146,28 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
                         child: FadeTransition(
                           opacity: _fadeAnimation,
                           child: Container(
-                            width: screenSize.width * 0.85,
-                            height: screenSize.height * 0.8,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(config.baseWindowBorder),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3 * _fadeAnimation.value),
-                                  blurRadius: 20 * uiScale,
-                                  offset: Offset(0, 8 * uiScale),
-                                ),
-                              ],
-                            ),
+                            width: _menuDisplayMode == 'fullscreen' 
+                                ? screenSize.width 
+                                : screenSize.width * 0.85,
+                            height: _menuDisplayMode == 'fullscreen' 
+                                ? screenSize.height 
+                                : screenSize.height * 0.8,
+                            decoration: _menuDisplayMode == 'fullscreen' 
+                                ? null 
+                                : BoxDecoration(
+                                    borderRadius: BorderRadius.circular(config.baseWindowBorder),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3 * _fadeAnimation.value),
+                                        blurRadius: 20 * uiScale,
+                                        offset: Offset(0, 8 * uiScale),
+                                      ),
+                                    ],
+                                  ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(config.baseWindowBorder),
+                              borderRadius: _menuDisplayMode == 'fullscreen' 
+                                  ? BorderRadius.zero
+                                  : BorderRadius.circular(config.baseWindowBorder),
                               child: Stack(
                                 children: [
                                   // 底层：纯色背景

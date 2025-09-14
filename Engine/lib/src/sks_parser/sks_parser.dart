@@ -2,6 +2,22 @@ import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 class SksParser {
+  /// 为角色对话添加引号（旁白除外）
+  String _formatDialogueWithQuotes(String dialogue, String? character) {
+    // 如果没有角色（旁白），直接返回原文本
+    if (character == null || character.isEmpty) {
+      return dialogue;
+    }
+    
+    // 如果已经有引号，直接返回
+    if (dialogue.startsWith('「') && dialogue.endsWith('」')) {
+      return dialogue;
+    }
+    
+    // 为角色对话添加引号
+    return '「$dialogue」';
+  }
+
   ScriptNode parse(String content) {
     final lines = content.split('\n');
     final nodes = <SksNode>[];
@@ -543,7 +559,7 @@ class SksParser {
       }
       
       return ConditionalSayNode(
-        dialogue: dialogue,
+        dialogue: _formatDialogueWithQuotes(dialogue, character),
         character: character,
         conditionVariable: variableName,
         conditionValue: conditionValue,
@@ -568,7 +584,7 @@ class SksParser {
       final simpleNarrationRegex = RegExp(r'^"([^"]*)"$');
       final simpleMatch = simpleNarrationRegex.firstMatch(processedLine);
       if (simpleMatch != null) {
-        return SayNode(dialogue: simpleMatch.group(1)!);
+        return SayNode(dialogue: _formatDialogueWithQuotes(simpleMatch.group(1)!, null));
       }
       return null;
     }
@@ -578,7 +594,7 @@ class SksParser {
 
     if (beforeQuote.isEmpty) {
       // Narration: "dialogue"
-      return SayNode(dialogue: dialogue);
+      return SayNode(dialogue: _formatDialogueWithQuotes(dialogue, null));
     }
     
     final parts = beforeQuote.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
@@ -657,9 +673,9 @@ class SksParser {
           }
         }
         
-        return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount);
+        return SayNode(character: character, dialogue: _formatDialogueWithQuotes(dialogue, character), pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount);
     }
     
-    return SayNode(character: character, dialogue: dialogue, pose: pose, expression: expression, position: position);
+    return SayNode(character: character, dialogue: _formatDialogueWithQuotes(dialogue, character), pose: pose, expression: expression, position: position);
   }
 } 
