@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
@@ -46,12 +47,14 @@ class _QuickMenuState extends State<QuickMenu>
   bool _isMenuHidden = false;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  Timer? _hideTimer; // 新增：延迟隐藏的计时器
   
   // 主题相关状态
   bool _isDarkMode = false; // 新增：当前主题状态
   
   // 常量
   static const Duration _animationDuration = Duration(milliseconds: 200);
+  static const Duration _hideDelay = Duration(milliseconds: 500); // 新增：隐藏延迟
 
   @override
   void initState() {
@@ -86,6 +89,7 @@ class _QuickMenuState extends State<QuickMenu>
 
   @override
   void dispose() {
+    _hideTimer?.cancel(); // 新增：取消计时器
     _slideController.dispose();
     SettingsManager().removeListener(_onSettingsChanged);
     super.dispose();
@@ -143,12 +147,27 @@ class _QuickMenuState extends State<QuickMenu>
   }
 
   void _showMenu() {
+    // 取消待进行的隐藏计时器
+    _hideTimer?.cancel();
+    
     if (!_isMenuHidden) return;
     
     setState(() {
       _isMenuHidden = false;
     });
     _slideController.reverse();
+  }
+
+  void _scheduleHideMenu() {
+    // 取消之前的计时器
+    _hideTimer?.cancel();
+    
+    // 设置新的延迟隐藏计时器
+    _hideTimer = Timer(_hideDelay, () {
+      if (mounted && _isAutoHideEnabled && !_isMenuHidden) {
+        _hideMenu();
+      }
+    });
   }
 
   void _onTriggerAreaEnter() {
@@ -159,7 +178,7 @@ class _QuickMenuState extends State<QuickMenu>
 
   void _onTriggerAreaExit() {
     if (_isAutoHideEnabled && !_isMenuHidden) {
-      _hideMenu();
+      _scheduleHideMenu(); // 使用延迟隐藏而不是立即隐藏
     }
   }
 
@@ -192,10 +211,14 @@ class _QuickMenuState extends State<QuickMenu>
           left: 20 * scale,
           top: 20 * scale,
           child: MouseRegion(
-            onEnter: (_) => _onTriggerAreaEnter(), // 菜单本身也能触发显示
+            onEnter: (_) {
+              // 鼠标进入菜单时，取消任何待进行的隐藏
+              _hideTimer?.cancel();
+              _onTriggerAreaEnter();
+            },
             onExit: (_) {
-              // 只有当鼠标完全离开整个左侧区域时才隐藏
-              // 这里不立即隐藏，让外层的MouseRegion处理
+              // 菜单本身的退出不触发隐藏，因为可能只是在按钮间移动
+              // 只有外层的触发区域退出才真正触发隐藏
             },
             child: AnimatedBuilder(
               animation: _slideAnimation,

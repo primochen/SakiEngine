@@ -105,7 +105,7 @@ class _AnimatedTooltipState extends State<AnimatedTooltip>
         animation: _controller,
         builder: (context, child) {
           return IgnorePointer(
-            ignoring: _opacityAnimation.value == 0.0, // 透明时忽略触摸事件
+            ignoring: true, // 始终忽略触摸事件，避免阻挡底层的鼠标检测
             child: Transform.translate(
               offset: Offset(_slideAnimation.value.dx * widget.scale, _slideAnimation.value.dy),
               child: Transform.scale(
