@@ -221,36 +221,30 @@ class _GameUILayerState extends State<GameUILayer> {
           ),
         ),
         
-        // 快进指示器 - 垂直居中
+        // 快进指示器 - 顶部显示
         if (widget.gameState.isFastForwarding)
           Positioned(
-            left: 20 * context.scaleFor(ComponentType.menu),
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: HideableUI(
-                child: CommonIndicator(
-                  isVisible: widget.gameState.isFastForwarding,
-                  icon: Icons.fast_forward_rounded, // 使用圆滑的图标
-                  text: '正在快进......',
-                ),
+            left: 100 * context.scaleFor(ComponentType.menu),
+            top: 20 * context.scaleFor(ComponentType.menu),
+            child: HideableUI(
+              child: CommonIndicator(
+                isVisible: widget.gameState.isFastForwarding,
+                icon: Icons.fast_forward_rounded, // 使用圆滑的图标
+                text: '正在快进......',
               ),
             ),
           ),
           
-        // 自动播放指示器 - 垂直居中
+        // 自动播放指示器 - 顶部显示
         if (widget.gameState.isAutoPlaying)
           Positioned(
-            left: 20 * context.scaleFor(ComponentType.menu),
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: HideableUI(
-                child: CommonIndicator(
-                  isVisible: widget.gameState.isAutoPlaying,
-                  icon: Icons.play_arrow_rounded, // 使用圆滑的图标
-                  text: '正在自动播放......',
-                ),
+            left: 100 * context.scaleFor(ComponentType.menu),
+            top: 20 * context.scaleFor(ComponentType.menu),
+            child: HideableUI(
+              child: CommonIndicator(
+                isVisible: widget.gameState.isAutoPlaying,
+                icon: Icons.play_arrow_rounded, // 使用圆滑的图标
+                text: '正在自动播放......',
               ),
             ),
           ),
