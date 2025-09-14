@@ -212,10 +212,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
               ] else ...[
                 const Spacer(),
               ],
-              // 跳转按钮
-              if (widget.onJumpToEntry != null)
-                _buildJumpButton(entry, uiScale, textScale, config),
-              SizedBox(width: 12 * uiScale),
+              // 时间戳
               Text(
                 _formatTimestamp(entry.timestamp),
                 style: config.reviewTitleTextStyle.copyWith(
@@ -225,6 +222,11 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
                   fontWeight: FontWeight.normal,
                 ),
               ),
+              // 跳转按钮
+              if (widget.onJumpToEntry != null) ...[
+                SizedBox(width: 12 * uiScale),
+                _buildJumpButton(entry, uiScale, textScale, config),
+              ],
             ],
           ),
           SizedBox(height: 6 * uiScale),
@@ -255,7 +257,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
         onTap: () {
           widget.onJumpToEntry?.call(entry);
         },
-        borderRadius: BorderRadius.circular(12 * uiScale),
+        borderRadius: BorderRadius.circular(0 * uiScale),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
           child: Text(
