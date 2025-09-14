@@ -17,10 +17,12 @@ class AnimationKeyframe {
 class AnimationDefinition {
   final String name;
   final List<AnimationKeyframe> keyframes;
+  final Map<String, double> presetProperties; // 新增：预设属性
 
   AnimationDefinition({
     required this.name,
     required this.keyframes,
+    this.presetProperties = const {},
   });
 }
 
@@ -51,21 +53,31 @@ class AnimationManager {
     final lines = content.split('\n');
     String? currentAnimationName;
     List<AnimationKeyframe> currentKeyframes = [];
+    Map<String, double> currentPresetProperties = {};
 
     for (final line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty || trimmed.startsWith('//')) continue;
 
-      if (!trimmed.startsWith('ease') && !trimmed.startsWith('linear')) {
+      if (!trimmed.startsWith('ease') && !trimmed.startsWith('linear') && !_isPropertyLine(trimmed)) {
         // 这是动画名称
-        if (currentAnimationName != null && currentKeyframes.isNotEmpty) {
+        if (currentAnimationName != null && (currentKeyframes.isNotEmpty || currentPresetProperties.isNotEmpty)) {
           _animations[currentAnimationName] = AnimationDefinition(
             name: currentAnimationName,
             keyframes: List.from(currentKeyframes),
+            presetProperties: Map.from(currentPresetProperties),
           );
         }
         currentAnimationName = trimmed;
         currentKeyframes.clear();
+        currentPresetProperties.clear();
+      } else if (_isPropertyLine(trimmed)) {
+        // 这是预设属性行（如：scale+0.1）
+        final property = _parsePropertyLine(trimmed);
+        if (property != null) {
+          currentPresetProperties[property.key] = property.value;
+          print('[AnimationManager] 解析预设属性: ${property.key} = ${property.value}');
+        }
       } else {
         // 这是关键帧定义
         final keyframe = _parseKeyframe(trimmed);
@@ -76,12 +88,30 @@ class AnimationManager {
     }
 
     // 处理最后一个动画
-    if (currentAnimationName != null && currentKeyframes.isNotEmpty) {
+    if (currentAnimationName != null && (currentKeyframes.isNotEmpty || currentPresetProperties.isNotEmpty)) {
       _animations[currentAnimationName] = AnimationDefinition(
         name: currentAnimationName,
         keyframes: List.from(currentKeyframes),
+        presetProperties: Map.from(currentPresetProperties),
       );
     }
+  }
+
+  /// 检查是否是属性行（如：scale+0.1, xcenter-0.5）
+  static bool _isPropertyLine(String line) {
+    return RegExp(r'^\w+[+-]\d*\.?\d+$').hasMatch(line);
+  }
+
+  /// 解析属性行
+  static MapEntry<String, double>? _parsePropertyLine(String line) {
+    final match = RegExp(r'^(\w+)([+-])(\d*\.?\d+)$').firstMatch(line);
+    if (match != null) {
+      final propName = match.group(1)!;
+      final operator = match.group(2)!;
+      final value = double.parse(match.group(3)!);
+      return MapEntry(propName, operator == '+' ? value : -value);
+    }
+    return null;
   }
 
   static AnimationKeyframe? _parseKeyframe(String line) {
@@ -124,6 +154,11 @@ class AnimationManager {
   static List<String> getAnimationNames() {
     return _animations.keys.toList();
   }
+
+  /// 获取动画的预设属性
+  static Map<String, double> getAnimationPresetProperties(String name) {
+    return _animations[name]?.presetProperties ?? {};
+  }
 }
 
 class CharacterAnimationController {
@@ -156,9 +191,21 @@ class CharacterAnimationController {
       onComplete?.call();
       return;
     }
+    
+    // 应用预设属性到基础属性上
     _baseProperties = Map.from(baseProperties);
-    _currentProperties = Map.from(baseProperties);
-    _originalBaseProperties = Map.from(baseProperties); // 保存初始基础位置，永不改变
+    final presetProperties = animDef.presetProperties;
+    print('[AnimationManager] 动画 $animationName 的预设属性: $presetProperties');
+    print('[AnimationManager] 原始基础属性: $baseProperties');
+    for (final entry in presetProperties.entries) {
+      final currentValue = _baseProperties[entry.key] ?? 0.0;
+      _baseProperties[entry.key] = currentValue + entry.value;
+      print('[AnimationManager] 应用预设 ${entry.key}: $currentValue + ${entry.value} = ${_baseProperties[entry.key]}');
+    }
+    print('[AnimationManager] 最终基础属性: $_baseProperties');
+    
+    _currentProperties = Map.from(_baseProperties);
+    _originalBaseProperties = Map.from(baseProperties); // 保存真正的初始位置（不包含预设属性）
     _shouldStop = false; // 重置停止标志
 
     // 根据repeatCount决定播放次数
