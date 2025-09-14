@@ -36,7 +36,13 @@ class AnimationManager {
     try {
       final content = await AssetManager()
           .loadString('assets/GameScript/configs/animation.sks');
+      print('[AnimationManager] 开始解析动画配置文件');
       _parseAnimations(content);
+      print('[AnimationManager] 动画配置文件解析完成，共加载 ${_animations.length} 个动画');
+      for (final name in _animations.keys) {
+        final anim = _animations[name]!;
+        print('[AnimationManager] 动画: $name, 预设属性: ${anim.presetProperties}, 关键帧: ${anim.keyframes.length}个');
+      }
       _isLoaded = true;
     } catch (e) {
       print('[AnimationManager] 无法加载动画文件: $e');
