@@ -1645,6 +1645,39 @@ class GameManager {
   }
 
   /// 使用转场效果切换背景
+  /// 计算包含预设属性的场景动画属性
+  Map<String, double>? _calculateSceneAnimationPropertiesWithPresets(String? animationName) {
+    if (animationName == null) return null;
+    
+    // 获取动画定义
+    final animDef = AnimationManager.getAnimation(animationName);
+    if (animDef == null) return null;
+    
+    // 基础属性
+    final baseProperties = {
+      'xcenter': 0.0,
+      'ycenter': 0.0,
+      'scale': 1.0,
+      'alpha': 1.0,
+      'rotation': 0.0,
+    };
+    
+    // 应用预设属性
+    final presetProperties = animDef.presetProperties;
+    if (presetProperties.isNotEmpty) {
+      print('[GameManager] 场景动画 $animationName 应用预设属性: $presetProperties');
+      for (final entry in presetProperties.entries) {
+        final currentValue = baseProperties[entry.key] ?? 0.0;
+        baseProperties[entry.key] = currentValue + entry.value;
+        print('[GameManager] 场景预设 ${entry.key}: $currentValue + ${entry.value} = ${baseProperties[entry.key]}');
+      }
+      print('[GameManager] 场景最终属性: $baseProperties');
+      return baseProperties;
+    }
+    
+    return null;
+  }
+
   Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount, bool? clearCG]) async {
     if (_context == null) return;
     
@@ -1741,7 +1774,7 @@ class GameManager {
           clearCgCharacters: clearCG ?? false, // 清空CG角色
           sceneAnimation: animation,
           sceneAnimationRepeat: repeatCount,
-          sceneAnimationProperties: null, // 不设置空对象，避免闪烁
+          sceneAnimationProperties: _calculateSceneAnimationPropertiesWithPresets(animation), // 应用预设属性
           clearSceneAnimation: animation == null,
           everShownCharacters: _everShownCharacters,
         );
@@ -1778,7 +1811,7 @@ class GameManager {
               clearCgCharacters: clearCG ?? false, // 清空CG角色
               sceneAnimation: animation,
               sceneAnimationRepeat: repeatCount,
-              sceneAnimationProperties: null, // 不设置空对象，避免闪烁
+              sceneAnimationProperties: _calculateSceneAnimationPropertiesWithPresets(animation), // 应用预设属性
               clearSceneAnimation: animation == null,
               everShownCharacters: _everShownCharacters,
             );
@@ -1800,7 +1833,7 @@ class GameManager {
               clearCgCharacters: clearCG ?? false, // 清空CG角色
               sceneAnimation: animation,
               sceneAnimationRepeat: repeatCount,
-              sceneAnimationProperties: null,
+              sceneAnimationProperties: _calculateSceneAnimationPropertiesWithPresets(animation), // 应用预设属性
               clearSceneAnimation: animation == null,
               everShownCharacters: _everShownCharacters,
             );
@@ -1849,7 +1882,7 @@ class GameManager {
       _currentState = _currentState.copyWith(
         sceneAnimation: lastBackgroundNode.animation,
         sceneAnimationRepeat: lastBackgroundNode.repeatCount,
-        sceneAnimationProperties: <String, double>{}, // 重置动画属性
+        sceneAnimationProperties: _calculateSceneAnimationPropertiesWithPresets(lastBackgroundNode.animation), // 应用预设属性
         everShownCharacters: _everShownCharacters,
       );
       
