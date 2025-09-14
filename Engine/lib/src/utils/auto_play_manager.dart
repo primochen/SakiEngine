@@ -160,19 +160,13 @@ class AutoPlayManager {
     _readingTimer = null;
   }
 
-  /// 手动推进对话时的处理
+  /// 手动推进对话时的处理 - 停止自动播放
   void onManualProgress() {
     if (_isAutoPlaying) {
-      // 用户手动推进，重新开始自动播放流程
-      _cancelReadingTimer();
-      _isWaitingForTypewriter = false;
-      
-      // 延迟一点再检查状态，让对话更新完成
-      Future.delayed(Duration(milliseconds: 100), () {
-        if (_isAutoPlaying) {
-          _checkTypewriterAndScheduleNext();
-        }
-      });
+      if (kDebugMode) {
+        print('AutoPlayManager: 检测到手动推进，停止自动播放');
+      }
+      stopAutoPlay();
     }
   }
 
