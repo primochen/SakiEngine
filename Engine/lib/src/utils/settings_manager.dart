@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
@@ -45,6 +46,21 @@ class SettingsManager extends ChangeNotifier {
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
+    
+    // 获取项目名称以确定默认值
+    String projectName = 'SakiEngine';
+    try {
+      projectName = await ProjectInfoManager().getAppName();
+    } catch (e) {
+      // 使用默认项目名称
+    }
+    
+    // 根据项目设置不同的默认菜单显示模式
+    String projectDefaultMenuDisplayMode = defaultMenuDisplayMode;
+    if (projectName == 'SoraNoUta') {
+      projectDefaultMenuDisplayMode = 'fullscreen';
+    }
+    
     // 初始化时加载当前值
     _currentDialogOpacity = _prefs?.getDouble(_dialogOpacityKey) ?? defaultDialogOpacity;
     _currentIsFullscreen = _prefs?.getBool(_isFullscreenKey) ?? defaultIsFullscreen;
@@ -55,7 +71,7 @@ class SettingsManager extends ChangeNotifier {
     _currentSkipPunctuationDelay = _prefs?.getBool(_skipPunctuationDelayKey) ?? defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = _prefs?.getBool(_speakerAnimationKey) ?? defaultSpeakerAnimation;
     _currentAutoHideQuickMenu = _prefs?.getBool(_autoHideQuickMenuKey) ?? defaultAutoHideQuickMenu;
-    _currentMenuDisplayMode = _prefs?.getString(_menuDisplayModeKey) ?? defaultMenuDisplayMode;
+    _currentMenuDisplayMode = _prefs?.getString(_menuDisplayModeKey) ?? projectDefaultMenuDisplayMode;
   }
 
   // 对话框不透明度
@@ -189,6 +205,21 @@ class SettingsManager extends ChangeNotifier {
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
+    
+    // 获取项目名称以确定默认值
+    String projectName = 'SakiEngine';
+    try {
+      projectName = await ProjectInfoManager().getAppName();
+    } catch (e) {
+      // 使用默认项目名称
+    }
+    
+    // 根据项目设置不同的默认菜单显示模式
+    String projectDefaultMenuDisplayMode = defaultMenuDisplayMode;
+    if (projectName == 'SoraNoUta') {
+      projectDefaultMenuDisplayMode = 'fullscreen';
+    }
+    
     _currentDialogOpacity = defaultDialogOpacity;
     _currentIsFullscreen = defaultIsFullscreen;
     _currentDarkMode = defaultDarkMode;
@@ -196,7 +227,7 @@ class SettingsManager extends ChangeNotifier {
     _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = defaultSpeakerAnimation;
     _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
-    _currentMenuDisplayMode = defaultMenuDisplayMode;
+    _currentMenuDisplayMode = projectDefaultMenuDisplayMode;
     
     await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
     await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
@@ -205,7 +236,7 @@ class SettingsManager extends ChangeNotifier {
     await _prefs?.setBool(_skipPunctuationDelayKey, defaultSkipPunctuationDelay);
     await _prefs?.setBool(_speakerAnimationKey, defaultSpeakerAnimation);
     await _prefs?.setBool(_autoHideQuickMenuKey, defaultAutoHideQuickMenu);
-    await _prefs?.setString(_menuDisplayModeKey, defaultMenuDisplayMode);
+    await _prefs?.setString(_menuDisplayModeKey, projectDefaultMenuDisplayMode);
     
     // 应用默认全屏设置
     await windowManager.setFullScreen(defaultIsFullscreen);
