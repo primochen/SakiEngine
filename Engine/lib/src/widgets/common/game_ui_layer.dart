@@ -51,6 +51,7 @@ class GameUILayer extends StatefulWidget {
   final VoidCallback onHandleQuickMenuBack;
   final VoidCallback onHandlePreviousDialogue;
   final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
+  final VoidCallback? onAutoPlay; // 新增：自动播放回调
   final VoidCallback? onThemeToggle; // 新增：主题切换回调
   final Function(DialogueHistoryEntry) onJumpToHistoryEntry;
   final Function(SaveSlot)? onLoadGame;
@@ -90,6 +91,7 @@ class GameUILayer extends StatefulWidget {
     required this.onHandleQuickMenuBack,
     required this.onHandlePreviousDialogue,
     this.onSkipRead, // 新增：跳过已读文本回调（可选）
+    this.onAutoPlay, // 新增：自动播放回调（可选）
     this.onThemeToggle, // 新增：主题切换回调（可选）
     required this.onJumpToHistoryEntry,
     required this.onLoadGame,
@@ -213,6 +215,8 @@ class _GameUILayerState extends State<GameUILayer> {
             onPreviousDialogue: widget.onHandlePreviousDialogue,
             onSkipRead: widget.onSkipRead, // 新增：传递跳过已读文本回调
             isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
+            onAutoPlay: widget.onAutoPlay, // 新增：传递自动播放回调
+            isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
             onThemeToggle: widget.onThemeToggle, // 新增：传递主题切换回调
           ),
         ),
@@ -229,6 +233,23 @@ class _GameUILayerState extends State<GameUILayer> {
                   isVisible: widget.gameState.isFastForwarding,
                   icon: Icons.fast_forward_rounded, // 使用圆滑的图标
                   text: '正在快进......',
+                ),
+              ),
+            ),
+          ),
+          
+        // 自动播放指示器 - 垂直居中
+        if (widget.gameState.isAutoPlaying)
+          Positioned(
+            left: 20 * context.scaleFor(ComponentType.menu),
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: HideableUI(
+                child: CommonIndicator(
+                  isVisible: widget.gameState.isAutoPlaying,
+                  icon: Icons.play_arrow_rounded, // 使用圆滑的图标
+                  text: '正在自动播放......',
                 ),
               ),
             ),

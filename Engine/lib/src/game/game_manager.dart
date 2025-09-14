@@ -326,6 +326,17 @@ class GameManager {
     //print('[FastForward] 快进模式: ${enabled ? "开启" : "关闭"}');
   }
   
+  // 自动播放模式控制
+  bool _isAutoPlayMode = false;
+  bool get isAutoPlayMode => _isAutoPlayMode;
+  void setAutoPlayMode(bool enabled) {
+    _isAutoPlayMode = enabled;
+    // 更新GameState中的自动播放状态
+    _currentState = _currentState.copyWith(isAutoPlaying: enabled, everShownCharacters: _everShownCharacters);
+    _gameStateController.add(_currentState);
+    //print('[AutoPlay] 自动播放模式: ${enabled ? "开启" : "关闭"}');
+  }
+  
   /// 检测背景名称是否包含章节信息
   /// 检测规则：包含以下关键字之一（不区分大小写）：
   /// - "chapter" 
@@ -2095,6 +2106,7 @@ class GameState {
   final bool animeKeep; // 新增：anime完成后是否保留
   final Map<String, CharacterState> cgCharacters; // 新增：CG角色状态，像scene一样铺满显示
   final bool isFastForwarding; // 新增：当前是否处于快进模式
+  final bool isAutoPlaying; // 新增：当前是否处于自动播放模式
 
   GameState({
     this.background,
@@ -2118,6 +2130,7 @@ class GameState {
     this.animeKeep = false, // 新增，默认不保留
     this.cgCharacters = const {}, // 新增：CG角色状态，默认为空
     this.isFastForwarding = false, // 新增：快进状态，默认false
+    this.isAutoPlaying = false, // 新增：自动播放状态，默认false
   });
 
   factory GameState.initial() {
@@ -2156,6 +2169,7 @@ class GameState {
     Map<String, CharacterState>? cgCharacters, // 新增：CG角色状态
     bool clearCgCharacters = false, // 新增：是否清空CG角色
     bool? isFastForwarding, // 新增：快进状态
+    bool? isAutoPlaying, // 新增：自动播放状态
   }) {
     return GameState(
       background: background ?? this.background,
@@ -2183,6 +2197,7 @@ class GameState {
       animeKeep: animeKeep ?? this.animeKeep, // 新增
       cgCharacters: clearCgCharacters ? <String, CharacterState>{} : (cgCharacters ?? this.cgCharacters), // 新增
       isFastForwarding: isFastForwarding ?? this.isFastForwarding, // 新增：快进状态
+      isAutoPlaying: isAutoPlaying ?? this.isAutoPlaying, // 新增：自动播放状态
     );
   }
 }

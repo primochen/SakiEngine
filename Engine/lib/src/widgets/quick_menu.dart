@@ -16,6 +16,8 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback onPreviousDialogue;
   final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
   final bool isFastForwarding; // 新增：快进状态
+  final VoidCallback? onAutoPlay; // 新增：自动播放回调
+  final bool isAutoPlaying; // 新增：自动播放状态
   final VoidCallback? onThemeToggle; // 新增：主题切换回调
 
   const QuickMenu({
@@ -28,6 +30,8 @@ class QuickMenu extends StatefulWidget {
     required this.onPreviousDialogue,
     this.onSkipRead, // 新增：跳过已读文本回调（可选）
     this.isFastForwarding = false, // 默认不快进
+    this.onAutoPlay, // 新增：自动播放回调（可选）
+    this.isAutoPlaying = false, // 新增：自动播放状态
     this.onThemeToggle, // 新增：主题切换回调（可选）
   });
 
@@ -380,6 +384,27 @@ class _QuickMenuState extends State<QuickMenu>
                           }),
                         ),
                         _buildDivider(scale, config),
+                        // 新增：自动播放按钮
+                        if (widget.onAutoPlay != null) ...[
+                          _QuickMenuButton(
+                            text: '自动',
+                            icon: Icons.play_arrow_outlined,
+                            onPressed: widget.onAutoPlay!,
+                            scale: scale,
+                            config: config,
+                            isPressed: widget.isAutoPlaying, // 传递自动播放状态
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              final autoPlayButtonIndex = widget.onSkipRead != null ? 5 : 4;
+                              _hoveredButtonIndex = hovering ? autoPlayButtonIndex : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = autoPlayButtonIndex;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         // 新增：快进按钮（跳过已读文本）
                         if (widget.onSkipRead != null) ...[
                           _QuickMenuButton(
@@ -391,9 +416,12 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isFastForwarding, // 传递快进状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              _hoveredButtonIndex = hovering ? 4 : null;
+                              final skipButtonIndex = widget.onAutoPlay != null 
+                                  ? 6 
+                                  : 5;
+                              _hoveredButtonIndex = hovering ? skipButtonIndex : null;
                               if (hovering) {
-                                _lastValidButtonIndex = 4;
+                                _lastValidButtonIndex = skipButtonIndex;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -410,7 +438,9 @@ class _QuickMenuState extends State<QuickMenu>
                             config: config,
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              final themeButtonIndex = widget.onSkipRead != null ? 5 : 4;
+                              final themeButtonIndex = widget.onAutoPlay != null 
+                                  ? (widget.onSkipRead != null ? 7 : 6)
+                                  : (widget.onSkipRead != null ? 6 : 5);
                               _hoveredButtonIndex = hovering ? themeButtonIndex : null;
                               if (hovering) {
                                 _lastValidButtonIndex = themeButtonIndex;
@@ -429,9 +459,13 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final autoHideButtonIndex = widget.onSkipRead != null 
-                                ? (widget.onThemeToggle != null ? 6 : 5)
-                                : (widget.onThemeToggle != null ? 5 : 4);
+                            final autoHideButtonIndex = widget.onAutoPlay != null
+                                ? (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 8 : 7)
+                                    : (widget.onThemeToggle != null ? 7 : 6))
+                                : (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 7 : 6)
+                                    : (widget.onThemeToggle != null ? 6 : 5));
                             _hoveredButtonIndex = hovering ? autoHideButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = autoHideButtonIndex;
@@ -448,9 +482,13 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final settingsButtonIndex = widget.onSkipRead != null 
-                                ? (widget.onThemeToggle != null ? 7 : 6)
-                                : (widget.onThemeToggle != null ? 6 : 5);
+                            final settingsButtonIndex = widget.onAutoPlay != null
+                                ? (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 9 : 8)
+                                    : (widget.onThemeToggle != null ? 8 : 7))
+                                : (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 8 : 7)
+                                    : (widget.onThemeToggle != null ? 7 : 6));
                             _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = settingsButtonIndex;
@@ -467,9 +505,13 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final returnButtonIndex = widget.onSkipRead != null 
-                                ? (widget.onThemeToggle != null ? 8 : 7)
-                                : (widget.onThemeToggle != null ? 7 : 6);
+                            final returnButtonIndex = widget.onAutoPlay != null
+                                ? (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 10 : 9)
+                                    : (widget.onThemeToggle != null ? 9 : 8))
+                                : (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 9 : 8)
+                                    : (widget.onThemeToggle != null ? 8 : 7));
                             _hoveredButtonIndex = hovering ? returnButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = returnButtonIndex;
@@ -654,9 +696,9 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
                   final pulseScale = 1.0 + 0.3 * sin(_pressedIconAnimation.value * pi);
                   iconScale = iconScale * pulseScale;
                   
-                  // 快进图标特有的动画：左右微动 - 使用正弦波
-                  if (widget.text == '快进') {
-                    iconRotation += 0.1 * sin(_pressedIconAnimation.value * pi * 2); // 左右摆动
+                  // 自动播放图标特有的动画：循环脉冲 - 使用正弦波
+                  if (widget.text == '自动') {
+                    iconRotation += 0.1 * sin(_pressedIconAnimation.value * pi * 2); // 轻微摆动
                   }
                 }
                 

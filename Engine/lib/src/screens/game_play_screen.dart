@@ -43,6 +43,7 @@ import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
 import 'package:sakiengine/src/utils/fast_forward_manager.dart';
+import 'package:sakiengine/src/utils/auto_play_manager.dart'; // 新增：自动播放管理器
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
 
@@ -80,6 +81,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   KeySequenceDetector? _consoleSequenceDetector; // console序列检测器
   ExpressionSelectorManager? _expressionSelectorManager; // 表情选择器管理器
   FastForwardManager? _fastForwardManager; // 快进管理器
+  AutoPlayManager? _autoPlayManager; // 新增：自动播放管理器
   ReadTextSkipManager? _readTextSkipManager; // 已读文本快进管理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
@@ -90,6 +92,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   
   // 快进状态
   bool _isFastForwarding = false;
+  
+  // 自动播放状态
+  bool _isAutoPlaying = false;
   
   // 加载淡出动画控制
   late AnimationController _loadingFadeController;
@@ -138,6 +143,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 初始化快进管理器
     _setupFastForwardManager();
+    
+    // 初始化自动播放管理器
+    _setupAutoPlayManager();
     
     // 初始化已读文本跟踪器和已读文本快进管理器
     _setupReadTextTracking();
@@ -279,6 +287,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _consoleSequenceDetector?.dispose();
     // 清理快进管理器
     _fastForwardManager?.dispose();
+    
+    // 清理自动播放管理器
+    _autoPlayManager?.dispose();
     
     // 清理已读文本快进管理器
     _readTextSkipManager?.dispose();
@@ -537,10 +548,50 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     print('已读文本跟踪器已初始化 - 快捷菜单中的快进按钮只会跳过已读文本');
   }
 
+  // 设置自动播放管理器
+  void _setupAutoPlayManager() {
+    _autoPlayManager = AutoPlayManager(
+      dialogueProgressionManager: _dialogueProgressionManager,
+      onAutoPlayStateChanged: () {
+        // 使用post frame callback延迟处理，避免在build期间调用setState
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isAutoPlaying = _autoPlayManager!.isAutoPlaying;
+            });
+            // 同步到GameManager
+            _gameManager.setAutoPlayMode(_isAutoPlaying);
+          }
+        });
+      },
+      canAutoPlay: () {
+        // 检查是否有弹窗或菜单显示，如果有则不能自动播放
+        final hasOverlayOpen = _isShowingMenu || 
+            _showSaveOverlay || 
+            _showLoadOverlay || 
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel || 
+            _showDebugPanel || 
+            _showExpressionSelector ||
+            _isFastForwarding; // 快进时不能自动播放
+        return !hasOverlayOpen;
+      },
+    );
+    
+    print('自动播放管理器已初始化');
+  }
+
   // 处理跳过已读文本
   void _handleSkipReadText() {
     print('🎯 快进按钮被点击 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
     _readTextSkipManager?.toggleSkipping();
+  }
+
+  // 处理自动播放
+  void _handleAutoPlay() {
+    print('🎯 自动播放按钮被点击 - _autoPlayManager: ${_autoPlayManager?.hashCode}');
+    _autoPlayManager?.toggleAutoPlay();
   }
 
   // 显示通知消息
@@ -595,6 +646,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             if (event.logicalKey == LogicalKeyboardKey.enter || 
                 event.logicalKey == LogicalKeyboardKey.space) {
               _gameManager.next();
+              // 通知自动播放管理器有手动推进
+              _autoPlayManager?.onManualProgress();
               return KeyEventResult.handled;
             }
           }
@@ -648,8 +701,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             // 更新选项显示状态
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
+                final newIsShowingMenu = gameState.currentNode is MenuNode;
+                if (!_isShowingMenu && newIsShowingMenu) {
+                  // 选择菜单出现，强制停止自动播放
+                  _autoPlayManager?.forceStopOnBlocking();
+                }
                 setState(() {
-                  _isShowingMenu = gameState.currentNode is MenuNode;
+                  _isShowingMenu = newIsShowingMenu;
                 });
               }
             });
@@ -708,6 +766,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                 // 只有在没有弹窗时才推进剧情
                 if (!hasOverlayOpen) {
                   _dialogueProgressionManager.progressDialogue();
+                  // 通知自动播放管理器有手动推进
+                  _autoPlayManager?.onManualProgress();
                 }
               },
               // UI层 - 使用GameUILayer组件
@@ -737,6 +797,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onHandleQuickMenuBack: _handleQuickMenuBack,
                     onHandlePreviousDialogue: _handlePreviousDialogue,
                     onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
+                    onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
                     onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
                     onLoadGame: widget.onLoadGame,

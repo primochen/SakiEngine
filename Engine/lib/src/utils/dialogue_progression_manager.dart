@@ -57,4 +57,7 @@ class DialogueProgressionManager {
   bool get isTypewriterActive {
     return _currentTypewriter != null && _currentTypewriter!.isTyping;
   }
+  
+  /// 获取当前打字机（用于监听状态变化）
+  TypewriterAnimationManager? get currentTypewriter => _currentTypewriter;
 }
