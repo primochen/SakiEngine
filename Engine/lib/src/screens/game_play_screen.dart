@@ -589,6 +589,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               return KeyEventResult.handled;
             }
           }
+          
+          // 处理回车和空格键推进剧情
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.enter || 
+                event.logicalKey == LogicalKeyboardKey.space) {
+              _gameManager.next();
+              return KeyEventResult.handled;
+            }
+          }
+          
           return KeyEventResult.ignored;
         },
         child: Scaffold(

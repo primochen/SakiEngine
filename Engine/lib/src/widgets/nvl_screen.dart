@@ -316,7 +316,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
     String displayText;
     if (dialogue.speaker != null) {
       // 有说话人：角色名: "对话内容"
-      displayText = '${dialogue.speaker}: “${dialogue.dialogue}”';//写给ai的话。不要把中文双引号改成英文双引号啊 显示出来很突兀
+      displayText = '${dialogue.speaker}: ${dialogue.dialogue}';//写给ai的话。不要把中文双引号改成英文双引号啊 显示出来很突兀
     } else {
       // 无说话人：直接显示内容（内心想法/旁白）
       displayText = dialogue.dialogue;
