@@ -17,6 +17,7 @@ class SettingsManager extends ChangeNotifier {
   static const String _skipPunctuationDelayKey = 'skip_punctuation_delay';
   static const String _speakerAnimationKey = 'speaker_animation';
   static const String _autoHideQuickMenuKey = 'auto_hide_quick_menu';
+  static const String _menuDisplayModeKey = 'menu_display_mode';
   
   // 默认值
   static const double defaultDialogOpacity = 0.9;
@@ -28,6 +29,7 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultSkipPunctuationDelay = false;
   static const bool defaultSpeakerAnimation = true;
   static const bool defaultAutoHideQuickMenu = false;
+  static const String defaultMenuDisplayMode = 'windowed'; // 'windowed' or 'fullscreen'
 
   SharedPreferences? _prefs;
   double _currentDialogOpacity = defaultDialogOpacity;
@@ -39,6 +41,7 @@ class SettingsManager extends ChangeNotifier {
   bool _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
   bool _currentSpeakerAnimation = defaultSpeakerAnimation;
   bool _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
+  String _currentMenuDisplayMode = defaultMenuDisplayMode;
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -52,6 +55,7 @@ class SettingsManager extends ChangeNotifier {
     _currentSkipPunctuationDelay = _prefs?.getBool(_skipPunctuationDelayKey) ?? defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = _prefs?.getBool(_speakerAnimationKey) ?? defaultSpeakerAnimation;
     _currentAutoHideQuickMenu = _prefs?.getBool(_autoHideQuickMenuKey) ?? defaultAutoHideQuickMenu;
+    _currentMenuDisplayMode = _prefs?.getString(_menuDisplayModeKey) ?? defaultMenuDisplayMode;
   }
 
   // 对话框不透明度
@@ -167,6 +171,21 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 菜单页面显示模式设置
+  Future<String> getMenuDisplayMode() async {
+    await init();
+    return _currentMenuDisplayMode;
+  }
+
+  String get currentMenuDisplayMode => _currentMenuDisplayMode;
+
+  Future<void> setMenuDisplayMode(String mode) async {
+    await init();
+    _currentMenuDisplayMode = mode;
+    await _prefs?.setString(_menuDisplayModeKey, mode);
+    notifyListeners();
+  }
+
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
@@ -177,6 +196,7 @@ class SettingsManager extends ChangeNotifier {
     _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
     _currentSpeakerAnimation = defaultSpeakerAnimation;
     _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
+    _currentMenuDisplayMode = defaultMenuDisplayMode;
     
     await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
     await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
@@ -185,6 +205,7 @@ class SettingsManager extends ChangeNotifier {
     await _prefs?.setBool(_skipPunctuationDelayKey, defaultSkipPunctuationDelay);
     await _prefs?.setBool(_speakerAnimationKey, defaultSpeakerAnimation);
     await _prefs?.setBool(_autoHideQuickMenuKey, defaultAutoHideQuickMenu);
+    await _prefs?.setString(_menuDisplayModeKey, defaultMenuDisplayMode);
     
     // 应用默认全屏设置
     await windowManager.setFullScreen(defaultIsFullscreen);

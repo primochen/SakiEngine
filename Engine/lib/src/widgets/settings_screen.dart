@@ -37,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _skipPunctuationDelay = SettingsManager.defaultSkipPunctuationDelay;
   bool _speakerAnimation = SettingsManager.defaultSpeakerAnimation;
   bool _autoHideQuickMenu = SettingsManager.defaultAutoHideQuickMenu;
+  String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
   
   // 音频设置
   bool _musicEnabled = true;
@@ -74,6 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
       _speakerAnimation = await SettingsManager().getSpeakerAnimation();
       _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
+      _menuDisplayMode = await SettingsManager().getMenuDisplayMode();
       
       // 加载音频设置
       _musicEnabled = _musicManager.isMusicEnabled;
@@ -123,6 +125,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateAutoHideQuickMenu(bool value) async {
     setState(() => _autoHideQuickMenu = value);
     await _settingsManager.setAutoHideQuickMenu(value);
+  }
+
+  Future<void> _updateMenuDisplayMode(String value) async {
+    setState(() => _menuDisplayMode = value);
+    await _settingsManager.setMenuDisplayMode(value);
   }
 
   Future<void> _updateMusicEnabled(bool value) async {
@@ -254,6 +261,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _buildOpacitySlider(config, scale),
             SizedBox(height: 40 * scale),
+            _buildMenuDisplayModeToggle(config, scale),
+            SizedBox(height: 40 * scale),
             _buildFullscreenToggle(config, scale),
             SizedBox(height: 40 * scale),
             _buildDarkModeToggle(config, scale),
@@ -318,6 +327,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildMenuDisplayModeToggle(config, scale),
+                      SizedBox(height: 40 * scale),
                       _buildFullscreenToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildDarkModeToggle(config, scale),
@@ -1110,6 +1121,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.8),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuDisplayModeToggle(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final isFullscreenMode = _menuDisplayMode == 'fullscreen';
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isFullscreenMode ? Icons.aspect_ratio : Icons.crop_free,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '菜单页面显示',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  '控制菜单页面的显示范围模式',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: isFullscreenMode,
+            onChanged: (value) => _updateMenuDisplayMode(value ? 'fullscreen' : 'windowed'),
+            scale: scale,
+            config: config,
+            trueText: '铺满',
+            falseText: '窗口',
           ),
         ],
       ),
