@@ -134,25 +134,39 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
   }
 
   Widget _buildDialogueList(double uiScale, double textScale, SakiEngineConfig config) {
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-      child: ListView.builder(
-        controller: _scrollController,
-        reverse: true, // 反转列表，最新记录在视觉上的底部
-        padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),
-        itemCount: widget.dialogueHistory.length,
-        itemBuilder: (context, index) {
-          // 由于列表反转，需要反转索引来获取正确的条目
-          final reversedIndex = widget.dialogueHistory.length - 1 - index;
-          final entry = widget.dialogueHistory[reversedIndex];
-          return Column(
-            children: [
-              _buildDialogueEntry(entry, reversedIndex, uiScale, textScale, config),
-              SizedBox(height: 8 * uiScale),
-            ],
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 估算每条记录的高度（包括padding和spacing）
+        final estimatedItemHeight = (config.reviewTitleTextStyle.fontSize! * textScale * 0.7) * 4 + (20 * uiScale); // 大致估算
+        final estimatedTotalHeight = widget.dialogueHistory.length * estimatedItemHeight;
+        final availableHeight = constraints.maxHeight - (32 * uiScale); // 减去padding
+        
+        // 判断内容是否会超出可视区域
+        final needsScroll = estimatedTotalHeight > availableHeight;
+        
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: ListView.builder(
+            controller: _scrollController,
+            reverse: needsScroll, // 只有需要滚动时才反转，这样能确保最新记录在可视区域
+            padding: EdgeInsets.symmetric(horizontal: 32 * uiScale, vertical: 16 * uiScale),
+            itemCount: widget.dialogueHistory.length,
+            itemBuilder: (context, index) {
+              // 根据是否反转列表来决定索引处理
+              final actualIndex = needsScroll 
+                  ? widget.dialogueHistory.length - 1 - index  // 反转列表时：最新记录在视觉底部
+                  : index;  // 正常列表时：按原始顺序显示
+              final entry = widget.dialogueHistory[actualIndex];
+              return Column(
+                children: [
+                  _buildDialogueEntry(entry, actualIndex, uiScale, textScale, config),
+                  SizedBox(height: 8 * uiScale),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
