@@ -4,6 +4,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
+import 'package:sakiengine/src/widgets/quick_menu.dart';
 
 class OverlayScaffold extends StatefulWidget {
   final String title;
@@ -33,6 +34,12 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
   @override
   void initState() {
     super.initState();
+    
+    // 当覆盖层打开时，自动隐藏快捷菜单
+    // 使用 addPostFrameCallback 避免在build阶段调用setState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      QuickMenu.hideOnOverlayOpen();
+    });
     
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 400),

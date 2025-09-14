@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
@@ -32,10 +33,23 @@ class QuickMenu extends StatefulWidget {
 
   @override
   State<QuickMenu> createState() => _QuickMenuState();
+
+  /// 全局实例，用于从外部控制快捷菜单
+  static _QuickMenuState? _globalInstance;
+
+  /// 外部调用：其他菜单关闭后重新检查菜单状态
+  static void recheckAfterMenuClose(GlobalKey<_QuickMenuState> key) {
+    key.currentState?._recheckMousePosition();
+  }
+
+  /// 外部调用：覆盖层打开时自动隐藏快捷菜单
+  static void hideOnOverlayOpen() {
+    _globalInstance?._hideOnOverlayOpen();
+  }
 }
 
 class _QuickMenuState extends State<QuickMenu> 
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   String? _hoveredButtonText;
   int? _hoveredButtonIndex;
   int _lastValidButtonIndex = 0; // 保存最后一个有效的按钮索引
@@ -59,6 +73,12 @@ class _QuickMenuState extends State<QuickMenu>
   @override
   void initState() {
     super.initState();
+    
+    // 注册全局实例
+    QuickMenu._globalInstance = this;
+    
+    // 添加应用生命周期监听
+    WidgetsBinding.instance.addObserver(this);
     
     // 初始化滑动动画
     _slideController = AnimationController(
@@ -90,6 +110,13 @@ class _QuickMenuState extends State<QuickMenu>
   @override
   void dispose() {
     _hideTimer?.cancel(); // 新增：取消计时器
+    
+    // 清除全局实例
+    if (QuickMenu._globalInstance == this) {
+      QuickMenu._globalInstance = null;
+    }
+    
+    WidgetsBinding.instance.removeObserver(this); // 移除生命周期监听
     _slideController.dispose();
     SettingsManager().removeListener(_onSettingsChanged);
     super.dispose();
@@ -137,6 +164,11 @@ class _QuickMenuState extends State<QuickMenu>
     }
   }
 
+  void _toggleAutoHide() async {
+    await SettingsManager().setAutoHideQuickMenu(!_isAutoHideEnabled);
+    _onSettingsChanged(); // 手动触发设置变化回调
+  }
+
   void _hideMenu() {
     if (!_isAutoHideEnabled || _isMenuHidden) return;
     
@@ -179,6 +211,40 @@ class _QuickMenuState extends State<QuickMenu>
   void _onTriggerAreaExit() {
     if (_isAutoHideEnabled && !_isMenuHidden) {
       _scheduleHideMenu(); // 使用延迟隐藏而不是立即隐藏
+    }
+  }
+
+  /// 重新检查鼠标位置，在其他菜单关闭后调用
+  void _recheckMousePosition() {
+    if (!_isAutoHideEnabled || _isMenuHidden) return;
+    
+    // 延迟一帧后检查，确保UI状态已更新
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      // 如果当前没有悬浮在快捷菜单区域，则隐藏菜单
+      _scheduleHideMenu();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 当应用重新获得焦点时，重新检查菜单状态
+    if (state == AppLifecycleState.resumed) {
+      // 延迟一点再检查，确保其他菜单已经关闭
+      Timer(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _recheckMousePosition();
+        }
+      });
+    }
+  }
+
+  /// 覆盖层打开时自动隐藏快捷菜单
+  void _hideOnOverlayOpen() {
+    if (_isAutoHideEnabled && !_isMenuHidden) {
+      _hideTimer?.cancel(); // 取消延迟隐藏计时器
+      _hideMenu(); // 立即隐藏
     }
   }
 
@@ -354,6 +420,26 @@ class _QuickMenuState extends State<QuickMenu>
                           ),
                           _buildDivider(scale, config),
                         ],
+                        // 新增：自动隐藏切换按钮
+                        _QuickMenuButton(
+                          text: _isAutoHideEnabled ? '固定' : '隐藏',
+                          icon: _isAutoHideEnabled ? Icons.push_pin_outlined : Icons.push_pin_sharp,
+                          onPressed: _toggleAutoHide,
+                          scale: scale,
+                          config: config,
+                          onHover: (hovering, text) => setState(() {
+                            _hoveredButtonText = hovering ? text : null;
+                            final autoHideButtonIndex = widget.onSkipRead != null 
+                                ? (widget.onThemeToggle != null ? 6 : 5)
+                                : (widget.onThemeToggle != null ? 5 : 4);
+                            _hoveredButtonIndex = hovering ? autoHideButtonIndex : null;
+                            if (hovering) {
+                              _lastValidButtonIndex = autoHideButtonIndex;
+                              _lastValidButtonText = text;
+                            }
+                          }),
+                        ),
+                        _buildDivider(scale, config),
                         _QuickMenuButton(
                           text: '设置',
                           icon: Icons.settings_outlined,
@@ -363,8 +449,8 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             final settingsButtonIndex = widget.onSkipRead != null 
-                                ? (widget.onThemeToggle != null ? 6 : 5)
-                                : (widget.onThemeToggle != null ? 5 : 4);
+                                ? (widget.onThemeToggle != null ? 7 : 6)
+                                : (widget.onThemeToggle != null ? 6 : 5);
                             _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = settingsButtonIndex;
@@ -382,8 +468,8 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             final returnButtonIndex = widget.onSkipRead != null 
-                                ? (widget.onThemeToggle != null ? 7 : 6)
-                                : (widget.onThemeToggle != null ? 6 : 5);
+                                ? (widget.onThemeToggle != null ? 8 : 7)
+                                : (widget.onThemeToggle != null ? 7 : 6);
                             _hoveredButtonIndex = hovering ? returnButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = returnButtonIndex;

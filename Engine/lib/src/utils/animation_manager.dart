@@ -36,13 +36,8 @@ class AnimationManager {
     try {
       final content = await AssetManager()
           .loadString('assets/GameScript/configs/animation.sks');
-      print('[AnimationManager] 开始解析动画配置文件');
+      //print('[AnimationManager] 开始解析动画配置文件');
       _parseAnimations(content);
-      print('[AnimationManager] 动画配置文件解析完成，共加载 ${_animations.length} 个动画');
-      for (final name in _animations.keys) {
-        final anim = _animations[name]!;
-        print('[AnimationManager] 动画: $name, 预设属性: ${anim.presetProperties}, 关键帧: ${anim.keyframes.length}个');
-      }
       _isLoaded = true;
     } catch (e) {
       print('[AnimationManager] 无法加载动画文件: $e');
@@ -82,7 +77,7 @@ class AnimationManager {
         final property = _parsePropertyLine(trimmed);
         if (property != null) {
           currentPresetProperties[property.key] = property.value;
-          print('[AnimationManager] 解析预设属性: ${property.key} = ${property.value}');
+          //print('[AnimationManager] 解析预设属性: ${property.key} = ${property.value}');
         }
       } else {
         // 这是关键帧定义
@@ -201,14 +196,14 @@ class CharacterAnimationController {
     // 应用预设属性到基础属性上
     _baseProperties = Map.from(baseProperties);
     final presetProperties = animDef.presetProperties;
-    print('[AnimationManager] 动画 $animationName 的预设属性: $presetProperties');
-    print('[AnimationManager] 原始基础属性: $baseProperties');
+    //print('[AnimationManager] 动画 $animationName 的预设属性: $presetProperties');
+    //print('[AnimationManager] 原始基础属性: $baseProperties');
     for (final entry in presetProperties.entries) {
       final currentValue = _baseProperties[entry.key] ?? 0.0;
       _baseProperties[entry.key] = currentValue + entry.value;
-      print('[AnimationManager] 应用预设 ${entry.key}: $currentValue + ${entry.value} = ${_baseProperties[entry.key]}');
+      //print('[AnimationManager] 应用预设 ${entry.key}: $currentValue + ${entry.value} = ${_baseProperties[entry.key]}');
     }
-    print('[AnimationManager] 最终基础属性: $_baseProperties');
+    //print('[AnimationManager] 最终基础属性: $_baseProperties');
     
     _currentProperties = Map.from(_baseProperties);
     _originalBaseProperties = Map.from(baseProperties); // 保存真正的初始位置（不包含预设属性）

@@ -63,11 +63,11 @@ class BinaryReadIndicator extends StatelessWidget {
         vertical: 2.0 * uiScale,
       ),
       decoration: BoxDecoration(
-        color: config.themeColors.onSurface,
+        color: config.themeColors.onSurface.withAlpha(0),
         borderRadius: BorderRadius.circular(2.0 * uiScale),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.0),
             offset: Offset(1.0 * uiScale, 1.0 * uiScale),
             blurRadius: 2.0 * uiScale,
           ),
@@ -77,7 +77,7 @@ class BinaryReadIndicator extends StatelessWidget {
         displayText,
         style: TextStyle(
           fontSize: 24.0 * textScale,
-          color: config.themeColors.surface,
+          color: config.themeColors.onSurface.withOpacity(0.3),
           fontFamily: 'monospace',
           letterSpacing: -0.2,
         ),
@@ -88,8 +88,8 @@ class BinaryReadIndicator extends StatelessWidget {
 
     if (positioned) {
       return Positioned(
-        bottom: 8.0 * uiScale,
-        left: 100.0 * uiScale,
+        bottom: 20.0 * uiScale,
+        left: 150.0 * uiScale,
         child: indicator,
       );
     } else {
