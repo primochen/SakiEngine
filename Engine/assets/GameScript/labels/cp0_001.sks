@@ -362,7 +362,7 @@ show gonna1 at xiayo1pose
 show xiayo1 at xiayo1poseright
 x pose2 ciallo "差不多就这几样食材就够了，明白了吗？"//3叉腰微笑
 x think "......"////变成无表情
-x pose4 kuraikao "明——————[w=0.5]白——————[w=0.5]了——————[w=0.5]吗——————？[w=0.5][size=1.3]林澄！！[/size]"////放置阴暗但是强颜欢笑的表情立绘，前面“明白了吗”出字很慢并且逐句，最后的“林澄”的字号很大
+x pose4 kuraikao "[size=1.3]明[/size]——————[w=0.5]白——————[w=0.5]了——————[w=0.5]吗——————？[w=0.5][size=1.3]林澄！！[/size]"////放置阴暗但是强颜欢笑的表情立绘，前面“明白了吗”出字很慢并且逐句，最后的“林澄”的字号很大
 play audio bikkuri
 l "呼！！"////对话框震动
 nvlm

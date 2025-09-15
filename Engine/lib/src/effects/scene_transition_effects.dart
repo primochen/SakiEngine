@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
@@ -80,6 +81,18 @@ class SceneTransitionEffectManager {
           },
           oldBackgroundName: oldBackground,
           newBackgroundName: newBackground,
+        );
+        break;
+      case TransitionType.wipe:
+        transitionWidget = _WipeTransitionOverlay(
+          duration: duration,
+          onMidTransition: onMidTransition,
+          onComplete: () {
+            //print('[SceneTransition] wipe转场完成，移除覆盖层');
+            _removeOverlay();
+            _isTransitioning = false;
+            completer.complete();
+          },
         );
         break;
       default:
@@ -430,6 +443,167 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
         );
       },
     );
+  }
+}
+
+/// 旋转擦除转场覆盖层（类似iris转场效果）
+class _WipeTransitionOverlay extends StatefulWidget {
+  final Duration duration;
+  final VoidCallback onMidTransition;
+  final VoidCallback onComplete;
+  
+  const _WipeTransitionOverlay({
+    required this.duration,
+    required this.onMidTransition,
+    required this.onComplete,
+  });
+  
+  @override
+  State<_WipeTransitionOverlay> createState() => _WipeTransitionOverlayState();
+}
+
+class _WipeTransitionOverlayState extends State<_WipeTransitionOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _wipeInAnimation;
+  late Animation<double> _wipeOutAnimation;
+  bool _midTransitionExecuted = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    _controller = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+    
+    // 重新计算时间分配：前30%顺时针旋转，中间40%保持黑屏，后30%逆时针旋转
+    // 前30%：扇形从0度顺时针旋转到360度 (完全覆盖)
+    _wipeInAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.3, curve: Curves.easeInOut),
+    ));
+    
+    // 后30%：扇形从360度逆时针旋转回0度 (完全显示)
+    _wipeOutAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.7, 1.0, curve: Curves.easeInOut),
+    ));
+    
+    _controller.addListener(_onAnimationUpdate);
+    _controller.addStatusListener(_onAnimationStatus);
+    
+    // 开始动画
+    _controller.forward();
+  }
+  
+  void _onAnimationUpdate() {
+    // 在动画中点执行场景切换
+    if (!_midTransitionExecuted && _controller.value >= 0.5) {
+      _midTransitionExecuted = true;
+      print('[WipeTransition] 到达转场中点，执行回调');
+      widget.onMidTransition();
+    }
+  }
+  
+  void _onAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      widget.onComplete();
+    }
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // 计算当前扇形覆盖角度
+        double sweepProgress;
+        
+        if (_controller.value <= 0.3) {
+          // 前30%：从0度顺时针旋转到360度
+          sweepProgress = _wipeInAnimation.value;
+        } else if (_controller.value <= 0.7) {
+          // 中间40%：保持完全覆盖（黑屏）
+          sweepProgress = 1.0;
+        } else {
+          // 后30%：从360度逆时针旋转回0度
+          sweepProgress = _wipeOutAnimation.value;
+        }
+        
+        return Material(
+          color: Colors.transparent,
+          child: CustomPaint(
+            painter: _WipeMaskPainter(
+              sweepProgress: sweepProgress,
+            ),
+            size: Size.infinite,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 旋转遮罩绘制器
+class _WipeMaskPainter extends CustomPainter {
+  final double sweepProgress;
+  
+  _WipeMaskPainter({
+    required this.sweepProgress,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (sweepProgress <= 0) return;
+    
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = math.sqrt(size.width * size.width + size.height * size.height) / 2;
+    
+    // 黑色遮罩画笔
+    final maskPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+    
+    // 创建扇形遮罩路径
+    final path = Path();
+    
+    // 计算扇形角度 (从0到2π)
+    final sweepAngle = 2 * math.pi * sweepProgress;
+    
+    // 从中心开始绘制扇形
+    path.moveTo(center.dx, center.dy);
+    
+    // 添加扇形弧线，从12点方向(-π/2)开始顺时针
+    path.arcTo(
+      Rect.fromCircle(center: center, radius: maxRadius * 1.2),
+      -math.pi / 2, // 从12点方向开始
+      sweepAngle,   // 顺时针扫过的角度
+      false,
+    );
+    
+    // 回到中心点闭合路径
+    path.close();
+    
+    canvas.drawPath(path, maskPaint);
+  }
+  
+  @override
+  bool shouldRepaint(covariant _WipeMaskPainter oldDelegate) {
+    return oldDelegate.sweepProgress != sweepProgress;
   }
 }
 
