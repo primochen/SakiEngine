@@ -85,7 +85,7 @@ class SceneTransitionEffectManager {
         break;
       case TransitionType.wipe:
         transitionWidget = _WipeTransitionOverlay(
-          duration: duration,
+          duration: duration * 2, // wipe转场持续时间翻倍
           onMidTransition: onMidTransition,
           onComplete: () {
             //print('[SceneTransition] wipe转场完成，移除覆盖层');
@@ -533,10 +533,10 @@ class _WipeTransitionOverlayState extends State<_WipeTransitionOverlay>
         // 计算当前扇形覆盖角度
         double sweepProgress;
         
-        if (_controller.value <= 0.3) {
+        if (_controller.value <= 0.35) {
           // 前30%：从0度顺时针旋转到360度
           sweepProgress = _wipeInAnimation.value;
-        } else if (_controller.value <= 0.7) {
+        } else if (_controller.value <= 0.65) {
           // 中间40%：保持完全覆盖（黑屏）
           sweepProgress = 1.0;
         } else {
