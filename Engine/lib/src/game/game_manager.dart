@@ -1605,22 +1605,62 @@ class GameManager {
       _dialogueHistory.removeRange(targetIndex + 1, _dialogueHistory.length);
     }
     
-    // 使用合并的脚本，不需要重新加载特定脚本
-    // 恢复历史条目时，需要检查是否处于 NVL 模式
+    // 检查目标场景和当前场景是否不同，如果不同则使用场景转场
     final snapshot = entry.stateSnapshot;
-    await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
+    final currentBackground = _currentState.background;
+    final targetBackground = snapshot.currentState.background;
     
-    // 修复NVL模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
-    if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
-      _scriptIndex++;
+    if (_context != null && currentBackground != targetBackground) {
+      // 需要场景转场，找出目标场景是用什么转场出现的
+      String originalTransitionType = 'fade'; // 默认使用fade
+      
+      // 在历史记录中向前搜索，找到切换到目标场景时使用的转场类型
+      for (int i = _scriptIndex; i >= 0; i--) {
+        if (i < _script.children.length) {
+          final node = _script.children[i];
+          if (node is BackgroundNode && node.background == targetBackground) {
+            originalTransitionType = node.transitionType ?? 'fade';
+            break;
+          }
+        }
+      }
+      
+      await SceneTransitionEffectManager.instance.transition(
+        context: _context!,
+        transitionType: TransitionTypeParser.parseTransitionType(originalTransitionType),
+        oldBackground: currentBackground,
+        newBackground: targetBackground,
+        onMidTransition: () async {
+          // 在转场中点恢复历史状态
+          await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
+          
+          // 修复NVL模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
+          if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+            _scriptIndex++;
+          }
+          // 修复普通对话模式回退bug：对于普通对话也需要推进到下一个节点，避免重复执行
+          else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+            _scriptIndex++;
+          }
+          
+          // 历史回退后强制检查音乐区间
+          await _checkMusicRegionAtCurrentIndex(forceCheck: true);
+        },
+        duration: const Duration(milliseconds: 600), // 回退转场稍微快一些
+      );
+    } else {
+      // 不需要场景转场，直接恢复状态
+      await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
+      
+      if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+        _scriptIndex++;
+      }
+      else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+        _scriptIndex++;
+      }
+      
+      await _checkMusicRegionAtCurrentIndex(forceCheck: true);
     }
-    // 修复普通对话模式回退bug：对于普通对话也需要推进到下一个节点，避免重复执行
-    else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
-      _scriptIndex++;
-    }
-    
-    // 历史回退后强制检查音乐区间
-    await _checkMusicRegionAtCurrentIndex(forceCheck: true);
   }
 
   /// 启动场景计时器
