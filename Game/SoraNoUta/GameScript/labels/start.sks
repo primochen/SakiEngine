@@ -1,6 +1,5 @@
 //label// SoraNoUta 主标签脚本文件
 label start
-jump test_wipe_transition
 // 背景设置为白天天空
 scene bl
 play sound kazekage loop
