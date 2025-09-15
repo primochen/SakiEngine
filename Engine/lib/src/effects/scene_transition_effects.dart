@@ -578,6 +578,12 @@ class _WipeMaskPainter extends CustomPainter {
       ..color = Colors.black
       ..style = PaintingStyle.fill;
     
+    // 如果进度达到或超过1.0，直接绘制全屏黑色
+    if (sweepProgress >= 1.0) {
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), maskPaint);
+      return;
+    }
+    
     // 创建扇形遮罩路径
     final path = Path();
     
