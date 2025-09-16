@@ -855,10 +855,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _gameManager.removeCharacterAfterFadeOut(characterId);
   }
 
-  Widget _buildSceneWithFilter(GameState gameState) {
-    // 添加调试信息
-    print('[GamePlayScreen] _buildSceneWithFilter: movieFile=${gameState.movieFile}, background=${gameState.background}');
-    
+  Widget _buildSceneWithFilter(GameState gameState) {    
     return Stack(
       children: [
         // 背景层 - 总是渲染背景（如果有的话）
