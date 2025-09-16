@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _speakerAnimation = SettingsManager.defaultSpeakerAnimation;
   bool _autoHideQuickMenu = SettingsManager.defaultAutoHideQuickMenu;
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
+  String _fastForwardMode = SettingsManager.defaultFastForwardMode;
   
   // 音频设置
   bool _musicEnabled = true;
@@ -76,6 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _speakerAnimation = await SettingsManager().getSpeakerAnimation();
       _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
       _menuDisplayMode = await SettingsManager().getMenuDisplayMode();
+      _fastForwardMode = await SettingsManager().getFastForwardMode();
       
       // 加载音频设置
       _musicEnabled = _musicManager.isMusicEnabled;
@@ -130,6 +132,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateMenuDisplayMode(String value) async {
     setState(() => _menuDisplayMode = value);
     await _settingsManager.setMenuDisplayMode(value);
+  }
+
+  Future<void> _updateFastForwardMode(String value) async {
+    setState(() => _fastForwardMode = value);
+    await _settingsManager.setFastForwardMode(value);
   }
 
   Future<void> _updateMusicEnabled(bool value) async {
@@ -496,13 +503,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildGameplaySettings(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    return Center(
-      child: Text(
-        '玩法设置功能开发中...',
-        style: config.reviewTitleTextStyle.copyWith(
-          fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.8,
-          color: config.themeColors.primary.withOpacity(0.6),
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(32 * scale),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildFastForwardModeToggle(config, scale),
+            SizedBox(height: 40 * scale),
+          ],
         ),
       ),
     );
@@ -1179,6 +1189,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
             config: config,
             trueText: '铺满',
             falseText: '窗口',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFastForwardModeToggle(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final isForceMode = _fastForwardMode == 'force';
+    
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isForceMode ? Icons.fast_forward : Icons.skip_next,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '快进按钮模式',
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  isForceMode 
+                    ? '强制快进：跳过所有内容（等同按住Ctrl键）'
+                    : '快进已读：只跳过已经阅读过的文本内容',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: isForceMode,
+            onChanged: (value) => _updateFastForwardMode(value ? 'force' : 'read_only'),
+            scale: scale,
+            config: config,
+            trueText: '强制',
+            falseText: '已读',
           ),
         ],
       ),

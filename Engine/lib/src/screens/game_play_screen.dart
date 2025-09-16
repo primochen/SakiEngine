@@ -46,6 +46,7 @@ import 'package:sakiengine/src/utils/fast_forward_manager.dart';
 import 'package:sakiengine/src/utils/auto_play_manager.dart'; // 新增：自动播放管理器
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -526,7 +527,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
-              // 可以添加已读文本快进的UI状态更新
+              _isFastForwarding = isSkipping; // 同步快进状态到UI
             });
           }
         });
@@ -583,9 +584,29 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   // 处理跳过已读文本
-  void _handleSkipReadText() {
-    print('🎯 快进按钮被点击 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
-    _readTextSkipManager?.toggleSkipping();
+  void _handleSkipReadText() async {
+    print('🎯 快进按钮被点击');
+    
+    // 获取快进模式设置
+    final fastForwardMode = await SettingsManager().getFastForwardMode();
+    print('🎯 当前快进模式: $fastForwardMode');
+    
+    if (fastForwardMode == 'force') {
+      // 强制快进模式：使用FastForwardManager
+      print('🎯 使用强制快进模式 - _fastForwardManager: ${_fastForwardManager?.hashCode}');
+      _fastForwardManager?.toggleFastForward();
+    } else {
+      // 快进已读模式：使用ReadTextSkipManager
+      print('🎯 使用快进已读模式 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
+      _readTextSkipManager?.toggleSkipping();
+    }
+  }
+
+  // 获取当前有效的快进状态
+  bool _getCurrentFastForwardState() {
+    // 返回任意一个快进管理器的活动状态
+    return (_fastForwardManager?.isFastForwarding ?? false) || 
+           (_readTextSkipManager?.isSkipping ?? false);
   }
 
   // 处理自动播放
