@@ -1232,8 +1232,10 @@ class _CharacterLayerState extends State<_CharacterLayer>
               _currentImage = image;
             });
             
-            // 始终触发动画
-            _controller.forward(from: 0.0);
+            // 修复：如果当前正在淡出，不要触发淡入动画
+            if (!widget.isFadingOut) {
+              _controller.forward(from: 0.0);
+            }
           }
         });
       }
