@@ -624,7 +624,15 @@ class GameManager {
 
   /// 视频播放完成后继续执行脚本
   void executeScriptAfterMovie() {
-    print('[GameManager] 视频播放完成，继续执行脚本');
+    print('[GameManager] 视频播放完成，清理movie状态并继续执行脚本');
+    
+    // 先清理movie状态
+    _currentState = _currentState.copyWith(
+      clearMovieFile: true, // 清理视频文件
+    );
+    _gameStateController.add(_currentState);
+    
+    // 然后继续执行脚本
     _executeScript();
   }
 
@@ -694,6 +702,7 @@ class GameManager {
           _currentState = _currentState.copyWith(
               background: node.background, 
               movieFile: null, // 新增：scene命令清理视频状态
+              clearMovieFile: true, // 修复：使用clearMovieFile标志确保视频状态被清理
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null,
               sceneLayers: node.layers,
@@ -1972,7 +1981,7 @@ class GameManager {
         
         _currentState = _currentState.copyWith(
           background: newBackground,
-          movieFile: null, // 新增：scene转场时清理视频状态
+          clearMovieFile: true, // 新增：scene转场时清理视频状态
           sceneFilter: sceneFilter,
           clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
           sceneLayers: layers,
@@ -2010,7 +2019,7 @@ class GameManager {
             
             _currentState = _currentState.copyWith(
               background: newBackground,
-              movieFile: null, // 新增：scene转场时清理视频状态
+              clearMovieFile: true, // 新增：scene转场时清理视频状态
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
               sceneLayers: layers,
@@ -2033,7 +2042,7 @@ class GameManager {
             
             _currentState = _currentState.copyWith(
               background: newBackground, // 在中点就更新背景，避免结束时的闪烁
-              movieFile: null, // 新增：scene转场时清理视频状态
+              clearMovieFile: true, // 新增：scene转场时清理视频状态
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null,
               sceneLayers: layers,
@@ -2341,6 +2350,7 @@ class GameState {
   GameState copyWith({
     String? background,
     String? movieFile, // 新增：视频文件参数
+    bool clearMovieFile = false, // 新增：清理视频文件标志
     Map<String, CharacterState>? characters,
     String? dialogue,
     String? speaker,
@@ -2374,7 +2384,7 @@ class GameState {
   }) {
     return GameState(
       background: background ?? this.background,
-      movieFile: movieFile ?? this.movieFile, // 新增：视频文件处理
+      movieFile: clearMovieFile ? null : (movieFile ?? this.movieFile), // 修复：正确处理movie文件清理
       characters: clearCharacters ? <String, CharacterState>{} : (characters ?? this.characters),
       dialogue: clearDialogueAndSpeaker ? null : (dialogue ?? this.dialogue),
       speaker: forceNullSpeaker
