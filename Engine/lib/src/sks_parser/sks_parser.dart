@@ -181,6 +181,107 @@ class SksParser {
             nodes.add(FxNode(fxString));
           }
           break;
+        case 'movie':
+          final allParams = parts.sublist(1);
+          String movieFile = '';
+          double? timerValue;
+          String? fxString;
+          List<String>? layers;
+          String? transitionType;
+          String? animation;
+          int? repeatCount;
+          
+          // 检查是否为多图层语法 [layer1,layer2:params,...]
+          if (allParams.isNotEmpty && allParams[0].startsWith('[') && allParams.join(' ').contains(']')) {
+            final layerContent = allParams.join(' ');
+            final startBracket = layerContent.indexOf('[');
+            final endBracket = layerContent.indexOf(']');
+            
+            if (startBracket >= 0 && endBracket > startBracket) {
+              final layerString = layerContent.substring(startBracket + 1, endBracket);
+              layers = layerString.split(',').map((s) => s.trim()).toList();
+              
+              // 第一个图层作为主视频文件名
+              if (layers.isNotEmpty) {
+                movieFile = layers[0].split(':')[0];
+              }
+              
+              // 解析后续参数（timer, fx, with, an, repeat等）
+              final remainingParams = layerContent.substring(endBracket + 1).trim().split(' ').where((s) => s.isNotEmpty).toList();
+              int i = 0;
+              while (i < remainingParams.length) {
+                if (remainingParams[i] == 'timer' && i + 1 < remainingParams.length) {
+                  timerValue = double.tryParse(remainingParams[i + 1]);
+                  i += 2;
+                } else if (remainingParams[i] == 'with' && i + 1 < remainingParams.length) {
+                  transitionType = remainingParams[i + 1];
+                  i += 2;
+                } else if (remainingParams[i] == 'an' && i + 1 < remainingParams.length) {
+                  animation = remainingParams[i + 1];
+                  i += 2;
+                } else if (remainingParams[i] == 'repeat' && i + 1 < remainingParams.length) {
+                  repeatCount = int.tryParse(remainingParams[i + 1]);
+                  i += 2;
+                } else if (remainingParams[i] == 'fx') {
+                  if (i + 1 < remainingParams.length) {
+                    fxString = remainingParams.sublist(i + 1).join(' ');
+                  }
+                  break;
+                } else {
+                  i++;
+                }
+              }
+            }
+          } else {
+            // 单文件模式
+            final timerIndex = allParams.indexOf('timer');
+            final withIndex = allParams.indexOf('with');
+            final anIndex = allParams.indexOf('an');
+            final repeatIndex = allParams.indexOf('repeat');
+            final fxIndex = allParams.indexOf('fx');
+            
+            final keywordIndices = [timerIndex, withIndex, anIndex, repeatIndex, fxIndex]
+                .where((index) => index >= 0)
+                .toList();
+            
+            final firstKeywordIndex = keywordIndices.isEmpty ? allParams.length : keywordIndices.reduce((a, b) => a < b ? a : b);
+            
+            // 视频文件名是第一个关键字之前的所有参数
+            movieFile = allParams.sublist(0, firstKeywordIndex).join(' ');
+            
+            // 解析各个参数
+            int i = 0;
+            while (i < allParams.length) {
+              if (allParams[i] == 'timer' && i + 1 < allParams.length) {
+                timerValue = double.tryParse(allParams[i + 1]);
+                i += 2;
+              } else if (allParams[i] == 'with' && i + 1 < allParams.length) {
+                transitionType = allParams[i + 1];
+                i += 2;
+              } else if (allParams[i] == 'an' && i + 1 < allParams.length) {
+                animation = allParams[i + 1];
+                i += 2;
+              } else if (allParams[i] == 'repeat' && i + 1 < allParams.length) {
+                repeatCount = int.tryParse(allParams[i + 1]);
+                i += 2;
+              } else if (allParams[i] == 'fx') {
+                if (i + 1 < allParams.length) {
+                  fxString = allParams.sublist(i + 1).join(' ');
+                }
+                break;
+              } else {
+                i++;
+              }
+            }
+          }
+          
+          nodes.add(MovieNode(movieFile, timer: timerValue, layers: layers, transitionType: transitionType, animation: animation, repeatCount: repeatCount));
+          
+          // 如果有fx参数，添加FxNode
+          if (fxString != null && fxString.isNotEmpty) {
+            nodes.add(FxNode(fxString));
+          }
+          break;
         case 'anime':
           // anime命令：anime cg_igiari [loop] [keep] [with diss] [timer 2.0]
           if (parts.length < 2) break;

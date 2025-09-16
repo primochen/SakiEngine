@@ -622,6 +622,12 @@ class GameManager {
     _executeScript();
   }
 
+  /// 视频播放完成后继续执行脚本
+  void executeScriptAfterMovie() {
+    print('[GameManager] 视频播放完成，继续执行脚本');
+    _executeScript();
+  }
+
   Future<void> _executeScript() async {
     if (_isProcessing || _isWaitingForTimer) {
       return;
@@ -687,6 +693,7 @@ class GameManager {
           // 直接切换背景
           _currentState = _currentState.copyWith(
               background: node.background, 
+              movieFile: null, // 新增：scene命令清理视频状态
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null,
               sceneLayers: node.layers,
@@ -699,6 +706,7 @@ class GameManager {
               clearSceneAnimation: node.animation == null,
               clearCgCharacters: shouldClearCG,
               everShownCharacters: _everShownCharacters);
+          print('[GameManager] Scene命令清理movie状态: 新状态 movieFile=${_currentState.movieFile}, background=${_currentState.background}');
           _gameStateController.add(_currentState);
           
           // 快进模式下跳过场景动画
@@ -740,6 +748,83 @@ class GameManager {
             _startSceneTimer(timerDuration);
           });
           return; // 转场过程中暂停脚本执行，将在转场完成后自动恢复
+        }
+        
+        // 如果有fx节点也跳过
+        _scriptIndex += sceneFilter != null ? 2 : 1;
+        continue;
+      }
+
+      if (node is MovieNode) {
+        // Movie处理逻辑，类似BackgroundNode但用于视频播放
+        // 检测是否包含chapter，如果是则停止快进
+        if (_isFastForwardMode && _containsChapter(node.movieFile)) {
+          print('[GameManager] 检测到chapter视频，停止快进: ${node.movieFile}');
+          setFastForwardMode(false);
+        }
+        
+        // 清空CG状态和角色立绘，因为视频会全屏显示
+        final shouldClearAll = true;
+        
+        // 检查下一个节点是否是FxNode，如果是则一起处理
+        SceneFilter? sceneFilter;
+        int nextIndex = _scriptIndex + 1;
+        if (nextIndex < _script.children.length && _script.children[nextIndex] is FxNode) {
+          final fxNode = _script.children[nextIndex] as FxNode;
+          sceneFilter = SceneFilter.fromString(fxNode.filterString);
+        }
+        
+        // 检查是否是游戏开始时的初始视频
+        final isInitialMovie = _currentState.movieFile == null;
+        final isSameMovie = _currentState.movieFile == node.movieFile;
+        
+        // 快进模式下跳过转场效果，或其他需要跳过转场的情况
+        if (_isFastForwardMode || _context == null || isInitialMovie || isSameMovie) {
+          // 直接切换到视频
+          _currentState = _currentState.copyWith(
+              movieFile: node.movieFile,
+              background: null, // 清空背景，视频优先显示
+              sceneFilter: sceneFilter,
+              clearSceneFilter: sceneFilter == null,
+              sceneLayers: node.layers,
+              clearSceneLayers: node.layers == null,
+              clearDialogueAndSpeaker: true,
+              clearCharacters: true, // 清除所有角色立绘
+              clearCgCharacters: true, // 清除CG
+              sceneAnimation: node.animation,
+              sceneAnimationRepeat: node.repeatCount,
+              sceneAnimationProperties: (node.animation != null && !isSameMovie) ? <String, double>{} : null,
+              clearSceneAnimation: node.animation == null,
+              everShownCharacters: _everShownCharacters);
+          _gameStateController.add(_currentState);
+          
+          // 快进模式下跳过计时器，但正常模式下需要等待视频播放完成
+          if (!_isFastForwardMode) {
+            // 设置处理锁，等待视频播放完成后再继续
+            _isProcessing = false;
+            // 脚本索引推进，避免重复执行当前节点
+            _scriptIndex += sceneFilter != null ? 2 : 1;
+            return; // 等待视频播放完成的回调
+          } else {
+            // 快进模式下跳过视频等待
+            if (node.timer != null && node.timer! > 0) {
+              _startSceneTimer(node.timer!);
+              return;
+            }
+          }
+        } else {
+          // 需要使用转场效果
+          _scriptIndex += sceneFilter != null ? 2 : 1;
+          
+          final timerDuration = node.timer ?? 0.01;
+          
+          _isWaitingForTimer = true;
+          _isProcessing = false;
+          
+          _transitionToNewMovie(node.movieFile, sceneFilter, node.layers, node.transitionType, node.animation, node.repeatCount).then((_) {
+            _startSceneTimer(timerDuration);
+          });
+          return;
         }
         
         // 如果有fx节点也跳过
@@ -1557,6 +1642,76 @@ class GameManager {
     }
   }
 
+  Future<void> _transitionToNewMovie(String movieFile, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount]) async {
+    if (_context == null) return;
+    
+    ////print('[GameManager] 开始movie转场到视频: $movieFile, 转场类型: ${transitionType ?? "fade"}');
+    
+    final oldBackground = _currentState.background;
+    
+    try {
+      await SceneTransitionEffectManager.instance.transition(
+        context: _context!,
+        transitionType: transitionType != null 
+            ? TransitionTypeParser.parseTransitionType(transitionType)
+            : TransitionType.fade,
+        oldBackground: oldBackground,
+        newBackground: null, // 视频会占据整个背景
+        onMidTransition: () async {
+          ////print('[GameManager] movie转场中点，更新状态');
+          _currentState = _currentState.copyWith(
+            movieFile: movieFile,
+            background: null, // 清空背景，视频优先显示
+            sceneFilter: sceneFilter,
+            clearSceneFilter: sceneFilter == null,
+            sceneLayers: layers,
+            clearSceneLayers: layers == null,
+            clearDialogueAndSpeaker: true,
+            clearCharacters: true,
+            clearCgCharacters: true,
+            sceneAnimation: animation,
+            sceneAnimationRepeat: repeatCount,
+            sceneAnimationProperties: animation != null ? <String, double>{} : null,
+            clearSceneAnimation: animation == null,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+          
+          // 启动场景动画（如果有）
+          if (animation != null && _tickerProvider != null) {
+            _startSceneAnimation(animation, repeatCount);
+          }
+        },
+      );
+      
+      ////print('[GameManager] movie转场完成');
+    } catch (e) {
+      print('[GameManager] movie转场失败: $e');
+      // 转场失败时直接更新状态
+      _currentState = _currentState.copyWith(
+        movieFile: movieFile,
+        background: null,
+        sceneFilter: sceneFilter,
+        clearSceneFilter: sceneFilter == null,
+        sceneLayers: layers,
+        clearSceneLayers: layers == null,
+        clearDialogueAndSpeaker: true,
+        clearCharacters: true,
+        clearCgCharacters: true,
+        sceneAnimation: animation,
+        sceneAnimationRepeat: repeatCount,
+        sceneAnimationProperties: animation != null ? <String, double>{} : null,
+        clearSceneAnimation: animation == null,
+        everShownCharacters: _everShownCharacters,
+      );
+      _gameStateController.add(_currentState);
+      
+      if (animation != null && _tickerProvider != null) {
+        _startSceneAnimation(animation, repeatCount);
+      }
+    }
+  }
+
   void returnToPreviousScreen() {
     onReturn?.call();
   }
@@ -1817,6 +1972,7 @@ class GameManager {
         
         _currentState = _currentState.copyWith(
           background: newBackground,
+          movieFile: null, // 新增：scene转场时清理视频状态
           sceneFilter: sceneFilter,
           clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
           sceneLayers: layers,
@@ -1854,6 +2010,7 @@ class GameManager {
             
             _currentState = _currentState.copyWith(
               background: newBackground,
+              movieFile: null, // 新增：scene转场时清理视频状态
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null, // 如果没有滤镜，清除现有滤镜
               sceneLayers: layers,
@@ -1876,6 +2033,7 @@ class GameManager {
             
             _currentState = _currentState.copyWith(
               background: newBackground, // 在中点就更新背景，避免结束时的闪烁
+              movieFile: null, // 新增：scene转场时清理视频状态
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null,
               sceneLayers: layers,
@@ -2126,6 +2284,7 @@ class GameManager {
 
 class GameState {
   final String? background;
+  final String? movieFile; // 新增：当前视频文件
   final Map<String, CharacterState> characters;
   final String? dialogue;
   final String? speaker;
@@ -2150,6 +2309,7 @@ class GameState {
 
   GameState({
     this.background,
+    this.movieFile, // 新增：视频文件参数
     this.characters = const {},
     this.dialogue,
     this.speaker,
@@ -2180,6 +2340,7 @@ class GameState {
 
   GameState copyWith({
     String? background,
+    String? movieFile, // 新增：视频文件参数
     Map<String, CharacterState>? characters,
     String? dialogue,
     String? speaker,
@@ -2213,6 +2374,7 @@ class GameState {
   }) {
     return GameState(
       background: background ?? this.background,
+      movieFile: movieFile ?? this.movieFile, // 新增：视频文件处理
       characters: clearCharacters ? <String, CharacterState>{} : (characters ?? this.characters),
       dialogue: clearDialogueAndSpeaker ? null : (dialogue ?? this.dialogue),
       speaker: forceNullSpeaker

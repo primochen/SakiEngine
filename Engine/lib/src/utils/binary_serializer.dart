@@ -160,6 +160,7 @@ class BinarySerializer {
     final buffer = <int>[];
     
     buffer.addAll(_writeNullableString(state.background));
+    buffer.addAll(_writeNullableString(state.movieFile)); // 新增：序列化视频文件
     buffer.addAll(_writeNullableString(state.dialogue));
     buffer.addAll(_writeNullableString(state.speaker));
     
@@ -184,6 +185,7 @@ class BinarySerializer {
   /// 反序列化GameState
   static GameState _deserializeGameState(_BinaryReader reader) {
     final background = reader.readNullableString();
+    final movieFile = reader.readNullableString(); // 新增：反序列化视频文件
     final dialogue = reader.readNullableString();
     final speaker = reader.readNullableString();
     
@@ -207,6 +209,7 @@ class BinarySerializer {
     
     return GameState(
       background: background,
+      movieFile: movieFile, // 新增：视频文件参数
       dialogue: dialogue,
       speaker: speaker,
       characters: characters,

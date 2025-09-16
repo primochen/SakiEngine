@@ -51,6 +51,16 @@ class HideNode implements SksNode {
   HideNode(this.character);
 }
 
+class MovieNode implements SksNode {
+  final String movieFile;
+  final double? timer;
+  final List<String>? layers;
+  final String? transitionType;
+  final String? animation;
+  final int? repeatCount;
+  MovieNode(this.movieFile, {this.timer, this.layers, this.transitionType, this.animation, this.repeatCount});
+}
+
 class BackgroundNode implements SksNode {
   final String background;
   final double? timer;

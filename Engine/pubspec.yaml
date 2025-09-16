@@ -48,6 +48,7 @@ dependencies:
   flutter_avif: ^3.0.0
   flutter_svg: ^2.0.10
   audioplayers: ^6.1.0
+  video_player: ^2.8.7
 
 dev_dependencies:
   flutter_test:
@@ -94,6 +95,7 @@ flutter:
     - assets/Assets/images/characters/story1/pose/
     - assets/Assets/voice/
     - assets/Assets/gui/
+    - assets/Assets/movies/
     - assets/Assets/fonts/
     - assets/Assets/sound/
     - pubspec.yaml

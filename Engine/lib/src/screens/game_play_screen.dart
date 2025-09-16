@@ -47,6 +47,7 @@ import 'package:sakiengine/src/utils/auto_play_manager.dart'; // 新增：自动
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/widgets/movie_player.dart'; // 新增：视频播放器导入
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -855,17 +856,45 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   Widget _buildSceneWithFilter(GameState gameState) {
+    // 添加调试信息
+    print('[GamePlayScreen] _buildSceneWithFilter: movieFile=${gameState.movieFile}, background=${gameState.background}');
+    
     return Stack(
       children: [
+        // 背景层 - 总是渲染背景（如果有的话）
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
-        ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        // CG角色渲染，像scene一样铺满屏幕
-        ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        // 添加anime覆盖层
+        
+        // 角色和CG层 - 只有在没有视频时才显示
+        if (gameState.movieFile == null) ...[
+          ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+          // CG角色渲染，像scene一样铺满屏幕
+          ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
+        ],
+        
+        // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
+        if (gameState.movieFile != null)
+          Positioned.fill(
+            child: _buildMoviePlayer(gameState.movieFile!),
+          ),
+          
+        // anime覆盖层 - 最顶层
         if (gameState.animeOverlay != null)
           _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
       ],
+    );
+  }
+
+  /// 构建视频播放器
+  Widget _buildMoviePlayer(String movieFile) {
+    return MoviePlayer(
+      movieFile: movieFile,
+      autoPlay: true,
+      looping: false,
+      onVideoEnd: () {
+        // 视频播放结束，继续执行脚本（不使用next()，直接调用内部方法）
+        _gameManager.executeScriptAfterMovie();
+      },
     );
   }
 
