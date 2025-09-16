@@ -108,7 +108,7 @@ class GameUILayer extends StatefulWidget {
 class _GameUILayerState extends State<GameUILayer> {
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
 
-  /// 检查是否有弹窗显示
+  /// 检查是否有弹窗显示或正在播放视频
   bool get _hasOverlayOpen {
     return widget.isShowingMenu ||
         widget.showSaveOverlay ||
@@ -117,7 +117,8 @@ class _GameUILayerState extends State<GameUILayer> {
         widget.showSettings ||
         widget.showDeveloperPanel ||
         widget.showDebugPanel ||
-        widget.showExpressionSelector;
+        widget.showExpressionSelector ||
+        widget.gameState.movieFile != null; // 添加视频播放状态检查
   }
 
   @override

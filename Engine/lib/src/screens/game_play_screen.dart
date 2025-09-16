@@ -46,6 +46,8 @@ import 'package:sakiengine/src/utils/fast_forward_manager.dart';
 import 'package:sakiengine/src/utils/auto_play_manager.dart'; // 新增：自动播放管理器
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/widgets/movie_player.dart'; // 新增：视频播放器导入
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -386,7 +388,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         nextHotKey,
         keyDownHandler: (hotKey) {
           //print('🎮 下箭头键 - 前进剧情');
-          if (mounted && !_isShowingMenu) {
+          if (mounted && !_isShowingMenu && _gameManager.currentState.movieFile == null) {
             _dialogueProgressionManager.progressDialogue();
           }
         },
@@ -396,7 +398,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         prevHotKey,
         keyDownHandler: (hotKey) {
           //print('🎮 上箭头键 - 回滚剧情');
-          if (mounted) {
+          if (mounted && _gameManager.currentState.movieFile == null) {
             _handlePreviousDialogue();
           }
         },
@@ -499,7 +501,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDeveloperPanel || 
             _showDebugPanel || 
             _showExpressionSelector;
-        return !hasOverlayOpen;
+        // 禁用在视频播放时的快进功能
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+        return !hasOverlayOpen && !isPlayingMovie;
       },
       setGameManagerFastForward: (isFastForwarding) {
         // 通知GameManager快进状态变化
@@ -526,7 +530,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
-              // 可以添加已读文本快进的UI状态更新
+              _isFastForwarding = isSkipping; // 同步快进状态到UI
             });
           }
         });
@@ -541,7 +545,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDeveloperPanel || 
             _showDebugPanel || 
             _showExpressionSelector;
-        return !hasOverlayOpen;
+        // 禁用在视频播放时的快进功能
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+        return !hasOverlayOpen && !isPlayingMovie;
       },
     );
     
@@ -575,7 +581,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDebugPanel || 
             _showExpressionSelector ||
             _isFastForwarding; // 快进时不能自动播放
-        return !hasOverlayOpen;
+        // 禁用在视频播放时的自动播放功能
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+        return !hasOverlayOpen && !isPlayingMovie;
       },
     );
     
@@ -583,9 +591,29 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   // 处理跳过已读文本
-  void _handleSkipReadText() {
-    print('🎯 快进按钮被点击 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
-    _readTextSkipManager?.toggleSkipping();
+  void _handleSkipReadText() async {
+    print('🎯 快进按钮被点击');
+    
+    // 获取快进模式设置
+    final fastForwardMode = await SettingsManager().getFastForwardMode();
+    print('🎯 当前快进模式: $fastForwardMode');
+    
+    if (fastForwardMode == 'force') {
+      // 强制快进模式：使用FastForwardManager
+      print('🎯 使用强制快进模式 - _fastForwardManager: ${_fastForwardManager?.hashCode}');
+      _fastForwardManager?.toggleFastForward();
+    } else {
+      // 快进已读模式：使用ReadTextSkipManager
+      print('🎯 使用快进已读模式 - _readTextSkipManager: ${_readTextSkipManager?.hashCode}');
+      _readTextSkipManager?.toggleSkipping();
+    }
+  }
+
+  // 获取当前有效的快进状态
+  bool _getCurrentFastForwardState() {
+    // 返回任意一个快进管理器的活动状态
+    return (_fastForwardManager?.isFastForwarding ?? false) || 
+           (_readTextSkipManager?.isSkipping ?? false);
   }
 
   // 处理自动播放
@@ -645,9 +673,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           if (event is KeyDownEvent) {
             if (event.logicalKey == LogicalKeyboardKey.enter || 
                 event.logicalKey == LogicalKeyboardKey.space) {
-              _gameManager.next();
-              // 通知自动播放管理器有手动推进
-              _autoPlayManager?.onManualProgress();
+              // 检查是否正在播放视频，如果是则不推进剧情
+              if (_gameManager.currentState.movieFile == null) {
+                _gameManager.next();
+                // 通知自动播放管理器有手动推进
+                _autoPlayManager?.onManualProgress();
+              }
               return KeyEventResult.handled;
             }
           }
@@ -726,17 +757,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                       _showDebugPanel || 
                       _showExpressionSelector;
                   
+                  // 检查是否正在播放视频
+                  final isPlayingMovie = gameState.movieFile != null;
+                  
                   // 处理标准的PointerScrollEvent（鼠标滚轮）
                   if (pointerSignal is PointerScrollEvent) {
                     // 向上滚动: 前进剧情
                     if (pointerSignal.scrollDelta.dy < 0) {
-                      if (!hasOverlayOpen) {
+                      if (!hasOverlayOpen && !isPlayingMovie) {
                         _dialogueProgressionManager.progressDialogue();
                       }
                     }
                     // 向下滚动: 回滚剧情
                     else if (pointerSignal.scrollDelta.dy > 0) {
-                      if (!hasOverlayOpen) {
+                      if (!hasOverlayOpen && !isPlayingMovie) {
                         _handlePreviousDialogue();
                       }
                     }
@@ -744,7 +778,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   // 处理macOS触控板事件
                   else if (pointerSignal.toString().contains('Scroll')) {
                     // 触控板滚动事件，推进剧情
-                    if (!hasOverlayOpen) {
+                    if (!hasOverlayOpen && !isPlayingMovie) {
                       _dialogueProgressionManager.progressDialogue();
                     }
                   }
@@ -763,8 +797,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showDebugPanel ||
                     _showExpressionSelector;
                 
-                // 只有在没有弹窗时才推进剧情
-                if (!hasOverlayOpen) {
+                // 检查是否正在播放视频
+                final isPlayingMovie = gameState.movieFile != null;
+                
+                // 只有在没有弹窗且没有播放视频时才推进剧情
+                if (!hasOverlayOpen && !isPlayingMovie) {
                   _dialogueProgressionManager.progressDialogue();
                   // 通知自动播放管理器有手动推进
                   _autoPlayManager?.onManualProgress();
@@ -833,18 +870,54 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _gameManager.removeCharacterAfterFadeOut(characterId);
   }
 
-  Widget _buildSceneWithFilter(GameState gameState) {
+  Widget _buildSceneWithFilter(GameState gameState) {    
     return Stack(
       children: [
+        // 背景层 - 总是渲染背景（如果有的话）
         if (gameState.background != null)
           _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
-        ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        // CG角色渲染，像scene一样铺满屏幕
-        ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        // 添加anime覆盖层
+        
+        // 角色和CG层 - 只有在没有视频时才显示
+        if (gameState.movieFile == null) ...[
+          ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+          // CG角色渲染，像scene一样铺满屏幕
+          ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
+        ],
+        
+        // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
+        if (gameState.movieFile != null)
+          Positioned.fill(
+            child: _buildMoviePlayer(gameState.movieFile!, gameState.movieRepeatCount),
+          )
+        else
+          // 当没有视频时，放置一个透明容器确保视频层被清除
+          Positioned.fill(
+            child: Container(
+              color: Colors.transparent,
+              // 添加key确保每次状态变化时重建
+              key: const ValueKey('no_movie'),
+            ),
+          ),
+          
+        // anime覆盖层 - 最顶层
         if (gameState.animeOverlay != null)
           _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
       ],
+    );
+  }
+
+  /// 构建视频播放器
+  Widget _buildMoviePlayer(String movieFile, int? repeatCount) {
+    return MoviePlayer(
+      key: ValueKey('$movieFile-$repeatCount'), // 添加key确保视频切换时正确重建组件，包含repeatCount确保参数变化时重建
+      movieFile: movieFile,
+      repeatCount: repeatCount, // 新增：传递重复播放次数
+      autoPlay: true,
+      looping: false,
+      onVideoEnd: () {
+        // 视频播放结束，继续执行脚本（不使用next()，直接调用内部方法）
+        _gameManager.executeScriptAfterMovie();
+      },
     );
   }
 
@@ -1159,8 +1232,10 @@ class _CharacterLayerState extends State<_CharacterLayer>
               _currentImage = image;
             });
             
-            // 始终触发动画
-            _controller.forward(from: 0.0);
+            // 修复：如果当前正在淡出，不要触发淡入动画
+            if (!widget.isFadingOut) {
+              _controller.forward(from: 0.0);
+            }
           }
         });
       }

@@ -177,12 +177,9 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
   void didUpdateWidget(SoranoUtaDialogueBox oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // 如果推进管理器发生变化，重新注册打字机
-    if (widget.progressionManager != oldWidget.progressionManager) {
-      oldWidget.progressionManager?.registerTypewriter(null);
-      widget.progressionManager?.registerTypewriter(_typewriterController);
-    }
-    
+    // 总是重新注册打字机，确保在对话框被重新创建后能正常工作
+    widget.progressionManager?.registerTypewriter(_typewriterController);
+
     // 如果快进状态发生变化，更新打字机快进模式
     if (widget.isFastForwarding != oldWidget.isFastForwarding) {
       _typewriterController.setFastForwardMode(widget.isFastForwarding);
@@ -319,6 +316,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
     return Container(
       child: DialogueShakeEffect(
         dialogue: widget.dialogue,
+        displayedText: _typewriterController.displayedText, // 传递当前显示的文本
         enabled: true,
         intensity: 4.0 * uiScale,
         duration: const Duration(milliseconds: 600),

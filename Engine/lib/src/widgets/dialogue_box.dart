@@ -192,10 +192,8 @@ class _DialogueBoxState extends State<DialogueBox>
   void didUpdateWidget(DialogueBox oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.progressionManager != oldWidget.progressionManager) {
-      oldWidget.progressionManager?.registerTypewriter(null);
-      widget.progressionManager?.registerTypewriter(_typewriterController);
-    }
+    // 总是重新注册打字机，确保在对话框被重新创建后能正常工作
+    widget.progressionManager?.registerTypewriter(_typewriterController);
 
     if (widget.isFastForwarding != oldWidget.isFastForwarding) {
       _typewriterController.setFastForwardMode(widget.isFastForwarding);
@@ -311,6 +309,7 @@ class _DialogueBoxState extends State<DialogueBox>
       onTap: _handleTap,
       child: DialogueShakeEffect(
         dialogue: widget.dialogue,
+        displayedText: _typewriterController.displayedText, // 传递当前显示的文本
         enabled: true,
         intensity: 4.0 * uiScale,
         duration: const Duration(milliseconds: 600),

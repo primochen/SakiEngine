@@ -256,7 +256,7 @@ nvlm
 "这里没有吃凉饭的习俗。"
 endnvlm
 "没错，我很清楚什么是微波炉。" if steinsgate true
-scene classroom
+scene classroom with wipe
 stop music 
 "我紧随夏悠其后，走进教室。"
 nvlm

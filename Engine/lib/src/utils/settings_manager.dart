@@ -19,6 +19,7 @@ class SettingsManager extends ChangeNotifier {
   static const String _speakerAnimationKey = 'speaker_animation';
   static const String _autoHideQuickMenuKey = 'auto_hide_quick_menu';
   static const String _menuDisplayModeKey = 'menu_display_mode';
+  static const String _fastForwardModeKey = 'fast_forward_mode';
   
   // 默认值
   static const double defaultDialogOpacity = 0.9;
@@ -31,6 +32,7 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultSpeakerAnimation = true;
   static const bool defaultAutoHideQuickMenu = false;
   static const String defaultMenuDisplayMode = 'windowed'; // 'windowed' or 'fullscreen'
+  static const String defaultFastForwardMode = 'read_only'; // 'read_only' or 'force'
 
   SharedPreferences? _prefs;
   double _currentDialogOpacity = defaultDialogOpacity;
@@ -43,6 +45,7 @@ class SettingsManager extends ChangeNotifier {
   bool _currentSpeakerAnimation = defaultSpeakerAnimation;
   bool _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
   String _currentMenuDisplayMode = defaultMenuDisplayMode;
+  String _currentFastForwardMode = defaultFastForwardMode;
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -72,6 +75,7 @@ class SettingsManager extends ChangeNotifier {
     _currentSpeakerAnimation = _prefs?.getBool(_speakerAnimationKey) ?? defaultSpeakerAnimation;
     _currentAutoHideQuickMenu = _prefs?.getBool(_autoHideQuickMenuKey) ?? defaultAutoHideQuickMenu;
     _currentMenuDisplayMode = _prefs?.getString(_menuDisplayModeKey) ?? projectDefaultMenuDisplayMode;
+    _currentFastForwardMode = _prefs?.getString(_fastForwardModeKey) ?? defaultFastForwardMode;
   }
 
   // 对话框不透明度
@@ -202,6 +206,21 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 快进模式设置
+  Future<String> getFastForwardMode() async {
+    await init();
+    return _currentFastForwardMode;
+  }
+
+  String get currentFastForwardMode => _currentFastForwardMode;
+
+  Future<void> setFastForwardMode(String mode) async {
+    await init();
+    _currentFastForwardMode = mode;
+    await _prefs?.setString(_fastForwardModeKey, mode);
+    notifyListeners();
+  }
+
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
@@ -228,6 +247,7 @@ class SettingsManager extends ChangeNotifier {
     _currentSpeakerAnimation = defaultSpeakerAnimation;
     _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
     _currentMenuDisplayMode = projectDefaultMenuDisplayMode;
+    _currentFastForwardMode = defaultFastForwardMode;
     
     await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
     await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
@@ -237,6 +257,7 @@ class SettingsManager extends ChangeNotifier {
     await _prefs?.setBool(_speakerAnimationKey, defaultSpeakerAnimation);
     await _prefs?.setBool(_autoHideQuickMenuKey, defaultAutoHideQuickMenu);
     await _prefs?.setString(_menuDisplayModeKey, projectDefaultMenuDisplayMode);
+    await _prefs?.setString(_fastForwardModeKey, defaultFastForwardMode);
     
     // 应用默认全屏设置
     await windowManager.setFullScreen(defaultIsFullscreen);

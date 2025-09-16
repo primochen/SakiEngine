@@ -149,6 +149,8 @@ class AssetManager {
     }
 
     final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.avif'];
+    final videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm']; // 新增：视频扩展名
+    final supportedExtensions = [...imageExtensions, ...videoExtensions]; // 合并支持的扩展名
     
     // 从查询名称中提取文件名，例如 "backgrounds/sky" -> "sky"
     final targetFileName = name.split('/').last;
@@ -258,6 +260,7 @@ class AssetManager {
       p.join(searchBase, 'characters'),
       p.join(searchBase, 'items'),
       p.join(gamePath, 'Assets', 'gui'),
+      p.join(gamePath, 'Assets', 'movies'), // 新增：视频文件搜索路径
     ]);
 
     for (final dirPath in searchPaths) {

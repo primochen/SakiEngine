@@ -395,10 +395,9 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isAutoPlaying, // 传递自动播放状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              final autoPlayButtonIndex = widget.onSkipRead != null ? 5 : 4;
-                              _hoveredButtonIndex = hovering ? autoPlayButtonIndex : null;
+                              _hoveredButtonIndex = hovering ? 4 : null;
                               if (hovering) {
-                                _lastValidButtonIndex = autoPlayButtonIndex;
+                                _lastValidButtonIndex = 4;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -416,12 +415,9 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isFastForwarding, // 传递快进状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              final skipButtonIndex = widget.onAutoPlay != null 
-                                  ? 6 
-                                  : 5;
-                              _hoveredButtonIndex = hovering ? skipButtonIndex : null;
+                              _hoveredButtonIndex = hovering ? 5 : null;
                               if (hovering) {
-                                _lastValidButtonIndex = skipButtonIndex;
+                                _lastValidButtonIndex = 5;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -439,8 +435,8 @@ class _QuickMenuState extends State<QuickMenu>
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
                               final themeButtonIndex = widget.onAutoPlay != null 
-                                  ? (widget.onSkipRead != null ? 7 : 6)
-                                  : (widget.onSkipRead != null ? 6 : 5);
+                                  ? (widget.onSkipRead != null ? 6 : 5)
+                                  : (widget.onSkipRead != null ? 5 : 4);
                               _hoveredButtonIndex = hovering ? themeButtonIndex : null;
                               if (hovering) {
                                 _lastValidButtonIndex = themeButtonIndex;
@@ -461,11 +457,11 @@ class _QuickMenuState extends State<QuickMenu>
                             _hoveredButtonText = hovering ? text : null;
                             final autoHideButtonIndex = widget.onAutoPlay != null
                                 ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 8 : 7)
-                                    : (widget.onThemeToggle != null ? 7 : 6))
-                                : (widget.onSkipRead != null 
                                     ? (widget.onThemeToggle != null ? 7 : 6)
-                                    : (widget.onThemeToggle != null ? 6 : 5));
+                                    : (widget.onThemeToggle != null ? 6 : 5))
+                                : (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 6 : 5)
+                                    : (widget.onThemeToggle != null ? 5 : 4));
                             _hoveredButtonIndex = hovering ? autoHideButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = autoHideButtonIndex;
@@ -484,11 +480,11 @@ class _QuickMenuState extends State<QuickMenu>
                             _hoveredButtonText = hovering ? text : null;
                             final settingsButtonIndex = widget.onAutoPlay != null
                                 ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 9 : 8)
-                                    : (widget.onThemeToggle != null ? 8 : 7))
-                                : (widget.onSkipRead != null 
                                     ? (widget.onThemeToggle != null ? 8 : 7)
-                                    : (widget.onThemeToggle != null ? 7 : 6));
+                                    : (widget.onThemeToggle != null ? 7 : 6))
+                                : (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 7 : 6)
+                                    : (widget.onThemeToggle != null ? 6 : 5));
                             _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = settingsButtonIndex;
@@ -507,11 +503,11 @@ class _QuickMenuState extends State<QuickMenu>
                             _hoveredButtonText = hovering ? text : null;
                             final returnButtonIndex = widget.onAutoPlay != null
                                 ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 10 : 9)
-                                    : (widget.onThemeToggle != null ? 9 : 8))
-                                : (widget.onSkipRead != null 
                                     ? (widget.onThemeToggle != null ? 9 : 8)
-                                    : (widget.onThemeToggle != null ? 8 : 7));
+                                    : (widget.onThemeToggle != null ? 8 : 7))
+                                : (widget.onSkipRead != null 
+                                    ? (widget.onThemeToggle != null ? 8 : 7)
+                                    : (widget.onThemeToggle != null ? 7 : 6));
                             _hoveredButtonIndex = hovering ? returnButtonIndex : null;
                             if (hovering) {
                               _lastValidButtonIndex = returnButtonIndex;

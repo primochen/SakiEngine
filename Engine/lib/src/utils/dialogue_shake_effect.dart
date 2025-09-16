@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 /// 对话框震动效果管理器
-/// 当检测到对话中包含感叹号时，触发GAL风格Q弹震动（快速左右震动带弹性衰减）
+/// 当打字机显示到感叹号时，触发GAL风格Q弹震动（快速左右震动带弹性衰减）
 class DialogueShakeEffect extends StatefulWidget {
   final Widget child;
   final String dialogue;
+  final String displayedText; // 新增：当前显示的文本
   final bool enabled;
   final double intensity;
   final Duration duration;
@@ -14,6 +15,7 @@ class DialogueShakeEffect extends StatefulWidget {
     super.key,
     required this.child,
     required this.dialogue,
+    required this.displayedText, // 新增：必需的显示文本参数
     this.enabled = true,
     this.intensity = 8.0, // 增大默认强度
     this.duration = const Duration(milliseconds: 1000), // 进一步延长到1秒让过渡极其舒缓
@@ -27,21 +29,23 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     with SingleTickerProviderStateMixin {
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
+  int _lastExclamationIndex = -1; // 记录上次触发震动的感叹号位置
 
   @override
   void initState() {
     super.initState();
     _initializeShakeAnimation();
-    _checkForExclamation();
+    _checkForExclamationInDisplayedText();
   }
 
   @override
   void didUpdateWidget(DialogueShakeEffect oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    // 如果对话内容发生变化，重新检查是否需要震动
-    if (widget.dialogue != oldWidget.dialogue) {
-      _checkForExclamation();
+    // 如果显示的文本发生变化，检查是否需要震动
+    if (widget.displayedText != oldWidget.displayedText ||
+        widget.dialogue != oldWidget.dialogue) {
+      _checkForExclamationInDisplayedText();
     }
   }
 
@@ -61,18 +65,37 @@ class _DialogueShakeEffectState extends State<DialogueShakeEffect>
     ));
   }
 
-  void _checkForExclamation() {
+  void _checkForExclamationInDisplayedText() {
     if (!widget.enabled) {
       return;
     }
 
-    // 检测中英文感叹号
-    final hasExclamation = widget.dialogue.contains('!') || 
-                          widget.dialogue.contains('！');
-    
-    // 如果发现感叹号，触发GAL风格震动
-    if (hasExclamation) {
+    // 检查当前显示的文本中是否包含新的感叹号
+    final displayedText = widget.displayedText;
+    if (displayedText.isEmpty) {
+      return;
+    }
+
+    // 查找当前显示文本中最后一个感叹号的位置
+    int lastExclamationInDisplayed = -1;
+    for (int i = displayedText.length - 1; i >= 0; i--) {
+      final char = displayedText[i];
+      if (char == '!' || char == '！') {
+        lastExclamationInDisplayed = i;
+        break;
+      }
+    }
+
+    // 如果找到感叹号且位置比上次记录的位置新，触发震动
+    if (lastExclamationInDisplayed != -1 && 
+        lastExclamationInDisplayed > _lastExclamationIndex) {
+      _lastExclamationIndex = lastExclamationInDisplayed;
       _triggerShake();
+    }
+
+    // 如果对话重新开始（例如新的对话），重置记录
+    if (widget.displayedText.length < _lastExclamationIndex) {
+      _lastExclamationIndex = -1;
     }
   }
 

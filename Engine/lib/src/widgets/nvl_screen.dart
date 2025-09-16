@@ -49,6 +49,9 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
   // 当前打字机控制器（只有最后一句对话使用）
   TypewriterAnimationManager? _currentTypewriterController;
   
+  // 记录当前打字机控制器对应的索引，避免重复创建
+  int _lastTypewriterIndex = -1;
+  
   // 跟踪最后一句对话是否完成（用于显示箭头）
   bool _isLastDialogueComplete = false;
   
@@ -200,12 +203,16 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
 
   /// 获取或创建打字机控制器，并注册到推进管理器
   TypewriterAnimationManager _getOrCreateTypewriterController(int index) {
+    // 如果当前控制器存在且索引匹配，直接返回
+    if (_currentTypewriterController != null && _lastTypewriterIndex == index) {
+      return _currentTypewriterController!;
+    }
+    
     // 为了避免显示上一句对话，每次都创建新的控制器
     // 这样确保TypewriterText从空白状态开始
     
     // 先清理旧的控制器
     if (_currentTypewriterController != null) {
-      widget.progressionManager?.registerTypewriter(null);
       _currentTypewriterController!.removeListener(_onTypewriterStateChanged);
       // 不dispose，因为可能还在使用中，让系统自动GC
     }
@@ -222,6 +229,9 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
     
     // 注册到推进管理器
     widget.progressionManager?.registerTypewriter(_currentTypewriterController);
+    
+    // 记录当前索引
+    _lastTypewriterIndex = index;
     
     return _currentTypewriterController!;
   }

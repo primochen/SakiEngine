@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
@@ -33,6 +34,9 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
   late Animation<double> _backdropAnimation;
   
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
+  
+  // ESC热键
+  late HotKey _escHotKey;
 
   @override
   void initState() {
@@ -48,6 +52,15 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
     // 使用 addPostFrameCallback 避免在build阶段调用setState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       QuickMenu.hideOnOverlayOpen();
+    });
+    
+    // 注册ESC热键
+    _escHotKey = HotKey(
+      key: PhysicalKeyboardKey.escape,
+      scope: HotKeyScope.inapp,
+    );
+    HotKeyManager.instance.register(_escHotKey, keyDownHandler: (_) {
+      _handleClose();
     });
     
     _animationController = AnimationController(
@@ -86,6 +99,8 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
   void dispose() {
     // 移除设置监听器
     SettingsManager().removeListener(_onSettingsChanged);
+    // 注销ESC热键
+    HotKeyManager.instance.unregister(_escHotKey);
     _animationController.dispose();
     super.dispose();
   }
@@ -118,105 +133,92 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
-        return Shortcuts(
-          shortcuts: <LogicalKeySet, Intent>{
-            LogicalKeySet(LogicalKeyboardKey.escape): const _CloseIntent(),
-          },
-          child: Actions(
-            actions: <Type, Action<Intent>>{
-              _CloseIntent: _CloseAction(_handleClose),
-            },
-            child: Focus(
-              autofocus: true,
-              child: GestureDetector(
-                onTap: _handleClose,
-                onSecondaryTap: _handleClose,
-                child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: config.themeColors.primaryDark.withOpacity(0.5 * _backdropAnimation.value),
-                  ),
-                  child: GestureDetector(
-                    onTap: () {},
-                    onSecondaryTap: _handleClose,
-                    child: Center(
-                      child: Transform.scale(
-                        scale: _scaleAnimation.value,
-                        child: FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: Container(
-                            width: _menuDisplayMode == 'fullscreen' 
-                                ? screenSize.width 
-                                : screenSize.width * 0.85,
-                            height: _menuDisplayMode == 'fullscreen' 
-                                ? screenSize.height 
-                                : screenSize.height * 0.8,
-                            decoration: _menuDisplayMode == 'fullscreen' 
-                                ? null 
-                                : BoxDecoration(
-                                    borderRadius: BorderRadius.circular(config.baseWindowBorder),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3 * _fadeAnimation.value),
-                                        blurRadius: 20 * uiScale,
-                                        offset: Offset(0, 8 * uiScale),
+        return GestureDetector(
+          onTap: _handleClose,
+          onSecondaryTap: _handleClose,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: config.themeColors.primaryDark.withOpacity(0.5 * _backdropAnimation.value),
+            ),
+            child: GestureDetector(
+              onTap: () {},
+              onSecondaryTap: _handleClose,
+              child: Center(
+                child: Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Container(
+                      width: _menuDisplayMode == 'fullscreen' 
+                          ? screenSize.width 
+                          : screenSize.width * 0.85,
+                      height: _menuDisplayMode == 'fullscreen' 
+                          ? screenSize.height 
+                          : screenSize.height * 0.8,
+                      decoration: _menuDisplayMode == 'fullscreen' 
+                          ? null 
+                          : BoxDecoration(
+                              borderRadius: BorderRadius.circular(config.baseWindowBorder),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3 * _fadeAnimation.value),
+                                  blurRadius: 20 * uiScale,
+                                  offset: Offset(0, 8 * uiScale),
+                                ),
+                              ],
+                            ),
+                      child: ClipRRect(
+                        borderRadius: _menuDisplayMode == 'fullscreen' 
+                            ? BorderRadius.zero
+                            : BorderRadius.circular(config.baseWindowBorder),
+                        child: Stack(
+                          children: [
+                            // 底层：纯色背景
+                            Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                              color: config.themeColors.background,
+                            ),
+                            // 中层：背景图片
+                            if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
+                              Positioned.fill(
+                                child: Opacity(
+                                  opacity: config.baseWindowBackgroundAlpha,
+                                  child: ColorFiltered(
+                                    colorFilter: ColorFilter.mode(
+                                      Colors.transparent,
+                                      config.baseWindowBackgroundBlendMode,
+                                    ),
+                                    child: Align(
+                                      alignment: Alignment(
+                                        (config.baseWindowXAlign - 0.5) * 2,
+                                        (config.baseWindowYAlign - 0.5) * 2,
                                       ),
-                                    ],
-                                  ),
-                            child: ClipRRect(
-                              borderRadius: _menuDisplayMode == 'fullscreen' 
-                                  ? BorderRadius.zero
-                                  : BorderRadius.circular(config.baseWindowBorder),
-                              child: Stack(
-                                children: [
-                                  // 底层：纯色背景
-                                  Container(
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    color: config.themeColors.background,
-                                  ),
-                                  // 中层：背景图片
-                                  if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
-                                    Positioned.fill(
-                                      child: Opacity(
-                                        opacity: config.baseWindowBackgroundAlpha,
-                                        child: ColorFiltered(
-                                          colorFilter: ColorFilter.mode(
-                                            Colors.transparent,
-                                            config.baseWindowBackgroundBlendMode,
-                                          ),
-                                          child: Align(
-                                            alignment: Alignment(
-                                              (config.baseWindowXAlign - 0.5) * 2,
-                                              (config.baseWindowYAlign - 0.5) * 2,
-                                            ),
-                                            child: Transform.scale(
-                                              scale: config.baseWindowBackgroundScale,
-                                              child: SmartAssetImage(
-                                                assetName: config.baseWindowBackground!,
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ),
-                                          ),
+                                      child: Transform.scale(
+                                        scale: config.baseWindowBackgroundScale,
+                                        child: SmartAssetImage(
+                                          assetName: config.baseWindowBackground!,
+                                          fit: BoxFit.contain,
                                         ),
                                       ),
                                     ),
-                                  // 上层：半透明控件
-                                  Container(
-                                    color: config.themeColors.background.withOpacity(config.baseWindowAlpha),
-                                    child: Column(
-                                      children: [
-                                        _buildHeader(uiScale, textScale, config),
-                                        Expanded(child: widget.content),
-                                        if (widget.footer != null) widget.footer!,
-                                      ],
-                                    ),
                                   ),
+                                ),
+                              ),
+                            // 上层：半透明控件
+                            Container(
+                              color: config.themeColors.background.withOpacity(config.baseWindowAlpha),
+                              child: Column(
+                                children: [
+                                  _buildHeader(uiScale, textScale, config),
+                                  Expanded(child: widget.content),
+                                  if (widget.footer != null) widget.footer!,
                                 ],
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ),
@@ -264,21 +266,5 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
         ],
       ),
     );
-  }
-}
-
-class _CloseIntent extends Intent {
-  const _CloseIntent();
-}
-
-class _CloseAction extends Action<_CloseIntent> {
-  final VoidCallback onClose;
-
-  _CloseAction(this.onClose);
-
-  @override
-  Object? invoke(_CloseIntent intent) {
-    onClose();
-    return null;
   }
 }
