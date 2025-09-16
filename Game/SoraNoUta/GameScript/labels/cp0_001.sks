@@ -186,7 +186,7 @@ stop music
 "公路两旁的风景缓慢发生着变化。"
 "我观察着风景以及路面，突然想到了什么。"
 play music goodday
-scene to school an backjump
+scene to school an backjump repeat 5
 play sound sagasu
 "原地停了下来，解开了书包，就开始翻找东西。"
 play sound haneru

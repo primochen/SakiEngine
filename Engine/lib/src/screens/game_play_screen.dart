@@ -872,7 +872,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
         if (gameState.movieFile != null)
           Positioned.fill(
-            child: _buildMoviePlayer(gameState.movieFile!),
+            child: _buildMoviePlayer(gameState.movieFile!, gameState.movieRepeatCount),
           )
         else
           // 当没有视频时，放置一个透明容器确保视频层被清除
@@ -892,10 +892,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   /// 构建视频播放器
-  Widget _buildMoviePlayer(String movieFile) {
+  Widget _buildMoviePlayer(String movieFile, int? repeatCount) {
     return MoviePlayer(
-      key: ValueKey(movieFile), // 添加key确保视频切换时正确重建组件
+      key: ValueKey('$movieFile-$repeatCount'), // 添加key确保视频切换时正确重建组件，包含repeatCount确保参数变化时重建
       movieFile: movieFile,
+      repeatCount: repeatCount, // 新增：传递重复播放次数
       autoPlay: true,
       looping: false,
       onVideoEnd: () {

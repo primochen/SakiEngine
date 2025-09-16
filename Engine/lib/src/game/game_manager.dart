@@ -792,6 +792,7 @@ class GameManager {
           // 直接切换到视频
           _currentState = _currentState.copyWith(
               movieFile: node.movieFile,
+              movieRepeatCount: node.repeatCount, // 新增：传递视频重复播放次数
               background: null, // 清空背景，视频优先显示
               sceneFilter: sceneFilter,
               clearSceneFilter: sceneFilter == null,
@@ -1670,6 +1671,7 @@ class GameManager {
           ////print('[GameManager] movie转场中点，更新状态');
           _currentState = _currentState.copyWith(
             movieFile: movieFile,
+            movieRepeatCount: repeatCount, // 新增：传递视频重复播放次数
             background: null, // 清空背景，视频优先显示
             sceneFilter: sceneFilter,
             clearSceneFilter: sceneFilter == null,
@@ -1699,6 +1701,7 @@ class GameManager {
       // 转场失败时直接更新状态
       _currentState = _currentState.copyWith(
         movieFile: movieFile,
+        movieRepeatCount: repeatCount, // 新增：传递视频重复播放次数
         background: null,
         sceneFilter: sceneFilter,
         clearSceneFilter: sceneFilter == null,
@@ -2294,6 +2297,7 @@ class GameManager {
 class GameState {
   final String? background;
   final String? movieFile; // 新增：当前视频文件
+  final int? movieRepeatCount; // 新增：视频重复播放次数
   final Map<String, CharacterState> characters;
   final String? dialogue;
   final String? speaker;
@@ -2319,6 +2323,7 @@ class GameState {
   GameState({
     this.background,
     this.movieFile, // 新增：视频文件参数
+    this.movieRepeatCount, // 新增：视频重复播放次数参数
     this.characters = const {},
     this.dialogue,
     this.speaker,
@@ -2350,6 +2355,7 @@ class GameState {
   GameState copyWith({
     String? background,
     String? movieFile, // 新增：视频文件参数
+    int? movieRepeatCount, // 新增：视频重复播放次数参数
     bool clearMovieFile = false, // 新增：清理视频文件标志
     Map<String, CharacterState>? characters,
     String? dialogue,
@@ -2385,6 +2391,7 @@ class GameState {
     return GameState(
       background: background ?? this.background,
       movieFile: clearMovieFile ? null : (movieFile ?? this.movieFile), // 修复：正确处理movie文件清理
+      movieRepeatCount: clearMovieFile ? null : (movieRepeatCount ?? this.movieRepeatCount), // 新增：处理视频重复次数
       characters: clearCharacters ? <String, CharacterState>{} : (characters ?? this.characters),
       dialogue: clearDialogueAndSpeaker ? null : (dialogue ?? this.dialogue),
       speaker: forceNullSpeaker

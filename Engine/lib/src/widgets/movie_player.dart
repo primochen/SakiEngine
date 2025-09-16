@@ -8,6 +8,7 @@ class MoviePlayer extends StatefulWidget {
   final VoidCallback? onVideoEnd;
   final bool autoPlay;
   final bool looping;
+  final int? repeatCount; // 新增：重复播放次数，null表示只播放一次
   
   const MoviePlayer({
     Key? key,
@@ -15,6 +16,7 @@ class MoviePlayer extends StatefulWidget {
     this.onVideoEnd,
     this.autoPlay = true,
     this.looping = false,
+    this.repeatCount, // 新增：重复次数参数
   }) : super(key: key);
 
   @override
@@ -27,6 +29,7 @@ class _MoviePlayerState extends State<MoviePlayer> {
   bool _hasError = false;
   String? _errorMessage;
   bool _hasCalledOnEnd = false; // 新增：防止重复调用结束回调
+  int _currentPlayCount = 0; // 新增：当前已播放次数
 
   @override
   void initState() {
@@ -134,13 +137,28 @@ class _MoviePlayerState extends State<MoviePlayer> {
       
       // 检查视频是否播放完成（位置达到或超过总时长且不是循环播放）
       if (position >= duration && !widget.looping && duration > Duration.zero) {
-        print('[MoviePlayer] 视频播放完成: position=$position, duration=$duration');
+        _currentPlayCount++;
+        print('[MoviePlayer] 视频播放完成第${_currentPlayCount}次: position=$position, duration=$duration');
         
-        // 设置标志防止重复调用
-        _hasCalledOnEnd = true;
+        // 检查是否需要重复播放
+        final targetRepeatCount = widget.repeatCount ?? 1; // 如果没有设置repeatCount，默认播放1次
         
-        // 调用结束回调
-        widget.onVideoEnd?.call();
+        if (_currentPlayCount < targetRepeatCount) {
+          // 还需要继续播放，重置视频到开始位置
+          print('[MoviePlayer] 开始第${_currentPlayCount + 1}次播放，总共需要播放${targetRepeatCount}次');
+          _controller!.seekTo(Duration.zero).then((_) {
+            _controller!.play();
+          });
+        } else {
+          // 播放完成所有重复次数
+          print('[MoviePlayer] 所有重复播放完成，共播放${_currentPlayCount}次');
+          
+          // 设置标志防止重复调用
+          _hasCalledOnEnd = true;
+          
+          // 调用结束回调
+          widget.onVideoEnd?.call();
+        }
       }
     }
   }
@@ -155,6 +173,7 @@ class _MoviePlayerState extends State<MoviePlayer> {
     _hasError = false;
     _errorMessage = null;
     _hasCalledOnEnd = false; // 重置结束回调标志
+    _currentPlayCount = 0; // 重置播放计数器
   }
 
   @override
