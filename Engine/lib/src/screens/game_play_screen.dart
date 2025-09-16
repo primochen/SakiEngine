@@ -388,7 +388,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         nextHotKey,
         keyDownHandler: (hotKey) {
           //print('🎮 下箭头键 - 前进剧情');
-          if (mounted && !_isShowingMenu) {
+          if (mounted && !_isShowingMenu && _gameManager.currentState.movieFile == null) {
             _dialogueProgressionManager.progressDialogue();
           }
         },
@@ -398,7 +398,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         prevHotKey,
         keyDownHandler: (hotKey) {
           //print('🎮 上箭头键 - 回滚剧情');
-          if (mounted) {
+          if (mounted && _gameManager.currentState.movieFile == null) {
             _handlePreviousDialogue();
           }
         },
@@ -501,7 +501,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDeveloperPanel || 
             _showDebugPanel || 
             _showExpressionSelector;
-        return !hasOverlayOpen;
+        // 禁用在视频播放时的快进功能
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+        return !hasOverlayOpen && !isPlayingMovie;
       },
       setGameManagerFastForward: (isFastForwarding) {
         // 通知GameManager快进状态变化
@@ -543,7 +545,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDeveloperPanel || 
             _showDebugPanel || 
             _showExpressionSelector;
-        return !hasOverlayOpen;
+        // 禁用在视频播放时的快进功能
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+        return !hasOverlayOpen && !isPlayingMovie;
       },
     );
     
@@ -577,7 +581,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             _showDebugPanel || 
             _showExpressionSelector ||
             _isFastForwarding; // 快进时不能自动播放
-        return !hasOverlayOpen;
+        // 禁用在视频播放时的自动播放功能
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+        return !hasOverlayOpen && !isPlayingMovie;
       },
     );
     
@@ -667,9 +673,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           if (event is KeyDownEvent) {
             if (event.logicalKey == LogicalKeyboardKey.enter || 
                 event.logicalKey == LogicalKeyboardKey.space) {
-              _gameManager.next();
-              // 通知自动播放管理器有手动推进
-              _autoPlayManager?.onManualProgress();
+              // 检查是否正在播放视频，如果是则不推进剧情
+              if (_gameManager.currentState.movieFile == null) {
+                _gameManager.next();
+                // 通知自动播放管理器有手动推进
+                _autoPlayManager?.onManualProgress();
+              }
               return KeyEventResult.handled;
             }
           }
@@ -748,17 +757,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                       _showDebugPanel || 
                       _showExpressionSelector;
                   
+                  // 检查是否正在播放视频
+                  final isPlayingMovie = gameState.movieFile != null;
+                  
                   // 处理标准的PointerScrollEvent（鼠标滚轮）
                   if (pointerSignal is PointerScrollEvent) {
                     // 向上滚动: 前进剧情
                     if (pointerSignal.scrollDelta.dy < 0) {
-                      if (!hasOverlayOpen) {
+                      if (!hasOverlayOpen && !isPlayingMovie) {
                         _dialogueProgressionManager.progressDialogue();
                       }
                     }
                     // 向下滚动: 回滚剧情
                     else if (pointerSignal.scrollDelta.dy > 0) {
-                      if (!hasOverlayOpen) {
+                      if (!hasOverlayOpen && !isPlayingMovie) {
                         _handlePreviousDialogue();
                       }
                     }
@@ -766,7 +778,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                   // 处理macOS触控板事件
                   else if (pointerSignal.toString().contains('Scroll')) {
                     // 触控板滚动事件，推进剧情
-                    if (!hasOverlayOpen) {
+                    if (!hasOverlayOpen && !isPlayingMovie) {
                       _dialogueProgressionManager.progressDialogue();
                     }
                   }
@@ -785,8 +797,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     _showDebugPanel ||
                     _showExpressionSelector;
                 
-                // 只有在没有弹窗时才推进剧情
-                if (!hasOverlayOpen) {
+                // 检查是否正在播放视频
+                final isPlayingMovie = gameState.movieFile != null;
+                
+                // 只有在没有弹窗且没有播放视频时才推进剧情
+                if (!hasOverlayOpen && !isPlayingMovie) {
                   _dialogueProgressionManager.progressDialogue();
                   // 通知自动播放管理器有手动推进
                   _autoPlayManager?.onManualProgress();
