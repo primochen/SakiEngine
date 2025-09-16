@@ -1,6 +1,6 @@
 //label// SoraNoUta 主标签脚本文件
 label start
-movie start repeat 10
+movie start repeat 8
 // 背景设置为白天天空
 scene bl
 play sound kazekage loop
