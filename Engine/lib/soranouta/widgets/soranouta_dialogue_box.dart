@@ -319,6 +319,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
     return Container(
       child: DialogueShakeEffect(
         dialogue: widget.dialogue,
+        displayedText: _typewriterController.displayedText, // 传递当前显示的文本
         enabled: true,
         intensity: 4.0 * uiScale,
         duration: const Duration(milliseconds: 600),

@@ -311,6 +311,7 @@ class _DialogueBoxState extends State<DialogueBox>
       onTap: _handleTap,
       child: DialogueShakeEffect(
         dialogue: widget.dialogue,
+        displayedText: _typewriterController.displayedText, // 传递当前显示的文本
         enabled: true,
         intensity: 4.0 * uiScale,
         duration: const Duration(milliseconds: 600),
