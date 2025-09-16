@@ -94,12 +94,10 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
     _toggleUIVisibility();
   }
 
-  /// 处理键盘事件（ESC键也可以切换UI）
+  /// 处理键盘事件（移除ESC键功能，避免与覆盖层冲突）
   bool _handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
-      _toggleUIVisibility();
-      return true;
-    }
+    // ESC键功能已移除，避免与overlay_scaffold冲突
+    // 只保留右键和左键的UI切换功能
     return false;
   }
 
