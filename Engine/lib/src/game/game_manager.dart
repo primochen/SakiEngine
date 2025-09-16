@@ -624,16 +624,32 @@ class GameManager {
 
   /// 视频播放完成后继续执行脚本
   void executeScriptAfterMovie() {
-    print('[GameManager] 视频播放完成，清理movie状态并继续执行脚本');
+    print('[GameManager] 视频播放完成，开始黑屏转场');
     
-    // 先清理movie状态
-    _currentState = _currentState.copyWith(
-      clearMovieFile: true, // 清理视频文件
-    );
-    _gameStateController.add(_currentState);
-    
-    // 然后继续执行脚本
-    _executeScript();
+    // 如果有context，使用转场效果；否则直接切换
+    if (_context != null) {
+      TransitionOverlayManager.instance.transition(
+        context: _context!,
+        duration: const Duration(milliseconds: 600), // 转场时长
+        onMidTransition: () {
+          // 在黑屏最深时清理movie状态并继续执行脚本
+          print('[GameManager] 转场中点：清理movie状态并继续执行脚本');
+          _currentState = _currentState.copyWith(
+            clearMovieFile: true, // 清理视频文件
+          );
+          _gameStateController.add(_currentState);
+          _executeScript();
+        },
+      );
+    } else {
+      // 兼容性处理：如果没有context，直接切换
+      print('[GameManager] 无context，直接清理movie状态并继续执行脚本');
+      _currentState = _currentState.copyWith(
+        clearMovieFile: true, // 清理视频文件
+      );
+      _gameStateController.add(_currentState);
+      _executeScript();
+    }
   }
 
   Future<void> _executeScript() async {
