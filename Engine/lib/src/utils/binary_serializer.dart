@@ -5,7 +5,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
 class BinarySerializer {
-  static const int _version = 2;
+  static const int _version = 3; // 增加版本号以支持movieFile字段
   static const String _magicNumber = 'SAKI';
 
   /// 将SaveSlot序列化为二进制数据
@@ -86,7 +86,7 @@ class BinarySerializer {
     
     // 读取游戏状态快照
     //print('Debug: 读取游戏状态快照...');
-    final snapshot = _deserializeGameStateSnapshot(reader);
+    final snapshot = _deserializeGameStateSnapshot(reader, version);
     
     //print('Debug: 存档反序列化完成');
     return SaveSlot(
@@ -125,15 +125,15 @@ class BinarySerializer {
   }
 
   /// 反序列化GameStateSnapshot
-  static GameStateSnapshot _deserializeGameStateSnapshot(_BinaryReader reader) {
+  static GameStateSnapshot _deserializeGameStateSnapshot(_BinaryReader reader, [int? version]) {
     final scriptIndex = reader.readInt32();
-    final currentState = _deserializeGameState(reader);
+    final currentState = _deserializeGameState(reader, version);
     
     // 反序列化对话历史
     final historyLength = reader.readInt32();
     final dialogueHistory = <DialogueHistoryEntry>[];
     for (int i = 0; i < historyLength; i++) {
-      dialogueHistory.add(_deserializeDialogueHistoryEntry(reader));
+      dialogueHistory.add(_deserializeDialogueHistoryEntry(reader, version));
     }
     
     // 反序列化 NVL 状态
@@ -183,9 +183,17 @@ class BinarySerializer {
   }
 
   /// 反序列化GameState
-  static GameState _deserializeGameState(_BinaryReader reader) {
+  static GameState _deserializeGameState(_BinaryReader reader, [int? version]) {
     final background = reader.readNullableString();
-    final movieFile = reader.readNullableString(); // 新增：反序列化视频文件
+    
+    // 只在版本3及以上读取movieFile字段
+    String? movieFile;
+    if (version != null && version >= 3) {
+      movieFile = reader.readNullableString();
+    } else {
+      movieFile = null; // 旧版本存档没有movieFile字段
+    }
+    
     final dialogue = reader.readNullableString();
     final speaker = reader.readNullableString();
     
@@ -260,12 +268,12 @@ class BinarySerializer {
   }
 
   /// 反序列化DialogueHistoryEntry
-  static DialogueHistoryEntry _deserializeDialogueHistoryEntry(_BinaryReader reader) {
+  static DialogueHistoryEntry _deserializeDialogueHistoryEntry(_BinaryReader reader, [int? version]) {
     final speaker = reader.readNullableString();
     final dialogue = reader.readString();
     final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
     final scriptIndex = reader.readInt32();
-    final stateSnapshot = _deserializeGameStateSnapshot(reader); // 历史记录也使用相同版本
+    final stateSnapshot = _deserializeGameStateSnapshot(reader, version); // 传递版本号
     
     return DialogueHistoryEntry(
       speaker: speaker,
