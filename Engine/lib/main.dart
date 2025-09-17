@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
@@ -49,7 +50,8 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
   }
 
   Future<bool> _showExitConfirmation() async {
-    return await ExitConfirmationDialog.showExitConfirmation(context, hasProgress: true);
+    return await ExitConfirmationDialog.showExitConfirmation(context,
+        hasProgress: true);
   }
 
   void _enterGame({SaveSlot? saveSlot}) {
@@ -85,7 +87,8 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
       builder: (builderContext, snapshot) {
         if (!snapshot.hasData) {
           return Scaffold(
-            body: Center(child: Container(color: const Color.fromARGB(0, 0, 0, 0))),
+            body: Center(
+                child: Container(color: const Color.fromARGB(0, 0, 0, 0))),
           );
         }
 
@@ -130,25 +133,32 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
 void main() async {
   // 设置调试日志收集器
   setupDebugLogger();
-  
+
   // 在Zone中运行应用，捕获所有print输出
   runZoned(() async {
     // 初始化Flutter绑定
     WidgetsFlutterBinding.ensureInitialized();
-    
+
+    // 注册fvp以支持所有平台的视频播放，特别是Windows
+    fvp.registerWith(options: {
+      'global': {
+        'log': 'debug', // off, error, warning, info, debug, all(default)
+      }
+    });
+
     // 初始化窗口管理器
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
-    
+
     // 初始化系统热键，清理之前的注册（用于热重载）
     await hotKeyManager.unregisterAll();
-    
+
     // 加载引擎配置
     await SakiEngineConfig().loadConfig();
-    
+
     // 初始化设置管理器
     await SettingsManager().init();
-    
+
     // 初始化全局变量管理器并打印变量状态
     await GlobalVariableManager().init();
     final allVars = GlobalVariableManager().getAllVariables();
@@ -161,13 +171,13 @@ void main() async {
       });
     }
     print('=== 全局变量状态结束 ===');
-    
+
     // 应用深色模式设置
     SakiEngineConfig().updateThemeForDarkMode();
-    
+
     // 初始化项目模块
     initializeProjectModules();
-    
+
     // 启动应用
     runApp(const SakiEngineApp());
   }, zoneSpecification: ZoneSpecification(
@@ -188,7 +198,6 @@ class SakiEngineApp extends StatefulWidget {
 }
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -224,10 +233,11 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
                 return MaterialApp(
                   title: appTitle,
                   debugShowCheckedModeBanner: false,
-                  theme: customTheme ?? ThemeData(
-                    primarySwatch: Colors.blue,
-                    fontFamily: 'SourceHanSansCN',
-                  ),
+                  theme: customTheme ??
+                      ThemeData(
+                        primarySwatch: Colors.blue,
+                        fontFamily: 'SourceHanSansCN',
+                      ),
                   home: const StartupMaskWrapper(),
                 );
               },
@@ -248,7 +258,7 @@ class StartupMaskWrapper extends StatefulWidget {
   State<StartupMaskWrapper> createState() => _StartupMaskWrapperState();
 }
 
-class _StartupMaskWrapperState extends State<StartupMaskWrapper> 
+class _StartupMaskWrapperState extends State<StartupMaskWrapper>
     with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -257,13 +267,13 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
   @override
   void initState() {
     super.initState();
-    
+
     // 创建淡出动画控制器
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(
       begin: 1.0,
       end: 0.0,
@@ -271,7 +281,7 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
       parent: _fadeController,
       curve: Curves.easeOut,
     ));
-    
+
     // 启动遮罩和预热
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startMaskAndPrewarm();
@@ -283,10 +293,10 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
       try {
         // 等待1秒保持黑屏，然后预热
         await Future.delayed(const Duration(milliseconds: 1000));
-        
+
         // 在后台预热
         await TransitionPrewarmingManager.instance.prewarm(context);
-        
+
         if (mounted) {
           _prewarmingComplete = true;
           // 开始淡出动画
@@ -316,7 +326,7 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
       children: [
         // 实际的游戏内容
         const GameContainer(),
-        
+
         // 启动遮罩 - 使用动画淡出
         AnimatedBuilder(
           animation: _fadeAnimation,
@@ -324,7 +334,8 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
             // 如果预热还未完成，或者动画值大于0，则显示遮罩
             if (!_prewarmingComplete || _fadeAnimation.value > 0) {
               return Material(
-                color: Colors.black.withOpacity(_prewarmingComplete ? _fadeAnimation.value : 1.0),
+                color: Colors.black.withOpacity(
+                    _prewarmingComplete ? _fadeAnimation.value : 1.0),
                 child: const SizedBox(
                   width: double.infinity,
                   height: double.infinity,

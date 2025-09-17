@@ -209,7 +209,7 @@ class _MoviePlayerState extends State<MoviePlayer> {
         color: Colors.black,
         child: const Center(
           child: CircularProgressIndicator(
-            color: Colors.white,
+            color: Colors.black,
           ),
         ),
       );

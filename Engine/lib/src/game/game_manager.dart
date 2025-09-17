@@ -2097,10 +2097,24 @@ class GameManager {
       });
     }
   }
+  
+  /// 检查脚本是否已初始化
+  bool _isScriptInitialized() {
+    try {
+      // 尝试访问_script，如果未初始化会抛出LateInitializationError
+      return _script.children.isNotEmpty;
+    } catch (e) {
+      // 如果抛出异常，说明_script尚未初始化
+      return false;
+    }
+  }
 
   /// 检测当前脚本位置的场景动画并重新启动
   Future<void> _checkAndRestoreSceneAnimation() async {
     if (_tickerProvider == null) return;
+    
+    // 检查_script是否已初始化
+    if (!_isScriptInitialized()) return;
     
     // 向前搜索最近的BackgroundNode，找出当前场景的动画设置
     BackgroundNode? lastBackgroundNode;
