@@ -2,7 +2,7 @@
 label start
 movie start repeat 8
 // 背景设置为白天天空
-scene bl
+scene bl with diss
 play sound kazekage loop
 nvlm
 // 旁白文本（移除了xp前缀）

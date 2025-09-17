@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:fvp/fvp.dart' as fvp;
@@ -45,7 +46,15 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
   Future<void> onWindowClose() async {
     bool shouldClose = await _showExitConfirmation();
     if (shouldClose) {
-      await windowManager.destroy();
+      // 优化退出流程：先关闭窗口再退出程序
+      try {
+        await windowManager.close();
+        await Future.delayed(const Duration(milliseconds: 100));
+        SystemNavigator.pop();
+      } catch (e) {
+        // 如果关闭失败，使用原有方法
+        await windowManager.destroy();
+      }
     }
   }
 

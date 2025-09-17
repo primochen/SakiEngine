@@ -776,5 +776,6 @@ l "怎么了？"
 stop music 
 cg cgcp0_2 4
 x "[pass]你到底是谁？[/pass]"////闭嘴
+scene bl
 movie OP
 jump cp1_001

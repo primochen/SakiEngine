@@ -205,22 +205,23 @@ class _GameUILayerState extends State<GameUILayer> {
           ),
         ),
         
-        // 快捷菜单
-        HideableUI(
-          child: QuickMenu(
-            onSave: widget.onToggleSave,
-            onLoad: widget.onToggleLoad,
-            onReview: widget.onToggleReview,
-            onSettings: widget.onToggleSettings,
-            onBack: widget.onHandleQuickMenuBack,
-            onPreviousDialogue: widget.onHandlePreviousDialogue,
-            onSkipRead: widget.onSkipRead, // 新增：传递跳过已读文本回调
-            isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
-            onAutoPlay: widget.onAutoPlay, // 新增：传递自动播放回调
-            isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
-            onThemeToggle: widget.onThemeToggle, // 新增：传递主题切换回调
+        // 快捷菜单 - 在播放视频或章节场景时隐藏
+        if (widget.gameState.movieFile == null && !widget.gameManager.isCurrentSceneChapter)
+          HideableUI(
+            child: QuickMenu(
+              onSave: widget.onToggleSave,
+              onLoad: widget.onToggleLoad,
+              onReview: widget.onToggleReview,
+              onSettings: widget.onToggleSettings,
+              onBack: widget.onHandleQuickMenuBack,
+              onPreviousDialogue: widget.onHandlePreviousDialogue,
+              onSkipRead: widget.onSkipRead, // 新增：传递跳过已读文本回调
+              isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
+              onAutoPlay: widget.onAutoPlay, // 新增：传递自动播放回调
+              isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
+              onThemeToggle: widget.onThemeToggle, // 新增：传递主题切换回调
+            ),
           ),
-        ),
         
         // 快进指示器 - 顶部显示
         if (widget.gameState.isFastForwarding)

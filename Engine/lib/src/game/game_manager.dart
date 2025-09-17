@@ -367,6 +367,24 @@ class GameManager {
     return false;
   }
 
+  /// 检查当前场景是否包含章节标识
+  /// 用于决定是否应该隐藏快捷菜单
+  bool get isCurrentSceneChapter {
+    // 检查当前背景是否包含章节标识
+    final currentBg = _currentState.background;
+    if (currentBg != null && _containsChapter(currentBg)) {
+      return true;
+    }
+    
+    // 检查当前视频是否包含章节标识
+    final currentMovie = _currentState.movieFile;
+    if (currentMovie != null && _containsChapter(currentMovie)) {
+      return true;
+    }
+    
+    return false;
+  }
+
   GameManager({this.onReturn}) {
     _currentState = GameState.initial(); // 提前初始化，避免late变量访问错误
   }
