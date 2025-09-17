@@ -149,6 +149,9 @@ void main() async {
     // 初始化窗口管理器
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
+    
+    // 设置窗口默认最大化
+    await windowManager.maximize();
 
     // 初始化系统热键，清理之前的注册（用于热重载）
     await hotKeyManager.unregisterAll();

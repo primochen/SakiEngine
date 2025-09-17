@@ -1,0 +1,30 @@
+label cp1_001
+scene [chapter1,title:bottom=0.0 left=0.0 zoom=0.3] timer 5.0 fx blur
+//黑场 没有bgm
+play sound kazekage loop
+scene bl
+nvlm
+nan "呼～"
+nan "呼～呼～"
+"我缓缓睁开双眼。"
+"做了一个奇怪的梦。"
+endnvlm
+scene tosi
+//半夜的高楼的房间内部，拍摄窗口，带窗帘的背景 fade 2秒
+"我慢慢起身，坐在床边上。"
+"时间应该还是半夜。"
+scene tosi2 with diss
+play sound kaaten
+//diss到窗帘被拉开的背景
+nvlm
+"我拉开窗帘。"
+"这里是二十多层的位置，所以可以俯瞰到地表的景色。"
+"我会梦到这个，果然还是跟我白天做的事有关系吧。"
+"听说睡前最想的是什么，睡觉就会梦到什么。"
+endnvlm
+nvlm
+"......."
+"距离那件事，已经过去几天了。"
+"我会成功的。"
+endnvlm
+jump cp1_002
