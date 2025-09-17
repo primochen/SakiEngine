@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_linux
   flutter_avif_linux
+  fvp
   hotkey_manager_linux
   screen_retriever_linux
   window_manager

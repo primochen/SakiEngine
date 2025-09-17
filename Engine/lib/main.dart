@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
@@ -135,6 +136,9 @@ void main() async {
   runZoned(() async {
     // 初始化Flutter绑定
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // 注册fvp以支持所有平台的视频播放，特别是Windows
+    fvp.registerWith();
     
     // 初始化窗口管理器
     await windowManager.ensureInitialized();
