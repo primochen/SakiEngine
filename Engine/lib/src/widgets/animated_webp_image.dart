@@ -107,19 +107,19 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
           final file = File(fileSystemPath);
           
           if (await file.exists()) {
-            print('[AnimatedWebPImage] 从外部文件加载WebP: $fileSystemPath');
+            //print('[AnimatedWebPImage] 从外部文件加载WebP: $fileSystemPath');
             return await file.readAsBytes();
           }
         }
         // 如果外部文件不存在，回退到assets加载
-        print('[AnimatedWebPImage] 外部文件不存在，回退到assets: ${widget.assetPath}');
+        //print('[AnimatedWebPImage] 外部文件不存在，回退到assets: ${widget.assetPath}');
       }
       
       // 从assets加载
       final data = await rootBundle.load(widget.assetPath);
       return data.buffer.asUint8List();
     } catch (e) {
-      print('[AnimatedWebPImage] 加载WebP字节失败: $e');
+      //print('[AnimatedWebPImage] 加载WebP字节失败: $e');
       return null;
     }
   }
@@ -243,7 +243,7 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[AnimatedWebPImage] 加载WebP失败: $e');
+        //print('[AnimatedWebPImage] 加载WebP失败: $e');
       }
       if (mounted) {
         setState(() {
