@@ -39,24 +39,24 @@ l "什么？"
 l "这个计划我可是计划了好久的，现在就开始未雨绸缪了。"
 x akireta "提前祝贺你。"////夏悠 应付的表情 差不多得了
 l "啊哈哈哈，谢谢。我会成功的。"
-x "提前祝贺你，收获失败的教训。"
-x pose2 ciallo "毕竟失败是成功之母，年纪轻轻就收获长辈级的宝物，当然该狠狠祝贺。"////夏悠开心 手指着
-x tameiki2 "可喜可贺，可喜可贺。"////夏悠闭眼 叹气
+x pose2 ciallo "提前祝贺你，收获失败的教训。"
+x pose4 doyagao an jump repeat 2 "毕竟失败是成功之母，年纪轻轻就收获长辈级的宝物，当然该狠狠祝贺。"////夏悠开心 手指着
+x pose2 tameiki "可喜可贺，可喜可贺。"////夏悠闭眼 叹气
 l "你这...算了。"
 l "我本来就是在开玩笑呢。"
 l "我怎么可能去撩妹..."
 l "至少...已经没有这个必要了。"
-x  wakuwaku2 an shake2 repeat 4 "什么？什么？"////夏悠期待
+x pose5 wakuwaku2 an shake2 repeat 4 "什么？什么？"////夏悠期待
 l "啊啊啊！不说这个了对不起！！"////对话框震动
-x hen "什么嘛！真没趣。"////夏悠气鼓鼓
+x hen an fururu repeat 2 "什么嘛！真没趣。"////夏悠气鼓鼓
 ////另一首夕阳背景 带情感色彩
 play sound semi loop  
 ////日本蝉的音效
 nan "沙沙沙沙沙沙～唔～"
-x wakuwaku "你听到了吗？"////夏悠侧脸思考
+x wakuwaku an fururu "你听到了吗？"////夏悠侧脸思考
 l "听到什么？"
 x hen an jump repeat 2 "蝉啊！！"////对话框震动 夏悠赌气 立绘震动
 l "哦，是蝉啊！"
-x smile "Yes,I am！"////夏悠微笑（smile）
-x ciallo "对，就是蝉。"////夏悠ciallo
+x pose2 wakuwaku3 "Yes,I am！"////夏悠微笑（smile）
+x pose4 ciallo "对，就是蝉。"////夏悠ciallo
 return
