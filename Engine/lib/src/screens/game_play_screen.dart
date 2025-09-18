@@ -48,6 +48,7 @@ import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/movie_player.dart'; // 新增：视频播放器导入
+import 'package:sakiengine/src/utils/dialogue_shake_effect.dart'; // 新增：震动效果导入
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -871,38 +872,43 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   Widget _buildSceneWithFilter(GameState gameState) {    
-    return Stack(
-      children: [
-        // 背景层 - 总是渲染背景（如果有的话）
-        if (gameState.background != null)
-          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
-        
-        // 角色和CG层 - 只有在没有视频时才显示
-        if (gameState.movieFile == null) ...[
-          ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-          // CG角色渲染，像scene一样铺满屏幕
-          ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        ],
-        
-        // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
-        if (gameState.movieFile != null)
-          Positioned.fill(
-            child: _buildMoviePlayer(gameState.movieFile!, gameState.movieRepeatCount),
-          )
-        else
-          // 当没有视频时，放置一个透明容器确保视频层被清除
-          Positioned.fill(
-            child: Container(
-              color: Colors.transparent,
-              // 添加key确保每次状态变化时重建
-              key: const ValueKey('no_movie'),
-            ),
-          ),
+    return SimpleShakeWrapper(
+      trigger: gameState.isShaking && (gameState.shakeTarget == 'background' || gameState.shakeTarget == null),
+      intensity: gameState.shakeIntensity ?? 8.0,
+      duration: Duration(milliseconds: ((gameState.shakeDuration ?? 1.0) * 1000).round()),
+      child: Stack(
+        children: [
+          // 背景层 - 总是渲染背景（如果有的话）
+          if (gameState.background != null)
+            _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
           
-        // anime覆盖层 - 最顶层
-        if (gameState.animeOverlay != null)
-          _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
-      ],
+          // 角色和CG层 - 只有在没有视频时才显示
+          if (gameState.movieFile == null) ...[
+            ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+            // CG角色渲染，像scene一样铺满屏幕
+            ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
+          ],
+          
+          // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
+          if (gameState.movieFile != null)
+            Positioned.fill(
+              child: _buildMoviePlayer(gameState.movieFile!, gameState.movieRepeatCount),
+            )
+          else
+            // 当没有视频时，放置一个透明容器确保视频层被清除
+            Positioned.fill(
+              child: Container(
+                color: Colors.transparent,
+                // 添加key确保每次状态变化时重建
+                key: const ValueKey('no_movie'),
+              ),
+            ),
+            
+          // anime覆盖层 - 最顶层
+          if (gameState.animeOverlay != null)
+            _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
+        ],
+      ),
     );
   }
 

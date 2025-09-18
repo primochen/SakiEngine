@@ -100,7 +100,7 @@ ease 0.05 xcenter-0.02
 shake2
 ease 0.05 xcenter+0.005
 ease 0.05 xcenter-0.005
-
+//左右颤抖
 bounce
 ease 0.15 ycenter-0.08
 ease 0.15 ycenter+0.08
@@ -112,3 +112,9 @@ ease 0.15 ycenter+0
 fururu
 ease 0.07 ycenter-0.01
 ease 0.1 ycenter-0
+
+sky_anime
+scale+0.5
+ycenter+0.1
+ease 3.0 ycenter-0.1
+//天空运镜

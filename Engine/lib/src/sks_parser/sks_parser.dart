@@ -544,6 +544,28 @@ class SksParser {
             nodes.add(BoolNode(variableName, value));
           }
           break;
+        case 'shake':
+          // shake [duration 1.0] [intensity 8.0] [target background]
+          double? duration;
+          double? intensity;
+          String? target;
+          
+          // 解析参数
+          for (int i = 1; i < parts.length; i++) {
+            if (parts[i] == 'duration' && i + 1 < parts.length) {
+              duration = double.tryParse(parts[i + 1]);
+              i++; // 跳过下一个参数
+            } else if (parts[i] == 'intensity' && i + 1 < parts.length) {
+              intensity = double.tryParse(parts[i + 1]);
+              i++; // 跳过下一个参数
+            } else if (parts[i] == 'target' && i + 1 < parts.length) {
+              target = parts[i + 1];
+              i++; // 跳过下一个参数
+            }
+          }
+          
+          nodes.add(ShakeNode(duration: duration, intensity: intensity, target: target));
+          break;
         default:
           final sayNode = _parseSay(trimmedLine);
           if (sayNode != null) {

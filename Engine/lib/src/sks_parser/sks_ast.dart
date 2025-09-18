@@ -174,3 +174,20 @@ class ConditionalSayNode implements SksNode {
     this.repeatCount,
   });
 }
+
+class ShakeNode implements SksNode {
+  final double? duration;
+  final double? intensity;
+  final String? target;
+  
+  ShakeNode({
+    this.duration,
+    this.intensity,
+    this.target,
+  });
+  
+  @override
+  String toString() {
+    return 'ShakeNode(duration: $duration, intensity: $intensity, target: $target)';
+  }
+}

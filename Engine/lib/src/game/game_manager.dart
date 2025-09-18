@@ -1546,6 +1546,42 @@ class GameManager {
         _scriptIndex++;
         continue;
       }
+
+      if (node is ShakeNode) {
+        // 处理震动命令
+        final duration = node.duration ?? 1.0; // 默认1秒
+        final intensity = node.intensity ?? 8.0; // 默认强度8
+        final target = node.target ?? 'background'; // 默认震动背景
+        
+        if (kDebugMode) {
+          print('[ShakeNode] 触发震动: target=$target, duration=$duration, intensity=$intensity');
+        }
+        
+        // 设置震动状态
+        _currentState = _currentState.copyWith(
+          isShaking: true,
+          shakeTarget: target,
+          shakeDuration: duration,
+          shakeIntensity: intensity,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        
+        // 启动计时器，震动结束后清除震动状态
+        Timer(Duration(milliseconds: (duration * 1000).round()), () {
+          _currentState = _currentState.copyWith(
+            isShaking: false,
+            shakeTarget: null,
+            shakeDuration: null,
+            shakeIntensity: null,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        });
+        
+        _scriptIndex++;
+        continue;
+      }
     }
     _isProcessing = false;
   }
@@ -2367,6 +2403,10 @@ class GameState {
   final Map<String, CharacterState> cgCharacters; // 新增：CG角色状态，像scene一样铺满显示
   final bool isFastForwarding; // 新增：当前是否处于快进模式
   final bool isAutoPlaying; // 新增：当前是否处于自动播放模式
+  final bool isShaking; // 新增：当前是否正在震动
+  final String? shakeTarget; // 新增：震动目标 (dialogue/background)
+  final double? shakeDuration; // 新增：震动持续时间
+  final double? shakeIntensity; // 新增：震动强度
 
   GameState({
     this.background,
@@ -2393,6 +2433,10 @@ class GameState {
     this.cgCharacters = const {}, // 新增：CG角色状态，默认为空
     this.isFastForwarding = false, // 新增：快进状态，默认false
     this.isAutoPlaying = false, // 新增：自动播放状态，默认false
+    this.isShaking = false, // 新增：震动状态，默认false
+    this.shakeTarget, // 新增：震动目标
+    this.shakeDuration, // 新增：震动持续时间
+    this.shakeIntensity, // 新增：震动强度
   });
 
   factory GameState.initial() {
@@ -2435,6 +2479,10 @@ class GameState {
     bool clearCgCharacters = false, // 新增：是否清空CG角色
     bool? isFastForwarding, // 新增：快进状态
     bool? isAutoPlaying, // 新增：自动播放状态
+    bool? isShaking, // 新增：震动状态
+    String? shakeTarget, // 新增：震动目标
+    double? shakeDuration, // 新增：震动持续时间
+    double? shakeIntensity, // 新增：震动强度
   }) {
     return GameState(
       background: background ?? this.background,
@@ -2465,6 +2513,10 @@ class GameState {
       cgCharacters: clearCgCharacters ? <String, CharacterState>{} : (cgCharacters ?? this.cgCharacters), // 新增
       isFastForwarding: isFastForwarding ?? this.isFastForwarding, // 新增：快进状态
       isAutoPlaying: isAutoPlaying ?? this.isAutoPlaying, // 新增：自动播放状态
+      isShaking: isShaking ?? this.isShaking, // 新增：震动状态
+      shakeTarget: shakeTarget ?? this.shakeTarget, // 新增：震动目标
+      shakeDuration: shakeDuration ?? this.shakeDuration, // 新增：震动持续时间
+      shakeIntensity: shakeIntensity ?? this.shakeIntensity, // 新增：震动强度
     );
   }
 }
