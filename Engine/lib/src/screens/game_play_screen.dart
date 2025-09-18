@@ -687,6 +687,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           return KeyEventResult.ignored;
         },
         child: Scaffold(
+          backgroundColor: Colors.black, // 添加黑色背景，这样震动时露出的就是黑色
           body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
           builder: (context, snapshot) {

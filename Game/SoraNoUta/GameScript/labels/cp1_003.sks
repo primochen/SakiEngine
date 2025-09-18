@@ -3,7 +3,7 @@ label cp1_003
 ////夕阳的bgm nvl模式
 stop music
 scene sky timer 2.0
-scene sky_yuu timer 2.0
+scene sky_yuu timer 2.0 with diss
 nvlm
 "......"
 "......"
