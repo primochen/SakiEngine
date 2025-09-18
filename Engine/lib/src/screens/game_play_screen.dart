@@ -69,7 +69,7 @@ class GamePlayScreen extends StatefulWidget {
 class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
-  final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
+  final _gameUILayerKey = GlobalKey<GameUILayerState>();
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
@@ -625,7 +625,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   // 显示通知消息
   void _showNotificationMessage(String message) {
-    _notificationOverlayKey.currentState?.show(message);
+    // 调用GameUILayer的showNotification方法
+    _gameUILayerKey.currentState?.showNotification(message);
   }
 
   Future<void> _handleHotReload() async {
@@ -813,6 +814,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               child: Stack(
                 children: [
                   GameUILayer(
+                    key: _gameUILayerKey,
                     gameState: gameState,
                     gameManager: _gameManager,
                     dialogueProgressionManager: _dialogueProgressionManager,
@@ -843,7 +845,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
                     expressionSelectorManager: _expressionSelectorManager,
                     createDialogueBox: _createDialogueBox,
-                    showNotificationMessage: _showNotificationMessage,
                   ),
                   // 加载淡出覆盖层 - 不会被隐藏
                   AnimatedBuilder(

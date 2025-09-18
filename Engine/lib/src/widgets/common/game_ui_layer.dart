@@ -62,9 +62,6 @@ class GameUILayer extends StatefulWidget {
   
   // 对话框创建函数
   final Widget Function({Key? key, String? speaker, String? speakerAlias, required String dialogue, required bool isFastForwarding, required int scriptIndex}) createDialogueBox;
-  
-  // 通知显示回调
-  final Function(String) showNotificationMessage;
 
   const GameUILayer({
     super.key,
@@ -98,14 +95,13 @@ class GameUILayer extends StatefulWidget {
     required this.onProgressDialogue,
     required this.expressionSelectorManager,
     required this.createDialogueBox,
-    required this.showNotificationMessage,
   });
 
   @override
-  State<GameUILayer> createState() => _GameUILayerState();
+  State<GameUILayer> createState() => GameUILayerState();
 }
 
-class _GameUILayerState extends State<GameUILayer> {
+class GameUILayerState extends State<GameUILayer> {
   final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
 
   /// 检查是否有弹窗显示或正在播放视频
@@ -354,8 +350,13 @@ class _GameUILayerState extends State<GameUILayer> {
     );
   }
 
-  /// 显示通知消息
+  /// 显示通知消息（公开给外部调用）
   void showNotification(String message) {
     _notificationOverlayKey.currentState?.show(message);
+  }
+
+  /// 显示通知消息（内部方法）
+  void _showNotificationMessage(String message) {
+    showNotification(message);
   }
 }
