@@ -118,3 +118,10 @@ scale+0.5
 ycenter+0.1
 ease 3.0 ycenter-0.1
 //天空运镜
+
+cgchan
+scale+0.5
+xcenter-0.02
+ycenter+0.2
+ease 5.0 xcenter+0.05
+ease 5.0 scale-0 ycenter-0 xcenter+0
