@@ -125,3 +125,8 @@ xcenter-0.02
 ycenter+0.2
 ease 5.0 xcenter+0.05
 ease 5.0 scale-0 ycenter-0 xcenter+0
+
+attack_syozen
+xcenter-0
+ease 0.5 xcenter+0.25
+ease 0.5 xcenter-0

@@ -192,7 +192,7 @@ endmenu
 label cp1_002_p
 "我命运的一战，我出的是：剪刀。"
 "夏悠出的则是——"
-show xiayo1 moeru  an jump
+show xiayo1 moeru at xiayo1pose an jump
 play sound haneru
 "剪刀！"
 x tameiki "平局了。"//夏悠叹气
@@ -208,7 +208,7 @@ label cp1_002_m
 "人不会踏进同一条河流。至少我是这么想的对面的。"
 "所以我又出了一次剪刀。"
 "夏悠出的则是——"
-show xiayo1 moeru  an jump
+show xiayo1 moeru at xiayo1pose an jump
 play sound haneru
 "剪刀！"
 x wakuwaku "啊！"//对话框震动 //夏悠震惊
@@ -228,7 +228,7 @@ endmenu
 label cp1_002_loop_0
 "我出了剪刀。"
 "夏悠则出的是——"
-show xiayo1 moeru  an jump
+show xiayo1 moeru  at xiayo1pose an jump
 play sound haneru
 "剪刀！"
 x hen "再来！！"//对话框震动 夏悠生气
@@ -236,7 +236,7 @@ jump cp1_002_loop
 label cp1_002_a
 "这次我出了石头。"
 "夏悠则出的是——"
-show xiayo1 moeru an jump
+show xiayo1 moeru at xiayo1pose an jump
 play sound haneru
 "剪刀！"
 l "哈哈，我赢了。"
@@ -251,7 +251,7 @@ jump cp1_002_xy
 label cp1_002_y
 "这次我出了布。"
 "而夏悠出的是——"
-show xiayo1 moeru an jump
+show xiayo1 moeru at xiayo1pose an jump
 play sound haneru
 "剪刀！！"
 x  pose4 dame an shake2 repeat 2 "耶！我赢了！"//夏悠高兴
@@ -355,7 +355,7 @@ play sound chin
 "找到了！"//对话框震动
 xnan "哇唔！！"//对话框震动
 shake
-show xiayo1 dame  an topin
+show xiayo1 dame  at xiayo1pose an topin
 play sound haneru
 "夏悠从树上跳了下来，扑倒在我身上。"
 //搞怪的bgm

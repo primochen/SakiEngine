@@ -14,7 +14,7 @@ play music himitsukichi
 "吃完饭散散步也有助于消化。"
 "看到了她们三个。"
 l "今天来玩什么？"
-show xiayo1 unhappy an topin
+show xiayo1 unhappy at xiayo1pose  an topin
 play sound haneru
 ////弹出夏悠立绘 unhappy
 "我走到夏悠旁边问到。"
@@ -276,9 +276,9 @@ l "老师......"
 l "我知道了。"
 "我扭头看向夏悠的座位。"
 endnvlm
-show xiayo1 smile
+show xiayo1 smile at xiayo1pose
 "夏悠撑着脸对我微笑着。"
-show xiayo1 wakuwaku2 an shake2 repeat 2
+show xiayo1 wakuwaku2 at xiayo1pose an shake2 repeat 2
 play sound pekori
 "张开了嘴，轻声说着话。"
 "从嘴型来看，明显说的是：“快去吧！”。"
