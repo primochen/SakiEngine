@@ -943,6 +943,14 @@ class GameManager {
         // 检测角色位置变化并触发动画（如果需要）
         // 先将新角色添加到临时角色列表，然后检测位置变化
         final tempCharacters = Map.of(newCharacters);
+        
+        // 清理现有角色的动画属性，确保位置计算基于基础位置
+        for (final entry in tempCharacters.entries) {
+          tempCharacters[entry.key] = entry.value.copyWith(
+            clearAnimationProperties: true, // 清理动画属性
+          );
+        }
+        
         tempCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: node.pose,
           expression: node.expression,
@@ -1140,6 +1148,14 @@ class GameManager {
             );
             
             final newCharacters = Map.of(_currentState.characters);
+            
+            // 清理现有角色的动画属性，确保位置计算基于基础位置
+            for (final entry in newCharacters.entries) {
+              newCharacters[entry.key] = entry.value.copyWith(
+                clearAnimationProperties: true, // 清理动画属性
+              );
+            }
+            
             newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
@@ -1287,6 +1303,14 @@ class GameManager {
               );
               
               final newCharacters = Map.of(_currentState.characters);
+              
+              // 清理现有角色的动画属性，确保位置计算基于基础位置
+              for (final entry in newCharacters.entries) {
+                newCharacters[entry.key] = entry.value.copyWith(
+                  clearAnimationProperties: true, // 清理动画属性
+                );
+              }
+              
               newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
                 pose: node.pose,
                 expression: node.expression,
@@ -2447,20 +2471,8 @@ class GameManager {
           _gameStateController.add(_currentState);
         },
         onComplete: () {
-          // 动画完成，清理动画属性
-          final finalCharacters = Map<String, CharacterState>.from(_currentState.characters);
-          for (final entry in finalCharacters.entries) {
-            finalCharacters[entry.key] = entry.value.copyWith(
-              animationProperties: null,
-            );
-          }
-          
-          _currentState = _currentState.copyWith(
-            characters: finalCharacters,
-            clearDialogueAndSpeaker: false,
-            everShownCharacters: _everShownCharacters
-          );
-          _gameStateController.add(_currentState);
+          // 动画完成，简单更新状态，不清理动画属性
+          // 让后续的正常操作（如添加新角色）自然地处理最终状态
         },
       );
     } else {
