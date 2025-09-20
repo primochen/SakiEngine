@@ -1397,7 +1397,8 @@ class GameManager {
       if (node is MenuNode) {
         _currentState = _currentState.copyWith(currentNode: node, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
-        _scriptIndex++;
+        // 注意：不立即推进脚本索引，让存档能够保存到MenuNode的位置
+        // _scriptIndex 将在选择完成后由 jumpToLabel 推进
         _isProcessing = false;
         return;
       }
@@ -1688,6 +1689,20 @@ class GameManager {
     if (shouldReExecute) {
       await _executeScript();
     } else {
+      // 不重新执行脚本时，检查当前位置是否是MenuNode
+      if (_scriptIndex < _script.children.length) {
+        final currentNode = _script.children[_scriptIndex];
+        if (currentNode is MenuNode) {
+          // 如果当前位置是MenuNode，确保currentNode被正确设置
+          _currentState = _currentState.copyWith(
+            currentNode: currentNode,
+            everShownCharacters: _everShownCharacters,
+          );
+          if (kDebugMode) {
+            print('[GameManager] 存档恢复：检测到MenuNode，设置currentNode');
+          }
+        }
+      }
       _gameStateController.add(_currentState);
     }
   }
