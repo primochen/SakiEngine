@@ -2337,15 +2337,141 @@ class GameManager {
 
   /// 淡出动画完成后移除角色
   void removeCharacterAfterFadeOut(String characterId) {
+    final oldCharacters = Map.of(_currentState.characters);
     final newCharacters = Map.of(_currentState.characters);
     newCharacters.remove(characterId);
     
-    _currentState = _currentState.copyWith(
-      characters: newCharacters,
-      clearDialogueAndSpeaker: false,
-      everShownCharacters: _everShownCharacters
+    if (_tickerProvider == null || newCharacters.length < 2) {
+      _currentState = _currentState.copyWith(
+        characters: newCharacters,
+        clearDialogueAndSpeaker: false,
+        everShownCharacters: _everShownCharacters
+      );
+      _gameStateController.add(_currentState);
+      return;
+    }
+    
+    // 手动计算位置变化，考虑角色的实际当前位置（包括动画属性）
+    final characterOrder = newCharacters.keys.toList();
+    final newDistributed = CharacterAutoDistribution.calculateAutoDistribution(
+      newCharacters, 
+      _poseConfigs, 
+      characterOrder,
     );
-    _gameStateController.add(_currentState);
+    
+    final positionChanges = <CharacterPositionChange>[];
+    for (final characterId in newCharacters.keys) {
+      final character = newCharacters[characterId]!;
+      final originalPose = _poseConfigs[character.positionId];
+      
+      if (originalPose != null && originalPose.isAutoAnchor) {
+        // 获取角色当前的实际显示位置
+        double currentX = originalPose.xcenter;
+        if (character.animationProperties != null && character.animationProperties!.containsKey('xcenter')) {
+          currentX = character.animationProperties!['xcenter']!;
+        } else {
+          // 如果没有动画属性，使用当前自动分布后的位置
+          final currentDistributed = CharacterAutoDistribution.calculateAutoDistribution(
+            oldCharacters, 
+            _poseConfigs, 
+            oldCharacters.keys.toList(),
+          );
+          final currentAutoDistributedPoseId = '${characterId}_auto_distributed';
+          final currentDistributedPose = currentDistributed[currentAutoDistributedPoseId] ?? originalPose;
+          currentX = currentDistributedPose.xcenter;
+        }
+        
+        // 获取新的目标位置
+        final newAutoDistributedPoseId = '${characterId}_auto_distributed';
+        final newDistributedPose = newDistributed[newAutoDistributedPoseId] ?? originalPose;
+        final targetX = newDistributedPose.xcenter;
+        
+        // 如果位置有变化，添加到动画列表
+        if ((currentX - targetX).abs() > 0.001) {
+          positionChanges.add(CharacterPositionChange(
+            characterId: characterId,
+            fromX: currentX,
+            toX: targetX,
+          ));
+        }
+      }
+    }
+    
+    // 如果有位置变化，播放动画
+    if (positionChanges.isNotEmpty) {
+      // 先移除角色，同时设置剩余角色的动画属性为当前位置，避免闪烁
+      final updatedCharacters = Map<String, CharacterState>.from(newCharacters);
+      for (final change in positionChanges) {
+        final character = updatedCharacters[change.characterId];
+        if (character != null) {
+          updatedCharacters[change.characterId] = character.copyWith(
+            animationProperties: {'xcenter': change.fromX}, // 设置为当前位置，避免闪烁
+          );
+        }
+      }
+      
+      _currentState = _currentState.copyWith(
+        characters: updatedCharacters,
+        clearDialogueAndSpeaker: false,
+        everShownCharacters: _everShownCharacters
+      );
+      _gameStateController.add(_currentState);
+      
+      // 然后播放动画
+      _characterPositionAnimator?.stop();
+      _characterPositionAnimator = CharacterPositionAnimator();
+      
+      _characterPositionAnimator!.animatePositionChanges(
+        positionChanges: positionChanges,
+        vsync: _tickerProvider!,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        onUpdate: (positions) {
+          final animatingCharacters = Map<String, CharacterState>.from(_currentState.characters);
+          for (final entry in positions.entries) {
+            final targetCharacterId = entry.key;
+            final xPosition = entry.value;
+            final character = animatingCharacters[targetCharacterId];
+            if (character != null) {
+              animatingCharacters[targetCharacterId] = character.copyWith(
+                animationProperties: {'xcenter': xPosition},
+              );
+            }
+          }
+          
+          _currentState = _currentState.copyWith(
+            characters: animatingCharacters,
+            clearDialogueAndSpeaker: false,
+            everShownCharacters: _everShownCharacters
+          );
+          _gameStateController.add(_currentState);
+        },
+        onComplete: () {
+          // 动画完成，清理动画属性
+          final finalCharacters = Map<String, CharacterState>.from(_currentState.characters);
+          for (final entry in finalCharacters.entries) {
+            finalCharacters[entry.key] = entry.value.copyWith(
+              animationProperties: null,
+            );
+          }
+          
+          _currentState = _currentState.copyWith(
+            characters: finalCharacters,
+            clearDialogueAndSpeaker: false,
+            everShownCharacters: _everShownCharacters
+          );
+          _gameStateController.add(_currentState);
+        },
+      );
+    } else {
+      // 没有位置变化，直接移除角色
+      _currentState = _currentState.copyWith(
+        characters: newCharacters,
+        clearDialogueAndSpeaker: false,
+        everShownCharacters: _everShownCharacters
+      );
+      _gameStateController.add(_currentState);
+    }
   }
 
   /// 清除anime覆盖层
