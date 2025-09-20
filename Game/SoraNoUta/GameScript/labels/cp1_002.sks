@@ -156,7 +156,7 @@ x smile "刘守真直接趴到树林的地上，拿枯叶把自己盖满了。"/
 x mesugaki3 "以为躲的很严密，结果一眼就看到了哈哈。"//夏悠嘲笑 宫娜嘲笑
 ls sabishii2 "不要再说这么丢脸的事了。"//守真脸红
 x smile "好～好～"//夏悠叉腰微笑
-jump cp1_004
+jump cp1_003
 label cp1_002_b
 scene grass
 show syozen1 moeru
