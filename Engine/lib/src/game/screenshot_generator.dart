@@ -26,8 +26,13 @@ class ScreenshotGenerator {
       // 使用统一的渲染器绘制背景
       await GameRenderer.drawBackground(canvas, gameState.background, canvasSize);
       
-      // 使用统一的渲染器绘制角色
-      await GameRenderer.drawCharacters(canvas, gameState.characters, poseConfigs, canvasSize);
+      // 如果有CG角色，优先渲染CG角色（铺满屏幕，类似背景）
+      if (gameState.cgCharacters.isNotEmpty) {
+        await GameRenderer.drawCgCharacters(canvas, gameState.cgCharacters, poseConfigs, canvasSize);
+      } else {
+        // 没有CG时才绘制普通角色
+        await GameRenderer.drawCharacters(canvas, gameState.characters, poseConfigs, canvasSize);
+      }
       
       // 完成绘制
       final picture = recorder.endRecording();
