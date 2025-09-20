@@ -841,7 +841,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
                     onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
-                    onLoadGame: widget.onLoadGame,
+                    onLoadGame: (saveSlot) {
+                      // 在当前GamePlayScreen中恢复存档，而不是创建新实例
+                      _currentScript = saveSlot.currentScript;
+                      _gameManager.restoreFromSnapshot(
+                        saveSlot.currentScript, 
+                        saveSlot.snapshot, 
+                        shouldReExecute: false
+                      );
+                      _showNotificationMessage('读档成功');
+                    },
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
                     expressionSelectorManager: _expressionSelectorManager,
                     createDialogueBox: _createDialogueBox,
