@@ -514,7 +514,7 @@ endnvlm
 stop sound
 stop music
 // persistent.back004 = True
-show sky yoru
+scene sky yoru
 ////音乐停止 背景晚上的天空 nvl模式
 play sound yorunomusi loop  
 nvlm
