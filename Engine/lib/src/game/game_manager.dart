@@ -982,7 +982,9 @@ class GameManager {
       }
 
       if (node is CgNode) {
-        //print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        if (kDebugMode) {
+          print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        }
         
         // CG显示命令，类似ShowNode但渲染方式像scene一样铺满
         final characterConfig = _characterConfigs[node.character];
@@ -991,12 +993,16 @@ class GameManager {
         String finalCharacterKey; // 最终使用的角色key
         
         if (characterConfig != null) {
-          //print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          if (kDebugMode) {
+            print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          }
           resourceId = characterConfig.resourceId;
           positionId = characterConfig.defaultPoseId ?? 'pose';
           finalCharacterKey = resourceId; // 使用resourceId作为key
         } else {
-          //print('[GameManager] 直接使用资源ID: ${node.character}');
+          if (kDebugMode) {
+            print('[GameManager] 直接使用资源ID: ${node.character}');
+          }
           resourceId = node.character;
           positionId = node.position ?? 'pose';
           finalCharacterKey = node.character; // 使用原始名称作为key
@@ -1005,6 +1011,10 @@ class GameManager {
         // 确保pose和expression的值被正确设置
         final newPose = node.pose ?? 'pose1';
         final newExpression = node.expression ?? 'happy';
+        
+        if (kDebugMode) {
+          print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
+        }
         
         // CG只通过CG角色系统处理，不设置为背景
         // 先清除背景，确保CG角色层可以正常显示
@@ -1016,7 +1026,9 @@ class GameManager {
           everShownCharacters: _everShownCharacters
         );
         
-        //print('[GameManager] 已清除背景，准备显示CG角色');
+        if (kDebugMode) {
+          print('[GameManager] 已清除背景，准备显示CG角色');
+        }
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
@@ -1028,7 +1040,9 @@ class GameManager {
           positionId: positionId,
         );
         
-        //print('[GameManager] CG更新: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
+        if (kDebugMode) {
+          print('[GameManager] CG更新前: cgCharacters数量=${_currentState.cgCharacters.length}');
+        }
 
         newCgCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: newPose,
@@ -1043,7 +1057,10 @@ class GameManager {
         );
         _gameStateController.add(_currentState);
         
-        //print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
+        if (kDebugMode) {
+          print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
+          print('[GameManager] CG角色列表: ${_currentState.cgCharacters.keys.toList()}');
+        }
         
         // 如果有动画，启动动画播放（非阻塞）
         if (!_isFastForwardMode && node.animation != null) {
@@ -1612,6 +1629,11 @@ class GameManager {
   }
 
   GameStateSnapshot saveStateSnapshot() {
+    if (kDebugMode) {
+      print('[GameManager] 保存存档：cgCharacters数量 = ${_currentState.cgCharacters.length}');
+      print('[GameManager] 保存存档：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
+    }
+    
     return GameStateSnapshot(
       scriptIndex: _scriptIndex,
       currentState: _currentState,
@@ -1665,13 +1687,25 @@ class GameManager {
     _sceneAnimationController = null;
     
     // 恢复 NVL 状态
+    if (kDebugMode) {
+      print('[GameManager] 存档恢复：cgCharacters数量 = ${snapshot.currentState.cgCharacters.length}');
+      print('[GameManager] 存档恢复：cgCharacters内容 = ${snapshot.currentState.cgCharacters.keys.toList()}');
+    }
+    
     _currentState = snapshot.currentState.copyWith(
       isNvlMode: snapshot.isNvlMode,
       isNvlMovieMode: snapshot.isNvlMovieMode,
       nvlDialogues: snapshot.nvlDialogues,
       everShownCharacters: _everShownCharacters,
       isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
+      // 明确恢复CG角色状态（修复CG存档恢复bug）
+      cgCharacters: snapshot.currentState.cgCharacters,
     );
+    
+    if (kDebugMode) {
+      print('[GameManager] 存档恢复后：cgCharacters数量 = ${_currentState.cgCharacters.length}');
+      print('[GameManager] 存档恢复后：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
+    }
     
     // 立即发送状态更新以确保UI正确显示包括场景动画属性
     _gameStateController.add(_currentState);
