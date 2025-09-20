@@ -70,7 +70,9 @@ class SaveLoadManager {
     
     // 检查是否是选择界面
     if (currentState.currentNode != null && currentState.currentNode is MenuNode) {
-      dialoguePreview = '选择支';
+      final menuNode = currentState.currentNode as MenuNode;
+      final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
+      dialoguePreview = '【选择支】\n${choiceTexts.join('\n')}';
     }
     // 优先检查 NVL 模式
     else if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
