@@ -726,11 +726,14 @@ class GameManager {
         }
         
         // 检查是否是游戏开始时的初始背景设置
-        final isInitialBackground = _currentState.background == null;
+        final isInitialBackground = _currentState.background == null && _currentState.cgCharacters.isEmpty;
         final isSameBackground = _currentState.background == node.background;
+        // 检查是否从CG切换到场景，如果是则强制使用转场效果
+        final isFromCGToScene = _currentState.cgCharacters.isNotEmpty && !node.background.toLowerCase().contains('cg');
         
         // 快进模式下跳过转场效果，或其他需要跳过转场的情况
-        if (_isFastForwardMode || _context == null || isInitialBackground || isSameBackground) {
+        // 但从CG切换到场景时必须使用转场效果
+        if ((_isFastForwardMode || _context == null || isInitialBackground || isSameBackground) && !isFromCGToScene) {
           ////print('[GameManager] 跳过转场：${_isFastForwardMode ? "快进模式" : (isInitialBackground ? "初始背景" : (isSameBackground ? "相同背景" : "无context"))}');
           // 直接切换背景
           _currentState = _currentState.copyWith(
@@ -775,15 +778,23 @@ class GameManager {
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
           // 检查是否是CG到CG的转场，如果是且没有指定转场类型，则使用dissolve
+          // 同时检查从CG切换到普通场景的情况
           String? finalTransitionType = node.transitionType;
           final currentBg = _currentState.background;
           final newBg = node.background;
           final isCurrentCG = currentBg != null && currentBg.toLowerCase().contains('cg');
           final isNewCG = newBg.toLowerCase().contains('cg');
+          final hasCurrentCGCharacters = _currentState.cgCharacters.isNotEmpty;
           
-          if (isCurrentCG && isNewCG && finalTransitionType == null) {
-            finalTransitionType = 'diss'; // CG到CG默认使用dissolve转场
-            ////print('[GameManager] CG到CG转场，使用默认dissolve效果');
+          if ((isCurrentCG && isNewCG) || (hasCurrentCGCharacters && isNewCG)) {
+            if (finalTransitionType == null) {
+              finalTransitionType = 'diss'; // CG到CG默认使用dissolve转场
+              ////print('[GameManager] CG到CG转场，使用默认dissolve效果');
+            }
+          } else if (hasCurrentCGCharacters && !isNewCG && finalTransitionType == null) {
+            // 从CG切换到普通场景，默认使用fade转场
+            finalTransitionType = 'fade';
+            ////print('[GameManager] 从CG切换到场景，使用默认fade效果');
           }
           
           _transitionToNewBackground(node.background, sceneFilter, node.layers, finalTransitionType, node.animation, node.repeatCount, shouldClearCG).then((_) {
