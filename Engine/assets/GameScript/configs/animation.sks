@@ -41,7 +41,8 @@ topout
 ease 0.2 ycenter-0
 ease 0.2 ycenter+0.08
 ease 0.1 ycenter-0.16
-ease 0.1 ycenter+1
+ease 0.1 ycenter+1.0
+pause
 
 
 backjump

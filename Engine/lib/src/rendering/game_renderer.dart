@@ -8,6 +8,7 @@ import 'package:sakiengine/src/utils/image_loader.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
+import 'package:sakiengine/src/utils/expression_offset_manager.dart'; // 新增：导入差分偏移管理器
 
 /// 游戏渲染器 - 统一的背景和角色绘制逻辑
 /// 同时供游戏界面和截图生成器使用，确保完全一致的渲染效果
@@ -250,15 +251,54 @@ class GameRenderer {
         characterState.animationProperties,
       );
       
-      // 按层级顺序绘制所有图层
+      // 按层级顺序绘制所有图层，为表情图层应用偏移
       for (int i = 0; i < layerImages.length; i++) {
-        _drawCharacterLayer(canvas, layerImages[i], renderParams);
+        final layerInfo = layerInfos[i];
+        final layerImage = layerImages[i];
+        
+        // 获取差分偏移（仅对表情图层有效）
+        final (xOffset, yOffset) = ExpressionOffsetManager().getExpressionOffset(
+          characterId: characterState.resourceId,
+          pose: characterState.pose ?? 'pose1',
+          layerType: layerInfo.layerType,
+        );
+        
+        // 应用偏移到渲染参数
+        final adjustedParams = _applyExpressionOffset(renderParams, xOffset, yOffset);
+        
+        _drawCharacterLayer(canvas, layerImage, adjustedParams);
       }
     } catch (e) {
       print('绘制角色 $characterId 失败: $e');
     }
   }
   
+  /// 应用差分偏移到角色渲染参数
+  /// [params] 原始渲染参数
+  /// [xOffset] 横向偏移（归一化值，相对于角色宽度）
+  /// [yOffset] 纵向偏移（归一化值，相对于角色高度）
+  static CharacterRenderParams _applyExpressionOffset(
+    CharacterRenderParams params,
+    double xOffset,
+    double yOffset,
+  ) {
+    if (xOffset == 0.0 && yOffset == 0.0) {
+      return params; // 无偏移时直接返回原参数
+    }
+    
+    // 计算像素偏移量
+    final pixelXOffset = params.width * xOffset;
+    final pixelYOffset = params.height * yOffset;
+    
+    return CharacterRenderParams(
+      x: params.x + pixelXOffset,
+      y: params.y + pixelYOffset,
+      width: params.width,
+      height: params.height,
+      alpha: params.alpha,
+    );
+  }
+
   /// 计算角色渲染参数（复用游戏界面的 _buildCharacters 逻辑）
   static CharacterRenderParams _calculateCharacterRenderParams(
     PoseConfig poseConfig,

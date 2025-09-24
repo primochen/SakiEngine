@@ -35,7 +35,7 @@ cg cg_cp1_3 1
 cg cg_cp1_3 2
 //with dissolve
 play music heroine  
-x "你真是慢呢～林澄......"////cg里夏悠生气
+x2 "你真是慢呢～林澄......"////cg里夏悠生气
 nvlm
 "夏悠带着遮阳帽，在岩石处等待着我。"
 endnvlm
@@ -67,7 +67,7 @@ x2 "我也是！"
 cg cg_cp1_3 2
 //with dissolve
 ////夏悠生气
-x "所以快点快点！蝉在嗷嗷待抓了！"
+x2 "所以快点快点！蝉在嗷嗷待抓了！"
 nvlm
 "原来是抓蝉。"
 "话说嗷嗷待抓是什么鬼啊？"
@@ -79,10 +79,10 @@ endnvlm
 cg cg_cp1_3 4
 //with dissolve
 ////夏悠脸红 cg差分到手抓着帽檐 微笑
-x "那个......"
+x2 "那个......"
 ////约会的音乐
 play sound poko
-x "好看吗？这个？"
+x2"好看吗？这个？"
 nvlm
 "夏悠手抓着帽檐，上下拉扯着。"
 "生怕我没明白她指的是什么。"
@@ -93,34 +93,34 @@ l "你妈的？"
 cg cg_cp1_3 6
 //with dissolve
 ////夏悠叹气
-x "你......"
+x2"你......"
 l "啊对不起我没在骂你！！我只是想说，这个帽子是你妈妈的吗？"
 nvlm
 "我似乎意识到自己说错了话。连忙进行辩解。"
 endnvlm
-x "啊！算了！毕竟你一直不会说话！"
+x2"啊！算了！毕竟你一直不会说话！"
 cg cg_cp1_3 2
 //with dissolve
 ////夏悠难过
-x "唉......"
+x2"唉......"
 cg cg_cp1_3 4
 //with dissolve
 ////夏悠叹气
-x "明明可以夸我的，却转话题到帽子来自哪......"
+x2"明明可以夸我的，却转话题到帽子来自哪......"
 cg cg_cp1_3 2
 //with dissolve
 ////夏悠难过
-x "算了......"
+x2"算了......"
 cg cg_cp1_3 3
 //with dissolve
 ////夏悠眼睛转过来，露出笑容
-x "那......走吧！！"
+x2"那......走吧！！"
 nvlm
 "夏悠重新露出了笑容。"
 endnvlm
 stop music
-x "现在还是正午，还只能抓到小蝉。"
-x "不过只要一直玩到黄昏之时，就可以了哦！"
+x2"现在还是正午，还只能抓到小蝉。"
+x2"不过只要一直玩到黄昏之时，就可以了哦！"
 // persistent.music_012unlock = True
 // persistent.back030 = True
 ////背景切到玉米地 农间/道路的音乐 参考音乐：https://music.163.com/song?id=1487339793&userid=1688143944 免费的！！
@@ -138,32 +138,32 @@ nvlm
 endnvlm
 ////结束nvl模式
 ////夏悠带帽子的立绘 端庄的姿势
-x pose6 smilenaka1 "真是悦耳啊～"////闭眼陶醉的聆听 双手背在身后
-x pose6 tameiki "但是感觉白天的小蝉要比傍晚的蝉更难抓啊。" ////睁眼叹气
-x pose6 tameiki2 "大小也好，敏锐性也好，都和傍晚的蝉不一样。"////闭眼叹气
-x pose6 tameiki "更别说它爬在又细又矮的玉米杆上了。"////睁眼叹气
+x2 pose6 smilenaka1 "真是悦耳啊～"////闭眼陶醉的聆听 双手背在身后
+x2 pose6 tameiki "但是感觉白天的小蝉要比傍晚的蝉更难抓啊。" ////睁眼叹气
+x2 pose6 tameiki2 "大小也好，敏锐性也好，都和傍晚的蝉不一样。"////闭眼叹气
+x2 pose6 tameiki "更别说它爬在又细又矮的玉米杆上了。"////睁眼叹气
 l"！！！"////对话框震动
 l"我以为你很有把握的，毕竟看你这么自信。"
 play sound haneru
-x pose6 hen an jump "哼！我很自信是因为你来了啊！你不是捉蝉高手嘛..."////夏悠疑惑 立绘震动 手放下去
+x2 pose6 hen an jump "哼！我很自信是因为你来了啊！你不是捉蝉高手嘛..."////夏悠疑惑 立绘震动 手放下去
 l"所以我们都互相认为对方很擅长这个！！？"////对话框震动
 l"那完了..."
-x pose6 kowa "啊！！？？"////对话框震动  夏悠害怕
-x pose6 naku "所以你也拿蝉没办法吗？"////夏悠快哭出来了
-x pose6 naku2 "明明你说过你很擅长捉蝉的..."////夏悠大哭
-x pose6 naku "说蝉只要看到你来了，就乖乖地退到树根等你抓。"////夏悠快哭出来了
+x2 pose6 kowa "啊！！？？"////对话框震动  夏悠害怕
+x2 pose6 naku "所以你也拿蝉没办法吗？"////夏悠快哭出来了
+x2 pose6 naku2 "明明你说过你很擅长捉蝉的..."////夏悠大哭
+x2 pose6 naku "说蝉只要看到你来了，就乖乖地退到树根等你抓。"////夏悠快哭出来了
 l"为什么把捉蝉说的像投降仪式一样...蝉也会土下座吗......"
 l"不对，这不是重点...我确实很擅长捉蝉。"
 l"但是，仅限傍晚的蝉！！"////对话框震动
 l"因为我白天都在上学，没有时间练习啊..."
-x pose6 odoroki "那完了..."////夏悠豆豆眼 
+x2 pose6 odoroki "那完了..."////夏悠豆豆眼 
 show nande at ajump
 play sound haneru
 play sound haneru
-x pose6 odoroki an jump "那咋办？"////豆豆眼 但是感叹号 立绘震动一次
+x2 pose6 odoroki an jump "那咋办？"////豆豆眼 但是感叹号 立绘震动一次
 l"唔......没办法了，只能上了..."
 l"我试试我的捉蝉技巧能不能用..."
-x pose6 smile "嗯！！"////对话框震动 微笑 手背在身后
+x2 pose6 smile "嗯！！"////对话框震动 微笑 手背在身后
 scene sky
 //with dissolve
 ////背景切到天空 nvl模式
@@ -207,26 +207,26 @@ scene bl timer 1.0
 scene hatake
 //with fade
 //with dissolve
-x pose6 mesugaki3 "哈哈......"////夏悠嘲笑 手指着
-x ciallo "果然捉不到呢..."////夏悠ciallo 手放下去
+x2 pose6 mesugaki3 "哈哈......"////夏悠嘲笑 手指着
+x2ciallo "果然捉不到呢..."////夏悠ciallo 手放下去
 l"所以你一开始就不认为我捉得到吗？"
-x think "嗯..."////夏悠think
+x2think "嗯..."////夏悠think
 x" ciallo 但是说不定会有奇迹呢？"////夏悠ciallo 手指着
 l"奇迹和魔法可不是免费的。"
-x tameiki2 "好啦.......所以感觉活动告吹了..."////夏悠闭眼叹气 手放下去
-x tameiki "明明是好不容易到来的，约定好的事情..."////夏悠睁眼叹气
+x2tameiki2 "好啦.......所以感觉活动告吹了..."////夏悠闭眼叹气 手放下去
+x2tameiki "明明是好不容易到来的，约定好的事情..."////夏悠睁眼叹气
 play sound pekori
-x ciallo an topin "抱歉！！！"////对话框震动 夏悠闭眼叹气 立绘点点头
+x2ciallo an topin "抱歉！！！"////对话框震动 夏悠闭眼叹气 立绘点点头
 l"抱歉！！！"////对话框震动
 scene bl //with Dissolve(0.15)
 //with vpunch
 play sound poko
 ////非常快地插入黑屏 //with vpunch震动 撞到头的音效
-x "啊！！"////对话框震动
+x2"啊！！"////对话框震动
 l "啊！！"////对话框震动
 ////清除黑屏
 scene hatake
-x pose6 naku "痛痛痛..."////夏悠快哭了 但是脸红
+x2 pose6 naku "痛痛痛..."////夏悠快哭了 但是脸红
 l"痛痛痛..."
 nvlm
 "因为我和夏悠同时低头道歉，导致头撞到了一起。"
@@ -234,17 +234,17 @@ nvlm
 endnvlm
 l"对不起！"////对话框震动+
 play sound haneru
-x ochikomu an jump "对不起！"////对话框震动 ////立绘shy4 抖一下
+x2ochikomu an jump "对不起！"////对话框震动 ////立绘shy4 抖一下
 ////夏悠笑
 play sound haneru
-x dame2 "啊！真是对不起！"////对话框震动 夏悠表情 >~< 抖一下
+x2dame2 "啊！真是对不起！"////对话框震动 夏悠表情 >~< 抖一下
 l "奇怪的同步..."
 l"要不临时改变活动内容吧..."
 play sound haneru
 play sound haneru
-x odoroki an jump "不捉蝉了吗？"////夏悠豆豆眼感叹号 抖一下
+x2odoroki an jump "不捉蝉了吗？"////夏悠豆豆眼感叹号 抖一下
 l"去你家看动画片？"
-x happy "这个也好！！"////对话框震动 ////夏悠开心 手指着
+x2happy "这个也好！！"////对话框震动 ////夏悠开心 手指着
 stop sound
 stop music
 scene sky
@@ -270,17 +270,17 @@ l "那，下周见？"
 ////夏悠ciallo 手背在身后 点点头
 play sound pekori
 //with dissolve
-x pose8 ciallo an fururu repeat 2 "嗯嗯..."
+x2pose8 ciallo an fururu repeat 2 "嗯嗯..."
 ////夏悠微笑
-x smile "虽然和想象中不一样，但是还是很开心..."
+x2smile "虽然和想象中不一样，但是还是很开心..."
 ////夏悠从微笑切换为 闭眼 微笑着哭
-x smilenaka2 "[size=1.3]真是......太好了......[/size]"
+x2smilenaka2 "[size=1.3]真是......太好了......[/size]"
 l"夏悠你......你为什么...哭了？"
 ////夏悠手放下去 睁开眼哭 微笑
-x smilenaka3 "哪有啊.......哦确实有呢......为什么呢......"
+x2smilenaka3 "哪有啊.......哦确实有呢......为什么呢......"
 ////闭眼微笑着哭 手背在身后
 play sound haneru
-x smilenaka2 an jump "都无所谓了，下周见！！哼！！"////对话框震动
+x2smilenaka2 an jump "都无所谓了，下周见！！哼！！"////对话框震动
 ////清理掉夏悠立绘
 hide xiayo1
 //with dissolve
@@ -413,7 +413,7 @@ endnvlm
 // persistent.back008 = True
 scene home yoru
 //with dissolve
-x pose6 happy "走吧！"////对话框震动 夏悠手指着 ciallo
+x2 pose6 happy "走吧！"////对话框震动 夏悠手指着 ciallo
 l"嗯！"////对话框震动
 scene sky yoru
 //with dissolve
@@ -434,7 +434,7 @@ l"呼～好累～歇一会吧....."
 play sound haneru
 //with dissolve
 ////夏悠叉腰 闭眼叹气
-x pose7 ciallo an jump "加油啊！！离终点就剩五分钟的路程了。"
+x2pose7 ciallo an jump "加油啊！！离终点就剩五分钟的路程了。"
 scene sky yoru
 //with dissolve
 //with vpunch

@@ -18,6 +18,7 @@ import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
+import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 /// 音乐区间类
@@ -266,7 +267,7 @@ class GameManager {
     }
     
     // 并发预加载所有anime资源
-    final futures = animeResources.map((animeName) {
+    final futures = animeResources.map<Future<dynamic>>((animeName) {
       return WebPPreloadCache().preloadWebP(animeName);
     }).toList();
     
@@ -525,6 +526,9 @@ class GameManager {
 
     final posesContent = await AssetManager().loadString('assets/GameScript/configs/poses.sks');
     _poseConfigs = ConfigParser().parsePoses(posesContent);
+    
+    // 初始化差分偏移管理器
+    ExpressionOffsetManager().initializeDefaultConfigs();
   }
 
   Future<void> startGame(String scriptName) async {

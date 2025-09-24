@@ -7,6 +7,7 @@ import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
 /// 主对话框内容组件
 class SoranoutaDialogueContent extends StatefulWidget {
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final String dialogue;
   final TextStyle dialogueStyle;
   final Size screenSize;
@@ -29,6 +30,7 @@ class SoranoutaDialogueContent extends StatefulWidget {
   const SoranoutaDialogueContent({
     super.key,
     this.speaker,
+    this.speakerAlias, // 新增：角色简写参数
     required this.dialogue,
     required this.dialogueStyle,
     required this.screenSize,
@@ -182,6 +184,7 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
                                         ? Colors.white.withValues(alpha: 0.8)
                                         : widget.config.themeColors.primary.withValues(alpha: 0.7),
                                     speaker: widget.speaker,
+                                    speakerAlias: widget.speakerAlias, // 新增：传递角色简写
                                   ),
                                 ),
                               ),

@@ -1,7 +1,7 @@
 label cp1_007
 ////nvl模式 无音乐
-play sound bird loop  
 nvlm
+play sound bird loop  
 "?"
 "又做了什么梦？"
 "Prometheus计划，是什么？"
@@ -52,7 +52,7 @@ cg cg_cp1_3 3
 //with dissolve
 ////夏悠微笑
 play music skysoul  
-x "我知道的哦！"
+x2 "我知道的哦！"
 l "啊？！"
 nvlm
 "夏悠突然打断了我的思考。"
@@ -61,9 +61,9 @@ endnvlm
 cg cg_cp1_3 5
 //with dissolve
 ////微笑但是闭眼
-x "我知道的哦！你现在一定很高兴吧！"
+x2 "我知道的哦！你现在一定很高兴吧！"
 ////睁眼
-x "我也是！"
+x2 "我也是！"
 cg cg_cp1_3 2
 //with dissolve
 ////夏悠生气
