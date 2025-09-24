@@ -544,6 +544,28 @@ class SksParser {
             nodes.add(BoolNode(variableName, value));
           }
           break;
+        case 'pause':
+          // pause(1.5) - 暂停指定秒数
+          if (parts.length >= 2) {
+            // 支持两种格式：pause(1.5) 或 pause 1.5
+            String durationStr = parts[1];
+            
+            // 如果是 pause(1.5) 格式，提取括号内的数字
+            final parenRegex = RegExp(r'pause\(([0-9.]+)\)');
+            final parenMatch = parenRegex.firstMatch(trimmedLine);
+            if (parenMatch != null) {
+              durationStr = parenMatch.group(1)!;
+            }
+            
+            final duration = double.tryParse(durationStr);
+            if (duration != null && duration > 0) {
+              nodes.add(PauseNode(duration));
+              //print('[SksParser] 解析pause命令: duration=$duration');
+            } else {
+              print('[SksParser] 警告: 无效的pause时长: $durationStr');
+            }
+          }
+          break;
         case 'shake':
           // shake [duration 1.0] [intensity 8.0] [target background]
           double? duration;
@@ -587,6 +609,20 @@ class SksParser {
     final commentIndex = line.indexOf('//');
     if (commentIndex >= 0) {
       processedLine = line.substring(0, commentIndex).trim();
+    }
+    
+    // 检查是否是pause语法：pause(0.5) 
+    final pauseRegex = RegExp(r'^pause\(([0-9.]+)\)$');
+    final pauseMatch = pauseRegex.firstMatch(processedLine);
+    if (pauseMatch != null) {
+      final durationStr = pauseMatch.group(1)!;
+      final duration = double.tryParse(durationStr);
+      if (duration != null && duration > 0) {
+        return PauseNode(duration);
+      } else {
+        print('[SksParser] 警告: 无效的pause时长: $durationStr');
+        return null;
+      }
     }
     
     // 检查是否是时序差分切换语法: x [wakuwaku2,0.5,think] "我去。"

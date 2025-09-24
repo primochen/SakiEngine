@@ -1643,6 +1643,29 @@ class GameManager {
         continue;
       }
 
+      if (node is PauseNode) {
+        // 处理暂停命令：pause(0.5)
+        if (kDebugMode) {
+          print('[PauseNode] 暂停 ${node.duration} 秒');
+        }
+        
+        // 设置暂停等待标志
+        _isWaitingForTimer = true;
+        _isProcessing = false; // 释放处理锁，但保持timer锁
+        _scriptIndex++; // 预先递增索引
+        
+        // 启动计时器
+        Timer(Duration(milliseconds: (node.duration * 1000).round()), () {
+          if (kDebugMode) {
+            print('[PauseNode] 暂停结束，继续执行脚本');
+          }
+          _isWaitingForTimer = false;
+          _executeScript(); // 恢复脚本执行
+        });
+        
+        return; // 暂停期间停止脚本执行
+      }
+
       if (node is ShakeNode) {
         // 处理震动命令
         final duration = node.duration ?? 1.0; // 默认1秒

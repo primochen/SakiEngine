@@ -209,3 +209,14 @@ class ShakeNode implements SksNode {
     return 'ShakeNode(duration: $duration, intensity: $intensity, target: $target)';
   }
 }
+
+class PauseNode implements SksNode {
+  final double duration; // 暂停时长（秒）
+  
+  PauseNode(this.duration);
+  
+  @override
+  String toString() {
+    return 'PauseNode(duration: $duration)';
+  }
+}
