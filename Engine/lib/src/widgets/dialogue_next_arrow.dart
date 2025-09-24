@@ -76,6 +76,7 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
                                           widget.speakerAlias != 'l' &&
                                           widget.speakerAlias != 'ls' &&
                                           widget.speakerAlias != 'x2' &&
+                                          widget.speakerAlias != 'x2nan' &&
                                           widget.speaker != '刘守真' &&
                                           widget.speaker != '林澄' &&
                                           widget.speakerAlias != 'nanshin'; // 新增：nanshin也显示箭头

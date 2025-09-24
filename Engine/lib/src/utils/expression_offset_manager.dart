@@ -48,6 +48,16 @@ class ExpressionOffsetManager {
       scale: 0.97, // 新增：缩放比例（可调整）
     ));
     
+    // xiayo1 pose6 帽子配置
+    addOffsetConfig(ExpressionOffsetConfig(
+      characterId: 'xiayo1',
+      pose: 'pose6_hat',
+      xOffset: 0.0, // 横向偏移（可调整）
+      yOffset: 0.0, // 纵向偏移（可调整）
+      alpha: 1.0, // 透明度
+      scale: 1.0, // 缩放比例（可调整）
+    ));
+    
     addOffsetConfig(ExpressionOffsetConfig(
       characterId: 'xiayo1',
       pose: 'pose7',
@@ -57,6 +67,16 @@ class ExpressionOffsetManager {
       scale: 0.97, // 新增：缩放比例（可调整）
     ));
     
+    // xiayo1 pose7 帽子配置
+    addOffsetConfig(ExpressionOffsetConfig(
+      characterId: 'xiayo1',
+      pose: 'pose7_hat',
+      xOffset: 0.0, // 横向偏移（可调整）
+      yOffset: 0.0, // 纵向偏移（可调整）
+      alpha: 1.0, // 透明度
+      scale: 1.0, // 缩放比例（可调整）
+    ));
+    
     addOffsetConfig(ExpressionOffsetConfig(
       characterId: 'xiayo1',
       pose: 'pose8',
@@ -64,6 +84,16 @@ class ExpressionOffsetManager {
       yOffset: 0.0279, // 纵向偏移（可调整）
       alpha: 1.0, // 透明度便于对准
       scale: 0.97, // 新增：缩放比例（可调整）
+    ));
+    
+    // xiayo1 pose8 帽子配置
+    addOffsetConfig(ExpressionOffsetConfig(
+      characterId: 'xiayo1',
+      pose: 'pose8_hat',
+      xOffset: 0.0, // 横向偏移（可调整）
+      yOffset: 0.0, // 纵向偏移（可调整）
+      alpha: 1.0, // 透明度
+      scale: 1.0, // 缩放比例（可调整）
     ));
     
     if (kDebugMode) {
@@ -91,20 +121,31 @@ class ExpressionOffsetManager {
   /// 获取差分偏移、透明度和缩放（归一化值）
   /// [characterId] 角色ID (如 'xiayo1')
   /// [pose] 姿势 (如 'pose6', 'pose7', 'pose8')
-  /// [layerType] 图层类型，只有包含 'expression' 的图层类型才应用偏移
+  /// [layerType] 图层类型，包含 'expression' 或 'hat' 的图层类型才应用偏移
   /// 返回 (xOffset, yOffset, alpha, scale) 归一化偏移量、透明度和缩放比例
   (double, double, double, double) getExpressionOffset({
     required String characterId,
     required String pose,
     required String layerType,
   }) {
-    // 只对表情图层应用偏移（包含 'expression' 关键词的图层）
-    if (!layerType.contains('expression')) {
-      return (0.0, 0.0, 1.0, 1.0); // 非表情图层使用默认值
+    // 检查是否为需要偏移的图层类型（表情或帽子）
+    final isExpressionLayer = layerType.contains('expression');
+    final isHatLayer = layerType.contains('hat');
+    
+    if (!isExpressionLayer && !isHatLayer) {
+      return (0.0, 0.0, 1.0, 1.0); // 非表情/帽子图层使用默认值
     }
     
-    final key = '${characterId}_$pose';
-    final config = _offsetConfigs[key];
+    String configKey;
+    if (isHatLayer) {
+      // 帽子图层使用特殊配置键
+      configKey = '${characterId}_${pose}_hat';
+    } else {
+      // 表情图层使用原有配置键
+      configKey = '${characterId}_$pose';
+    }
+    
+    final config = _offsetConfigs[configKey];
     
     if (config != null) {
       return (config.xOffset, config.yOffset, config.alpha, config.scale);
