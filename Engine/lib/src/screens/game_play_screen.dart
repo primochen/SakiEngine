@@ -1097,12 +1097,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
           // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
           final layers = layerInfos.map((layerInfo) {
-            // 获取差分偏移和透明度（仅对表情图层有效）
-            final (xOffset, yOffset, alpha) = ExpressionOffsetManager().getExpressionOffset(
+            // 获取差分偏移、透明度和缩放（仅对表情图层有效）
+            final (xOffset, yOffset, alpha, scale) = ExpressionOffsetManager().getExpressionOffset(
               characterId: characterState.resourceId,
               pose: characterState.pose ?? 'pose1',
               layerType: layerInfo.layerType,
             );
+            
+            // 调试输出
+            // ${layerInfo.layerType}, 偏移: ($xOffset, $yOffset), 透明度: $alpha');
             
             return _CharacterLayer(
               key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
@@ -1110,7 +1113,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               isFadingOut: characterState.isFadingOut,
               expressionOffsetX: xOffset, // 横向偏移
               expressionOffsetY: yOffset, // 纵向偏移
-              expressionAlpha: alpha, // 新增：透明度
+              expressionAlpha: alpha, // 透明度
+              expressionScale: scale, // 缩放比例
               onFadeOutComplete: characterState.isFadingOut ? () {
                 // 淡出完成，从角色列表中移除该角色
                 _removeCharacterAfterFadeOut(characterId);
@@ -1183,7 +1187,8 @@ class _CharacterLayer extends StatefulWidget {
   final bool isFadingOut;
   final double expressionOffsetX; // 横向偏移（归一化值）
   final double expressionOffsetY; // 纵向偏移（归一化值）
-  final double expressionAlpha; // 新增：透明度（0.0到1.0）
+  final double expressionAlpha; // 透明度（0.0到1.0）
+  final double expressionScale; // 缩放比例（1.0为原始大小）
   final VoidCallback? onFadeOutComplete;
   
   const _CharacterLayer({
@@ -1192,7 +1197,8 @@ class _CharacterLayer extends StatefulWidget {
     this.isFadingOut = false,
     this.expressionOffsetX = 0.0, // 默认无偏移
     this.expressionOffsetY = 0.0, // 默认无偏移
-    this.expressionAlpha = 1.0, // 新增：默认完全不透明
+    this.expressionAlpha = 1.0, // 默认完全不透明
+    this.expressionScale = 1.0, // 默认原始大小
     this.onFadeOutComplete,
   });
 
@@ -1322,6 +1328,15 @@ class _CharacterLayerState extends State<_CharacterLayer>
             if (widget.expressionAlpha != 1.0) {
               customPaintWidget = Opacity(
                 opacity: widget.expressionAlpha,
+                child: customPaintWidget,
+              );
+            }
+            
+            // 应用缩放（如果不是原始大小），锚点为左上角
+            if (widget.expressionScale != 1.0) {
+              customPaintWidget = Transform.scale(
+                scale: widget.expressionScale,
+                alignment: Alignment.topLeft,
                 child: customPaintWidget,
               );
             }

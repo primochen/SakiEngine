@@ -257,44 +257,46 @@ class GameRenderer {
         final layerImage = layerImages[i];
         
         // 获取差分偏移（仅对表情图层有效）
-        final (xOffset, yOffset, alpha) = ExpressionOffsetManager().getExpressionOffset(
+        final (xOffset, yOffset, alpha, scale) = ExpressionOffsetManager().getExpressionOffset(
           characterId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
           layerType: layerInfo.layerType,
         );
         
-        // 应用偏移到渲染参数
-        final adjustedParams = _applyExpressionOffset(renderParams, xOffset, yOffset);
+        // 应用偏移和缩放到渲染参数
+        final adjustedParams = _applyExpressionOffset(renderParams, xOffset, yOffset, scale);
         
-        _drawCharacterLayer(canvas, layerImage, adjustedParams);
+        _drawCharacterLayer(canvas, layerImage, adjustedParams, alpha);
       }
     } catch (e) {
       print('绘制角色 $characterId 失败: $e');
     }
   }
   
-  /// 应用差分偏移到角色渲染参数
+  /// 应用差分偏移和缩放到角色渲染参数
   /// [params] 原始渲染参数
   /// [xOffset] 横向偏移（归一化值，相对于角色宽度）
   /// [yOffset] 纵向偏移（归一化值，相对于角色高度）
+  /// [scale] 缩放比例（1.0为原始大小）
   static CharacterRenderParams _applyExpressionOffset(
     CharacterRenderParams params,
     double xOffset,
     double yOffset,
+    double scale,
   ) {
-    if (xOffset == 0.0 && yOffset == 0.0) {
-      return params; // 无偏移时直接返回原参数
-    }
+    // 先应用缩放（如果有的话）
+    double finalWidth = params.width * scale;
+    double finalHeight = params.height * scale;
     
-    // 计算像素偏移量
-    final pixelXOffset = params.width * xOffset;
-    final pixelYOffset = params.height * yOffset;
+    // 计算像素偏移量（基于缩放后的尺寸）
+    final pixelXOffset = finalWidth * xOffset;
+    final pixelYOffset = finalHeight * yOffset;
     
     return CharacterRenderParams(
       x: params.x + pixelXOffset,
       y: params.y + pixelYOffset,
-      width: params.width,
-      height: params.height,
+      width: finalWidth,
+      height: finalHeight,
       alpha: params.alpha,
     );
   }
@@ -371,11 +373,12 @@ class GameRenderer {
   }
   
   /// 在Canvas上绘制角色图层
-  static void _drawCharacterLayer(Canvas canvas, ui.Image image, CharacterRenderParams params) {
+  static void _drawCharacterLayer(Canvas canvas, ui.Image image, CharacterRenderParams params, [double? expressionAlpha]) {
+    final finalAlpha = expressionAlpha ?? params.alpha;
     final paint = Paint()
       ..filterQuality = FilterQuality.high
       ..isAntiAlias = true
-      ..color = Color.fromRGBO(255, 255, 255, params.alpha);
+      ..color = Color.fromRGBO(255, 255, 255, finalAlpha);
     
     canvas.drawImageRect(
       image,
