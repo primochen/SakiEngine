@@ -299,7 +299,6 @@ play sound jyajyan
 l "噔～噔噔～噔噔噔～噔噔～"
 hide mastersword
 "我在夏悠的面前展示了我的巨剑。"
-show xiayo1 wakuwaku2 at xiayo1pose
 x think "我去。"////夏悠 think
 l "这就是你的评价吗？"
 l "也太言简意赅了。"
