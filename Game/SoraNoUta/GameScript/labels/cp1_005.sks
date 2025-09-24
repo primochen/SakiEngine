@@ -749,10 +749,9 @@ scene forest
 show syozen1 pose1 kuraikao at xiayo1pose an topin 
 play sound gunshoot
 l "[size=1.5]砰！[/size]"////对话框震动
-show syozen1 at xiayo1pose an topout
+hide syozen1
 play sound down
 "刘守真看到我向他射子弹以后，反射性地抖了一下左肩，接着便捂着左肩蹲坐在了地上，表现出痛苦的神情。"
-hide syozen1
 stop music
 nvlm
 "但是我明明瞄准的右肩。"
