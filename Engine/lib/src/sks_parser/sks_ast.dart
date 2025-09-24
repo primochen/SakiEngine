@@ -79,7 +79,25 @@ class SayNode implements SksNode {
   final String? position;
   final String? animation;
   final int? repeatCount;
-  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.position, this.animation, this.repeatCount});
+  final String? startExpression; // 时序切换的起始差分
+  final double? switchDelay; // 切换延迟时间（秒）
+  final String? endExpression; // 时序切换的目标差分
+  
+  SayNode({
+    this.character, 
+    required this.dialogue, 
+    this.pose, 
+    this.expression, 
+    this.position, 
+    this.animation, 
+    this.repeatCount,
+    this.startExpression,
+    this.switchDelay,
+    this.endExpression,
+  });
+  
+  /// 检查是否为时序差分切换节点
+  bool get hasTimedExpression => startExpression != null && endExpression != null && switchDelay != null;
 }
 
 class ChoiceOptionNode {

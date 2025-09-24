@@ -589,6 +589,34 @@ class SksParser {
       processedLine = line.substring(0, commentIndex).trim();
     }
     
+    // 检查是否是时序差分切换语法: x [wakuwaku2,0.5,think] "我去。"
+    final timedExpressionRegex = RegExp(r'^(\w+)\s*\[([^,]+),([^,]+),([^\]]+)\]\s*"([^"]*)"$');
+    final timedMatch = timedExpressionRegex.firstMatch(processedLine);
+    
+    if (timedMatch != null) {
+      final character = timedMatch.group(1)!.trim();
+      final startExpression = timedMatch.group(2)!.trim();
+      final delayStr = timedMatch.group(3)!.trim();
+      final endExpression = timedMatch.group(4)!.trim();
+      final dialogue = timedMatch.group(5)!;
+      
+      final switchDelay = double.tryParse(delayStr);
+      if (switchDelay == null || switchDelay <= 0) {
+        print('[SksParser] 警告: 无效的延迟时间 "$delayStr"，跳过时序差分切换');
+        return null;
+      }
+      
+      //print('[SksParser] 解析时序差分切换: $character [$startExpression,$switchDelay,$endExpression] "$dialogue"');
+      
+      return SayNode(
+        character: character,
+        dialogue: _formatDialogueWithQuotes(dialogue, character),
+        startExpression: startExpression,
+        switchDelay: switchDelay,
+        endExpression: endExpression,
+      );
+    }
+    
     // 检查是否是条件对话 "dialogue" if variable true/false
     final conditionalRegex = RegExp(r'^(.*?)\s*"([^"]+)"\s+if\s+(\w+)\s+(true|false)\s*$');
     final conditionalMatch = conditionalRegex.firstMatch(processedLine);
