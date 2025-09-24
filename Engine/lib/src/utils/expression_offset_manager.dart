@@ -37,19 +37,22 @@ class ExpressionOffsetManager {
     // 负值向上/左偏移，正值向下/右偏移
     addOffsetConfig(ExpressionOffsetConfig(
       characterId: 'xiayo1',
-      pose: '6',
-      yOffset: -1, // 向上偏移5%的角色高度
+      pose: 'pose6',
+      xOffset: 0.0, // 横向偏移（可调整）
+      yOffset: 0.0, // 纵向偏移（可调整）
     ));
     
     addOffsetConfig(ExpressionOffsetConfig(
       characterId: 'xiayo1',
-      pose: '7',
+      pose: 'pose7',
+      xOffset: 0.0, // 横向偏移（可调整）
       yOffset: -0.08, // 向上偏移8%的角色高度
     ));
     
     addOffsetConfig(ExpressionOffsetConfig(
       characterId: 'xiayo1',
-      pose: '8',
+      pose: 'pose8',
+      xOffset: 0.0, // 横向偏移（可调整）
       yOffset: -0.10, // 向上偏移10%的角色高度
     ));
     
@@ -77,16 +80,16 @@ class ExpressionOffsetManager {
   
   /// 获取差分偏移（归一化值）
   /// [characterId] 角色ID (如 'xiayo1')
-  /// [pose] 姿势 (如 '6', '7', '8')
-  /// [layerType] 图层类型，只有 'expression' 类型的图层才应用偏移
+  /// [pose] 姿势 (如 'pose6', 'pose7', 'pose8')
+  /// [layerType] 图层类型，只有包含 'expression' 的图层类型才应用偏移
   /// 返回 (xOffset, yOffset) 归一化偏移量，相对于角色尺寸
   (double, double) getExpressionOffset({
     required String characterId,
     required String pose,
     required String layerType,
   }) {
-    // 只对表情图层应用偏移
-    if (layerType != 'expression') {
+    // 只对表情图层应用偏移（包含 'expression' 关键词的图层）
+    if (!layerType.contains('expression')) {
       return (0.0, 0.0);
     }
     
@@ -94,9 +97,6 @@ class ExpressionOffsetManager {
     final config = _offsetConfigs[key];
     
     if (config != null) {
-      if (kDebugMode) {
-        print('[ExpressionOffsetManager] 应用归一化偏移 $key: x=${config.xOffset}, y=${config.yOffset}');
-      }
       return (config.xOffset, config.yOffset);
     }
     

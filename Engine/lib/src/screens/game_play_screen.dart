@@ -39,6 +39,7 @@ import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
 import 'package:sakiengine/src/utils/expression_selector_manager.dart';
+import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
@@ -1096,10 +1097,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
           // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
           final layers = layerInfos.map((layerInfo) {
+            // 获取差分偏移（仅对表情图层有效）
+            final (xOffset, yOffset) = ExpressionOffsetManager().getExpressionOffset(
+              characterId: characterState.resourceId,
+              pose: characterState.pose ?? 'pose1',
+              layerType: layerInfo.layerType,
+            );
+            
             return _CharacterLayer(
               key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
               assetName: layerInfo.assetName,
               isFadingOut: characterState.isFadingOut,
+              expressionOffsetX: xOffset, // 新增：传递横向偏移
+              expressionOffsetY: yOffset, // 新增：传递纵向偏移
               onFadeOutComplete: characterState.isFadingOut ? () {
                 // 淡出完成，从角色列表中移除该角色
                 _removeCharacterAfterFadeOut(characterId);
@@ -1170,12 +1180,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 class _CharacterLayer extends StatefulWidget {
   final String assetName;
   final bool isFadingOut;
+  final double expressionOffsetX; // 新增：横向偏移（归一化值）
+  final double expressionOffsetY; // 新增：纵向偏移（归一化值）
   final VoidCallback? onFadeOutComplete;
   
   const _CharacterLayer({
     super.key, 
     required this.assetName,
     this.isFadingOut = false,
+    this.expressionOffsetX = 0.0, // 新增：默认无偏移
+    this.expressionOffsetY = 0.0, // 新增：默认无偏移
     this.onFadeOutComplete,
   });
 
@@ -1273,7 +1287,7 @@ class _CharacterLayerState extends State<_CharacterLayer>
       return const SizedBox.shrink();
     }
 
-    return AnimatedBuilder(
+    Widget imageWidget = AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
         return LayoutBuilder(
@@ -1291,19 +1305,34 @@ class _CharacterLayerState extends State<_CharacterLayer>
               paintSize = Size(paintWidth, paintHeight);
             }
             
-            return CustomPaint(
+            Widget customPaintWidget = CustomPaint(
               size: paintSize,
               painter: _DissolvePainter(
                 program: _dissolveProgram!,
                 progress: _animation.value,
-                imageFrom: _previousImage ?? _currentImage!, // 没有previousImage时用当前图片，shader会处理透明
+                imageFrom: _previousImage ?? _currentImage!,
                 imageTo: _currentImage!,
               ),
             );
+            
+            // 应用差分偏移（如果有偏移），基于实际绘制尺寸
+            if (widget.expressionOffsetX != 0.0 || widget.expressionOffsetY != 0.0) {
+              final pixelOffsetX = paintSize.width * widget.expressionOffsetX;
+              final pixelOffsetY = paintSize.height * widget.expressionOffsetY;
+              
+              return Transform.translate(
+                offset: Offset(pixelOffsetX, pixelOffsetY),
+                child: customPaintWidget,
+              );
+            }
+            
+            return customPaintWidget;
           },
         );
       },
     );
+    
+    return imageWidget;
   }
 }
 

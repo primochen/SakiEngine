@@ -11,7 +11,8 @@
       "Bash(find:*)",
       "Read(//Users/dfsteve/Downloads/igiari/**)",
       "Bash(ffmpeg:*)",
-      "Read(//Users/dfsteve/Documents/SakiEngine/**)"
+      "Read(//Users/dfsteve/Documents/SakiEngine/**)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []
