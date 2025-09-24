@@ -1221,6 +1221,7 @@ class GameManager {
         if (_currentState.isNvlMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
+            speakerAlias: node.character, // 新增：传递角色简写
             dialogue: node.dialogue,
             timestamp: DateTime.now(),
           );
@@ -1432,6 +1433,7 @@ class GameManager {
         if (_currentState.isNvlMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
+            speakerAlias: node.character, // 新增：传递角色简写
             dialogue: node.dialogue,
             timestamp: DateTime.now(),
           );
@@ -1980,7 +1982,7 @@ class GameManager {
     // 为历史条目创建快照时，使用正确的节点索引
     // 对于NVL模式，只保存当前单句对话而不是整个NVL列表，避免回退时重复显示
     final nvlDialoguesForSnapshot = _currentState.isNvlMode 
-        ? [NvlDialogue(speaker: speaker, dialogue: dialogue, timestamp: timestamp)]
+        ? [NvlDialogue(speaker: speaker, speakerAlias: null, dialogue: dialogue, timestamp: timestamp)]
         : List.from(_currentState.nvlDialogues);
     
     final snapshot = GameStateSnapshot(
@@ -2880,11 +2882,13 @@ class GameState {
 
 class NvlDialogue {
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final String dialogue;
   final DateTime timestamp;
 
   NvlDialogue({
     this.speaker,
+    this.speakerAlias, // 新增：角色简写参数
     required this.dialogue,
     required this.timestamp,
   });

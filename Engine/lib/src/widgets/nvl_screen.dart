@@ -415,6 +415,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
                   fontSize: (config.dialogueTextStyle.fontSize! * textScale) * 0.7, // 缩小到70%
                   color: Colors.white,
                   speaker: dialogue.speaker,
+                  speakerAlias: dialogue.speakerAlias, // 传递角色简写
                 ),
               ),
           ],

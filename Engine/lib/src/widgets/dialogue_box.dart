@@ -13,6 +13,7 @@ import 'package:sakiengine/src/widgets/dialogue_content.dart';
 
 class DialogueBox extends StatefulWidget {
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final String dialogue;
   final DialogueProgressionManager? progressionManager;
   final bool isFastForwarding;
@@ -21,6 +22,7 @@ class DialogueBox extends StatefulWidget {
   const DialogueBox({
     super.key,
     this.speaker,
+    this.speakerAlias, // 新增：角色简写参数
     required this.dialogue,
     this.progressionManager,
     this.isFastForwarding = false,
@@ -340,6 +342,7 @@ class _DialogueBoxState extends State<DialogueBox>
                         DialogueContent(
                           dialogue: widget.dialogue,
                           speaker: widget.speaker,
+                          speakerAlias: widget.speakerAlias, // 新增：传递角色简写
                           dialogueStyle: dialogueStyle,
                           typewriterController: _typewriterController,
                           textFadeAnimation: _textFadeAnimation,

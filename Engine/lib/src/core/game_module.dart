@@ -148,6 +148,7 @@ class DefaultGameModule implements GameModule {
   }) {
     return DialogueBox(
       speaker: speaker,
+      speakerAlias: speakerAlias, // 新增：传递角色简写
       dialogue: dialogue,
       progressionManager: progressionManager,
       scriptIndex: scriptIndex, // 传递脚本索引
