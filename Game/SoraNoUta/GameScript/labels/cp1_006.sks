@@ -672,16 +672,16 @@ endnvl
 nvl
 nanshin "嗯。"
 nanshin "其他人呢？"
-nanshin "他们......对不起..."
-nanshin"他们现在需要你的帮助..."
+nanshin "它们......对不起..."
+nanshin"它们现在需要你的帮助..."
 nanshin"我会都告诉你的..."
 nanshin "好吧。"
 nanshin "Prometheus计划。"
 endnvl
+nvlm
 stop sound 
 scene sky
 stop music 
-nvlm
 ////背景黑场到白天天空 音乐停止 nvl模式
 "......"
 "......"
