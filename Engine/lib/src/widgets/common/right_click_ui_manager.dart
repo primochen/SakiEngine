@@ -75,6 +75,9 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
       _isUIHidden = !_isUIHidden;
     });
     
+    // 同步到全局UI管理器
+    GlobalRightClickUIManager().setUIHidden(_isUIHidden);
+    
     // 播放动画
     if (_isUIHidden) {
       _animationController.forward();

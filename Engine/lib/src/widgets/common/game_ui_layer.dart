@@ -189,7 +189,7 @@ class GameUILayerState extends State<GameUILayer> {
                 child: child,
               );
             },
-            child: (widget.gameState.isNvlMode || widget.gameState.isNvlnMode)
+            child: (widget.gameState.isNvlMode || widget.gameState.isNvlnMode || widget.gameState.isNvlMovieMode)
                 ? NvlScreen(
                     key: widget.nvlScreenKey,
                     nvlDialogues: widget.gameState.nvlDialogues,
