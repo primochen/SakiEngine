@@ -1141,10 +1141,22 @@ class GameManager {
           if (currentCharacterState != null) {
             // 角色已存在，更新表情、姿势和位置
             final newCharacters = Map.of(_currentState.characters);
+            
+            // 如果角色已存在且有正在播放的动画，继承动画属性
+            final existingAnimController = _activeCharacterAnimations[finalCharacterKey];
+            Map<String, double>? inheritedAnimationProperties;
+            
+            if (existingAnimController != null && currentCharacterState.animationProperties != null) {
+              // 继承当前的动画属性，这样角色的差分改变但动画位置保持
+              inheritedAnimationProperties = Map.from(currentCharacterState.animationProperties!);
+              //print('[GameManager] ConditionalSay: 角色 $finalCharacterKey 差分切换时继承动画属性: $inheritedAnimationProperties');
+            }
+            
             final updatedCharacter = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
               positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
+              animationProperties: inheritedAnimationProperties, // 继承动画属性
               clearAnimationProperties: false,
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
@@ -1318,10 +1330,21 @@ class GameManager {
                 }
               }
               
+              // 如果角色已存在且有正在播放的动画，继承动画属性
+              final existingAnimController = _activeCharacterAnimations[finalCharacterKey];
+              Map<String, double>? inheritedAnimationProperties;
+              
+              if (existingAnimController != null && currentCharacterState.animationProperties != null) {
+                // 继承当前的动画属性，这样角色的差分改变但动画位置保持
+                inheritedAnimationProperties = Map.from(currentCharacterState.animationProperties!);
+                //print('[GameManager] 角色 $finalCharacterKey 差分切换时继承动画属性: $inheritedAnimationProperties');
+              }
+              
               final updatedCharacter = currentCharacterState.copyWith(
                 pose: node.pose,
                 expression: finalExpression,
                 positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
+                animationProperties: inheritedAnimationProperties, // 继承动画属性
                 clearAnimationProperties: false,
               );
               newCharacters[finalCharacterKey] = updatedCharacter;
@@ -2383,10 +2406,29 @@ class GameManager {
     MusicManager().stopAudio(AudioTrackConfig.sound);
   }
 
+  // 存储当前正在播放动画的角色控制器
+  final Map<String, CharacterAnimationController> _activeCharacterAnimations = {};
+
   /// 播放角色动画
   Future<void> _playCharacterAnimation(String characterId, String animationName, {int? repeatCount}) async {
     final characterState = _currentState.characters[characterId];
     if (characterState == null) return;
+    
+    // 检查该角色是否已经有动画在播放
+    final existingAnimController = _activeCharacterAnimations[characterId];
+    if (existingAnimController != null) {
+      // 如果已经有动画在播放同一个动画，直接返回，让动画继续
+      if (existingAnimController.animationName == animationName) {
+        //print('[GameManager] 角色 $characterId 已在播放动画 $animationName，继承动画状态');
+        return;
+      } else {
+        // 如果在播放不同的动画，停止旧动画
+        //print('[GameManager] 角色 $characterId 切换动画: ${existingAnimController.animationName} -> $animationName');
+        existingAnimController.stopInfiniteLoop();
+        existingAnimController.dispose();
+        _activeCharacterAnimations.remove(characterId);
+      }
+    }
     
     // 应用自动分布逻辑，获取实际的分布后位置
     final characterOrder = _currentState.characters.keys.toList();
@@ -2411,39 +2453,47 @@ class GameManager {
       'alpha': 1.0,
     };
     
-    // 声明动画控制器变量
-    late final CharacterAnimationController animController;
-    
     // 创建动画控制器
-    animController = CharacterAnimationController(
+    final animController = CharacterAnimationController(
       characterId: characterId,
       onAnimationUpdate: (properties) {
         // 实时更新角色状态
         final newCharacters = Map.of(_currentState.characters);
-        newCharacters[characterId] = characterState.copyWith(
-          animationProperties: properties,
-        );
-        _currentState = _currentState.copyWith(
-          characters: newCharacters,
-          everShownCharacters: _everShownCharacters,
-        );
-        _gameStateController.add(_currentState);
+        final currentCharacterState = newCharacters[characterId];
+        if (currentCharacterState != null) {
+          newCharacters[characterId] = currentCharacterState.copyWith(
+            animationProperties: properties,
+          );
+          _currentState = _currentState.copyWith(
+            characters: newCharacters,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        }
       },
       onComplete: () {
-        ////print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
+        //print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
         // 动画完成后，清除动画属性，让角色回到原本的位置
         // 不修改原始的pose配置，避免影响其他使用相同positionId的角色
         final newCharacters = Map.of(_currentState.characters);
-        newCharacters[characterId] = characterState.copyWith(
-          animationProperties: null, // 清除动画属性，回到基础位置
-        );
-        _currentState = _currentState.copyWith(
-          characters: newCharacters,
-          everShownCharacters: _everShownCharacters,
-        );
-        _gameStateController.add(_currentState);
+        final currentCharacterState = newCharacters[characterId];
+        if (currentCharacterState != null) {
+          newCharacters[characterId] = currentCharacterState.copyWith(
+            animationProperties: null, // 清除动画属性，回到基础位置
+          );
+          _currentState = _currentState.copyWith(
+            characters: newCharacters,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        }
+        // 从活跃动画列表中移除
+        _activeCharacterAnimations.remove(characterId);
       },
     );
+    
+    // 添加到活跃动画列表
+    _activeCharacterAnimations[characterId] = animController;
     
     // 播放动画，传递repeatCount参数
     if (_tickerProvider != null) {
@@ -2455,9 +2505,15 @@ class GameManager {
       );
     } else {
       ////print('[GameManager] 无TickerProvider，跳过动画播放');
+      // 如果无法播放动画，从活跃列表中移除
+      _activeCharacterAnimations.remove(characterId);
     }
     
-    animController.dispose();
+    // 动画播放完成后自动清理（如果还在活跃列表中）
+    if (_activeCharacterAnimations[characterId] == animController) {
+      animController.dispose();
+      _activeCharacterAnimations.remove(characterId);
+    }
   }
 
   /// 播放场景动画
@@ -2653,6 +2709,14 @@ class GameManager {
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
+    
+    // 清理所有活跃的角色动画控制器
+    for (final controller in _activeCharacterAnimations.values) {
+      controller.stopInfiniteLoop();
+      controller.dispose();
+    }
+    _activeCharacterAnimations.clear();
+    
     stopAllSounds(); // 停止所有音效
     _gameStateController.close();
   }
