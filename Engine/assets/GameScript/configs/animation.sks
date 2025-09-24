@@ -36,6 +36,14 @@ ease 0.2 ycenter-0.08
 ease 0.2 ycenter+0.01
 ease 0.1 ycenter-0.01
 ease 0.1 ycenter+0
+
+topout
+ease 0.2 ycenter-0
+ease 0.2 ycenter+0.08
+ease 0.1 ycenter-0.16
+ease 0.1 ycenter+1
+
+
 backjump
 ease 0.3 ycenter+0 scale-0
 ease 0.3 ycenter-0.05 scale+0.3
@@ -85,6 +93,16 @@ ease 0.15 ycenter-0
 ease 0.15 ycenter-0.05
 ease 0.15 ycenter-0
 ease 0.15 ycenter-0.05
+
+zoomjumpinout
+ease 0.3 ycenter-0.05 scale+0.3
+ease 0.3 ycenter+0.1 scale+0.3
+ease 1.0 ycenter+0.1 scale+0.3
+ease 0.3 ycenter-0.05 scale+0.15
+ease 0.15 ycenter-0
+ease 0.15 ycenter-0.05 scale+0
+ease 0.15 ycenter-0
+ease 0.3 
 fadein
 linear 0.5 alpha+1.0
 
@@ -125,3 +143,11 @@ xcenter-0.02
 ycenter+0.2
 ease 5.0 xcenter+0.05
 ease 5.0 scale-0 ycenter-0 xcenter+0
+cg1_4
+scale+0.5
+ease 2.0 scale-0
+
+attack_syozen
+xcenter-0
+ease 0.5 xcenter+0.25
+ease 0.5 xcenter-0

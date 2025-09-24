@@ -327,38 +327,38 @@ play sound pekori
 x tameiki2 an topin "是啊～～哇～唔......"////夏悠tameiki2 从下往上渐变登场
 l "你怎么打哈欠了，昨晚没睡好？"
 x tameiki an shake2 repeat 4 "啊呜～"////夏悠tameiki
-x think "我认为只要是人类，被别人被动叫醒的话都会打哈欠。"////夏悠think
+x pose3 think "我认为只要是人类，被别人被动叫醒的话都会打哈欠。"////夏悠think
 l "很值得验证的结论。"
-x ciallo "昨天的那集你应该有看吧！"////夏悠ciallo
+x pose2 ciallo "昨天的那集你应该有看吧！"////夏悠ciallo
 l "我看了。"
 l "但是，抱歉，有点记不清楚剧情了。"
 play sound haneru
-x odoroki an jump "啊？"////夏悠震惊 立绘颤抖一下
-x akireta3 "要不你去医院看看？"////夏悠流汗
+x pose3 odoroki an jump "啊？"////夏悠震惊 立绘颤抖一下
+x pose1 ochikomu "要不你去医院看看？"////夏悠流汗
 l "不，没事，至少我还记得你。"
 play sound poko
-x shy "啊！！！？"////对话框震动 夏悠害羞脸红 立绘颤抖一下
+x pose3 shy1 "啊！！！？"////对话框震动 夏悠害羞脸红 立绘颤抖一下
 ////很活跃的bgm
 "夏悠突然脸红成一片。"
 "我好像不小心说了什么很奇怪的话。"
 x shy2 "你这是....是在..."////夏悠眼睛往左看 过1.5秒切成向右看
 x tameiki "算了。"////夏悠叹气
-x tameiki2 "今天是星期五诶！"
+x pose2 tameiki2 "今天是星期五诶！"
 x tameiki "还记得昨天下午的约定吧！"
 x hen "你如果看这个都忘了，那我就真生气了。"////夏悠气鼓鼓
 l "这么重要的事情，我怎么可能忘呢？"
-x ochikomu "重要的事情......吗？"////夏悠ochikomu
-x "嗯。太好了。"
+x pose1 ochikomu "重要的事情......吗？"////夏悠ochikomu
+x pose5 smilenaka1 "嗯。太好了。"
 ////音乐换成日常
 l "你昨天问过你爸妈了吗？"
 l "他们怎么说？"
 l "平时都是周末去的吧！"
-x think "话是这样，但是小玩不算玩。"////夏悠侧脸思考
+x pose1 think "话是这样，但是小玩不算玩。"////夏悠侧脸思考
 x think2 "我还是想去抓点蝉。"////眼睛看过来
 l "我每天都有在抓哦。"
 l "咳咳，练习！"////对话框震动
-x smile "真好啊，你家旁边就有树林。"////夏悠smile
-x tameiki2 "我家旁边都是农田，想去抓蝉光赶路就得好几分钟。"////夏悠tameiki2
+x pose5 smile "真好啊，你家旁边就有树林。"////夏悠smile
+x pose1 tameiki2 "我家旁边都是农田，想去抓蝉光赶路就得好几分钟。"////夏悠tameiki2
 x tameiki "不如在回家的路上顺便抓点。"////夏悠tameiki
 l "很漂亮吧！蝉！"
 x ochikomu "啊？嗯！"////夏悠立绘从ochikomu经过1秒切为smile
@@ -369,7 +369,7 @@ x "大自然所创作的，璀璨的艺术品。"
 ////////移除特写
 hide chan2  
 l "那下午准时开始抓蝉活动！"
-x ciallo "当然！"////对话框震动 夏悠ciallo
+x pose2 ciallo "当然！"////对话框震动 夏悠ciallo
 l "至于现在，先去学校吧！"
 stop music
 play sound tsuchi loop  
@@ -385,11 +385,12 @@ nvlm
 "跟普通的乡村风景没有多大区别。"
 "悠闲地看着风景，悠闲地走着。"
 endnvlm
+stop sound
 ////结束nvl模式
 x wakuwaku2 an fururu repeat 2 "啊！"////对话框震动 夏悠惊讶 立绘震动
 ////nvl模式
 play sound donaru loop
-cg cgdog 1
+scene cgdog 1
 play music keikaku
 ////cg 道路中间的凶猛的狗 角色是q版 狗的站位在c位 四周有速度线帧动画
 "我循着夏悠的目光看过去。"
@@ -416,12 +417,12 @@ show eda at items an jump
 "不过这个粗细说是树枝，还是叫木棍比较好。"
 "我挡到夏悠的前面，一边挥舞着木棍，一边发出声音驱赶这条狗。"
 hide eda
-cg cgdog 2
+scene cgdog 2
 ////cg的角落里男主形象差分为手持树枝 表情凶恶
 l "哇唔！"////对话框震动
 l "哇！！！"////对话框震动
 "我模仿着烈犬的叫声，警告着它。"
-cg cgdog 3
+scene cgdog 3
 ////cg里狗消失 角色松了一口气
 "警告似乎有用，这条狗看到我挥舞的木棍以后，虽然还是用着凶狠的目光看着我们，但也只能一边哼着一边走开了。跑下了公路，跑到了农田。"
 stop sound
@@ -458,12 +459,12 @@ lg happy an fururu repeat 2 "哈哈哈！"////宫娜开心
 ls an fururu repeat 2 "哈哈！如果在我们这个世界之上还有一层更高阶的支配存在的话。"////守真思考
 l "只是巧合这样吧。"
 l "不然我和刘守真的发型也一样，也是作者懒得想造型了？"
-x akireta3 "果然林澄还是一如既往的没趣。"////夏悠黑脸嫌弃
+x pose3 akireta3 "果然林澄还是一如既往的没趣。"////夏悠黑脸嫌弃
 l "并没有，请不要这样说我。我会伤心的。"
 x tameiki2 "对不起。"////夏悠tameiki2
 x tameiki "下次不会说你这个了。"//夏悠tameiki
 l "好。"
-x ciallo "下次会给你个新的批判点的。"////夏悠ciallo
+x pose2 ciallo "下次会给你个新的批判点的。"////夏悠ciallo
 l "......"
 l "行吧。"
 l "我放弃了思考。"
@@ -485,10 +486,10 @@ lg happy "走吧，做饭游戏。"
 l "是又开一局新的吗？"
 l "上个下课时间准备的食材怎么办？"
 x think "怎么会，是一天算一局的。"////夏悠think
-x "虽然我不清楚玩过家家用局来表示合不合适。"////夏悠侧脸思考
+x pose4 think2 "虽然我不清楚玩过家家用局来表示合不合适。"////夏悠侧脸思考
 l "既然都是过家家了，为什么老是在做饭啊。"
 stop music
-x think2 "......"////夏悠眼睛看过来
+x pose1 think "......"////夏悠眼睛看过来
 ls unhappy "......"
 "坏了，我可能说了一些不合适的话。"
 show xiayo pose1 odoroki at ajump
@@ -501,33 +502,33 @@ play sound pin
 lg odoroki "我也是！"////对话框震动 ////宫娜豆豆眼 立绘震动
 ls think "确实我们玩的是过家家，不是单纯模拟厨师的吧？"////守真思考
 l "所以除了扮演厨师以外还能玩什么？"
-lg think3 "来玩捉迷藏吧！？"////对话框震动 宫娜张开嘴思考
+lg pose3 think3 "来玩捉迷藏吧！？"////对话框震动 宫娜张开嘴思考
 l "很好，但是现在应该是过家家的时间。"
-x happy "来扮演爸爸妈妈吧！"//// 对话框震动 夏悠happy
+x pose2 happy "来扮演爸爸妈妈吧！"//// 对话框震动 夏悠happy
 l "我......"
 nvlm
 "这在理论上是可以实现的，但是对我来说，有点难为情。"
 "明明我才十一岁，为什么我会以成年人的思维去想这些事情？"
 endnvlm
-x mesugaki2 "我来扮演你们的爸爸妈妈，你们三个人扮演我的儿子女儿。"////夏悠mesugaki2
+x pose4 mesugaki2 "我来扮演你们的爸爸妈妈，你们三个人扮演我的儿子女儿。"////夏悠mesugaki2
 nvlm
 "对不起，我想多了。"
 endnvlm
 l "爸爸妈妈不应该是两个人吗？"
 l "而且只有你一个人的话要怎么生小孩？"
 play sound haneru
-x pose4 kowa an shake2 repeat 2 "啊？什么生小孩？"////对话框震动 ////夏悠害怕
-lg satoko "只要找个地方假装是垃圾桶就行了吧！"
-ls think "我来扮演手机营业厅的工作人员吧，在我这里充话费兑换小孩。"////宫娜sadoko
+x pose3 kowa an shake2 repeat 2 "啊？什么生小孩？"////对话框震动 ////夏悠害怕
+lg pose1 satoko "只要找个地方假装是垃圾桶就行了吧！"
+ls pose2 naruhodo "我来扮演手机营业厅的工作人员吧，在我这里充话费兑换小孩。"////宫娜sadoko
 l "不行了这些人，得赶紧想想办法才行。"
 l "行吧。"
 x ciallo "好，那李宫娜和林澄扮演我的儿子和女儿，至于刘守真，你扮演工作人员。"////夏悠ciallo
-x "[size=1.3]3！[/size]2！1！[size=1.3]开始！[/size]"////夏悠 kirakira
+x pose2 moeru "[size=1.3]3！[/size]2！1！[size=1.3]开始！[/size]"////夏悠 kirakira
 "为什么像在片场拍戏一样。"
-x "你们先到刘守真那里去，我等会要过去充话费。"////夏悠叉腰 “哼哼哼” 自豪地闭眼
+x pose4 ciallo "你们先到刘守真那里去，我等会要过去充话费。"////夏悠叉腰 “哼哼哼” 自豪地闭眼
 l "好——！"////对话框震动
 play sound haneru
-lg"好——！"////对话框震动 宫娜立绘震动
+lg pose1 nikoniko "好——！"////对话框震动 宫娜立绘震动
 ////nvl模式
 nvlm
 "大脑被寄存的感觉。"
@@ -554,7 +555,7 @@ nvlm
 "我不觉得刘守真家里会有电脑。"
 "接着夏悠从草丛后面慢慢走了过来。"
 endnvlm
-x ciallo "早上好啊老板，生意怎么样？"////夏悠从下往上进入画面，位于画面右侧，ciallo
+x pose4 think "早上好啊老板，生意怎么样？"////夏悠从下往上进入画面，位于画面右侧，ciallo
 nvlm
 "啊？原来手机营业厅的柜台工作人员就是老板吗？"
 "现在吐槽这个也不会有任何作用。"
@@ -563,7 +564,7 @@ ls happy "好极了！"////守真进入画面左侧 开心
 ls magao "你这边也是来充话费的吗？"////守真收回开心的脸 变得严肃
 play sound pekori
 x an shake2 repeat 2 "嗯嗯。"////夏悠happy 震动 类似点头
-x think "送小孩的套餐是需要多少钱？"////夏悠侧脸思考
+x pose5 wakuwaku "送小孩的套餐是需要多少钱？"////夏悠侧脸思考
 ls happy "100元。"////守真happy
 nvlm
 "什么白菜价？"
@@ -583,7 +584,7 @@ nvlm
 endnvlm
 play sound haneru
 shake
-ls "你们，出来！"////对话框震动 守真又变成了严肃
+ls pose1 naruhodo "你们，出来！"////对话框震动 守真又变成了严肃
 nvlm
 "更像奴隶贸易了。"
 "不知道充话费送小孩这种落后的制度是什么时候废除的。"
@@ -592,7 +593,7 @@ endnvlm
 nvlm
 "我和李宫娜站了起来，走向了夏悠。"
 endnvlm
-x pose5 wakuwaku3 shake2 repeat 2 "哇哦！好可爱的双胞胎！"////对话框震动 夏悠wakuwaku3
+x pose5 wakuwaku3 an shake2 repeat 2 "哇哦！好可爱的双胞胎！"////对话框震动 夏悠wakuwaku3
 nvlm
 "哪有长得完全不一样的双胞胎。"
 "虽然如果是异卵双胞胎的话不是不可能。"
@@ -611,7 +612,7 @@ nvlm
 "爸妈这个词应该是复数词的吧。"
 endnvlm
 play sound pekori
-lg  an fururu repeat 2 "爸妈！！"////对话框震动 宫娜立绘抖两下 很开心的样子
+lg  pose3 nikoniko an fururu repeat 2 "爸妈！！"////对话框震动 宫娜立绘抖两下 很开心的样子
 play sound haneru
 x shy2 "啊啊啊好好好！"////对话框震动 夏悠脸红开心
 play sound poko
@@ -622,10 +623,10 @@ nvlm
 endnvlm
 l "哼！我才不叫！"////对话框震动
 x unhappy "你这是干什么？"////夏悠生气
-x "坏孩子！"////对话框震动
+x pose2 kuraikao "坏孩子！"////对话框震动
 l "哼！我叛逆期到了！"////对话框震动
 x pose3 think "这倒也是值得考虑的地方。"////夏悠侧脸思考
-x "虽然不知道什么是叛逆期。"
+x pose3 think2 "虽然不知道什么是叛逆期。"
 x pose2 think2 "那我要怎么做，你才会叫？"////眼睛转过来
 nvlm
 "不知道如何回答了。"
@@ -642,7 +643,7 @@ x ochikomu "......"////夏悠ochikomu
 x smile "好，爸妈捡给你！"////夏悠微笑
 hide xiayo1
 "夏悠过去了。"////清理掉夏悠立绘
-lg odoroki "你认真的？"////宫娜立绘豆豆眼疑惑
+lg pose2 odoroki "你认真的？"////宫娜立绘豆豆眼疑惑
 l "哼！叛逆期就是这样！"
 lg tameiki2 "生育率低的原因找到了。"////宫娜叹气
 x ciallo "爸妈帮你捡到松果了哟！"////对话框震动 重新放入夏悠立绘 ciallo
@@ -669,7 +670,7 @@ x akireta2 "你小子！"////对话框震动 夏悠黑脸
 l "唔～"
 play music what 
 ////另一首欢快的音乐
-scene cg_cp0_q3 an cgjump
+scene cg_cp0_q3 an cgjump repeat 0
 ////锁脖子的q版cg
 "夏悠趁我没反应过来的时候，快速绕到了我的身后，用手臂锁住了我的脖子。"
 l "呜呜～"
@@ -682,7 +683,7 @@ l "呜呜......对不起.....对不起.....爸妈......"
 scene kichi
 ////重新加载秘密基地背景
 ////夏悠叹气
-x "这还差不多。"
+x pose2 unhappy "这还差不多。"
 "我蹲到地上捡起了松果。"
 l "对不起。"
 l "但是谢谢爸妈，治好了我的叛逆期。"

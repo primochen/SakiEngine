@@ -14,8 +14,10 @@ lsnan : "刘守真" : narrator
 lg : "李宫娜" : gonna1 at xiayo1pose
 xnan : "夏悠" : narrator
 sensei : "老师" : narrator
+iru : "狗" : narrator
 oba : "老婆婆" : narrator
 chan : "蝉" : narrator
+ojisann : "大叔" : narrator
 // 添加你的角色定义：
 // 格式: 角色别名 : "角色显示名称" : 角色资源ID
 // 示例: alice : "爱丽丝" : alice at pose

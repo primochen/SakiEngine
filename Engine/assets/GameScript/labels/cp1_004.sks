@@ -14,7 +14,7 @@ play music himitsukichi
 "吃完饭散散步也有助于消化。"
 "看到了她们三个。"
 l "今天来玩什么？"
-show xiayo1 unhappy at xiayo1pose  an topin
+show xiayo1 unhappy at xiayo1pose an topin
 play sound haneru
 ////弹出夏悠立绘 unhappy
 "我走到夏悠旁边问到。"
@@ -106,7 +106,7 @@ hide edagun2
 ////收起特写配枪
 "我冷静下来以后前去查看树干的动静。"
 // persistent.cg043 = True
-cg cgtree 3
+scene cgtree 3
 play music sukuu 
 ////新的背景图片，一棵大树中间嵌入了一枚子弹
 "树干中间，被一颗金属物体击中了，陷了进去。"
@@ -119,13 +119,13 @@ scene forest
 "可能是我看错了，怎么可能会出现子弹。"
 "我这样想着，再次抬头去看。"
 // persistent.cg044 = True
-cg cgtree 2
+scene cgtree 2
 ////背景切到新的大树背景但是没有子弹只有凹槽
 "子弹消失了，只留下了树干上的凹槽痕迹。"
 l "呼～"
 "果然还是我搞错了。"
 scene forest
-x "怎么了？"
+x pose1 ochikomu "怎么了？"
 "夏悠在远处听到了响声。"
 lg "刚刚好大的声响！发生了什么？"
 stop music
@@ -136,16 +136,16 @@ stop music
 play music goodday
 l "啊哈哈哈～是我早上红薯吃多了，刚刚一次性放出来了。"
 play sound dokan
-x kowa "原来是生化武器。"////夏悠害怕
+x pose3 kowa "原来是生化武器。"////夏悠害怕
 play sound syobon
 lg angry2 "可以不描述这些吗"////宫娜黑脸
 lg "我刚吃完饭。"
 l "抱歉。"
-x pose2 dame "既然你配枪都准备好了，那赶紧开始吧。别墨迹了。"////夏悠手指着，开心
-x ciallo "让你看看谁才是神枪手。"////手指着，ciallo
+x pose2 dame an jump repeat 2 "既然你配枪都准备好了，那赶紧开始吧。别墨迹了。"////夏悠手指着，开心
+x pose5 ciallo "让你看看谁才是神枪手。"////手指着，ciallo
 x "这是一场公平的对决。"////手指着，
 l "要不还是算了。"
-x ochikomu "怎么了？"////夏悠担忧
+x pose1 ochikomu "怎么了？"////夏悠担忧
 l "我身体突然有点不舒服。"
 ////nvl模式
 nvlm
@@ -164,24 +164,21 @@ x tameiki2 "好吧。"////夏悠tameiki2
 "我扭头打算回教室。"
 x "......"
 play sound pekori
-x ochikomu an shake2 repeat 4 "等等！！"////对话框震动 夏悠担忧
+x pose2 ochikomu an shake2 repeat 4 "等等！！"////对话框震动 夏悠担忧
 l "？"
 x hen "我也回去。"////夏悠ochikomu
 l "为什么？"
 l "你也不舒服吗？"
 play sound poko
-x shy "不是...笨蛋..."////夏悠脸红
-x ochikomu "四缺一了，这个游戏就玩不下去了。"////夏悠ochikomu
-scene bl
-nvlm
-ls "这游戏还有必须达到四个人才能玩的规则吗...啊！痛痛痛！你干什么李宫娜？"
+x pose3 shy2 "不是...笨蛋..."////夏悠脸红
+x pose2 ochikomu "四缺一了，这个游戏就玩不下去了。"////夏悠ochikomu
+ls pose2 mendo "这游戏还有必须达到四个人才能玩的规则吗..."
 ////守真立绘先是思考，一秒以后震动一下并且变成惊讶（制作一秒时间切换两个图像的image，并且写一个1秒以后震动的动画） 
 ////在这同时将宫娜立绘左移到稍微和守真立绘重叠（所以宫娜立绘要先显示这样就会被守真遮挡）
-lg angry "你可少说几句吧！"////宫娜生气
+lg angry an shake2 repeat 2 "你可少说几句吧！"////宫娜生气
 lg satoko "今天中午就这样了吧。我继续晒太阳去。"////宫娜sadoko
 lg "明天再玩也没关系。"
 l "大家......"
-endnvlm
 scene classroom
 ////缓慢黑场到教室 音乐停止
 ////nvl模式
@@ -276,9 +273,9 @@ l "老师......"
 l "我知道了。"
 "我扭头看向夏悠的座位。"
 endnvlm
-show xiayo1 smile at xiayo1pose
+show xiayo1 pose2 smile at xiayo1pose
 "夏悠撑着脸对我微笑着。"
-show xiayo1 wakuwaku2 at xiayo1pose an shake2 repeat 2
+show xiayo1 pose5 wakuwaku2 at xiayo1pose an jump repeat 2
 play sound pekori
 "张开了嘴，轻声说着话。"
 "从嘴型来看，明显说的是：“快去吧！”。"
@@ -517,7 +514,7 @@ endnvlm
 stop sound
 stop music
 // persistent.back004 = True
-show sky yoru
+scene sky yoru
 ////音乐停止 背景晚上的天空 nvl模式
 play sound yorunomusi loop  
 nvlm
