@@ -302,8 +302,7 @@ hide mastersword
 x [wakuwaku2,1.0,think] "我去。"////夏悠 think
 l "这就是你的评价吗？"
 l "也太言简意赅了。"
-show xiayo1 wakuwaku2 at xiayo1pose
-x think "确实长得很像大宝剑，没有了。"////立绘wakuwaku2 并且0.75秒以后变回think
+x [wakuwaku2,1.0,think] "确实长得很像大宝剑，没有了。"////立绘wakuwaku2 并且0.75秒以后变回think
 l "......"
 l "这种简直是棍中尤物的东西，你的反应只有这点吗？！！"////对话框震动
 l "算了，有些东西，不同类型的人之间注定存在隔阂。"
@@ -448,6 +447,8 @@ nvlm
 "说起来，我又想起了那个事情。"
 "树干上的弹痕和卡在里面的子弹。"
 "我现在去查看一下。"
+endnvlm
+nvlm
 "如果弹痕还在。"
 "那就说明在玩打枪游戏之前就一直存在于那里了，就可以印证我的猜想之一了。"
 "因为按照时间来说，如果是我射的子弹，那只会在中午玩打枪游戏的时候才会出现。"
@@ -514,7 +515,7 @@ x pose2 hen "才不是看到你一下课就往外跑才跟过来呢，我只是�
 l "是吗？那你继续自己的事吧。"
 l "我也该回教室了。"
 play sound poko
-x tameiki2 "笨蛋..........."////夏悠脸红
+x pose1 tameiki2 "笨蛋..........."////夏悠脸红
 ////音乐停止 nvl模式 教室背景
 stop music
 scene classroom
@@ -646,7 +647,7 @@ play music yasumijikan
 ////背景黑场到草地 nvl模式 音乐school
 nvlm
 "？"
-"我在在一个研究所里？"
+"我在一个研究所里？"
 "只是眯了一小会，就做起了白日梦吗？"
 endnvlm
 lg satoko "林澄，夏悠！"////对话框震动
@@ -745,7 +746,7 @@ endnvlm
 scene forest
 //pause(2.0)
 //how草地的背景 1秒时间透明度从0变成1 再花一秒时间变回0（透明度是alpha）
-show syozen1 kuraikao at xiayo1pose an topin 
+show syozen1 pose1 kuraikao at xiayo1pose an topin 
 play sound gunshoot
 l "[size=1.5]砰！[/size]"////对话框震动
 show syozen1 at xiayo1pose an topout
