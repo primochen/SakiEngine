@@ -414,9 +414,9 @@ nvlm
 "但是我却看到了。"
 "明明不应该会出现的事情。"
 endnvlm
+nvlm
 play music nandato  
 play sound donaru
-nvlm
 iru"汪！汪汪！"
 "狗被拴在房门口，冲着我们凶狠地叫着。"
 xnan "这......"
@@ -426,9 +426,9 @@ l "为什么刚才才被我们击退的狗，这么快就被拴住了。"
 "但我还是尝试敲了敲房门。"
 l "在吗？"
 endnvlm
+nvlm
 stop sound
 play sound doawoake
-nvlm
 "敲了几声以后，门开了。"
 "走出来的是一位中年妇女。"
 endnvlm
@@ -440,10 +440,12 @@ onna"啊，那个啊，没事，我中午就给它重新拴好了，就在外面
 onna"不会到处咬人的。拴的很牢的。"
 play sound dokan
 l "但是......"
+endnvlm
+nvlm
 "我相信我刚才和夏悠经历过的事情是真实发生的。"
 "旁边的夏悠也在思考着什么。"
-x "那个，阿姨。"
-x "您家的狗，是双胞胎吗？"
+xnan "那个，阿姨。"
+xnan "您家的狗，是双胞胎吗？"
 "对哦，既然早上遇到的狗已经被拴住了，那刚刚我们遇到的那条，就不可能还是同一条狗了。"
 "那就只会存在一个可能性了。"
 endnvlm
@@ -473,8 +475,8 @@ iru "汪.......呜......."
 "这条狗还是一样胆小。"
 "我装成更凶猛的狗，它就萎下来了。"
 endnvlm
-play sound dokan
 nvlm
+play sound dokan
 xnan "你比狗更像狗呢..."
 xnan "可选的职业又多了一个。"
 play sound syokku
@@ -594,6 +596,7 @@ endnvlm
 ojisann"有啥事啊？"
 l "叔叔你好，您家的狗是不是没拴？"
 ojisann"你说我家老黄啊，这不，拴太久了这几天解了让它透透气。"
+l "您这老黄，穿皮衣吗？"
 xnan "您家这狗感觉有点危险啊！不拴好的话。"
 xnan "我们今天放学路上就看到它到处逛，还对着人叫。"
 xnan "看起来还很凶。"
@@ -656,24 +659,24 @@ nvlm
 "......"
 endnvlm
 nvl
-nan "嗯......"
-nan "我......"
-nan "你终于醒过来了吗？"
-nan "我做了一个很长的梦。"
+nanshin "嗯......"
+nanshin "我......"
+nanshin "你终于醒过来了吗？"
+nanshin "我做了一个很长的梦。"
 endnvl
 nvl
-nan "没关系，你活过来了。"
-nan "怎么会......是因为什么......"
-nan "你先缓一缓，详细的事情我后面会说。"
+nanshin "没关系，你活过来了。"
+nanshin "怎么会......是因为什么......"
+nanshin "你先缓一缓，详细的事情我后面会说。"
 endnvl
 nvl
-nan "嗯。"
-nan "其他人呢？"
-nan "他们......对不起..."
-nan"他们现在需要你的帮助..."
-nan"我会都告诉你的..."
-nan "好吧。"
-nan "Prometheus计划。"
+nanshin "嗯。"
+nanshin "其他人呢？"
+nanshin "他们......对不起..."
+nanshin"他们现在需要你的帮助..."
+nanshin"我会都告诉你的..."
+nanshin "好吧。"
+nanshin "Prometheus计划。"
 endnvl
 stop sound 
 scene sky

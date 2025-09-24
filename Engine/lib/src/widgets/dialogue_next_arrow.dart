@@ -73,6 +73,8 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
                                           widget.speaker != null && 
                                           widget.speaker!.isNotEmpty && 
                                           widget.speaker != 'l' &&
+                                          widget.speaker != 'ls' &&
+                                          widget.speaker != '刘守真' &&
                                           widget.speaker != '林澄';
 
         return AnimatedBuilder(
