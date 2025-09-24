@@ -6,18 +6,20 @@ class ExpressionOffsetConfig {
   final String pose;
   final double yOffset; // 纵向偏移量（归一化值，相对于角色高度，-1.0到1.0）
   final double xOffset; // 横向偏移量（归一化值，相对于角色宽度，-1.0到1.0）
+  final double alpha; // 透明度（0.0到1.0，1.0为完全不透明）
   
   const ExpressionOffsetConfig({
     required this.characterId,
     required this.pose,
     required this.yOffset,
     this.xOffset = 0.0,
+    this.alpha = 1.0, // 新增：默认完全不透明
   });
   
   String get key => '${characterId}_$pose';
   
   @override
-  String toString() => 'ExpressionOffsetConfig($characterId, $pose, x:$xOffset, y:$yOffset)';
+  String toString() => 'ExpressionOffsetConfig($characterId, $pose, x:$xOffset, y:$yOffset, a:$alpha)';
 }
 
 /// 差分偏移管理器
@@ -39,7 +41,8 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose6',
       xOffset: -0.015, // 横向偏移（可调整）
-      yOffset: 0.02, // 纵向偏移（可调整）
+      yOffset: 0.024, // 纵向偏移（可调整）
+      alpha: 0.5, // 新增：50%透明度便于对准
     ));
     
     addOffsetConfig(ExpressionOffsetConfig(
@@ -47,6 +50,7 @@ class ExpressionOffsetManager {
       pose: 'pose7',
       xOffset: 0.0, // 横向偏移（可调整）
       yOffset: -0.08, // 向上偏移8%的角色高度
+      alpha: 0.5, // 新增：50%透明度便于对准
     ));
     
     addOffsetConfig(ExpressionOffsetConfig(
@@ -54,6 +58,7 @@ class ExpressionOffsetManager {
       pose: 'pose8',
       xOffset: 0.0, // 横向偏移（可调整）
       yOffset: -0.10, // 向上偏移10%的角色高度
+      alpha: 0.5, // 新增：50%透明度便于对准
     ));
     
     if (kDebugMode) {
@@ -78,29 +83,29 @@ class ExpressionOffsetManager {
     }
   }
   
-  /// 获取差分偏移（归一化值）
+  /// 获取差分偏移和透明度（归一化值）
   /// [characterId] 角色ID (如 'xiayo1')
   /// [pose] 姿势 (如 'pose6', 'pose7', 'pose8')
   /// [layerType] 图层类型，只有包含 'expression' 的图层类型才应用偏移
-  /// 返回 (xOffset, yOffset) 归一化偏移量，相对于角色尺寸
-  (double, double) getExpressionOffset({
+  /// 返回 (xOffset, yOffset, alpha) 归一化偏移量和透明度
+  (double, double, double) getExpressionOffset({
     required String characterId,
     required String pose,
     required String layerType,
   }) {
     // 只对表情图层应用偏移（包含 'expression' 关键词的图层）
     if (!layerType.contains('expression')) {
-      return (0.0, 0.0);
+      return (0.0, 0.0, 1.0); // 非表情图层使用默认透明度
     }
     
     final key = '${characterId}_$pose';
     final config = _offsetConfigs[key];
     
     if (config != null) {
-      return (config.xOffset, config.yOffset);
+      return (config.xOffset, config.yOffset, config.alpha);
     }
     
-    return (0.0, 0.0);
+    return (0.0, 0.0, 1.0); // 默认无偏移，完全不透明
   }
   
   /// 获取所有配置（用于调试）

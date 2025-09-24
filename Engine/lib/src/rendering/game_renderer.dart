@@ -257,7 +257,7 @@ class GameRenderer {
         final layerImage = layerImages[i];
         
         // 获取差分偏移（仅对表情图层有效）
-        final (xOffset, yOffset) = ExpressionOffsetManager().getExpressionOffset(
+        final (xOffset, yOffset, alpha) = ExpressionOffsetManager().getExpressionOffset(
           characterId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
           layerType: layerInfo.layerType,
