@@ -38,8 +38,8 @@ class ExpressionOffsetManager {
     addOffsetConfig(ExpressionOffsetConfig(
       characterId: 'xiayo1',
       pose: 'pose6',
-      xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0, // 纵向偏移（可调整）
+      xOffset: -0.015, // 横向偏移（可调整）
+      yOffset: 0.02, // 纵向偏移（可调整）
     ));
     
     addOffsetConfig(ExpressionOffsetConfig(
