@@ -135,6 +135,10 @@ class NvlNode implements SksNode {}
 
 class EndNvlNode implements SksNode {}
 
+class NvlnNode implements SksNode {} // 新增：nvln（无遮罩NVL模式）
+
+class EndNvlnNode implements SksNode {} // 新增：endnvln
+
 class NvlMovieNode implements SksNode {}
 
 class EndNvlMovieNode implements SksNode {}

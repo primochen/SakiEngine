@@ -508,6 +508,12 @@ class SksParser {
         case 'endnvl':
           nodes.add(EndNvlNode());
           break;
+        case 'nvln': // 新增：nvln（无遮罩NVL模式）
+          nodes.add(NvlnNode());
+          break;
+        case 'endnvln': // 新增：endnvln
+          nodes.add(EndNvlnNode());
+          break;
         case 'nvlm':
           nodes.add(NvlMovieNode());
           break;

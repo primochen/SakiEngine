@@ -633,9 +633,10 @@ class GameManager {
   }
 
   void exitNvlMode() {
-    //print('📚 退出 NVL 模式');
+    //print('📚 退出 NVL/NVLN 模式');
     _currentState = _currentState.copyWith(
       isNvlMode: false,
+      isNvlnMode: false, // 同时确保nvln模式也关闭
       nvlDialogues: [],
       clearDialogueAndSpeaker: true,
       everShownCharacters: _everShownCharacters,
@@ -1221,8 +1222,8 @@ class GameManager {
           }
         }
 
-        // 在 NVL 模式下的特殊处理
-        if (_currentState.isNvlMode) {
+        // 在 NVL 或 NVLN 模式下的特殊处理
+        if (_currentState.isNvlMode || _currentState.isNvlnMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
             speakerAlias: node.character, // 新增：传递角色简写
@@ -1249,7 +1250,7 @@ class GameManager {
           
           _gameStateController.add(_currentState);
           
-          // NVL 模式下每句话都要停下来等待点击
+          // NVL/NVLN 模式下每句话都要停下来等待点击
           _scriptIndex++;
           _isProcessing = false;
           return;
@@ -1433,8 +1434,8 @@ class GameManager {
           }
         }
 
-        // 在 NVL 模式下的特殊处理
-        if (_currentState.isNvlMode) {
+        // 在 NVL 或 NVLN 模式下的特殊处理
+        if (_currentState.isNvlMode || _currentState.isNvlnMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
             speakerAlias: node.character, // 新增：传递角色简写
@@ -1461,7 +1462,7 @@ class GameManager {
           
           _gameStateController.add(_currentState);
           
-          // NVL 模式下每句话都要停下来等待点击
+          // NVL/NVLN 模式下每句话都要停下来等待点击
           _scriptIndex++;
           _isProcessing = false;
           return;
@@ -1521,6 +1522,20 @@ class GameManager {
         _currentState = _currentState.copyWith(
           isNvlMode: true,
           isNvlMovieMode: false,
+          isNvlnMode: false, // 确保nvln模式关闭
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        _scriptIndex++;
+        continue;
+      }
+      if (node is NvlnNode) { // 新增：nvln（无遮罩NVL模式）处理
+        _currentState = _currentState.copyWith(
+          isNvlnMode: true,
+          isNvlMode: false, // 确保普通nvl模式关闭
+          isNvlMovieMode: false,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
           everShownCharacters: _everShownCharacters,
@@ -1547,6 +1562,21 @@ class GameManager {
         // 退出 NVL 模式并继续执行后续脚本
         _currentState = _currentState.copyWith(
           isNvlMode: false,
+          isNvlMovieMode: false,
+          isNvlnMode: false, // 同时确保nvln模式也关闭
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        _scriptIndex++;
+        continue; // 继续执行后续节点
+      }
+      if (node is EndNvlnNode) { // 新增：endnvln处理
+        // 退出无遮罩NVL模式并继续执行后续脚本
+        _currentState = _currentState.copyWith(
+          isNvlnMode: false,
+          isNvlMode: false, // 确保普通nvl模式也关闭
           isNvlMovieMode: false,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
@@ -1746,6 +1776,7 @@ class GameManager {
       dialogueHistory: List.from(_dialogueHistory),
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
+      isNvlnMode: _currentState.isNvlnMode, // 新增：保存无遮罩NVL模式状态
       nvlDialogues: List.from(_currentState.nvlDialogues),
       isFastForwardMode: _isFastForwardMode, // 保存快进状态
     );
@@ -1801,6 +1832,7 @@ class GameManager {
     _currentState = snapshot.currentState.copyWith(
       isNvlMode: snapshot.isNvlMode,
       isNvlMovieMode: snapshot.isNvlMovieMode,
+      isNvlnMode: snapshot.isNvlnMode, // 新增：恢复无遮罩NVL模式状态
       nvlDialogues: snapshot.nvlDialogues,
       everShownCharacters: _everShownCharacters,
       isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
@@ -1995,6 +2027,7 @@ class GameManager {
       dialogueHistory: const [], // 避免循环引用
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
+      isNvlnMode: _currentState.isNvlnMode, // 新增：保存无遮罩NVL模式状态
       nvlDialogues: List.from(_currentState.nvlDialogues),
     );
     
@@ -2050,12 +2083,12 @@ class GameManager {
           // 在转场中点恢复历史状态
           await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
           
-          // 修复NVL模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
-          if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+          // 修复NVL/NVLN模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
+          if ((snapshot.isNvlMode || snapshot.isNvlnMode) && _scriptIndex < _script.children.length - 1) {
             _scriptIndex++;
           }
           // 修复普通对话模式回退bug：对于普通对话也需要推进到下一个节点，避免重复执行
-          else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+          else if (!snapshot.isNvlMode && !snapshot.isNvlnMode && _scriptIndex < _script.children.length - 1) {
             _scriptIndex++;
           }
           
@@ -2068,10 +2101,10 @@ class GameManager {
       // 不需要场景转场，直接恢复状态
       await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
       
-      if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+      if ((snapshot.isNvlMode || snapshot.isNvlnMode) && _scriptIndex < _script.children.length - 1) {
         _scriptIndex++;
       }
-      else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+      else if (!snapshot.isNvlMode && !snapshot.isNvlnMode && _scriptIndex < _script.children.length - 1) {
         _scriptIndex++;
       }
       
@@ -2752,6 +2785,7 @@ class GameState {
   final SksNode? currentNode;
   final bool isNvlMode;
   final bool isNvlMovieMode;
+  final bool isNvlnMode; // 新增：无遮罩NVL模式
   final List<NvlDialogue> nvlDialogues;
   final Set<String> everShownCharacters;
   final SceneFilter? sceneFilter;
@@ -2782,6 +2816,7 @@ class GameState {
     this.currentNode,
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
+    this.isNvlnMode = false, // 新增：无遮罩NVL模式，默认false
     this.nvlDialogues = const [],
     this.everShownCharacters = const {},
     this.sceneFilter,
@@ -2823,6 +2858,7 @@ class GameState {
     bool forceNullSpeaker = false,
     bool? isNvlMode,
     bool? isNvlMovieMode,
+    bool? isNvlnMode, // 新增：无遮罩NVL模式参数
     List<NvlDialogue>? nvlDialogues,
     Set<String>? everShownCharacters,
     SceneFilter? sceneFilter,
@@ -2862,6 +2898,7 @@ class GameState {
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
       isNvlMode: isNvlMode ?? this.isNvlMode,
       isNvlMovieMode: isNvlMovieMode ?? this.isNvlMovieMode,
+      isNvlnMode: isNvlnMode ?? this.isNvlnMode, // 新增：无遮罩NVL模式处理
       nvlDialogues: nvlDialogues ?? this.nvlDialogues,
       everShownCharacters: everShownCharacters ?? this.everShownCharacters,
       sceneFilter: clearSceneFilter ? null : (sceneFilter ?? this.sceneFilter),
@@ -2941,6 +2978,7 @@ class GameStateSnapshot {
   final List<DialogueHistoryEntry> dialogueHistory;
   final bool isNvlMode;
   final bool isNvlMovieMode;
+  final bool isNvlnMode; // 新增：无遮罩NVL模式状态保存
   final List<NvlDialogue> nvlDialogues;
   final bool isFastForwardMode; // 添加快进状态保存
 
@@ -2950,6 +2988,7 @@ class GameStateSnapshot {
     this.dialogueHistory = const [],
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
+    this.isNvlnMode = false, // 新增：无遮罩NVL模式状态保存，默认false
     this.nvlDialogues = const [],
     this.isFastForwardMode = false, // 默认非快进状态
   });

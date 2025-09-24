@@ -147,7 +147,7 @@ class GameUILayerState extends State<GameUILayer> {
                 ),
               );
             },
-            child: widget.gameState.dialogue != null && !widget.gameState.isNvlMode
+            child: widget.gameState.dialogue != null && !widget.gameState.isNvlMode && !widget.gameState.isNvlnMode
                 ? widget.createDialogueBox(
                     key: const ValueKey('normal_dialogue'),
                     speaker: widget.gameState.speaker,
@@ -189,13 +189,14 @@ class GameUILayerState extends State<GameUILayer> {
                 child: child,
               );
             },
-            child: widget.gameState.isNvlMode
+            child: (widget.gameState.isNvlMode || widget.gameState.isNvlnMode)
                 ? NvlScreen(
                     key: widget.nvlScreenKey,
                     nvlDialogues: widget.gameState.nvlDialogues,
                     isMovieMode: widget.gameState.isNvlMovieMode,
                     progressionManager: widget.dialogueProgressionManager,
                     isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
+                    isNoMask: widget.gameState.isNvlnMode, // 新增：传递无遮罩状态
                   )
                 : const SizedBox.shrink(key: ValueKey('no_nvl')),
           ),
