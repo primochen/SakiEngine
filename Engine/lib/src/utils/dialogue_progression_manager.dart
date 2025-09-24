@@ -22,13 +22,9 @@ class DialogueProgressionManager {
   /// 
   /// 所有推进对话的操作都应该调用这个方法，而不是直接调用 gameManager.next()
   void progressDialogue() {
-    print('🎮 NVL调试 - progressDialogue: 当前打字机 ${_currentTypewriter?.hashCode}');
-    print('🎮 NVL调试 - progressDialogue: 打字机状态 ${_currentTypewriter?.state}');
-    print('🎮 NVL调试 - progressDialogue: 是否正在打字 ${_currentTypewriter?.isTyping}');
     
     // 安全检查：如果当前打字机为null，这可能意味着注册丢失了
     if (_currentTypewriter == null) {
-      print('🎮 NVL调试 - progressDialogue: 打字机为null，直接推进');
       // 直接推进到下一句对话，因为没有打字机需要处理
       _markCurrentDialogueAsRead();
       gameManager.next();
@@ -37,13 +33,11 @@ class DialogueProgressionManager {
     
     // 检查是否有活跃的打字机动画
     if (_currentTypewriter!.isTyping) {
-      print('🎮 NVL调试 - progressDialogue: 打字机正在播放，调用skipToEnd');
       // 如果正在打字，先跳过动画显示完整文本，但不推进到下一句
       _currentTypewriter!.skipToEnd();
       return; // 重要：这里直接返回，不继续执行
     }
     
-    print('🎮 NVL调试 - progressDialogue: 打字机已完成，推进到下一句');
     // 在推进对话前，先标记当前对话为已读（如果有对话内容的话）
     _markCurrentDialogueAsRead();
     

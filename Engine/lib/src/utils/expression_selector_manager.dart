@@ -212,15 +212,55 @@ class ExpressionSelectorManager {
   /// 处理表情选择变更
   Future<void> handleExpressionSelectionChanged(String characterId, String pose, String expression) async {
     try {
+      if (kDebugMode) {
+        print('ExpressionSelector: 开始处理表情选择变更 - characterId: $characterId, pose: $pose, expression: $expression');
+      }
+
       // 获取当前对话文本
       final currentDialogue = gameManager.currentDialogueText;
+      if (kDebugMode) {
+        print('ExpressionSelector: 当前对话文本: "$currentDialogue"');
+      }
+      
       if (currentDialogue.isEmpty) {
-        showNotificationCallback('没有当前对话文本');
+        if (kDebugMode) {
+          print('ExpressionSelector: 对话文本为空，尝试从当前状态获取');
+        }
+        // 尝试从当前状态获取对话
+        final gameState = getCurrentGameState();
+        final stateDialogue = gameState?.dialogue ?? '';
+        if (stateDialogue.isEmpty) {
+          showNotificationCallback('没有当前对话文本');
+          return;
+        }
+        // 使用状态中的对话文本
+        await _processExpressionChange(stateDialogue, characterId, pose, expression);
         return;
+      }
+
+      await _processExpressionChange(currentDialogue, characterId, pose, expression);
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('ExpressionSelector: 处理表情选择变更失败: $e');
+      }
+      showNotificationCallback('应用差分失败: $e');
+    }
+  }
+
+  /// 处理表情变更的核心逻辑
+  Future<void> _processExpressionChange(String dialogue, String characterId, String pose, String expression) async {
+    try {
+      if (kDebugMode) {
+        print('ExpressionSelector: 处理表情变更 - dialogue: "$dialogue", characterId: $characterId');
       }
 
       // 获取当前脚本文件路径
       final scriptPath = await ScriptContentModifier.getCurrentScriptFilePath(gameManager.currentScriptFile);
+      if (kDebugMode) {
+        print('ExpressionSelector: 脚本文件路径: $scriptPath');
+      }
+      
       if (scriptPath == null) {
         showNotificationCallback('无法获取脚本文件路径');
         return;
@@ -229,27 +269,41 @@ class ExpressionSelectorManager {
       // 获取当前说话角色信息，确定用于脚本修改的characterKey
       final speakerInfo = getCurrentSpeakerInfo();
       final scriptCharacterKey = speakerInfo?.scriptCharacterKey ?? characterId;
+      
+      if (kDebugMode) {
+        print('ExpressionSelector: 脚本角色Key: $scriptCharacterKey');
+      }
 
       // 修改脚本文件 - 需要创建新的方法来同时修改pose和expression
       final success = await ScriptContentModifier.modifyDialogueLineWithPose(
         scriptFilePath: scriptPath,
-        targetDialogue: currentDialogue,
+        targetDialogue: dialogue,
         characterId: scriptCharacterKey,
         newPose: pose,
         newExpression: expression,
       );
 
+      if (kDebugMode) {
+        print('ExpressionSelector: 脚本修改结果: $success');
+      }
+
       if (success) {
         showNotificationCallback('已应用差分: $pose / $expression');
         
         // 触发脚本重载
+        if (kDebugMode) {
+          print('ExpressionSelector: 触发脚本重载');
+        }
         triggerReloadCallback();
       } else {
         showNotificationCallback('修改脚本失败');
       }
 
     } catch (e) {
-      showNotificationCallback('应用差分失败: $e');
+      if (kDebugMode) {
+        print('ExpressionSelector: 处理表情变更异常: $e');
+      }
+      showNotificationCallback('处理表情变更失败: $e');
     }
   }
 }

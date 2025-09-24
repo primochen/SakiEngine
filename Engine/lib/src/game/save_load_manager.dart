@@ -10,6 +10,7 @@ import 'package:sakiengine/src/game/screenshot_generator.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/config/config_models.dart';
+import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 
 class SaveLoadManager {
   // 获取当前游戏项目名称
@@ -67,8 +68,14 @@ class SaveLoadManager {
     String dialoguePreview = '...';
     final currentState = snapshot.currentState;
     
+    // 检查是否是选择界面
+    if (currentState.currentNode != null && currentState.currentNode is MenuNode) {
+      final menuNode = currentState.currentNode as MenuNode;
+      final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
+      dialoguePreview = '【选择支】\n${choiceTexts.join('\n')}';
+    }
     // 优先检查 NVL 模式
-    if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
+    else if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
       // 使用最新的 NVL 对话作为预览
       final latestNvlDialogue = currentState.nvlDialogues.last;
       if (latestNvlDialogue.speaker != null && latestNvlDialogue.speaker!.isNotEmpty) {

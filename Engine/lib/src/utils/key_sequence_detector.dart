@@ -295,11 +295,26 @@ class ScriptContentModifier {
     final trimmedLine = line.trim();
     final trimmedDialogue = targetDialogue.trim();
     
+    if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
+      print('ScriptModifier: 检查行匹配');
+      print('ScriptModifier: 行内容: "$trimmedLine"');
+      print('ScriptModifier: 目标对话: "$trimmedDialogue"');
+      print('ScriptModifier: 期望角色ID: $expectedCharacterId');
+    }
+    
+    // 标准化对话文本 - 统一引号类型和去除引号
+    String normalizeDialogue(String text) {
+      return text.replaceAll('"', '').replaceAll('「', '').replaceAll('」', '').trim();
+    }
+    
     // 检查不同的对话格式
     // 格式1: "对话内容" - 只有在没有指定expectedCharacterId时才匹配
     if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"') && expectedCharacterId == null) {
       final dialogueContent = trimmedLine.substring(1, trimmedLine.length - 1);
-      if (dialogueContent == trimmedDialogue) {
+      if (normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)) {
+        if (kDebugMode) {
+          print('ScriptModifier: 匹配格式1（纯对话）');
+        }
         return true;
       }
     }
@@ -311,8 +326,15 @@ class ScriptContentModifier {
       if (parts.isNotEmpty) {
         final lineCharacterId = parts[0];
         
+        if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
+          print('ScriptModifier: 行角色ID: "$lineCharacterId"');
+        }
+        
         // 如果指定了expectedCharacterId，必须匹配
         if (expectedCharacterId != null && lineCharacterId != expectedCharacterId) {
+          if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
+            print('ScriptModifier: 角色ID不匹配: "$lineCharacterId" != "$expectedCharacterId"');
+          }
           return false;
         }
         
@@ -320,7 +342,18 @@ class ScriptContentModifier {
         final quoteEnd = trimmedLine.lastIndexOf('"');
         if (quoteStart >= 0 && quoteEnd > quoteStart) {
           final dialogueContent = trimmedLine.substring(quoteStart + 1, quoteEnd);
-          if (dialogueContent == trimmedDialogue) {
+          if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
+            print('ScriptModifier: 提取的对话内容: "$dialogueContent"');
+            print('ScriptModifier: 标准化后的对话内容: "${normalizeDialogue(dialogueContent)}"');
+            print('ScriptModifier: 标准化后的目标对话: "${normalizeDialogue(trimmedDialogue)}"');
+            print('ScriptModifier: 是否匹配: ${normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)}');
+          }
+          
+          // 使用标准化后的文本进行比较
+          if (normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)) {
+            if (kDebugMode) {
+              print('ScriptModifier: 匹配格式2/3（角色+对话）');
+            }
             return true;
           }
         }
@@ -389,8 +422,20 @@ class ScriptContentModifier {
     String? newExpression,
   }) async {
     try {
+      if (kDebugMode) {
+        print('ScriptModifier: 开始修改对话行');
+        print('ScriptModifier: 文件路径: $scriptFilePath');
+        print('ScriptModifier: 目标对话: "$targetDialogue"');
+        print('ScriptModifier: 角色ID: $characterId');
+        print('ScriptModifier: 新pose: $newPose');
+        print('ScriptModifier: 新expression: $newExpression');
+      }
+
       final file = File(scriptFilePath);
       if (!await file.exists()) {
+        if (kDebugMode) {
+          print('ScriptModifier: 文件不存在');
+        }
         return false;
       }
 
@@ -398,22 +443,40 @@ class ScriptContentModifier {
       final lines = content.split('\n');
       bool modified = false;
 
+      if (kDebugMode) {
+        print('ScriptModifier: 读取到 ${lines.length} 行脚本');
+      }
+
       for (int i = 0; i < lines.length; i++) {
         final line = lines[i].trim();
         
+        // 检查是否包含对话的关键部分（不含引号和特殊符号）
+        final dialogueCore = targetDialogue.replaceAll('"', '').replaceAll('「', '').replaceAll('」', '');
+        if (kDebugMode && line.contains(dialogueCore)) {
+          print('ScriptModifier: 找到包含关键词的行 $i: "$line"');
+        }
+        
         // 检查是否是包含目标对话的行，同时验证角色ID
         if (_isTargetDialogueLine(line, targetDialogue, characterId)) {
+          if (kDebugMode) {
+            print('ScriptModifier: 确认匹配行 $i: "$line"');
+          }
+          
           final modifiedLine = _modifyDialogueLine(line, characterId, newPose, newExpression);
           if (modifiedLine != line) {
             lines[i] = lines[i].replaceAll(line, modifiedLine);
             modified = true;
             
             if (kDebugMode) {
-              print('脚本修改器: 修改对话行（pose+expression）');
-              print('原始行: $line');
-              print('修改后: $modifiedLine');
+              print('ScriptModifier: 修改对话行（pose+expression）');
+              print('ScriptModifier: 原始行: $line');
+              print('ScriptModifier: 修改后: $modifiedLine');
             }
             break; // 只修改第一个匹配的行
+          } else {
+            if (kDebugMode) {
+              print('ScriptModifier: 修改后的行与原始行相同，无需更改');
+            }
           }
         }
       }
@@ -423,15 +486,19 @@ class ScriptContentModifier {
         await _writeScriptFile(file, modifiedContent);
         
         if (kDebugMode) {
-          print('脚本修改器: 成功保存修改的脚本文件（pose+expression）');
+          print('ScriptModifier: 成功保存修改的脚本文件（pose+expression）');
         }
         return true;
+      } else {
+        if (kDebugMode) {
+          print('ScriptModifier: 未找到匹配的对话行或无需修改');
+        }
       }
       
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('脚本修改器: 修改对话行失败: $e');
+        print('ScriptModifier: 修改对话行失败: $e');
       }
       return false;
     }

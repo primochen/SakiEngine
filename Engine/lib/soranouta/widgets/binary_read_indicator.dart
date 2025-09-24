@@ -39,7 +39,7 @@ class BinaryReadIndicator extends StatelessWidget {
     }
 
     // l (林澄) 显示 admin 转换后的符号
-    if (alias == 'l') {
+    if (alias == 'l' || alias == 'ls' || alias == 'x2') {
       return _convertToBinarySymbols('admin');
     }
 

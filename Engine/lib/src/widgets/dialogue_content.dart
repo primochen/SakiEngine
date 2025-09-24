@@ -11,6 +11,7 @@ import 'package:sakiengine/src/utils/rich_text_parser.dart';
 class DialogueContent extends StatelessWidget {
   final String dialogue;
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final TextStyle dialogueStyle;
   final TypewriterAnimationManager typewriterController;
   final Animation<double> textFadeAnimation;
@@ -23,6 +24,7 @@ class DialogueContent extends StatelessWidget {
     super.key,
     required this.dialogue,
     required this.speaker,
+    this.speakerAlias, // 新增：角色简写参数
     required this.dialogueStyle,
     required this.typewriterController,
     required this.textFadeAnimation,
@@ -63,6 +65,7 @@ class DialogueContent extends StatelessWidget {
                                 fontSize: dialogueStyle.fontSize!,
                               color: config.themeColors.primary.withOpacity(0.7),
                               speaker: speaker,
+                              speakerAlias: speakerAlias, // 新增：传递角色简写
                             ),
                           ),
                         ),

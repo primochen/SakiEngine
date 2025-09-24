@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
@@ -34,7 +35,15 @@ class ExitConfirmationDialog {
     );
     
     if (shouldExit == true) {
-      await windowManager.destroy();
+      // 优化退出流程：先关闭窗口再退出程序
+      try {
+        await windowManager.close();
+        await Future.delayed(const Duration(milliseconds: 100));
+        SystemNavigator.pop();
+      } catch (e) {
+        // 如果关闭失败，使用原有方法
+        await windowManager.destroy();
+      }
     }
   }
 }

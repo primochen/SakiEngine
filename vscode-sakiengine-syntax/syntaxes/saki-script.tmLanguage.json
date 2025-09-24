@@ -189,6 +189,43 @@
         "characters": {
             "patterns": [
                 {
+                    "name": "meta.character.timed-expression.sks",
+                    "match": "^\\s*([\\w_]+)\\s*(\\[[^,]+,[^,]+,[^\\]]+\\])\\s+(\".*?\")\\s*$",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.type.character.sks"
+                        },
+                        "2": {
+                            "name": "meta.character.timed-expression-bracket.sks",
+                            "patterns": [
+                                {
+                                    "name": "punctuation.definition.bracket.begin.sks",
+                                    "match": "\\["
+                                },
+                                {
+                                    "name": "entity.name.type.expression.start.sks",
+                                    "match": "([^,]+)(?=,)"
+                                },
+                                {
+                                    "name": "constant.numeric.delay.sks",
+                                    "match": "(?<=,)([^,]+)(?=,)"
+                                },
+                                {
+                                    "name": "entity.name.type.expression.end.sks",
+                                    "match": "(?<=,)([^\\]]+)(?=\\])"
+                                },
+                                {
+                                    "name": "punctuation.definition.bracket.end.sks",
+                                    "match": "\\]"
+                                }
+                            ]
+                        },
+                        "3": {
+                            "name": "string.quoted.double.sks"
+                        }
+                    }
+                },
+                {
                     "name": "entity.name.type.character.sks",
                     "match": "^\\s*([\\w_]+)(?=\\s*(?:[\\w_]+\\s+)*\")",
                     "captures": {

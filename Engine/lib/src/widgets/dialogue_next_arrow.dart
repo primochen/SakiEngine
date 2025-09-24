@@ -10,6 +10,7 @@ class DialogueNextArrow extends StatefulWidget {
   final double fontSize;
   final Color? color;
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   
   const DialogueNextArrow({
     super.key,
@@ -17,6 +18,7 @@ class DialogueNextArrow extends StatefulWidget {
     required this.fontSize,
     this.color,
     this.speaker,
+    this.speakerAlias, // 新增：角色简写参数
   });
 
   @override
@@ -64,7 +66,6 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
         if (!snapshot.hasData) {
           return _buildArrow(effectiveColor, size);
         }
-
         final isSoraNoUta = snapshot.data!;
         
         // 只有在SoraNoUta项目中才根据角色判断显示下划线还是箭头
@@ -72,8 +73,13 @@ class _DialogueNextArrowState extends State<DialogueNextArrow>
         final bool shouldShowUnderscore = isSoraNoUta && 
                                           widget.speaker != null && 
                                           widget.speaker!.isNotEmpty && 
-                                          widget.speaker != 'l' &&
-                                          widget.speaker != '林澄';
+                                          widget.speakerAlias != 'l' &&
+                                          widget.speakerAlias != 'ls' &&
+                                          widget.speakerAlias != 'x2' &&
+                                          widget.speakerAlias != 'x2nan' &&
+                                          widget.speaker != '刘守真' &&
+                                          widget.speaker != '林澄' &&
+                                          widget.speakerAlias != 'nanshin'; // 新增：nanshin也显示箭头
 
         return AnimatedBuilder(
           animation: _animationController,

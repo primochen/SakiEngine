@@ -5,7 +5,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
 class BinarySerializer {
-  static const int _version = 3; // 增加版本号以支持movieFile字段
+  static const int _version = 4; // 增加版本号以支持cgCharacters字段
   static const String _magicNumber = 'SAKI';
 
   /// 将SaveSlot序列化为二进制数据
@@ -171,6 +171,13 @@ class BinarySerializer {
       buffer.addAll(_serializeCharacterState(entry.value));
     }
     
+    // 序列化CG角色状态（版本4新增）
+    buffer.addAll(_writeInt32(state.cgCharacters.length));
+    for (final entry in state.cgCharacters.entries) {
+      buffer.addAll(_writeString(entry.key));
+      buffer.addAll(_serializeCharacterState(entry.value));
+    }
+    
     // 序列化 NVL 状态
     buffer.add(state.isNvlMode ? 1 : 0);
     buffer.add(state.isNvlMovieMode ? 1 : 0);
@@ -206,6 +213,17 @@ class BinarySerializer {
       characters[key] = value;
     }
     
+    // 反序列化CG角色状态（版本4新增）
+    Map<String, CharacterState> cgCharacters = <String, CharacterState>{};
+    if (version != null && version >= 4) {
+      final cgCharactersLength = reader.readInt32();
+      for (int i = 0; i < cgCharactersLength; i++) {
+        final key = reader.readString();
+        final value = _deserializeCharacterState(reader);
+        cgCharacters[key] = value;
+      }
+    }
+    
     // 反序列化 NVL 状态
     final isNvlMode = reader.readByte() == 1;
     final isNvlMovieMode = reader.readByte() == 1;
@@ -221,6 +239,7 @@ class BinarySerializer {
       dialogue: dialogue,
       speaker: speaker,
       characters: characters,
+      cgCharacters: cgCharacters, // 新增：CG角色状态
       isNvlMode: isNvlMode,
       isNvlMovieMode: isNvlMovieMode,
       nvlDialogues: nvlDialogues,

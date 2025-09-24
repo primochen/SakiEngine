@@ -39,6 +39,7 @@ import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
 import 'package:sakiengine/src/utils/expression_selector_manager.dart';
+import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
@@ -48,6 +49,7 @@ import 'package:sakiengine/src/utils/read_text_tracker.dart';
 import 'package:sakiengine/src/utils/read_text_skip_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/movie_player.dart'; // 新增：视频播放器导入
+import 'package:sakiengine/src/utils/dialogue_shake_effect.dart'; // 新增：震动效果导入
 
 class GamePlayScreen extends StatefulWidget {
   final SaveSlot? saveSlotToLoad;
@@ -68,7 +70,7 @@ class GamePlayScreen extends StatefulWidget {
 class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
-  final _notificationOverlayKey = GlobalKey<NotificationOverlayState>();
+  final _gameUILayerKey = GlobalKey<GameUILayerState>();
   String _currentScript = 'start'; 
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
@@ -624,7 +626,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   // 显示通知消息
   void _showNotificationMessage(String message) {
-    _notificationOverlayKey.currentState?.show(message);
+    // 调用GameUILayer的showNotification方法
+    _gameUILayerKey.currentState?.showNotification(message);
   }
 
   Future<void> _handleHotReload() async {
@@ -686,6 +689,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           return KeyEventResult.ignored;
         },
         child: Scaffold(
+          backgroundColor: Colors.black, // 添加黑色背景，这样震动时露出的就是黑色
           body: StreamBuilder<GameState>(
           stream: _gameManager.gameStateStream,
           builder: (context, snapshot) {
@@ -811,6 +815,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               child: Stack(
                 children: [
                   GameUILayer(
+                    key: _gameUILayerKey,
                     gameState: gameState,
                     gameManager: _gameManager,
                     dialogueProgressionManager: _dialogueProgressionManager,
@@ -837,11 +842,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
                     onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
-                    onLoadGame: widget.onLoadGame,
+                    onLoadGame: (saveSlot) {
+                      // 在当前GamePlayScreen中恢复存档，而不是创建新实例
+                      _currentScript = saveSlot.currentScript;
+                      _gameManager.restoreFromSnapshot(
+                        saveSlot.currentScript, 
+                        saveSlot.snapshot, 
+                        shouldReExecute: false
+                      );
+                      _showNotificationMessage('读档成功');
+                    },
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
                     expressionSelectorManager: _expressionSelectorManager,
                     createDialogueBox: _createDialogueBox,
-                    showNotificationMessage: _showNotificationMessage,
                   ),
                   // 加载淡出覆盖层 - 不会被隐藏
                   AnimatedBuilder(
@@ -871,38 +884,43 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   Widget _buildSceneWithFilter(GameState gameState) {    
-    return Stack(
-      children: [
-        // 背景层 - 总是渲染背景（如果有的话）
-        if (gameState.background != null)
-          _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
-        
-        // 角色和CG层 - 只有在没有视频时才显示
-        if (gameState.movieFile == null) ...[
-          ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-          // CG角色渲染，像scene一样铺满屏幕
-          ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
-        ],
-        
-        // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
-        if (gameState.movieFile != null)
-          Positioned.fill(
-            child: _buildMoviePlayer(gameState.movieFile!, gameState.movieRepeatCount),
-          )
-        else
-          // 当没有视频时，放置一个透明容器确保视频层被清除
-          Positioned.fill(
-            child: Container(
-              color: Colors.transparent,
-              // 添加key确保每次状态变化时重建
-              key: const ValueKey('no_movie'),
-            ),
-          ),
+    return SimpleShakeWrapper(
+      trigger: gameState.isShaking && (gameState.shakeTarget == 'background' || gameState.shakeTarget == null),
+      intensity: gameState.shakeIntensity ?? 8.0,
+      duration: Duration(milliseconds: ((gameState.shakeDuration ?? 1.0) * 1000).round()),
+      child: Stack(
+        children: [
+          // 背景层 - 总是渲染背景（如果有的话）
+          if (gameState.background != null)
+            _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
           
-        // anime覆盖层 - 最顶层
-        if (gameState.animeOverlay != null)
-          _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
-      ],
+          // 角色和CG层 - 只有在没有视频时才显示
+          if (gameState.movieFile == null) ...[
+            ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
+            // CG角色渲染，像scene一样铺满屏幕
+            ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
+          ],
+          
+          // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
+          if (gameState.movieFile != null)
+            Positioned.fill(
+              child: _buildMoviePlayer(gameState.movieFile!, gameState.movieRepeatCount),
+            )
+          else
+            // 当没有视频时，放置一个透明容器确保视频层被清除
+            Positioned.fill(
+              child: Container(
+                color: Colors.transparent,
+                // 添加key确保每次状态变化时重建
+                key: const ValueKey('no_movie'),
+              ),
+            ),
+            
+          // anime覆盖层 - 最顶层
+          if (gameState.animeOverlay != null)
+            _buildAnimeOverlay(gameState.animeOverlay!, gameState.animeLoop, keep: gameState.animeKeep),
+        ],
+      ),
     );
   }
 
@@ -1079,10 +1097,24 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
           // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
           final layers = layerInfos.map((layerInfo) {
+            // 获取差分偏移、透明度和缩放（仅对表情图层有效）
+            final (xOffset, yOffset, alpha, scale) = ExpressionOffsetManager().getExpressionOffset(
+              characterId: characterState.resourceId,
+              pose: characterState.pose ?? 'pose1',
+              layerType: layerInfo.layerType,
+            );
+            
+            // 调试输出
+            // ${layerInfo.layerType}, 偏移: ($xOffset, $yOffset), 透明度: $alpha');
+            
             return _CharacterLayer(
               key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
               assetName: layerInfo.assetName,
               isFadingOut: characterState.isFadingOut,
+              expressionOffsetX: xOffset, // 横向偏移
+              expressionOffsetY: yOffset, // 纵向偏移
+              expressionAlpha: alpha, // 透明度
+              expressionScale: scale, // 缩放比例
               onFadeOutComplete: characterState.isFadingOut ? () {
                 // 淡出完成，从角色列表中移除该角色
                 _removeCharacterAfterFadeOut(characterId);
@@ -1153,12 +1185,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 class _CharacterLayer extends StatefulWidget {
   final String assetName;
   final bool isFadingOut;
+  final double expressionOffsetX; // 横向偏移（归一化值）
+  final double expressionOffsetY; // 纵向偏移（归一化值）
+  final double expressionAlpha; // 透明度（0.0到1.0）
+  final double expressionScale; // 缩放比例（1.0为原始大小）
   final VoidCallback? onFadeOutComplete;
   
   const _CharacterLayer({
     super.key, 
     required this.assetName,
     this.isFadingOut = false,
+    this.expressionOffsetX = 0.0, // 默认无偏移
+    this.expressionOffsetY = 0.0, // 默认无偏移
+    this.expressionAlpha = 1.0, // 默认完全不透明
+    this.expressionScale = 1.0, // 默认原始大小
     this.onFadeOutComplete,
   });
 
@@ -1256,7 +1296,7 @@ class _CharacterLayerState extends State<_CharacterLayer>
       return const SizedBox.shrink();
     }
 
-    return AnimatedBuilder(
+    Widget imageWidget = AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
         return LayoutBuilder(
@@ -1274,19 +1314,51 @@ class _CharacterLayerState extends State<_CharacterLayer>
               paintSize = Size(paintWidth, paintHeight);
             }
             
-            return CustomPaint(
+            Widget customPaintWidget = CustomPaint(
               size: paintSize,
               painter: _DissolvePainter(
                 program: _dissolveProgram!,
                 progress: _animation.value,
-                imageFrom: _previousImage ?? _currentImage!, // 没有previousImage时用当前图片，shader会处理透明
+                imageFrom: _previousImage ?? _currentImage!,
                 imageTo: _currentImage!,
               ),
             );
+            
+            // 应用透明度（如果不是完全不透明）
+            if (widget.expressionAlpha != 1.0) {
+              customPaintWidget = Opacity(
+                opacity: widget.expressionAlpha,
+                child: customPaintWidget,
+              );
+            }
+            
+            // 应用缩放（如果不是原始大小），锚点为左上角
+            if (widget.expressionScale != 1.0) {
+              customPaintWidget = Transform.scale(
+                scale: widget.expressionScale,
+                alignment: Alignment.topLeft,
+                child: customPaintWidget,
+              );
+            }
+            
+            // 应用差分偏移（如果有偏移），基于实际绘制尺寸
+            if (widget.expressionOffsetX != 0.0 || widget.expressionOffsetY != 0.0) {
+              final pixelOffsetX = paintSize.width * widget.expressionOffsetX;
+              final pixelOffsetY = paintSize.height * widget.expressionOffsetY;
+              
+              return Transform.translate(
+                offset: Offset(pixelOffsetX, pixelOffsetY),
+                child: customPaintWidget,
+              );
+            }
+            
+            return customPaintWidget;
           },
         );
       },
     );
+    
+    return imageWidget;
   }
 }
 

@@ -75,6 +75,14 @@ class CharacterLayerParser {
     final expressionLayers = await _parseExpressionLayers(resourceId, expression);
     layers.addAll(expressionLayers);
     
+    // 3. 检查是否需要添加帽子图层（仅针对特定角色和姿势）
+    if (resourceId == 'xiayo1' && (actualPose == 'pose6' || actualPose == 'pose7' || actualPose == 'pose8')) {
+      final hatLayer = await _parseHatLayer(resourceId, actualPose);
+      if (hatLayer != null) {
+        layers.add(hatLayer);
+      }
+    }
+    
     // 按层级排序确保正确的渲染顺序
     layers.sort((a, b) => a.layerLevel.compareTo(b.layerLevel));
     
@@ -171,6 +179,25 @@ class CharacterLayerParser {
     } else {
       return dashCount;
     }
+  }
+  
+  /// 解析帽子图层
+  static Future<CharacterLayerInfo?> _parseHatLayer(String resourceId, String pose) async {
+    // 帽子图层的资源命名：characters/xiayo1-hat
+    // 帽子图层应该在所有差分图层之上，使用层级99
+    final hatAssetName = 'characters/$resourceId-hat';
+    final hatExists = await AssetManager().findAsset(hatAssetName) != null;
+    
+    if (hatExists) {
+      print('[CharacterLayerParser] 为 $resourceId $pose 添加帽子图层: $hatAssetName');
+      return CharacterLayerInfo(
+        assetName: hatAssetName,
+        layerLevel: 99, // 最高层级，确保在所有表情图层之上
+        layerType: 'hat_layer',
+      );
+    }
+    
+    return null;
   }
   
   /// 辅助方法：从表情字符串中提取实际的表情名称

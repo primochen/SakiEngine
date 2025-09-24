@@ -17,14 +17,16 @@ class NvlScreen extends StatefulWidget {
   final List<NvlDialogue> nvlDialogues;
   final DialogueProgressionManager? progressionManager;
   final bool isMovieMode;
-  final bool isFastForwarding; // 新增：快进状态
+  final bool isFastForwarding; // 快进状态
+  final bool isNoMask; // 新增：是否为无遮罩模式（nvln）
 
   const NvlScreen({
     super.key,
     required this.nvlDialogues,
     this.progressionManager,
     this.isMovieMode = false,
-    this.isFastForwarding = false, // 新增：默认不快进
+    this.isFastForwarding = false, // 默认不快进
+    this.isNoMask = false, // 新增：默认有遮罩
   });
 
   @override
@@ -301,14 +303,15 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
         opacity: _fadeAnimation,
         child: Stack(
           children: [
-            // 背景遮罩
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
+            // 背景遮罩（仅在非无遮罩模式下显示）
+            if (!widget.isNoMask)
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                ),
               ),
-            ),
             
             // 如果是电影模式且允许显示黑边，添加上下黑边
             if (widget.isMovieMode && _showCinematicBars) ..._buildCinematicBars(context),
@@ -415,6 +418,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
                   fontSize: (config.dialogueTextStyle.fontSize! * textScale) * 0.7, // 缩小到70%
                   color: Colors.white,
                   speaker: dialogue.speaker,
+                  speakerAlias: dialogue.speakerAlias, // 传递角色简写
                 ),
               ),
           ],

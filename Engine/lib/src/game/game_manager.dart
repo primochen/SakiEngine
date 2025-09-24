@@ -18,6 +18,7 @@ import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
+import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 /// 音乐区间类
@@ -266,7 +267,7 @@ class GameManager {
     }
     
     // 并发预加载所有anime资源
-    final futures = animeResources.map((animeName) {
+    final futures = animeResources.map<Future<dynamic>>((animeName) {
       return WebPPreloadCache().preloadWebP(animeName);
     }).toList();
     
@@ -274,21 +275,21 @@ class GameManager {
       await Future.wait(futures);
     } catch (e) {
       if (kDebugMode) {
-        //print('[GameManager] anime资源预加载出现错误: $e');
+        ////print('[GameManager] anime资源预加载出现错误: $e');
       }
       rethrow;
     }
   }
   String? _findExistingCharacterKey(String resourceId) {
-    //print('[GameManager] 查找resourceId=$resourceId的角色，当前角色列表: ${_currentState.characters.keys}');
+    ////print('[GameManager] 查找resourceId=$resourceId的角色，当前角色列表: ${_currentState.characters.keys}');
     for (final entry in _currentState.characters.entries) {
-      //print('[GameManager] 检查角色 ${entry.key}, resourceId=${entry.value.resourceId}');
+      ////print('[GameManager] 检查角色 ${entry.key}, resourceId=${entry.value.resourceId}');
       if (entry.value.resourceId == resourceId) {
-        //print('[GameManager] 找到匹配的角色: ${entry.key}');
+        ////print('[GameManager] 找到匹配的角色: ${entry.key}');
         return entry.key;
       }
     }
-    //print('[GameManager] 未找到resourceId=$resourceId的角色');
+    ////print('[GameManager] 未找到resourceId=$resourceId的角色');
     return null;
   }
   
@@ -367,13 +368,31 @@ class GameManager {
     return false;
   }
 
+  /// 检查当前场景是否包含章节标识
+  /// 用于决定是否应该隐藏快捷菜单
+  bool get isCurrentSceneChapter {
+    // 检查当前背景是否包含章节标识
+    final currentBg = _currentState.background;
+    if (currentBg != null && _containsChapter(currentBg)) {
+      return true;
+    }
+    
+    // 检查当前视频是否包含章节标识
+    final currentMovie = _currentState.movieFile;
+    if (currentMovie != null && _containsChapter(currentMovie)) {
+      return true;
+    }
+    
+    return false;
+  }
+
   GameManager({this.onReturn}) {
     _currentState = GameState.initial(); // 提前初始化，避免late变量访问错误
   }
 
   /// 设置BuildContext用于转场效果
   void setContext(BuildContext context, [TickerProvider? tickerProvider]) {
-    ////print('[GameManager] 设置上下文用于转场效果');
+    //////print('[GameManager] 设置上下文用于转场效果');
     _context = context;
     _tickerProvider = tickerProvider;
     
@@ -507,6 +526,9 @@ class GameManager {
 
     final posesContent = await AssetManager().loadString('assets/GameScript/configs/poses.sks');
     _poseConfigs = ConfigParser().parsePoses(posesContent);
+    
+    // 初始化差分偏移管理器
+    ExpressionOffsetManager().initializeDefaultConfigs();
   }
 
   Future<void> startGame(String scriptName) async {
@@ -541,7 +563,7 @@ class GameManager {
       await _analyzeAndPreloadAnimeResources();
     } catch (e) {
       if (kDebugMode) {
-        //print('[GameManager] 预加载anime资源失败: $e');
+        ////print('[GameManager] 预加载anime资源失败: $e');
       }
     }
     
@@ -569,7 +591,7 @@ class GameManager {
       if (node is LabelNode) {
         _labelIndexMap[node.name] = i;
         if (kDebugMode) {
-          ////print('[GameManager] 标签映射: ${node.name} -> $i');
+          //////print('[GameManager] 标签映射: ${node.name} -> $i');
         }
       }
     }
@@ -581,7 +603,7 @@ class GameManager {
       _scriptIndex = _labelIndexMap[label]!;
       _currentState = _currentState.copyWith(forceNullCurrentNode: true, everShownCharacters: _everShownCharacters);
       if (kDebugMode) {
-        ////print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
+        //////print('[GameManager] 跳转到标签: $label, 索引: $_scriptIndex');
       }
       
       // 检查跳转后位置的音乐区间（强制检查）
@@ -589,7 +611,7 @@ class GameManager {
       await _executeScript();
     } else {
       if (kDebugMode) {
-        ////print('[GameManager] 错误: 标签 $label 未找到');
+        //////print('[GameManager] 错误: 标签 $label 未找到');
       }
     }
   }
@@ -597,7 +619,7 @@ class GameManager {
   void next() async {
     // 检查是否需要清除anime覆盖层（在用户交互时）
     if (_currentState.animeOverlay != null && !_currentState.animeKeep) {
-      //print('[GameManager] 用户点击继续，清除anime覆盖层: ${_currentState.animeOverlay}');
+      ////print('[GameManager] 用户点击继续，清除anime覆盖层: ${_currentState.animeOverlay}');
       _currentState = _currentState.copyWith(
         clearAnimeOverlay: true,
         everShownCharacters: _everShownCharacters,
@@ -611,9 +633,10 @@ class GameManager {
   }
 
   void exitNvlMode() {
-    //print('📚 退出 NVL 模式');
+    //print('📚 退出 NVL/NVLN 模式');
     _currentState = _currentState.copyWith(
       isNvlMode: false,
+      isNvlnMode: false, // 同时确保nvln模式也关闭
       nvlDialogues: [],
       clearDialogueAndSpeaker: true,
       everShownCharacters: _everShownCharacters,
@@ -624,7 +647,7 @@ class GameManager {
 
   /// 视频播放完成后继续执行脚本
   void executeScriptAfterMovie() {
-    print('[GameManager] 视频播放完成，开始黑屏转场');
+    //print('[GameManager] 视频播放完成，开始黑屏转场');
     
     // 如果有context，使用转场效果；否则直接切换
     if (_context != null) {
@@ -633,7 +656,7 @@ class GameManager {
         duration: const Duration(milliseconds: 600), // 转场时长
         onMidTransition: () {
           // 在黑屏最深时清理movie状态并继续执行脚本
-          print('[GameManager] 转场中点：清理movie状态并继续执行脚本');
+          //print('[GameManager] 转场中点：清理movie状态并继续执行脚本');
           _currentState = _currentState.copyWith(
             clearMovieFile: true, // 清理视频文件
           );
@@ -643,7 +666,7 @@ class GameManager {
       );
     } else {
       // 兼容性处理：如果没有context，直接切换
-      print('[GameManager] 无context，直接清理movie状态并继续执行脚本');
+      //print('[GameManager] 无context，直接清理movie状态并继续执行脚本');
       _currentState = _currentState.copyWith(
         clearMovieFile: true, // 清理视频文件
       );
@@ -662,14 +685,14 @@ class GameManager {
     
     while (_scriptIndex < _script.children.length) {
       final node = _script.children[_scriptIndex];
-      //print('[GameManager] 处理脚本索引 $_scriptIndex: ${node.runtimeType}');
+      ////print('[GameManager] 处理脚本索引 $_scriptIndex: ${node.runtimeType}');
       final currentNodeIndex = _scriptIndex; // 保存当前节点索引
       //print('🎮 处理节点[$_scriptIndex]: ${node.runtimeType} - $node');
 
       // 跳过注释节点（文件边界标记）
       if (node is CommentNode) {
         if (kDebugMode) {
-          ////print('[GameManager] 跳过注释: ${node.comment}');
+          //////print('[GameManager] 跳过注释: ${node.comment}');
         }
         _scriptIndex++;
         continue;
@@ -684,7 +707,7 @@ class GameManager {
       if (node is BackgroundNode) {
         // 检测是否包含chapter，如果是则停止快进
         if (_isFastForwardMode && _containsChapter(node.background)) {
-          print('[GameManager] 检测到chapter场景，停止快进: ${node.background}');
+          //print('[GameManager] 检测到chapter场景，停止快进: ${node.background}');
           setFastForwardMode(false);
           // 通知UI层快进状态已改变，这样快进指示器会消失
           // GameState已在setFastForwardMode中更新
@@ -696,7 +719,7 @@ class GameManager {
         final shouldClearCG = !isNewBackgroundCG && _currentState.cgCharacters.isNotEmpty;
         
         if (shouldClearCG) {
-          //print('[GameManager] 切换到非CG背景，清空CG状态');
+          ////print('[GameManager] 切换到非CG背景，清空CG状态');
         }
         
         // 检查下一个节点是否是FxNode，如果是则一起处理
@@ -708,12 +731,15 @@ class GameManager {
         }
         
         // 检查是否是游戏开始时的初始背景设置
-        final isInitialBackground = _currentState.background == null;
+        final isInitialBackground = _currentState.background == null && _currentState.cgCharacters.isEmpty;
         final isSameBackground = _currentState.background == node.background;
+        // 检查是否从CG切换到场景，如果是则强制使用转场效果
+        final isFromCGToScene = _currentState.cgCharacters.isNotEmpty && !node.background.toLowerCase().contains('cg');
         
         // 快进模式下跳过转场效果，或其他需要跳过转场的情况
-        if (_isFastForwardMode || _context == null || isInitialBackground || isSameBackground) {
-          //print('[GameManager] 跳过转场：${_isFastForwardMode ? "快进模式" : (isInitialBackground ? "初始背景" : (isSameBackground ? "相同背景" : "无context"))}');
+        // 但从CG切换到场景时必须使用转场效果
+        if ((_isFastForwardMode || _context == null || isInitialBackground || isSameBackground) && !isFromCGToScene) {
+          ////print('[GameManager] 跳过转场：${_isFastForwardMode ? "快进模式" : (isInitialBackground ? "初始背景" : (isSameBackground ? "相同背景" : "无context"))}');
           // 直接切换背景
           _currentState = _currentState.copyWith(
               background: node.background, 
@@ -731,7 +757,7 @@ class GameManager {
               clearSceneAnimation: node.animation == null,
               clearCgCharacters: shouldClearCG,
               everShownCharacters: _everShownCharacters);
-          print('[GameManager] Scene命令清理movie状态: 新状态 movieFile=${_currentState.movieFile}, background=${_currentState.background}');
+          //print('[GameManager] Scene命令清理movie状态: 新状态 movieFile=${_currentState.movieFile}, background=${_currentState.background}');
           _gameStateController.add(_currentState);
           
           // 快进模式下跳过场景动画
@@ -757,15 +783,23 @@ class GameManager {
           _isProcessing = false; // 释放当前处理锁，但保持timer锁
           
           // 检查是否是CG到CG的转场，如果是且没有指定转场类型，则使用dissolve
+          // 同时检查从CG切换到普通场景的情况
           String? finalTransitionType = node.transitionType;
           final currentBg = _currentState.background;
           final newBg = node.background;
           final isCurrentCG = currentBg != null && currentBg.toLowerCase().contains('cg');
           final isNewCG = newBg.toLowerCase().contains('cg');
+          final hasCurrentCGCharacters = _currentState.cgCharacters.isNotEmpty;
           
-          if (isCurrentCG && isNewCG && finalTransitionType == null) {
-            finalTransitionType = 'diss'; // CG到CG默认使用dissolve转场
-            //print('[GameManager] CG到CG转场，使用默认dissolve效果');
+          if ((isCurrentCG && isNewCG) || (hasCurrentCGCharacters && isNewCG)) {
+            if (finalTransitionType == null) {
+              finalTransitionType = 'diss'; // CG到CG默认使用dissolve转场
+              ////print('[GameManager] CG到CG转场，使用默认dissolve效果');
+            }
+          } else if (hasCurrentCGCharacters && !isNewCG && finalTransitionType == null) {
+            // 从CG切换到普通场景，默认使用fade转场
+            finalTransitionType = 'fade';
+            ////print('[GameManager] 从CG切换到场景，使用默认fade效果');
           }
           
           _transitionToNewBackground(node.background, sceneFilter, node.layers, finalTransitionType, node.animation, node.repeatCount, shouldClearCG).then((_) {
@@ -784,7 +818,7 @@ class GameManager {
         // Movie处理逻辑，类似BackgroundNode但用于视频播放
         // 检测是否包含chapter，如果是则停止快进
         if (_isFastForwardMode && _containsChapter(node.movieFile)) {
-          print('[GameManager] 检测到chapter视频，停止快进: ${node.movieFile}');
+          //print('[GameManager] 检测到chapter视频，停止快进: ${node.movieFile}');
           setFastForwardMode(false);
         }
         
@@ -859,7 +893,7 @@ class GameManager {
       }
 
       if (node is AnimeNode) {
-        //print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}, keep: ${node.keep}');
+        ////print('[GameManager] 处理AnimeNode: ${node.animeName}, loop: ${node.loop}, keep: ${node.keep}');
         
         // 快进模式下跳过anime显示
         if (!_isFastForwardMode) {
@@ -888,12 +922,12 @@ class GameManager {
       if (node is ShowNode) {
         // 检查是否有CG正在显示，如果有则跳过立绘显示
         if (_currentState.cgCharacters.isNotEmpty) {
-          //print('[GameManager] CG正在显示，跳过ShowNode: ${node.character}');
+          ////print('[GameManager] CG正在显示，跳过ShowNode: ${node.character}');
           _scriptIndex++;
           continue;
         }
         
-        //print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        ////print('[GameManager] 处理ShowNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
         // 优先使用角色配置，如果没有配置则直接使用资源ID
         final characterConfig = _characterConfigs[node.character];
         String resourceId;
@@ -901,12 +935,12 @@ class GameManager {
         String finalCharacterKey; // 最终使用的角色key
         
         if (characterConfig != null) {
-          //print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          ////print('[GameManager] 使用角色配置: ${characterConfig.id}');
           resourceId = characterConfig.resourceId;
           positionId = characterConfig.defaultPoseId ?? 'pose';
           finalCharacterKey = resourceId; // 使用resourceId作为key
         } else {
-          //print('[GameManager] 直接使用资源ID: ${node.character}');
+          ////print('[GameManager] 直接使用资源ID: ${node.character}');
           resourceId = node.character;
           positionId = node.position ?? 'pose';
           finalCharacterKey = node.character; // 使用原始名称作为key
@@ -925,6 +959,14 @@ class GameManager {
         // 检测角色位置变化并触发动画（如果需要）
         // 先将新角色添加到临时角色列表，然后检测位置变化
         final tempCharacters = Map.of(newCharacters);
+        
+        // 清理现有角色的动画属性，确保位置计算基于基础位置
+        for (final entry in tempCharacters.entries) {
+          tempCharacters[entry.key] = entry.value.copyWith(
+            clearAnimationProperties: true, // 清理动画属性
+          );
+        }
+        
         tempCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: node.pose,
           expression: node.expression,
@@ -956,7 +998,9 @@ class GameManager {
       }
 
       if (node is CgNode) {
-        //print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        if (kDebugMode) {
+          //print('[GameManager] 处理CgNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, position=${node.position}, animation=${node.animation}');
+        }
         
         // CG显示命令，类似ShowNode但渲染方式像scene一样铺满
         final characterConfig = _characterConfigs[node.character];
@@ -965,12 +1009,16 @@ class GameManager {
         String finalCharacterKey; // 最终使用的角色key
         
         if (characterConfig != null) {
-          //print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          if (kDebugMode) {
+            //print('[GameManager] 使用角色配置: ${characterConfig.id}');
+          }
           resourceId = characterConfig.resourceId;
           positionId = characterConfig.defaultPoseId ?? 'pose';
           finalCharacterKey = resourceId; // 使用resourceId作为key
         } else {
-          //print('[GameManager] 直接使用资源ID: ${node.character}');
+          if (kDebugMode) {
+            //print('[GameManager] 直接使用资源ID: ${node.character}');
+          }
           resourceId = node.character;
           positionId = node.position ?? 'pose';
           finalCharacterKey = node.character; // 使用原始名称作为key
@@ -979,6 +1027,10 @@ class GameManager {
         // 确保pose和expression的值被正确设置
         final newPose = node.pose ?? 'pose1';
         final newExpression = node.expression ?? 'happy';
+        
+        if (kDebugMode) {
+          //print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
+        }
         
         // CG只通过CG角色系统处理，不设置为背景
         // 先清除背景，确保CG角色层可以正常显示
@@ -990,7 +1042,9 @@ class GameManager {
           everShownCharacters: _everShownCharacters
         );
         
-        //print('[GameManager] 已清除背景，准备显示CG角色');
+        if (kDebugMode) {
+          //print('[GameManager] 已清除背景，准备显示CG角色');
+        }
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
@@ -1002,7 +1056,9 @@ class GameManager {
           positionId: positionId,
         );
         
-        //print('[GameManager] CG更新: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
+        if (kDebugMode) {
+          //print('[GameManager] CG更新前: cgCharacters数量=${_currentState.cgCharacters.length}');
+        }
 
         newCgCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: newPose,
@@ -1017,7 +1073,10 @@ class GameManager {
         );
         _gameStateController.add(_currentState);
         
-        //print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
+        if (kDebugMode) {
+          //print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
+          //print('[GameManager] CG角色列表: ${_currentState.cgCharacters.keys.toList()}');
+        }
         
         // 如果有动画，启动动画播放（非阻塞）
         if (!_isFastForwardMode && node.animation != null) {
@@ -1087,10 +1146,22 @@ class GameManager {
           if (currentCharacterState != null) {
             // 角色已存在，更新表情、姿势和位置
             final newCharacters = Map.of(_currentState.characters);
+            
+            // 如果角色已存在且有正在播放的动画，继承动画属性
+            final existingAnimController = _activeCharacterAnimations[finalCharacterKey];
+            Map<String, double>? inheritedAnimationProperties;
+            
+            if (existingAnimController != null && currentCharacterState.animationProperties != null) {
+              // 继承当前的动画属性，这样角色的差分改变但动画位置保持
+              inheritedAnimationProperties = Map.from(currentCharacterState.animationProperties!);
+              //print('[GameManager] ConditionalSay: 角色 $finalCharacterKey 差分切换时继承动画属性: $inheritedAnimationProperties');
+            }
+            
             final updatedCharacter = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
               positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
+              animationProperties: inheritedAnimationProperties, // 继承动画属性
               clearAnimationProperties: false,
             );
             newCharacters[finalCharacterKey] = updatedCharacter;
@@ -1122,6 +1193,14 @@ class GameManager {
             );
             
             final newCharacters = Map.of(_currentState.characters);
+            
+            // 清理现有角色的动画属性，确保位置计算基于基础位置
+            for (final entry in newCharacters.entries) {
+              newCharacters[entry.key] = entry.value.copyWith(
+                clearAnimationProperties: true, // 清理动画属性
+              );
+            }
+            
             newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
               pose: node.pose,
               expression: node.expression,
@@ -1143,10 +1222,11 @@ class GameManager {
           }
         }
 
-        // 在 NVL 模式下的特殊处理
-        if (_currentState.isNvlMode) {
+        // 在 NVL 或 NVLN 模式下的特殊处理
+        if (_currentState.isNvlMode || _currentState.isNvlnMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
+            speakerAlias: node.character, // 新增：传递角色简写
             dialogue: node.dialogue,
             timestamp: DateTime.now(),
           );
@@ -1170,7 +1250,7 @@ class GameManager {
           
           _gameStateController.add(_currentState);
           
-          // NVL 模式下每句话都要停下来等待点击
+          // NVL/NVLN 模式下每句话都要停下来等待点击
           _scriptIndex++;
           _isProcessing = false;
           return;
@@ -1201,15 +1281,15 @@ class GameManager {
       }
 
       if (node is SayNode) {
-        //print('[GameManager] 处理SayNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, animation=${node.animation}');
+        ////print('[GameManager] 处理SayNode: character=${node.character}, pose=${node.pose}, expression=${node.expression}, animation=${node.animation}');
         final characterConfig = _characterConfigs[node.character];
-        //print('[GameManager] 角色配置: $characterConfig');
+        ////print('[GameManager] 角色配置: $characterConfig');
         CharacterState? currentCharacterState;
 
         if (node.character != null) {
           // 检查当前背景是否为CG，如果是CG则不更新角色立绘
           if (_isCurrentBackgroundCG()) {
-            //print('[GameManager] 当前背景为CG，跳过角色立绘更新');
+            ////print('[GameManager] 当前背景为CG，跳过角色立绘更新');
             // 直接更新对话内容，不处理角色状态
             _currentState = _currentState.copyWith(
               speaker: characterConfig?.name ?? node.character,
@@ -1228,16 +1308,49 @@ class GameManager {
             }
             
             currentCharacterState = _currentState.characters[finalCharacterKey];
-            //print('[GameManager] 查找角色 $finalCharacterKey: ${currentCharacterState != null ? "找到" : "未找到"}');
+            ////print('[GameManager] 查找角色 $finalCharacterKey: ${currentCharacterState != null ? "找到" : "未找到"}');
             
             if (currentCharacterState != null) {
               // 角色已存在，更新表情、姿势和位置
-              //print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}, position=${node.position}');
+              ////print('[GameManager] 更新已存在角色 $finalCharacterKey: pose=${node.pose}, expression=${node.expression}, position=${node.position}');
               final newCharacters = Map.of(_currentState.characters);
+              
+              // 处理时序差分切换
+              String? finalExpression = node.expression;
+              if (node.hasTimedExpression) {
+                if (_isFastForwardMode) {
+                  // 快进模式下直接使用目标差分
+                  finalExpression = node.endExpression;
+                  //print('[GameManager] 快进模式: 直接使用目标差分 ${node.endExpression}');
+                } else {
+                  // 先设置起始差分
+                  finalExpression = node.startExpression;
+                  //print('[GameManager] 时序差分切换: 起始差分 ${node.startExpression}, ${node.switchDelay}秒后切换到 ${node.endExpression}');
+                  
+                  // 启动定时器进行差分切换
+                  _scheduleExpressionSwitch(
+                    characterKey: finalCharacterKey,
+                    targetExpression: node.endExpression!,
+                    delay: node.switchDelay!,
+                  );
+                }
+              }
+              
+              // 如果角色已存在且有正在播放的动画，继承动画属性
+              final existingAnimController = _activeCharacterAnimations[finalCharacterKey];
+              Map<String, double>? inheritedAnimationProperties;
+              
+              if (existingAnimController != null && currentCharacterState.animationProperties != null) {
+                // 继承当前的动画属性，这样角色的差分改变但动画位置保持
+                inheritedAnimationProperties = Map.from(currentCharacterState.animationProperties!);
+                //print('[GameManager] 角色 $finalCharacterKey 差分切换时继承动画属性: $inheritedAnimationProperties');
+              }
+              
               final updatedCharacter = currentCharacterState.copyWith(
                 pose: node.pose,
-                expression: node.expression,
+                expression: finalExpression,
                 positionId: node.position ?? currentCharacterState.positionId, // 如果有新position则更新，否则保持原值
+                animationProperties: inheritedAnimationProperties, // 继承动画属性
                 clearAnimationProperties: false,
               );
               newCharacters[finalCharacterKey] = updatedCharacter;
@@ -1251,10 +1364,10 @@ class GameManager {
                 );
               }
               
-              //print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}, position=${updatedCharacter.positionId}');
+              ////print('[GameManager] 角色更新后状态: pose=${updatedCharacter.pose}, expression=${updatedCharacter.expression}, position=${updatedCharacter.positionId}');
               _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
               _gameStateController.add(_currentState);
-              //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+              ////print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
               
               // 如果有动画，启动动画播放（非阻塞）
               if (!_isFastForwardMode && node.animation != null) {
@@ -1262,16 +1375,45 @@ class GameManager {
               }
             } else if (characterConfig != null) {
               // 角色不存在，创建新角色
-              //print('[GameManager] 创建新角色 $finalCharacterKey');
+              ////print('[GameManager] 创建新角色 $finalCharacterKey');
               currentCharacterState = CharacterState(
                 resourceId: characterConfig.resourceId,
                 positionId: node.position ?? characterConfig.defaultPoseId, // 优先使用指定的position，否则使用默认值
               );
               
               final newCharacters = Map.of(_currentState.characters);
+              
+              // 清理现有角色的动画属性，确保位置计算基于基础位置
+              for (final entry in newCharacters.entries) {
+                newCharacters[entry.key] = entry.value.copyWith(
+                  clearAnimationProperties: true, // 清理动画属性
+                );
+              }
+              
+              // 处理时序差分切换
+              String? finalExpression = node.expression;
+              if (node.hasTimedExpression) {
+                if (_isFastForwardMode) {
+                  // 快进模式下直接使用目标差分
+                  finalExpression = node.endExpression;
+                  //print('[GameManager] 快进模式: 直接使用目标差分 ${node.endExpression}');
+                } else {
+                  // 先设置起始差分
+                  finalExpression = node.startExpression;
+                  //print('[GameManager] 时序差分切换: 起始差分 ${node.startExpression}, ${node.switchDelay}秒后切换到 ${node.endExpression}');
+                  
+                  // 启动定时器进行差分切换
+                  _scheduleExpressionSwitch(
+                    characterKey: finalCharacterKey,
+                    targetExpression: node.endExpression!,
+                    delay: node.switchDelay!,
+                  );
+                }
+              }
+              
               newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
                 pose: node.pose,
-                expression: node.expression,
+                expression: finalExpression,
                 clearAnimationProperties: false,
               );
               
@@ -1282,7 +1424,7 @@ class GameManager {
               
               _currentState = _currentState.copyWith(characters: newCharacters, everShownCharacters: _everShownCharacters);
               _gameStateController.add(_currentState);
-              //print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
+              ////print('[GameManager] 发送状态更新，当前角色列表: ${newCharacters.keys}');
               
               // 如果有动画，启动动画播放（非阻塞）
               if (!_isFastForwardMode && node.animation != null) {
@@ -1292,10 +1434,11 @@ class GameManager {
           }
         }
 
-        // 在 NVL 模式下的特殊处理
-        if (_currentState.isNvlMode) {
+        // 在 NVL 或 NVLN 模式下的特殊处理
+        if (_currentState.isNvlMode || _currentState.isNvlnMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
+            speakerAlias: node.character, // 新增：传递角色简写
             dialogue: node.dialogue,
             timestamp: DateTime.now(),
           );
@@ -1319,7 +1462,7 @@ class GameManager {
           
           _gameStateController.add(_currentState);
           
-          // NVL 模式下每句话都要停下来等待点击
+          // NVL/NVLN 模式下每句话都要停下来等待点击
           _scriptIndex++;
           _isProcessing = false;
           return;
@@ -1355,7 +1498,8 @@ class GameManager {
       if (node is MenuNode) {
         _currentState = _currentState.copyWith(currentNode: node, clearDialogueAndSpeaker: true, everShownCharacters: _everShownCharacters);
         _gameStateController.add(_currentState);
-        _scriptIndex++;
+        // 注意：不立即推进脚本索引，让存档能够保存到MenuNode的位置
+        // _scriptIndex 将在选择完成后由 jumpToLabel 推进
         _isProcessing = false;
         return;
       }
@@ -1377,6 +1521,20 @@ class GameManager {
       if (node is NvlNode) {
         _currentState = _currentState.copyWith(
           isNvlMode: true,
+          isNvlMovieMode: false,
+          isNvlnMode: false, // 确保nvln模式关闭
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        _scriptIndex++;
+        continue;
+      }
+      if (node is NvlnNode) { // 新增：nvln（无遮罩NVL模式）处理
+        _currentState = _currentState.copyWith(
+          isNvlnMode: true,
+          isNvlMode: false, // 确保普通nvl模式关闭
           isNvlMovieMode: false,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
@@ -1404,6 +1562,21 @@ class GameManager {
         // 退出 NVL 模式并继续执行后续脚本
         _currentState = _currentState.copyWith(
           isNvlMode: false,
+          isNvlMovieMode: false,
+          isNvlnMode: false, // 同时确保nvln模式也关闭
+          nvlDialogues: [],
+          clearDialogueAndSpeaker: true,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        _scriptIndex++;
+        continue; // 继续执行后续节点
+      }
+      if (node is EndNvlnNode) { // 新增：endnvln处理
+        // 退出无遮罩NVL模式并继续执行后续脚本
+        _currentState = _currentState.copyWith(
+          isNvlnMode: false,
+          isNvlMode: false, // 确保普通nvl模式也关闭
           isNvlMovieMode: false,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
@@ -1528,17 +1701,82 @@ class GameManager {
         _scriptIndex++;
         continue;
       }
+
+      if (node is PauseNode) {
+        // 处理暂停命令：pause(0.5)
+        if (kDebugMode) {
+          print('[PauseNode] 暂停 ${node.duration} 秒');
+        }
+        
+        // 设置暂停等待标志
+        _isWaitingForTimer = true;
+        _isProcessing = false; // 释放处理锁，但保持timer锁
+        _scriptIndex++; // 预先递增索引
+        
+        // 启动计时器
+        Timer(Duration(milliseconds: (node.duration * 1000).round()), () {
+          if (kDebugMode) {
+            print('[PauseNode] 暂停结束，继续执行脚本');
+          }
+          _isWaitingForTimer = false;
+          _executeScript(); // 恢复脚本执行
+        });
+        
+        return; // 暂停期间停止脚本执行
+      }
+
+      if (node is ShakeNode) {
+        // 处理震动命令
+        final duration = node.duration ?? 1.0; // 默认1秒
+        final intensity = node.intensity ?? 8.0; // 默认强度8
+        final target = node.target ?? 'background'; // 默认震动背景
+        
+        if (kDebugMode) {
+          print('[ShakeNode] 触发震动: target=$target, duration=$duration, intensity=$intensity');
+        }
+        
+        // 设置震动状态
+        _currentState = _currentState.copyWith(
+          isShaking: true,
+          shakeTarget: target,
+          shakeDuration: duration,
+          shakeIntensity: intensity,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
+        
+        // 启动计时器，震动结束后清除震动状态
+        Timer(Duration(milliseconds: (duration * 1000).round()), () {
+          _currentState = _currentState.copyWith(
+            isShaking: false,
+            shakeTarget: null,
+            shakeDuration: null,
+            shakeIntensity: null,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        });
+        
+        _scriptIndex++;
+        continue;
+      }
     }
     _isProcessing = false;
   }
 
   GameStateSnapshot saveStateSnapshot() {
+    if (kDebugMode) {
+      //print('[GameManager] 保存存档：cgCharacters数量 = ${_currentState.cgCharacters.length}');
+      //print('[GameManager] 保存存档：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
+    }
+    
     return GameStateSnapshot(
       scriptIndex: _scriptIndex,
       currentState: _currentState,
       dialogueHistory: List.from(_dialogueHistory),
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
+      isNvlnMode: _currentState.isNvlnMode, // 新增：保存无遮罩NVL模式状态
       nvlDialogues: List.from(_currentState.nvlDialogues),
       isFastForwardMode: _isFastForwardMode, // 保存快进状态
     );
@@ -1562,7 +1800,7 @@ class GameManager {
       await _analyzeAndPreloadAnimeResources();
     } catch (e) {
       if (kDebugMode) {
-        //print('[GameManager] 存档恢复：预加载anime资源失败: $e');
+        ////print('[GameManager] 存档恢复：预加载anime资源失败: $e');
       }
     }
     //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
@@ -1586,13 +1824,26 @@ class GameManager {
     _sceneAnimationController = null;
     
     // 恢复 NVL 状态
+    if (kDebugMode) {
+      //print('[GameManager] 存档恢复：cgCharacters数量 = ${snapshot.currentState.cgCharacters.length}');
+      //print('[GameManager] 存档恢复：cgCharacters内容 = ${snapshot.currentState.cgCharacters.keys.toList()}');
+    }
+    
     _currentState = snapshot.currentState.copyWith(
       isNvlMode: snapshot.isNvlMode,
       isNvlMovieMode: snapshot.isNvlMovieMode,
+      isNvlnMode: snapshot.isNvlnMode, // 新增：恢复无遮罩NVL模式状态
       nvlDialogues: snapshot.nvlDialogues,
       everShownCharacters: _everShownCharacters,
       isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
+      // 明确恢复CG角色状态（修复CG存档恢复bug）
+      cgCharacters: snapshot.currentState.cgCharacters,
     );
+    
+    if (kDebugMode) {
+      //print('[GameManager] 存档恢复后：cgCharacters数量 = ${_currentState.cgCharacters.length}');
+      //print('[GameManager] 存档恢复后：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
+    }
     
     // 立即发送状态更新以确保UI正确显示包括场景动画属性
     _gameStateController.add(_currentState);
@@ -1610,6 +1861,20 @@ class GameManager {
     if (shouldReExecute) {
       await _executeScript();
     } else {
+      // 不重新执行脚本时，检查当前位置是否是MenuNode
+      if (_scriptIndex < _script.children.length) {
+        final currentNode = _script.children[_scriptIndex];
+        if (currentNode is MenuNode) {
+          // 如果当前位置是MenuNode，确保currentNode被正确设置
+          _currentState = _currentState.copyWith(
+            currentNode: currentNode,
+            everShownCharacters: _everShownCharacters,
+          );
+          if (kDebugMode) {
+            //print('[GameManager] 存档恢复：检测到MenuNode，设置currentNode');
+          }
+        }
+      }
       _gameStateController.add(_currentState);
     }
   }
@@ -1671,7 +1936,7 @@ class GameManager {
   Future<void> _transitionToNewMovie(String movieFile, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount]) async {
     if (_context == null) return;
     
-    ////print('[GameManager] 开始movie转场到视频: $movieFile, 转场类型: ${transitionType ?? "fade"}');
+    //////print('[GameManager] 开始movie转场到视频: $movieFile, 转场类型: ${transitionType ?? "fade"}');
     
     final oldBackground = _currentState.background;
     
@@ -1684,7 +1949,7 @@ class GameManager {
         oldBackground: oldBackground,
         newBackground: null, // 视频会占据整个背景
         onMidTransition: () async {
-          ////print('[GameManager] movie转场中点，更新状态');
+          //////print('[GameManager] movie转场中点，更新状态');
           _currentState = _currentState.copyWith(
             movieFile: movieFile,
             movieRepeatCount: repeatCount, // 新增：传递视频重复播放次数
@@ -1711,9 +1976,9 @@ class GameManager {
         },
       );
       
-      ////print('[GameManager] movie转场完成');
+      //////print('[GameManager] movie转场完成');
     } catch (e) {
-      print('[GameManager] movie转场失败: $e');
+      //print('[GameManager] movie转场失败: $e');
       // 转场失败时直接更新状态
       _currentState = _currentState.copyWith(
         movieFile: movieFile,
@@ -1753,7 +2018,7 @@ class GameManager {
     // 为历史条目创建快照时，使用正确的节点索引
     // 对于NVL模式，只保存当前单句对话而不是整个NVL列表，避免回退时重复显示
     final nvlDialoguesForSnapshot = _currentState.isNvlMode 
-        ? [NvlDialogue(speaker: speaker, dialogue: dialogue, timestamp: timestamp)]
+        ? [NvlDialogue(speaker: speaker, speakerAlias: null, dialogue: dialogue, timestamp: timestamp)]
         : List.from(_currentState.nvlDialogues);
     
     final snapshot = GameStateSnapshot(
@@ -1762,6 +2027,7 @@ class GameManager {
       dialogueHistory: const [], // 避免循环引用
       isNvlMode: _currentState.isNvlMode,
       isNvlMovieMode: _currentState.isNvlMovieMode,
+      isNvlnMode: _currentState.isNvlnMode, // 新增：保存无遮罩NVL模式状态
       nvlDialogues: List.from(_currentState.nvlDialogues),
     );
     
@@ -1817,12 +2083,12 @@ class GameManager {
           // 在转场中点恢复历史状态
           await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
           
-          // 修复NVL模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
-          if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+          // 修复NVL/NVLN模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
+          if ((snapshot.isNvlMode || snapshot.isNvlnMode) && _scriptIndex < _script.children.length - 1) {
             _scriptIndex++;
           }
           // 修复普通对话模式回退bug：对于普通对话也需要推进到下一个节点，避免重复执行
-          else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+          else if (!snapshot.isNvlMode && !snapshot.isNvlnMode && _scriptIndex < _script.children.length - 1) {
             _scriptIndex++;
           }
           
@@ -1835,10 +2101,10 @@ class GameManager {
       // 不需要场景转场，直接恢复状态
       await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
       
-      if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+      if ((snapshot.isNvlMode || snapshot.isNvlnMode) && _scriptIndex < _script.children.length - 1) {
         _scriptIndex++;
       }
-      else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
+      else if (!snapshot.isNvlMode && !snapshot.isNvlnMode && _scriptIndex < _script.children.length - 1) {
         _scriptIndex++;
       }
       
@@ -1859,6 +2125,35 @@ class GameManager {
         _isWaitingForTimer = false;
         _currentTimer = null;
         await _executeScript();
+      }
+    });
+  }
+  
+  /// 定时切换角色差分表情
+  void _scheduleExpressionSwitch({
+    required String characterKey,
+    required String targetExpression,
+    required double delay,
+  }) {
+    final delayMs = (delay * 1000).round();
+    
+    Timer(Duration(milliseconds: delayMs), () {
+      // 检查角色是否仍然存在
+      final currentCharacter = _currentState.characters[characterKey];
+      if (currentCharacter != null) {
+        //print('[GameManager] 执行时序差分切换: $characterKey -> $targetExpression');
+        
+        final newCharacters = Map.of(_currentState.characters);
+        newCharacters[characterKey] = currentCharacter.copyWith(
+          expression: targetExpression,
+          clearAnimationProperties: false,
+        );
+        
+        _currentState = _currentState.copyWith(
+          characters: newCharacters,
+          everShownCharacters: _everShownCharacters,
+        );
+        _gameStateController.add(_currentState);
       }
     });
   }
@@ -1899,13 +2194,13 @@ class GameManager {
     // 应用预设属性
     final presetProperties = animDef.presetProperties;
     if (presetProperties.isNotEmpty) {
-      print('[GameManager] 场景动画 $animationName 应用预设属性: $presetProperties');
+      //print('[GameManager] 场景动画 $animationName 应用预设属性: $presetProperties');
       for (final entry in presetProperties.entries) {
         final currentValue = baseProperties[entry.key] ?? 0.0;
         baseProperties[entry.key] = currentValue + entry.value;
-        print('[GameManager] 场景预设 ${entry.key}: $currentValue + ${entry.value} = ${baseProperties[entry.key]}');
+        //print('[GameManager] 场景预设 ${entry.key}: $currentValue + ${entry.value} = ${baseProperties[entry.key]}');
       }
-      print('[GameManager] 场景最终属性: $baseProperties');
+      //print('[GameManager] 场景最终属性: $baseProperties');
       return baseProperties;
     }
     
@@ -1915,7 +2210,7 @@ class GameManager {
   Future<void> _transitionToNewBackground(String newBackground, [SceneFilter? sceneFilter, List<String>? layers, String? transitionType, String? animation, int? repeatCount, bool? clearCG]) async {
     if (_context == null) return;
     
-    ////print('[GameManager] 开始scene转场到背景: $newBackground, 转场类型: ${transitionType ?? "fade"}');
+    //////print('[GameManager] 开始scene转场到背景: $newBackground, 转场类型: ${transitionType ?? "fade"}');
     
     // 预加载背景图片以避免动画闪烁
     if (!ColorBackgroundRenderer.isValidHexColor(newBackground)) {
@@ -1937,18 +2232,18 @@ class GameManager {
             // 发布模式或assets路径，使用AssetImage
             await precacheImage(AssetImage(assetPath), _context!);
           }
-          //print('[GameManager] 预加载背景图片完成: $newBackground -> $assetPath');
+          ////print('[GameManager] 预加载背景图片完成: $newBackground -> $assetPath');
         } else {
-          //print('[GameManager] 警告: 无法找到背景图片进行预加载: $newBackground');
+          ////print('[GameManager] 警告: 无法找到背景图片进行预加载: $newBackground');
         }
       } catch (e) {
-        //print('[GameManager] 预加载背景图片失败: $e');
+        ////print('[GameManager] 预加载背景图片失败: $e');
       }
     }
     
     // 解析转场类型
     final effectType = TransitionTypeParser.parseTransitionType(transitionType ?? 'fade');
-    //print('[GameManager] 转场类型解析: 输入="$transitionType" -> 解析结果=${effectType.name}');
+    ////print('[GameManager] 转场类型解析: 输入="$transitionType" -> 解析结果=${effectType.name}');
     
     // 如果是diss转场，需要准备旧背景和新背景名称
     String? oldBackgroundName;
@@ -1976,7 +2271,7 @@ class GameManager {
         newBackgroundName = 'backgrounds/${newBackground.replaceAll(' ', '-')}';
       }
       
-      //print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
+      ////print('[GameManager] diss转场参数: 旧背景="$oldBackgroundName", 新背景="$newBackgroundName"');
     }
     
     // 在转场开始前先清除对话框，避免"残留"效果
@@ -1992,7 +2287,7 @@ class GameManager {
       await SceneTransitionManager.instance.transition(
         context: _context!,
         onMidTransition: () {
-        ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
+        //////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
         // 在黑屏最深时切换背景和清除所有角色（类似Renpy）
         // 先停止并清理旧的场景动画控制器
         _sceneAnimationController?.dispose();
@@ -2013,9 +2308,9 @@ class GameManager {
           clearSceneAnimation: animation == null,
           everShownCharacters: _everShownCharacters,
         );
-        ////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
+        //////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
         _gameStateController.add(_currentState);
-        ////print('[GameManager] 状态已发送到Stream');
+        //////print('[GameManager] 状态已发送到Stream');
       },
         duration: const Duration(milliseconds: 800),
       );
@@ -2027,7 +2322,7 @@ class GameManager {
         oldBackground: oldBackgroundName,
         newBackground: newBackgroundName,
         onMidTransition: () {
-          ////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
+          //////print('[GameManager] scene转场中点 - 切换背景到: $newBackground');
           // 对于dissolve转场，不在中点更新背景状态，避免与转场效果冲突
           // 只更新其他状态，背景更新延迟到转场完成
           if (effectType != TransitionType.diss) {
@@ -2051,9 +2346,9 @@ class GameManager {
               clearSceneAnimation: animation == null,
               everShownCharacters: _everShownCharacters,
             );
-            ////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
+            //////print('[GameManager] 状态更新 - 旧背景: ${oldState.background}, 新背景: ${_currentState.background}');
             _gameStateController.add(_currentState);
-            ////print('[GameManager] 状态已发送到Stream');
+            //////print('[GameManager] 状态已发送到Stream');
           } else {
             // 对于dissolve转场，在转场中点就更新背景，避免结束时闪烁
             _sceneAnimationController?.dispose();
@@ -2083,7 +2378,7 @@ class GameManager {
       // dissolve转场的背景已在中点更新，这里不需要重复更新
     }
     
-    ////print('[GameManager] scene转场完成，等待计时器结束');
+    //////print('[GameManager] scene转场完成，等待计时器结束');
     // 转场完成，等待计时器结束后自动执行后续脚本
     _isProcessing = false;
     
@@ -2127,7 +2422,7 @@ class GameManager {
     }
     
     if (lastBackgroundNode != null && lastBackgroundNode.animation != null) {
-      //print('[GameManager] 检测到当前场景有动画: ${lastBackgroundNode.animation}, repeat: ${lastBackgroundNode.repeatCount}');
+      ////print('[GameManager] 检测到当前场景有动画: ${lastBackgroundNode.animation}, repeat: ${lastBackgroundNode.repeatCount}');
       
       // 更新当前状态的场景动画信息
       _currentState = _currentState.copyWith(
@@ -2143,17 +2438,36 @@ class GameManager {
       // 发送状态更新
       _gameStateController.add(_currentState);
     } else {
-      //print('[GameManager] 当前场景没有检测到动画');
+      ////print('[GameManager] 当前场景没有检测到动画');
     }
   }
   void stopAllSounds() {
     MusicManager().stopAudio(AudioTrackConfig.sound);
   }
 
+  // 存储当前正在播放动画的角色控制器
+  final Map<String, CharacterAnimationController> _activeCharacterAnimations = {};
+
   /// 播放角色动画
   Future<void> _playCharacterAnimation(String characterId, String animationName, {int? repeatCount}) async {
     final characterState = _currentState.characters[characterId];
     if (characterState == null) return;
+    
+    // 检查该角色是否已经有动画在播放
+    final existingAnimController = _activeCharacterAnimations[characterId];
+    if (existingAnimController != null) {
+      // 如果已经有动画在播放同一个动画，直接返回，让动画继续
+      if (existingAnimController.animationName == animationName) {
+        //print('[GameManager] 角色 $characterId 已在播放动画 $animationName，继承动画状态');
+        return;
+      } else {
+        // 如果在播放不同的动画，停止旧动画
+        //print('[GameManager] 角色 $characterId 切换动画: ${existingAnimController.animationName} -> $animationName');
+        existingAnimController.stopInfiniteLoop();
+        existingAnimController.dispose();
+        _activeCharacterAnimations.remove(characterId);
+      }
+    }
     
     // 应用自动分布逻辑，获取实际的分布后位置
     final characterOrder = _currentState.characters.keys.toList();
@@ -2178,39 +2492,47 @@ class GameManager {
       'alpha': 1.0,
     };
     
-    // 声明动画控制器变量
-    late final CharacterAnimationController animController;
-    
     // 创建动画控制器
-    animController = CharacterAnimationController(
+    final animController = CharacterAnimationController(
       characterId: characterId,
       onAnimationUpdate: (properties) {
         // 实时更新角色状态
         final newCharacters = Map.of(_currentState.characters);
-        newCharacters[characterId] = characterState.copyWith(
-          animationProperties: properties,
-        );
-        _currentState = _currentState.copyWith(
-          characters: newCharacters,
-          everShownCharacters: _everShownCharacters,
-        );
-        _gameStateController.add(_currentState);
+        final currentCharacterState = newCharacters[characterId];
+        if (currentCharacterState != null) {
+          newCharacters[characterId] = currentCharacterState.copyWith(
+            animationProperties: properties,
+          );
+          _currentState = _currentState.copyWith(
+            characters: newCharacters,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        }
       },
       onComplete: () {
         //print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
         // 动画完成后，清除动画属性，让角色回到原本的位置
         // 不修改原始的pose配置，避免影响其他使用相同positionId的角色
         final newCharacters = Map.of(_currentState.characters);
-        newCharacters[characterId] = characterState.copyWith(
-          animationProperties: null, // 清除动画属性，回到基础位置
-        );
-        _currentState = _currentState.copyWith(
-          characters: newCharacters,
-          everShownCharacters: _everShownCharacters,
-        );
-        _gameStateController.add(_currentState);
+        final currentCharacterState = newCharacters[characterId];
+        if (currentCharacterState != null) {
+          newCharacters[characterId] = currentCharacterState.copyWith(
+            animationProperties: null, // 清除动画属性，回到基础位置
+          );
+          _currentState = _currentState.copyWith(
+            characters: newCharacters,
+            everShownCharacters: _everShownCharacters,
+          );
+          _gameStateController.add(_currentState);
+        }
+        // 从活跃动画列表中移除
+        _activeCharacterAnimations.remove(characterId);
       },
     );
+    
+    // 添加到活跃动画列表
+    _activeCharacterAnimations[characterId] = animController;
     
     // 播放动画，传递repeatCount参数
     if (_tickerProvider != null) {
@@ -2221,15 +2543,21 @@ class GameManager {
         repeatCount: repeatCount,
       );
     } else {
-      //print('[GameManager] 无TickerProvider，跳过动画播放');
+      ////print('[GameManager] 无TickerProvider，跳过动画播放');
+      // 如果无法播放动画，从活跃列表中移除
+      _activeCharacterAnimations.remove(characterId);
     }
     
-    animController.dispose();
+    // 动画播放完成后自动清理（如果还在活跃列表中）
+    if (_activeCharacterAnimations[characterId] == animController) {
+      animController.dispose();
+      _activeCharacterAnimations.remove(characterId);
+    }
   }
 
   /// 播放场景动画
   Future<void> _startSceneAnimation(String animationName, int? repeatCount) async {
-    //print('[GameManager] 开始播放场景动画: $animationName, repeat: $repeatCount');
+    ////print('[GameManager] 开始播放场景动画: $animationName, repeat: $repeatCount');
     
     // 停止之前的场景动画
     _sceneAnimationController?.dispose();
@@ -2255,7 +2583,7 @@ class GameManager {
         _gameStateController.add(_currentState);
       },
       onComplete: () {
-        //print('[GameManager] 场景动画 $animationName 播放完成');
+        ////print('[GameManager] 场景动画 $animationName 播放完成');
         // 保持动画的最终状态，不清除动画属性
         final finalProperties = _sceneAnimationController?.currentProperties;
         if (finalProperties != null) {
@@ -2283,15 +2611,129 @@ class GameManager {
 
   /// 淡出动画完成后移除角色
   void removeCharacterAfterFadeOut(String characterId) {
+    final oldCharacters = Map.of(_currentState.characters);
     final newCharacters = Map.of(_currentState.characters);
     newCharacters.remove(characterId);
     
-    _currentState = _currentState.copyWith(
-      characters: newCharacters,
-      clearDialogueAndSpeaker: false,
-      everShownCharacters: _everShownCharacters
+    if (_tickerProvider == null || newCharacters.length < 2) {
+      _currentState = _currentState.copyWith(
+        characters: newCharacters,
+        clearDialogueAndSpeaker: false,
+        everShownCharacters: _everShownCharacters
+      );
+      _gameStateController.add(_currentState);
+      return;
+    }
+    
+    // 手动计算位置变化，考虑角色的实际当前位置（包括动画属性）
+    final characterOrder = newCharacters.keys.toList();
+    final newDistributed = CharacterAutoDistribution.calculateAutoDistribution(
+      newCharacters, 
+      _poseConfigs, 
+      characterOrder,
     );
-    _gameStateController.add(_currentState);
+    
+    final positionChanges = <CharacterPositionChange>[];
+    for (final characterId in newCharacters.keys) {
+      final character = newCharacters[characterId]!;
+      final originalPose = _poseConfigs[character.positionId];
+      
+      if (originalPose != null && originalPose.isAutoAnchor) {
+        // 获取角色当前的实际显示位置
+        double currentX = originalPose.xcenter;
+        if (character.animationProperties != null && character.animationProperties!.containsKey('xcenter')) {
+          currentX = character.animationProperties!['xcenter']!;
+        } else {
+          // 如果没有动画属性，使用当前自动分布后的位置
+          final currentDistributed = CharacterAutoDistribution.calculateAutoDistribution(
+            oldCharacters, 
+            _poseConfigs, 
+            oldCharacters.keys.toList(),
+          );
+          final currentAutoDistributedPoseId = '${characterId}_auto_distributed';
+          final currentDistributedPose = currentDistributed[currentAutoDistributedPoseId] ?? originalPose;
+          currentX = currentDistributedPose.xcenter;
+        }
+        
+        // 获取新的目标位置
+        final newAutoDistributedPoseId = '${characterId}_auto_distributed';
+        final newDistributedPose = newDistributed[newAutoDistributedPoseId] ?? originalPose;
+        final targetX = newDistributedPose.xcenter;
+        
+        // 如果位置有变化，添加到动画列表
+        if ((currentX - targetX).abs() > 0.001) {
+          positionChanges.add(CharacterPositionChange(
+            characterId: characterId,
+            fromX: currentX,
+            toX: targetX,
+          ));
+        }
+      }
+    }
+    
+    // 如果有位置变化，播放动画
+    if (positionChanges.isNotEmpty) {
+      // 先移除角色，同时设置剩余角色的动画属性为当前位置，避免闪烁
+      final updatedCharacters = Map<String, CharacterState>.from(newCharacters);
+      for (final change in positionChanges) {
+        final character = updatedCharacters[change.characterId];
+        if (character != null) {
+          updatedCharacters[change.characterId] = character.copyWith(
+            animationProperties: {'xcenter': change.fromX}, // 设置为当前位置，避免闪烁
+          );
+        }
+      }
+      
+      _currentState = _currentState.copyWith(
+        characters: updatedCharacters,
+        clearDialogueAndSpeaker: false,
+        everShownCharacters: _everShownCharacters
+      );
+      _gameStateController.add(_currentState);
+      
+      // 然后播放动画
+      _characterPositionAnimator?.stop();
+      _characterPositionAnimator = CharacterPositionAnimator();
+      
+      _characterPositionAnimator!.animatePositionChanges(
+        positionChanges: positionChanges,
+        vsync: _tickerProvider!,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        onUpdate: (positions) {
+          final animatingCharacters = Map<String, CharacterState>.from(_currentState.characters);
+          for (final entry in positions.entries) {
+            final targetCharacterId = entry.key;
+            final xPosition = entry.value;
+            final character = animatingCharacters[targetCharacterId];
+            if (character != null) {
+              animatingCharacters[targetCharacterId] = character.copyWith(
+                animationProperties: {'xcenter': xPosition},
+              );
+            }
+          }
+          
+          _currentState = _currentState.copyWith(
+            characters: animatingCharacters,
+            clearDialogueAndSpeaker: false,
+            everShownCharacters: _everShownCharacters
+          );
+          _gameStateController.add(_currentState);
+        },
+        onComplete: () {
+          // 动画完成，简单更新状态，不清理动画属性
+          // 让后续的正常操作（如添加新角色）自然地处理最终状态
+        },
+      );
+    } else {
+      // 没有位置变化，直接移除角色
+      _currentState = _currentState.copyWith(
+        characters: newCharacters,
+        clearDialogueAndSpeaker: false,
+        everShownCharacters: _everShownCharacters
+      );
+      _gameStateController.add(_currentState);
+    }
   }
 
   /// 清除anime覆盖层
@@ -2306,6 +2748,14 @@ class GameManager {
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
+    
+    // 清理所有活跃的角色动画控制器
+    for (final controller in _activeCharacterAnimations.values) {
+      controller.stopInfiniteLoop();
+      controller.dispose();
+    }
+    _activeCharacterAnimations.clear();
+    
     stopAllSounds(); // 停止所有音效
     _gameStateController.close();
   }
@@ -2335,6 +2785,7 @@ class GameState {
   final SksNode? currentNode;
   final bool isNvlMode;
   final bool isNvlMovieMode;
+  final bool isNvlnMode; // 新增：无遮罩NVL模式
   final List<NvlDialogue> nvlDialogues;
   final Set<String> everShownCharacters;
   final SceneFilter? sceneFilter;
@@ -2349,6 +2800,10 @@ class GameState {
   final Map<String, CharacterState> cgCharacters; // 新增：CG角色状态，像scene一样铺满显示
   final bool isFastForwarding; // 新增：当前是否处于快进模式
   final bool isAutoPlaying; // 新增：当前是否处于自动播放模式
+  final bool isShaking; // 新增：当前是否正在震动
+  final String? shakeTarget; // 新增：震动目标 (dialogue/background)
+  final double? shakeDuration; // 新增：震动持续时间
+  final double? shakeIntensity; // 新增：震动强度
 
   GameState({
     this.background,
@@ -2361,6 +2816,7 @@ class GameState {
     this.currentNode,
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
+    this.isNvlnMode = false, // 新增：无遮罩NVL模式，默认false
     this.nvlDialogues = const [],
     this.everShownCharacters = const {},
     this.sceneFilter,
@@ -2375,6 +2831,10 @@ class GameState {
     this.cgCharacters = const {}, // 新增：CG角色状态，默认为空
     this.isFastForwarding = false, // 新增：快进状态，默认false
     this.isAutoPlaying = false, // 新增：自动播放状态，默认false
+    this.isShaking = false, // 新增：震动状态，默认false
+    this.shakeTarget, // 新增：震动目标
+    this.shakeDuration, // 新增：震动持续时间
+    this.shakeIntensity, // 新增：震动强度
   });
 
   factory GameState.initial() {
@@ -2398,6 +2858,7 @@ class GameState {
     bool forceNullSpeaker = false,
     bool? isNvlMode,
     bool? isNvlMovieMode,
+    bool? isNvlnMode, // 新增：无遮罩NVL模式参数
     List<NvlDialogue>? nvlDialogues,
     Set<String>? everShownCharacters,
     SceneFilter? sceneFilter,
@@ -2417,6 +2878,10 @@ class GameState {
     bool clearCgCharacters = false, // 新增：是否清空CG角色
     bool? isFastForwarding, // 新增：快进状态
     bool? isAutoPlaying, // 新增：自动播放状态
+    bool? isShaking, // 新增：震动状态
+    String? shakeTarget, // 新增：震动目标
+    double? shakeDuration, // 新增：震动持续时间
+    double? shakeIntensity, // 新增：震动强度
   }) {
     return GameState(
       background: background ?? this.background,
@@ -2433,6 +2898,7 @@ class GameState {
       currentNode: forceNullCurrentNode ? null : (currentNode ?? this.currentNode),
       isNvlMode: isNvlMode ?? this.isNvlMode,
       isNvlMovieMode: isNvlMovieMode ?? this.isNvlMovieMode,
+      isNvlnMode: isNvlnMode ?? this.isNvlnMode, // 新增：无遮罩NVL模式处理
       nvlDialogues: nvlDialogues ?? this.nvlDialogues,
       everShownCharacters: everShownCharacters ?? this.everShownCharacters,
       sceneFilter: clearSceneFilter ? null : (sceneFilter ?? this.sceneFilter),
@@ -2447,17 +2913,23 @@ class GameState {
       cgCharacters: clearCgCharacters ? <String, CharacterState>{} : (cgCharacters ?? this.cgCharacters), // 新增
       isFastForwarding: isFastForwarding ?? this.isFastForwarding, // 新增：快进状态
       isAutoPlaying: isAutoPlaying ?? this.isAutoPlaying, // 新增：自动播放状态
+      isShaking: isShaking ?? this.isShaking, // 新增：震动状态
+      shakeTarget: shakeTarget ?? this.shakeTarget, // 新增：震动目标
+      shakeDuration: shakeDuration ?? this.shakeDuration, // 新增：震动持续时间
+      shakeIntensity: shakeIntensity ?? this.shakeIntensity, // 新增：震动强度
     );
   }
 }
 
 class NvlDialogue {
   final String? speaker;
+  final String? speakerAlias; // 新增：角色简写
   final String dialogue;
   final DateTime timestamp;
 
   NvlDialogue({
     this.speaker,
+    this.speakerAlias, // 新增：角色简写参数
     required this.dialogue,
     required this.timestamp,
   });
@@ -2506,6 +2978,7 @@ class GameStateSnapshot {
   final List<DialogueHistoryEntry> dialogueHistory;
   final bool isNvlMode;
   final bool isNvlMovieMode;
+  final bool isNvlnMode; // 新增：无遮罩NVL模式状态保存
   final List<NvlDialogue> nvlDialogues;
   final bool isFastForwardMode; // 添加快进状态保存
 
@@ -2515,6 +2988,7 @@ class GameStateSnapshot {
     this.dialogueHistory = const [],
     this.isNvlMode = false,
     this.isNvlMovieMode = false,
+    this.isNvlnMode = false, // 新增：无遮罩NVL模式状态保存，默认false
     this.nvlDialogues = const [],
     this.isFastForwardMode = false, // 默认非快进状态
   });

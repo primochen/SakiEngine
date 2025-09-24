@@ -166,6 +166,8 @@ class CharacterAnimationController {
   final String characterId;
   final VoidCallback? onComplete;
   final void Function(Map<String, double>)? onAnimationUpdate;
+  
+  String? animationName; // 添加当前播放的动画名称
 
   AnimationController? _controller;
   Animation<double>? _animation;
@@ -187,6 +189,9 @@ class CharacterAnimationController {
     Map<String, double> baseProperties, {
     int? repeatCount,
   }) async {
+    // 设置当前播放的动画名称
+    this.animationName = animationName;
+    
     final animDef = AnimationManager.getAnimation(animationName);
     if (animDef == null) {
       onComplete?.call();

@@ -326,6 +326,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
             // 主对话框内容
             SoranoutaDialogueContent(
             speaker: widget.speaker,
+            speakerAlias: widget.speakerAlias, // 新增：传递角色简写
             dialogue: widget.dialogue,
             dialogueStyle: dialogueStyle,
             screenSize: screenSize,

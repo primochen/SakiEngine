@@ -79,7 +79,25 @@ class SayNode implements SksNode {
   final String? position;
   final String? animation;
   final int? repeatCount;
-  SayNode({this.character, required this.dialogue, this.pose, this.expression, this.position, this.animation, this.repeatCount});
+  final String? startExpression; // 时序切换的起始差分
+  final double? switchDelay; // 切换延迟时间（秒）
+  final String? endExpression; // 时序切换的目标差分
+  
+  SayNode({
+    this.character, 
+    required this.dialogue, 
+    this.pose, 
+    this.expression, 
+    this.position, 
+    this.animation, 
+    this.repeatCount,
+    this.startExpression,
+    this.switchDelay,
+    this.endExpression,
+  });
+  
+  /// 检查是否为时序差分切换节点
+  bool get hasTimedExpression => startExpression != null && endExpression != null && switchDelay != null;
 }
 
 class ChoiceOptionNode {
@@ -116,6 +134,10 @@ class CommentNode implements SksNode {
 class NvlNode implements SksNode {}
 
 class EndNvlNode implements SksNode {}
+
+class NvlnNode implements SksNode {} // 新增：nvln（无遮罩NVL模式）
+
+class EndNvlnNode implements SksNode {} // 新增：endnvln
 
 class NvlMovieNode implements SksNode {}
 
@@ -173,4 +195,32 @@ class ConditionalSayNode implements SksNode {
     this.animation,
     this.repeatCount,
   });
+}
+
+class ShakeNode implements SksNode {
+  final double? duration;
+  final double? intensity;
+  final String? target;
+  
+  ShakeNode({
+    this.duration,
+    this.intensity,
+    this.target,
+  });
+  
+  @override
+  String toString() {
+    return 'ShakeNode(duration: $duration, intensity: $intensity, target: $target)';
+  }
+}
+
+class PauseNode implements SksNode {
+  final double duration; // 暂停时长（秒）
+  
+  PauseNode(this.duration);
+  
+  @override
+  String toString() {
+    return 'PauseNode(duration: $duration)';
+  }
 }
