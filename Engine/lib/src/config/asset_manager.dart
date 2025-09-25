@@ -273,9 +273,6 @@ class AssetManager {
               // Debug模式下直接返回绝对路径，用于FileImage
               final assetPath = file.path.replaceAll('\\', '/');
               _imageCache[name] = assetPath;
-              if (kDebugMode) {
-                print("Found asset in file system: $name -> $assetPath");
-              }
               return assetPath;
             }
           }
@@ -283,10 +280,6 @@ class AssetManager {
       }
     }
 
-    if (kDebugMode) {
-      print("Asset not found in file system: $name");
-      print("Searched in paths: ${searchPaths.join(', ')}");
-    }
     return null;
   }
 
