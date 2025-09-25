@@ -322,6 +322,53 @@ class GameManager {
   // 获取角色配置（用于表情选择器）
   Map<String, CharacterConfig> get characterConfigs => _characterConfigs;
   
+  /// 分析脚本中CG差分的表达式变化
+  /// 查找指定resourceId和pose在当前位置附近的所有表达式
+  List<String> analyzeCgExpressions(String resourceId, String pose, {int lookAheadLines = 10}) {
+    final expressions = <String>{};
+    final currentIndex = _scriptIndex;
+    
+    // 向前查找
+    for (int i = currentIndex; i < _script.children.length && i < currentIndex + lookAheadLines; i++) {
+      final node = _script.children[i];
+      if (node is CgNode) {
+        // 检查是否是同一个CG的不同差分
+        final nodeResourceId = _getResourceIdForCharacter(node.character);
+        final nodePose = node.pose ?? 'pose1';
+        
+        if (nodeResourceId == resourceId && nodePose == pose) {
+          final expression = node.expression ?? 'happy';
+          expressions.add(expression);
+        }
+      }
+    }
+    
+    // 向后也查找一些
+    for (int i = currentIndex - 1; i >= 0 && i >= currentIndex - 5; i--) {
+      final node = _script.children[i];
+      if (node is CgNode) {
+        final nodeResourceId = _getResourceIdForCharacter(node.character);
+        final nodePose = node.pose ?? 'pose1';
+        
+        if (nodeResourceId == resourceId && nodePose == pose) {
+          final expression = node.expression ?? 'happy';
+          expressions.add(expression);
+        }
+      }
+    }
+    
+    return expressions.toList();
+  }
+  
+  /// 获取角色的resourceId
+  String _getResourceIdForCharacter(String character) {
+    final characterConfig = _characterConfigs[character];
+    if (characterConfig != null) {
+      return characterConfig.resourceId;
+    }
+    return character;
+  }
+
   // 快进模式控制
   bool get isFastForwardMode => _isFastForwardMode;
   void setFastForwardMode(bool enabled) {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
+import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 
 /// 基于预合成图像的CG角色渲染器
 /// 
@@ -20,6 +21,7 @@ class CompositeCgRenderer {
   static List<Widget> buildCgCharacters(
     BuildContext context,
     Map<String, CharacterState> cgCharacters,
+    GameManager gameManager,
   ) {
     if (cgCharacters.isEmpty) return [];
     

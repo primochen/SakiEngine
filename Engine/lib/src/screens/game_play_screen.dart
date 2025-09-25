@@ -896,14 +896,14 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           if (gameState.background != null)
             Builder(
               builder: (context) {
-                print('[GamePlayScreen] 正在渲染背景: ${gameState.background}');
+                //print('[GamePlayScreen] 正在渲染背景: ${gameState.background}');
                 return _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties);
               },
             )
           else
             Builder(
               builder: (context) {
-                print('[GamePlayScreen] 背景为空，不渲染背景层');
+                //print('[GamePlayScreen] 背景为空，不渲染背景层');
                 return const SizedBox.shrink();
               },
             ),
@@ -913,7 +913,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
             // CG角色渲染，像scene一样铺满屏幕
             // 使用新的合成CG渲染器替代多层渲染
-            ...CompositeCgRenderer.buildCgCharacters(context, gameState.cgCharacters),
+            ...CompositeCgRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager),
           ],
           
           // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
@@ -986,12 +986,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画
   Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers, Map<String, double>? animationProperties]) {
-    print('[_buildBackground] 开始构建背景: $background');
+    //print('[_buildBackground] 开始构建背景: $background');
     Widget backgroundWidget;
     
     // 如果有多图层数据，使用多图层渲染器
     if (sceneLayers != null && sceneLayers.isNotEmpty) {
-      print('[_buildBackground] 使用多图层渲染器');
+      //print('[_buildBackground] 使用多图层渲染器');
       final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
           .where((layer) => layer != null)
           .cast<SceneLayer>()
@@ -1003,22 +1003,22 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           screenSize: MediaQuery.of(context).size,
         );
       } else {
-        print('[_buildBackground] 多图层为空，使用黑色背景');
+        //print('[_buildBackground] 多图层为空，使用黑色背景');
         backgroundWidget = Container(color: Colors.black);
       }
     } else {
-      print('[_buildBackground] 单图层模式，背景内容: $background');
+      //print('[_buildBackground] 单图层模式，背景内容: $background');
       // 单图层模式（原有逻辑）
       // 检查是否为十六进制颜色格式
       if (ColorBackgroundRenderer.isValidHexColor(background)) {
-        print('[_buildBackground] 识别为十六进制颜色背景');
+        //print('[_buildBackground] 识别为十六进制颜色背景');
         backgroundWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
       } else {
-        print('[_buildBackground] 识别为图片背景，开始处理图片路径');
+        //print('[_buildBackground] 识别为图片背景，开始处理图片路径');
         
         // 检查是否为绝对路径（CG缓存路径）
         if (background.startsWith('/')) {
-          print('[_buildBackground] 检测到绝对路径，直接使用Image.file加载');
+          //print('[_buildBackground] 检测到绝对路径，直接使用Image.file加载');
           // 直接使用Image.file，不预缓存，避免FutureBuilder导致的黑屏
           backgroundWidget = Image.file(
             File(background),
@@ -1028,12 +1028,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             height: double.infinity,
             // 关键：不使用frameBuilder，让图像立即显示
             errorBuilder: (context, error, stackTrace) {
-              print('[_buildBackground] 直接文件加载失败: $background, 错误: $error');
+              //print('[_buildBackground] 直接文件加载失败: $background, 错误: $error');
               return Container(color: Colors.black);
             },
           );
         } else {
-          print('[_buildBackground] 使用AssetManager查找相对路径');
+          //print('[_buildBackground] 使用AssetManager查找相对路径');
           // 处理相对路径图片背景（原有逻辑）
           backgroundWidget = FutureBuilder<String?>(
             key: ValueKey('bg_$background'), // 添加key避免重建
