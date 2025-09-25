@@ -34,7 +34,7 @@ class SmartAssetImage extends StatelessWidget {
           
           if (assetPath.toLowerCase().endsWith('.svg')) {
             // 检查是否是绝对路径（Debug模式）
-            if (assetPath.startsWith('/') || assetPath.contains(':\\')) {
+            if (assetPath.startsWith('/') || assetPath.contains(':')) {
               // 绝对路径：使用SvgPicture.file
               print('SmartAssetImage: Using SvgPicture.file for absolute path: $assetPath');
               return SvgPicture.file(
