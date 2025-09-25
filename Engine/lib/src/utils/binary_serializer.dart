@@ -5,7 +5,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
 class BinarySerializer {
-  static const int _version = 4; // 增加版本号以支持cgCharacters字段
+  static const int _version = 5; // 增加版本号以支持isNvlnMode字段
   static const String _magicNumber = 'SAKI';
 
   /// 将SaveSlot序列化为二进制数据
@@ -116,6 +116,7 @@ class BinarySerializer {
     // 序列化 NVL 状态
     buffer.add(snapshot.isNvlMode ? 1 : 0);
     buffer.add(snapshot.isNvlMovieMode ? 1 : 0);  // 添加电影模式状态
+    buffer.add(snapshot.isNvlnMode ? 1 : 0);  // 添加无遮罩NVL模式状态
     buffer.addAll(_writeInt32(snapshot.nvlDialogues.length));
     for (final nvlDialogue in snapshot.nvlDialogues) {
       buffer.addAll(_serializeNvlDialogue(nvlDialogue));
@@ -139,6 +140,8 @@ class BinarySerializer {
     // 反序列化 NVL 状态
     final isNvlMode = reader.readByte() == 1;
     final isNvlMovieMode = reader.readByte() == 1;  // 添加电影模式状态
+    // 版本5及以上才有isNvlnMode字段
+    final isNvlnMode = (version != null && version >= 5) ? reader.readByte() == 1 : false;
     final nvlDialoguesLength = reader.readInt32();
     final nvlDialogues = <NvlDialogue>[];
     for (int i = 0; i < nvlDialoguesLength; i++) {
@@ -151,6 +154,7 @@ class BinarySerializer {
       dialogueHistory: dialogueHistory,
       isNvlMode: isNvlMode,
       isNvlMovieMode: isNvlMovieMode,  // 添加电影模式状态
+      isNvlnMode: isNvlnMode,  // 添加无遮罩NVL模式状态
       nvlDialogues: nvlDialogues,
     );
   }
@@ -181,6 +185,7 @@ class BinarySerializer {
     // 序列化 NVL 状态
     buffer.add(state.isNvlMode ? 1 : 0);
     buffer.add(state.isNvlMovieMode ? 1 : 0);
+    buffer.add(state.isNvlnMode ? 1 : 0);  // 添加无遮罩NVL模式状态
     buffer.addAll(_writeInt32(state.nvlDialogues.length));
     for (final nvlDialogue in state.nvlDialogues) {
       buffer.addAll(_serializeNvlDialogue(nvlDialogue));
@@ -227,6 +232,8 @@ class BinarySerializer {
     // 反序列化 NVL 状态
     final isNvlMode = reader.readByte() == 1;
     final isNvlMovieMode = reader.readByte() == 1;
+    // 版本5及以上才有isNvlnMode字段
+    final isNvlnMode = (version != null && version >= 5) ? reader.readByte() == 1 : false;
     final nvlDialoguesLength = reader.readInt32();
     final nvlDialogues = <NvlDialogue>[];
     for (int i = 0; i < nvlDialoguesLength; i++) {
@@ -242,6 +249,7 @@ class BinarySerializer {
       cgCharacters: cgCharacters, // 新增：CG角色状态
       isNvlMode: isNvlMode,
       isNvlMovieMode: isNvlMovieMode,
+      isNvlnMode: isNvlnMode,  // 添加无遮罩NVL模式状态
       nvlDialogues: nvlDialogues,
     );
   }

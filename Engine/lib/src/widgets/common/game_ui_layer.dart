@@ -147,7 +147,7 @@ class GameUILayerState extends State<GameUILayer> {
                 ),
               );
             },
-            child: widget.gameState.dialogue != null && !widget.gameState.isNvlMode && !widget.gameState.isNvlnMode
+            child: widget.gameState.dialogue != null && !widget.gameState.isNvlMode
                 ? widget.createDialogueBox(
                     key: const ValueKey('normal_dialogue'),
                     speaker: widget.gameState.speaker,
@@ -189,7 +189,7 @@ class GameUILayerState extends State<GameUILayer> {
                 child: child,
               );
             },
-            child: (widget.gameState.isNvlMode || widget.gameState.isNvlnMode || widget.gameState.isNvlMovieMode)
+            child: (widget.gameState.isNvlMode || widget.gameState.isNvlMovieMode)
                 ? NvlScreen(
                     key: widget.nvlScreenKey,
                     nvlDialogues: widget.gameState.nvlDialogues,

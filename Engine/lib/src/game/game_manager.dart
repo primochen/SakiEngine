@@ -1302,7 +1302,7 @@ class GameManager {
         }
 
         // 在 NVL 或 NVLN 模式下的特殊处理
-        if (_currentState.isNvlMode || _currentState.isNvlnMode) {
+        if (_currentState.isNvlMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
             speakerAlias: node.character, // 新增：传递角色简写
@@ -1514,7 +1514,7 @@ class GameManager {
         }
 
         // 在 NVL 或 NVLN 模式下的特殊处理
-        if (_currentState.isNvlMode || _currentState.isNvlnMode) {
+        if (_currentState.isNvlMode) {
           final newNvlDialogue = NvlDialogue(
             speaker: characterConfig?.name,
             speakerAlias: node.character, // 新增：传递角色简写
@@ -1612,8 +1612,8 @@ class GameManager {
       }
       if (node is NvlnNode) { // 新增：nvln（无遮罩NVL模式）处理
         _currentState = _currentState.copyWith(
-          isNvlnMode: true,
-          isNvlMode: false, // 确保普通nvl模式关闭
+          isNvlMode: true, // nvln使用isNvlMode=true
+          isNvlnMode: true, // 保持nvln标志用于UI判断无遮罩
           isNvlMovieMode: false,
           nvlDialogues: [],
           clearDialogueAndSpeaker: true,
@@ -2163,11 +2163,11 @@ class GameManager {
           await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
           
           // 修复NVL/NVLN模式回退bug：将脚本索引移动到下一个节点，避免重复执行当前节点
-          if ((snapshot.isNvlMode || snapshot.isNvlnMode) && _scriptIndex < _script.children.length - 1) {
+          if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
             _scriptIndex++;
           }
           // 修复普通对话模式回退bug：对于普通对话也需要推进到下一个节点，避免重复执行
-          else if (!snapshot.isNvlMode && !snapshot.isNvlnMode && _scriptIndex < _script.children.length - 1) {
+          else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
             _scriptIndex++;
           }
           
@@ -2180,10 +2180,10 @@ class GameManager {
       // 不需要场景转场，直接恢复状态
       await restoreFromSnapshot(scriptName, snapshot, shouldReExecute: false);
       
-      if ((snapshot.isNvlMode || snapshot.isNvlnMode) && _scriptIndex < _script.children.length - 1) {
+      if (snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
         _scriptIndex++;
       }
-      else if (!snapshot.isNvlMode && !snapshot.isNvlnMode && _scriptIndex < _script.children.length - 1) {
+      else if (!snapshot.isNvlMode && _scriptIndex < _script.children.length - 1) {
         _scriptIndex++;
       }
       

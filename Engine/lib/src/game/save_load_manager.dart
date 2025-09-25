@@ -74,7 +74,7 @@ class SaveLoadManager {
       final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
       dialoguePreview = '【选择支】\n${choiceTexts.join('\n')}';
     }
-    // 优先检查 NVL 模式
+    // 优先检查 NVL 模式（包括普通nvl和无遮罩nvln模式）
     else if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
       // 使用最新的 NVL 对话作为预览
       final latestNvlDialogue = currentState.nvlDialogues.last;
