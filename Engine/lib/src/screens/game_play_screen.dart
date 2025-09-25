@@ -1018,24 +1018,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         
         // 检查是否为绝对路径（CG缓存路径）
         if (background.startsWith('/')) {
-          print('[_buildBackground] 检测到绝对路径，直接使用FileImage加载');
-          // 直接使用FileImage加载绝对路径
+          print('[_buildBackground] 检测到绝对路径，直接使用Image.file加载');
+          // 直接使用Image.file，不预缓存，避免FutureBuilder导致的黑屏
           backgroundWidget = Image.file(
             File(background),
-            key: ValueKey('bg_file_$background'),
+            key: ValueKey('direct_bg_$background'),
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-              // 如果是同步加载（已缓存），直接显示
-              if (wasSynchronouslyLoaded ?? false) {
-                return child;
-              }
-              // 异步加载时，只在完全加载后显示，避免闪烁
-              return frame != null ? child : Container(color: Colors.black);
-            },
+            // 关键：不使用frameBuilder，让图像立即显示
             errorBuilder: (context, error, stackTrace) {
-              print('[_buildBackground] 文件加载失败: $background, 错误: $error');
+              print('[_buildBackground] 直接文件加载失败: $background, 错误: $error');
               return Container(color: Colors.black);
             },
           );
@@ -1095,6 +1088,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     }
     
     return backgroundWidget;
+  }
+  
+  /// 预缓存背景图像到Flutter的ImageCache中
+  Future<void> _precacheBackgroundImage(String imagePath, BuildContext context) async {
+    try {
+      print('[_precacheBackgroundImage] 开始预缓存: $imagePath');
+      
+      final file = File(imagePath);
+      if (await file.exists()) {
+        await precacheImage(FileImage(file), context);
+        print('[_precacheBackgroundImage] 预缓存完成: $imagePath');
+      } else {
+        print('[_precacheBackgroundImage] 文件不存在: $imagePath');
+      }
+    } catch (e) {
+      print('[_precacheBackgroundImage] 预缓存失败: $imagePath, 错误: $e');
+    }
   }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
