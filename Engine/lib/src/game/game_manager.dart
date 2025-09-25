@@ -18,6 +18,7 @@ import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
+import 'package:sakiengine/src/utils/cg_script_pre_analyzer.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
@@ -100,6 +101,9 @@ class GameManager {
   
   // 角色位置动画管理器
   CharacterPositionAnimator? _characterPositionAnimator;
+  
+  // CG脚本预分析器
+  final CgScriptPreAnalyzer _cgPreAnalyzer = CgScriptPreAnalyzer();
   
   /// 检测并播放角色属性变化动画（用于pose切换）
   Future<void> _checkAndAnimatePoseAttributeChanges({
@@ -685,9 +689,14 @@ class GameManager {
     
     while (_scriptIndex < _script.children.length) {
       final node = _script.children[_scriptIndex];
-      ////print('[GameManager] 处理脚本索引 $_scriptIndex: ${node.runtimeType}');
       final currentNodeIndex = _scriptIndex; // 保存当前节点索引
-      //print('🎮 处理节点[$_scriptIndex]: ${node.runtimeType} - $node');
+      
+      // 触发CG预分析（后台异步执行，不阻塞主流程）
+      _cgPreAnalyzer.preAnalyzeScript(
+        scriptNodes: _script.children,
+        currentIndex: _scriptIndex,
+        lookAheadLines: 10,
+      );
 
       // 跳过注释节点（文件边界标记）
       if (node is CommentNode) {
@@ -2748,6 +2757,9 @@ class GameManager {
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
+    
+    // 清理CG预分析器
+    _cgPreAnalyzer.dispose();
     
     // 清理所有活跃的角色动画控制器
     for (final controller in _activeCharacterAnimations.values) {
