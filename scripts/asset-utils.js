@@ -193,11 +193,8 @@ function setAppIdentity(engineDir, appName, bundleId) {
         const originalCwd = process.cwd();
         process.chdir(engineDir);
         
-        // 设置应用名称
-        execSync(`dart run rename setAppName --targets android,ios,macos,linux,windows,web --value "${appName}"`, { stdio: 'pipe' });
-        
-        // 设置包名
-        execSync(`dart run rename setBundleId --targets android,ios,macos --value "${bundleId}"`, { stdio: 'pipe' });
+        // 跳过 rename 命令，直接手动修改文件
+        colorLog('跳过自动重命名工具，使用手动配置...', 'yellow');
         
         // 手动修改 Linux 和 Windows 的包名
         const linuxCMakeFile = path.join(engineDir, 'linux', 'CMakeLists.txt');
