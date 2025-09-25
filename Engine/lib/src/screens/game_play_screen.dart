@@ -16,6 +16,7 @@ import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
 import 'package:sakiengine/src/widgets/dialogue_box.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
+import 'package:sakiengine/src/widgets/smart_image.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
@@ -1040,20 +1041,13 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
             builder: (context, snapshot) {
               if (snapshot.hasData && snapshot.data != null) {
-                return Image.asset(
+                return SmartImage.asset(
                   snapshot.data!,
                   key: ValueKey(snapshot.data!), // 为图片添加key
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
-                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                    // 如果是同步加载（已缓存），直接显示
-                    if (wasSynchronouslyLoaded ?? false) {
-                      return child;
-                    }
-                    // 异步加载时，只在完全加载后显示，避免闪烁
-                    return frame != null ? child : Container(color: Colors.black);
-                  },
+                  errorWidget: Container(color: Colors.black),
                 );
               }
               return Container(color: Colors.black);

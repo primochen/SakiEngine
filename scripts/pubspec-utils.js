@@ -20,6 +20,40 @@ const colorLog = (message, color = 'reset') => {
 };
 
 /**
+ * 递归获取目录下的所有子目录
+ * @param {string} dir 要扫描的目录
+ * @param {string} baseDir 基础目录（用于计算相对路径）
+ * @returns {string[]} 所有子目录的相对路径列表
+ */
+function getAllDirectories(dir, baseDir) {
+    const directories = [];
+    
+    function scanDirectory(currentDir) {
+        try {
+            const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+            
+            for (const entry of entries) {
+                if (entry.isDirectory()) {
+                    const fullPath = path.join(currentDir, entry.name);
+                    const relativePath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+                    
+                    // 添加相对路径（相对于Engine目录）
+                    directories.push('assets/' + relativePath);
+                    
+                    // 递归扫描子目录
+                    scanDirectory(fullPath);
+                }
+            }
+        } catch (error) {
+            // 忽略无法访问的目录
+        }
+    }
+    
+    scanDirectory(dir);
+    return directories.sort(); // 排序以保持一致性
+}
+
+/**
  * 动态更新 pubspec.yaml 的 assets 部分
  * @param {string} engineDir Engine目录
  * @returns {boolean} 是否成功
@@ -81,13 +115,14 @@ function updatePubspecAssets(engineDir) {
             newAssets.push('    - assets/fonts/');
         }
         
-        // 动态扫描 assets 目录
+        // 动态扫描 assets 目录 - 递归扫描所有子目录
         const assetsDir = path.join(engineDir, 'assets');
         if (fs.existsSync(assetsDir)) {
-            const entries = fs.readdirSync(assetsDir, { withFileTypes: true });
-            for (const entry of entries) {
-                if (entry.isDirectory() && entry.name !== 'shaders' && entry.name !== 'fonts') {
-                    newAssets.push(`    - assets/${entry.name}/`);
+            const allDirs = getAllDirectories(assetsDir, assetsDir);
+            for (const dirPath of allDirs) {
+                // 排除 shaders 和 fonts 目录（fonts 已经单独添加）
+                if (!dirPath.includes('/shaders') && !dirPath.includes('/fonts')) {
+                    newAssets.push(`    - ${dirPath}/`);
                 }
             }
         }

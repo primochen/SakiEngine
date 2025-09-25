@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
@@ -34,32 +36,58 @@ class SmartImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lowercasePath = assetPath.toLowerCase();
+    final isFilePath = _isFileSystemPath(assetPath);
     
     // 检查文件扩展名
     if (lowercasePath.endsWith('.avif')) {
       return _buildAvifImageWithFallback();
     } else if (lowercasePath.endsWith('.webp')) {
       // WebP支持动画，使用专门的动图组件，默认不循环
-      return AnimatedWebPImage.asset(
-        assetPath,
-        fit: fit ?? BoxFit.contain,
-        width: width,
-        height: height,
-        errorWidget: errorWidget,
-        autoPlay: true,
-        loop: loop ?? false, // 默认不循环
-        onAnimationComplete: onAnimationComplete, // 传递动画完成回调
-      );
+      if (isFilePath) {
+        // 文件系统路径：对于WebP文件，直接使用Image.file，因为AnimatedWebPImage没有.file构造器
+        return Image.file(
+          File(assetPath),
+          fit: fit ?? BoxFit.contain,
+          width: width,
+          height: height,
+          errorBuilder: errorWidget != null 
+            ? (context, error, stackTrace) => errorWidget!
+            : null,
+        );
+      } else {
+        return AnimatedWebPImage.asset(
+          assetPath,
+          fit: fit ?? BoxFit.contain,
+          width: width,
+          height: height,
+          errorWidget: errorWidget,
+          autoPlay: true,
+          loop: loop ?? false, // 默认不循环
+          onAnimationComplete: onAnimationComplete, // 传递动画完成回调
+        );
+      }
     } else {
-      return Image.asset(
-        assetPath,
-        fit: fit ?? BoxFit.contain,
-        width: width,
-        height: height,
-        errorBuilder: errorWidget != null 
-          ? (context, error, stackTrace) => errorWidget!
-          : null,
-      );
+      if (isFilePath) {
+        return Image.file(
+          File(assetPath),
+          fit: fit ?? BoxFit.contain,
+          width: width,
+          height: height,
+          errorBuilder: errorWidget != null 
+            ? (context, error, stackTrace) => errorWidget!
+            : null,
+        );
+      } else {
+        return Image.asset(
+          assetPath,
+          fit: fit ?? BoxFit.contain,
+          width: width,
+          height: height,
+          errorBuilder: errorWidget != null 
+            ? (context, error, stackTrace) => errorWidget!
+            : null,
+        );
+      }
     }
   }
   
@@ -80,47 +108,84 @@ class SmartImage extends StatelessWidget {
         
         // 如果找到了更好的格式，使用对应的组件
         if (bestPath != null && bestPath != assetPath) {
+          final isBestPathFile = _isFileSystemPath(bestPath);
           if (bestPath.toLowerCase().endsWith('.webp')) {
             // 使用WebP动图组件，默认不循环
-            return AnimatedWebPImage.asset(
-              bestPath,
-              fit: fit ?? BoxFit.contain,
-              width: width,
-              height: height,
-              errorWidget: errorWidget,
-              autoPlay: true,
-              loop: loop ?? false, // 默认不循环
-            );
+            if (isBestPathFile) {
+              // 文件系统路径：直接使用Image.file
+              return Image.file(
+                File(bestPath),
+                fit: fit ?? BoxFit.contain,
+                width: width,
+                height: height,
+                errorBuilder: errorWidget != null 
+                  ? (context, error, stackTrace) => errorWidget!
+                  : null,
+              );
+            } else {
+              return AnimatedWebPImage.asset(
+                bestPath,
+                fit: fit ?? BoxFit.contain,
+                width: width,
+                height: height,
+                errorWidget: errorWidget,
+                autoPlay: true,
+                loop: loop ?? false, // 默认不循环
+              );
+            }
           } else {
             // 使用标准Image组件
-            return Image.asset(
-              bestPath,
-              fit: fit ?? BoxFit.contain,
-              width: width,
-              height: height,
-              errorBuilder: errorWidget != null 
-                ? (context, error, stackTrace) => errorWidget!
-                : null,
-            );
+            if (isBestPathFile) {
+              return Image.file(
+                File(bestPath),
+                fit: fit ?? BoxFit.contain,
+                width: width,
+                height: height,
+                errorBuilder: errorWidget != null 
+                  ? (context, error, stackTrace) => errorWidget!
+                  : null,
+              );
+            } else {
+              return Image.asset(
+                bestPath,
+                fit: fit ?? BoxFit.contain,
+                width: width,
+                height: height,
+                errorBuilder: errorWidget != null 
+                  ? (context, error, stackTrace) => errorWidget!
+                  : null,
+              );
+            }
           }
         }
         
         // 否则使用AVIF，但添加透明背景处理
+        final isOriginalFile = _isFileSystemPath(assetPath);
         return Container(
           width: width,
           height: height,
           decoration: const BoxDecoration(
             color: Colors.transparent,
           ),
-          child: AvifImage.asset(
-            assetPath,
-            fit: fit ?? BoxFit.contain,
-            isAntiAlias: true,
-            filterQuality: FilterQuality.high,
-            errorBuilder: errorWidget != null 
-              ? (context, error, stackTrace) => errorWidget!
-              : null,
-          ),
+          child: isOriginalFile ? 
+            AvifImage.file(
+              File(assetPath),
+              fit: fit ?? BoxFit.contain,
+              isAntiAlias: true,
+              filterQuality: FilterQuality.high,
+              errorBuilder: errorWidget != null 
+                ? (context, error, stackTrace) => errorWidget!
+                : null,
+            ) :
+            AvifImage.asset(
+              assetPath,
+              fit: fit ?? BoxFit.contain,
+              isAntiAlias: true,
+              filterQuality: FilterQuality.high,
+              errorBuilder: errorWidget != null 
+                ? (context, error, stackTrace) => errorWidget!
+                : null,
+            ),
         );
       },
     );
@@ -142,11 +207,23 @@ class SmartImage extends StatelessWidget {
     return null;
   }
   
+  /// 判断是否为文件系统路径（debug模式下的绝对路径）
+  bool _isFileSystemPath(String path) {
+    // 检查是否为绝对路径：Unix风格 (/) 或 Windows风格 (C:)
+    return path.startsWith('/') || (path.length > 2 && path[1] == ':');
+  }
+  
   /// 检查资源文件是否存在
   Future<bool> _assetExists(String assetPath) async {
     try {
-      await rootBundle.load(assetPath);
-      return true;
+      if (_isFileSystemPath(assetPath)) {
+        // 文件系统路径，检查文件是否存在
+        return await File(assetPath).exists();
+      } else {
+        // Bundle资源路径
+        await rootBundle.load(assetPath);
+        return true;
+      }
     } catch (e) {
       return false;
     }
