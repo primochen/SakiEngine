@@ -79,33 +79,8 @@ flutter:
   assets:
     - assets/default_game.txt
     - assets/fonts/
-    - assets/GameScript/
-    - assets/GameScript/labels/
-    - assets/GameScript/configs/
     - assets/Assets/
-    - assets/Assets/music/
-    - assets/Assets/images/
-    - assets/Assets/images/cg/
-    - assets/Assets/images/cg/cg_cp1_1/
-    - assets/Assets/images/cg/cg_tree/
-    - assets/Assets/images/cg/cg_dog/
-    - assets/Assets/images/cg/cg_cp1_5/
-    - assets/Assets/images/cg/cg_cp1_2/
-    - assets/Assets/images/cg/cg_cp0_q2/
-    - assets/Assets/images/cg/cg_cp1_ls/
-    - assets/Assets/images/cg/cg_cp1_3/
-    - assets/Assets/images/cg/cg_cp0_1/
-    - assets/Assets/images/backgrounds/
-    - assets/Assets/images/items/
-    - assets/Assets/images/characters/
-    - assets/Assets/images/characters/story1/
-    - assets/Assets/images/characters/story1/emoji/
-    - assets/Assets/images/characters/story1/pose/
-    - assets/Assets/voice/
-    - assets/Assets/gui/
-    - assets/Assets/movies/
-    - assets/Assets/fonts/
-    - assets/Assets/sound/
+    - assets/GameScript/
     - pubspec.yaml
 
   shaders:

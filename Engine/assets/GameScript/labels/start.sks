@@ -1,5 +1,6 @@
 //label// SoraNoUta 主标签脚本文件
 label start
+scene bl
 movie start repeat 8
 // 背景设置为白天天空
 scene bl with diss
