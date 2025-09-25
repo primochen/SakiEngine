@@ -35,14 +35,12 @@ class ExitConfirmationDialog {
     );
     
     if (shouldExit == true) {
-      // 优化退出流程：先关闭窗口再退出程序
+      // 修复Windows关闭游戏的bug：直接销毁窗口，避免重复触发onWindowClose
       try {
-        await windowManager.close();
-        await Future.delayed(const Duration(milliseconds: 100));
-        SystemNavigator.pop();
-      } catch (e) {
-        // 如果关闭失败，使用原有方法
         await windowManager.destroy();
+      } catch (e) {
+        // 如果销毁失败，使用系统退出
+        SystemNavigator.pop();
       }
     }
   }
