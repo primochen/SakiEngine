@@ -14,6 +14,9 @@ class CompositeCgRenderer {
   // 缓存已完成的合成路径
   static final Map<String, String> _completedPaths = {};
   
+  // 预显示差分的状态跟踪
+  static final Set<String> _preDisplayedCgs = <String>{};
+  
   static List<Widget> buildCgCharacters(
     BuildContext context,
     Map<String, CharacterState> cgCharacters,
@@ -37,6 +40,14 @@ class CompositeCgRenderer {
       
       // 生成缓存键用于Future缓存
       final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
+      
+      // 检查是否需要预显示常见差分
+      final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
+      if (!_preDisplayedCgs.contains(resourceBaseId)) {
+        _preDisplayedCgs.add(resourceBaseId);
+        // 异步预显示常见的差分
+        _preDisplayCommonVariations(characterState.resourceId, characterState.pose ?? 'pose1');
+      }
       
       // 检查是否已经有完成的路径
       if (_completedPaths.containsKey(cacheKey)) {
@@ -89,10 +100,43 @@ class CompositeCgRenderer {
     }).toList();
   }
   
+  /// 预显示常见的差分变化，确保后续切换不是"第一次"
+  static Future<void> _preDisplayCommonVariations(String resourceId, String pose) async {
+    // 预显示常见的数字差分：1, 2, 3, 4, 5
+    final commonExpressions = ['1', '2', '3', '4', '5'];
+    
+    print('[CompositeCgRenderer] 开始预显示差分: $resourceId, $pose');
+    
+    for (final expression in commonExpressions) {
+      final cacheKey = '${resourceId}_${pose}_$expression';
+      
+      // 如果还没有缓存这个差分，就预先加载
+      if (!_futureCache.containsKey(cacheKey)) {
+        _futureCache[cacheKey] = CgImageCompositor().getCompositeImagePath(
+          resourceId: resourceId,
+          pose: pose,
+          expression: expression,
+        ).then((path) {
+          // 缓存完成的路径
+          if (path != null) {
+            _completedPaths[cacheKey] = path;
+            print('[CompositeCgRenderer] 预显示完成: $cacheKey -> $path');
+          }
+          return path;
+        }).catchError((error) {
+          // 忽略不存在的差分错误
+          print('[CompositeCgRenderer] 预显示失败（可能不存在）: $cacheKey');
+          return null;
+        });
+      }
+    }
+  }
+  
   /// 清理缓存
   static void clearCache() {
     _futureCache.clear();
     _completedPaths.clear();
+    _preDisplayedCgs.clear();
   }
 }
 

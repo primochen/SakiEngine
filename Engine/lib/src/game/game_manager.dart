@@ -1042,55 +1042,27 @@ class GameManager {
           //print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
         }
         
-        // CG显示命令：将背景设置为当前正在显示的CG图像（前一个CG）
-        // 这样即使新CG还在加载，背景显示的是稳定的当前CG，避免黑屏
+        // CG显示命令：确保背景始终为当前CG图像
         
-        // 获取当前正在显示的CG状态
-        final currentCgState = _currentState.cgCharacters[finalCharacterKey];
-        String? backgroundImagePath;
-        
-        if (currentCgState != null) {
-          // 使用当前CG的pose和expression作为背景
-          final currentPose = currentCgState.pose ?? 'pose1';
-          final currentExpression = currentCgState.expression ?? 'happy';
-          
-          if (kDebugMode) {
-            print('[GameManager] 获取当前CG作为背景: resourceId=$resourceId, pose=$currentPose, expression=$currentExpression');
-          }
-          
-          backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
-            resourceId: resourceId,
-            pose: currentPose,
-            expression: currentExpression,
-          );
-          
-          if (kDebugMode) {
-            print('[GameManager] 当前CG背景路径: $backgroundImagePath');
-          }
-        } else {
-          // 如果没有当前CG状态，尝试获取即将显示的CG作为背景
-          if (kDebugMode) {
-            print('[GameManager] 没有当前CG状态，使用新CG作为背景: resourceId=$resourceId, pose=$newPose, expression=$newExpression');
-          }
-          
-          backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
-            resourceId: resourceId,
-            pose: newPose,
-            expression: newExpression,
-          );
-          
-          if (kDebugMode) {
-            print('[GameManager] 新CG背景路径: $backgroundImagePath');
-          }
+        // 无论是首次显示还是差分切换，都设置背景为当前要显示的CG
+        if (kDebugMode) {
+          print('[GameManager] CG显示命令，设置背景为当前CG: resourceId=$resourceId, pose=$newPose, expression=$newExpression');
         }
         
+        String? backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
+          resourceId: resourceId,
+          pose: newPose,
+          expression: newExpression,
+        );
+        
         if (kDebugMode) {
+          print('[GameManager] CG背景路径: $backgroundImagePath');
           if (backgroundImagePath == null) {
             print('[GameManager] ⚠️ 警告：CG背景图像路径为空！');
           }
         }
         
-        // 设置背景为CG图像路径
+        // 设置背景为当前CG图像
         final finalBackground = backgroundImagePath ?? 'fallback_bg';
         
         _currentState = _currentState.copyWith(
