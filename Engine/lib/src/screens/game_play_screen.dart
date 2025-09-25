@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -893,7 +894,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         children: [
           // 背景层 - 总是渲染背景（如果有的话）
           if (gameState.background != null)
-            _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
+            Builder(
+              builder: (context) {
+                print('[GamePlayScreen] 正在渲染背景: ${gameState.background}');
+                return _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties);
+              },
+            )
+          else
+            Builder(
+              builder: (context) {
+                print('[GamePlayScreen] 背景为空，不渲染背景层');
+                return const SizedBox.shrink();
+              },
+            ),
           
           // 角色和CG层 - 只有在没有视频时才显示
           if (gameState.movieFile == null) ...[
@@ -973,10 +986,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画
   Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers, Map<String, double>? animationProperties]) {
+    print('[_buildBackground] 开始构建背景: $background');
     Widget backgroundWidget;
     
     // 如果有多图层数据，使用多图层渲染器
     if (sceneLayers != null && sceneLayers.isNotEmpty) {
+      print('[_buildBackground] 使用多图层渲染器');
       final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
           .where((layer) => layer != null)
           .cast<SceneLayer>()
@@ -988,39 +1003,70 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           screenSize: MediaQuery.of(context).size,
         );
       } else {
+        print('[_buildBackground] 多图层为空，使用黑色背景');
         backgroundWidget = Container(color: Colors.black);
       }
     } else {
+      print('[_buildBackground] 单图层模式，背景内容: $background');
       // 单图层模式（原有逻辑）
       // 检查是否为十六进制颜色格式
       if (ColorBackgroundRenderer.isValidHexColor(background)) {
+        print('[_buildBackground] 识别为十六进制颜色背景');
         backgroundWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
       } else {
-        // 处理图片背景
-        backgroundWidget = FutureBuilder<String?>(
-          key: ValueKey('bg_$background'), // 添加key避免重建
-          future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              return Image.asset(
-                snapshot.data!,
-                key: ValueKey(snapshot.data!), // 为图片添加key
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  // 如果是同步加载（已缓存），直接显示
-                  if (wasSynchronouslyLoaded ?? false) {
-                    return child;
-                  }
-                  // 异步加载时，只在完全加载后显示，避免闪烁
-                  return frame != null ? child : Container(color: Colors.black);
-                },
-              );
-            }
-            return Container(color: Colors.black);
-          },
-        );
+        print('[_buildBackground] 识别为图片背景，开始处理图片路径');
+        
+        // 检查是否为绝对路径（CG缓存路径）
+        if (background.startsWith('/')) {
+          print('[_buildBackground] 检测到绝对路径，直接使用FileImage加载');
+          // 直接使用FileImage加载绝对路径
+          backgroundWidget = Image.file(
+            File(background),
+            key: ValueKey('bg_file_$background'),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              // 如果是同步加载（已缓存），直接显示
+              if (wasSynchronouslyLoaded ?? false) {
+                return child;
+              }
+              // 异步加载时，只在完全加载后显示，避免闪烁
+              return frame != null ? child : Container(color: Colors.black);
+            },
+            errorBuilder: (context, error, stackTrace) {
+              print('[_buildBackground] 文件加载失败: $background, 错误: $error');
+              return Container(color: Colors.black);
+            },
+          );
+        } else {
+          print('[_buildBackground] 使用AssetManager查找相对路径');
+          // 处理相对路径图片背景（原有逻辑）
+          backgroundWidget = FutureBuilder<String?>(
+            key: ValueKey('bg_$background'), // 添加key避免重建
+            future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data != null) {
+                return Image.asset(
+                  snapshot.data!,
+                  key: ValueKey(snapshot.data!), // 为图片添加key
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    // 如果是同步加载（已缓存），直接显示
+                    if (wasSynchronouslyLoaded ?? false) {
+                      return child;
+                    }
+                    // 异步加载时，只在完全加载后显示，避免闪烁
+                    return frame != null ? child : Container(color: Colors.black);
+                  },
+                );
+              }
+              return Container(color: Colors.black);
+            },
+          );
+        }
       }
     }
     

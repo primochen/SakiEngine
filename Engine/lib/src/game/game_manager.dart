@@ -19,6 +19,7 @@ import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
 import 'package:sakiengine/src/utils/cg_script_pre_analyzer.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
@@ -1041,10 +1042,59 @@ class GameManager {
           //print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
         }
         
-        // CG只通过CG角色系统处理，不设置为背景
-        // 先清除背景，确保CG角色层可以正常显示
+        // CG显示命令：将背景设置为当前正在显示的CG图像（前一个CG）
+        // 这样即使新CG还在加载，背景显示的是稳定的当前CG，避免黑屏
+        
+        // 获取当前正在显示的CG状态
+        final currentCgState = _currentState.cgCharacters[finalCharacterKey];
+        String? backgroundImagePath;
+        
+        if (currentCgState != null) {
+          // 使用当前CG的pose和expression作为背景
+          final currentPose = currentCgState.pose ?? 'pose1';
+          final currentExpression = currentCgState.expression ?? 'happy';
+          
+          if (kDebugMode) {
+            print('[GameManager] 获取当前CG作为背景: resourceId=$resourceId, pose=$currentPose, expression=$currentExpression');
+          }
+          
+          backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
+            resourceId: resourceId,
+            pose: currentPose,
+            expression: currentExpression,
+          );
+          
+          if (kDebugMode) {
+            print('[GameManager] 当前CG背景路径: $backgroundImagePath');
+          }
+        } else {
+          // 如果没有当前CG状态，尝试获取即将显示的CG作为背景
+          if (kDebugMode) {
+            print('[GameManager] 没有当前CG状态，使用新CG作为背景: resourceId=$resourceId, pose=$newPose, expression=$newExpression');
+          }
+          
+          backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
+            resourceId: resourceId,
+            pose: newPose,
+            expression: newExpression,
+          );
+          
+          if (kDebugMode) {
+            print('[GameManager] 新CG背景路径: $backgroundImagePath');
+          }
+        }
+        
+        if (kDebugMode) {
+          if (backgroundImagePath == null) {
+            print('[GameManager] ⚠️ 警告：CG背景图像路径为空！');
+          }
+        }
+        
+        // 设置背景为CG图像路径
+        final finalBackground = backgroundImagePath ?? 'fallback_bg';
+        
         _currentState = _currentState.copyWith(
-          background: null, // 清除背景，让CG角色层显示
+          background: finalBackground,
           clearSceneFilter: true,
           clearSceneLayers: true,
           clearSceneAnimation: true,
@@ -1052,7 +1102,8 @@ class GameManager {
         );
         
         if (kDebugMode) {
-          //print('[GameManager] 已清除背景，准备显示CG角色');
+          print('[GameManager] 已设置CG背景: $finalBackground');
+          print('[GameManager] 当前GameState背景: ${_currentState.background}');
         }
 
         // 跟踪角色是否曾经显示过
