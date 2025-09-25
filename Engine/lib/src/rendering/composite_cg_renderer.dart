@@ -69,7 +69,7 @@ class CompositeCgRenderer {
         future: _futureCache[cacheKey],
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // 什么都不显示，避免转圈加载
+            // 加载中时不显示任何内容，让背景或其他内容显示
             return const SizedBox.shrink();
           }
           
