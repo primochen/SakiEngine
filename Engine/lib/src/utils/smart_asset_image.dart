@@ -36,6 +36,7 @@ class SmartAssetImage extends StatelessWidget {
             // 检查是否是绝对路径（Debug模式）
             if (assetPath.startsWith('/') || assetPath.contains(':\\')) {
               // 绝对路径：使用SvgPicture.file
+              print('SmartAssetImage: Using SvgPicture.file for absolute path: $assetPath');
               return SvgPicture.file(
                 File(assetPath),
                 fit: fit ?? BoxFit.contain,
@@ -49,6 +50,7 @@ class SmartAssetImage extends StatelessWidget {
               );
             } else {
               // 相对路径：使用SvgPicture.asset
+              print('SmartAssetImage: Using SvgPicture.asset for relative path: $assetPath');
               return SvgPicture.asset(
                 assetPath,
                 fit: fit ?? BoxFit.contain,
