@@ -338,39 +338,21 @@ class _SynchronizedCgDisplayState extends State<SynchronizedCgDisplay> {
     
     //print('[SynchronizedCgDisplay] 初始化 ${widget.resourceId}, 是否首次显示: $_isFirstDisplay');
     
+    // 修复：无论首次显示还是非首次显示，都直接允许显示图层，避免过渡动画中的空白
+    _allLayersReady = true;
+    _canShowLayers = true;
+    
+    // 标记这个CG已经显示过了，避免后续的同步等待
     if (_isFirstDisplay) {
-      // 初始化所有图层的状态为未准备好
-      for (final layerInfo in widget.layerInfos) {
-        _layerReadyStatus[layerInfo.layerType] = false;
-      }
-      _canShowLayers = false; // 首次显示时，不允许显示图层
-      //print('[SynchronizedCgDisplay] 首次显示，等待图层: ${_layerReadyStatus.keys.toList()}');
-    } else {
-      // 不是首次显示，直接标记为准备好
-      _allLayersReady = true;
-      _canShowLayers = true; // 非首次显示时，立即允许显示
-      //print('[SynchronizedCgDisplay] 非首次显示，立即允许显示');
+      _displayedCgs.add(widget.resourceId);
     }
+    
+    //print('[SynchronizedCgDisplay] 直接允许显示，跳过同步等待');
   }
 
   void _onLayerReady(String layerType) {
-    if (!_isFirstDisplay) return;
-    
-    //print('[SynchronizedCgDisplay] 图层准备完成: $layerType for ${widget.resourceId}');
-    
-    setState(() {
-      _layerReadyStatus[layerType] = true;
-      _allLayersReady = _layerReadyStatus.values.every((ready) => ready);
-      
-      //print('[SynchronizedCgDisplay] 所有图层状态: $_layerReadyStatus');
-      
-      if (_allLayersReady) {
-        // 标记这个CG已经显示过了
-        _displayedCgs.add(widget.resourceId);
-        _canShowLayers = true; // 现在允许显示所有图层
-        //print('[SynchronizedCgDisplay] 所有图层准备完成，现在允许显示 ${widget.resourceId}');
-      }
-    });
+    // 已经跳过同步等待逻辑，这个方法现在不需要做任何事情
+    return;
   }
 
   @override
