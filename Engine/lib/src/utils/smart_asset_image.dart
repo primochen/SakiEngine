@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
@@ -32,17 +33,34 @@ class SmartAssetImage extends StatelessWidget {
           final assetPath = snapshot.data!;
           
           if (assetPath.toLowerCase().endsWith('.svg')) {
-            return SvgPicture.asset(
-              assetPath,
-              fit: fit ?? BoxFit.contain,
-              width: width,
-              height: height,
-              colorFilter: null,
-              allowDrawingOutsideViewBox: true,
-              placeholderBuilder: errorWidget != null 
-                ? (context) => errorWidget!
-                : null,
-            );
+            // 检查是否是绝对路径（Debug模式）
+            if (assetPath.startsWith('/') || assetPath.contains(':\\')) {
+              // 绝对路径：使用SvgPicture.file
+              return SvgPicture.file(
+                File(assetPath),
+                fit: fit ?? BoxFit.contain,
+                width: width,
+                height: height,
+                colorFilter: null,
+                allowDrawingOutsideViewBox: true,
+                placeholderBuilder: errorWidget != null 
+                  ? (context) => errorWidget!
+                  : null,
+              );
+            } else {
+              // 相对路径：使用SvgPicture.asset
+              return SvgPicture.asset(
+                assetPath,
+                fit: fit ?? BoxFit.contain,
+                width: width,
+                height: height,
+                colorFilter: null,
+                allowDrawingOutsideViewBox: true,
+                placeholderBuilder: errorWidget != null 
+                  ? (context) => errorWidget!
+                  : null,
+              );
+            }
           } else {
             return SmartImage.asset(
               assetPath,
