@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
@@ -34,18 +33,12 @@ class CgScriptPreAnalyzer {
       _gpuCompositor.warmUpGpu();
     }
     
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] 预分析器已初始化，GPU加速: $_useGpuAcceleration，批量处理: $_useBatchProcessing');
-    }
   }
   
   /// 销毁预分析器
   void dispose() {
     cancelAllTasks();
     _preWarmManager.stop();
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] 预分析器已销毁');
-    }
   }
   
   /// 预分析当前位置后的脚本，预合成CG图像
@@ -65,9 +58,6 @@ class CgScriptPreAnalyzer {
       int effectiveLookAhead = lookAheadLines;
       if (isSkipping) {
         effectiveLookAhead = (scriptNodes.length * 0.1).round().clamp(50, 200); // 快进时看整个脚本的10%，至少50行，最多200行
-        if (kDebugMode) {
-          print('[CgScriptPreAnalyzer] 快进模式：扩大预分析范围到 $effectiveLookAhead 行');
-        }
       }
       
       // 计算分析范围
@@ -87,9 +77,6 @@ class CgScriptPreAnalyzer {
         return;
       }
       
-      if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] 发现 ${upcomingCgCommands.length} 个即将出现的CG命令');
-      }
       
       // 快进模式下并行预合成，否则序列预合成
       if (isSkipping) {
@@ -102,9 +89,7 @@ class CgScriptPreAnalyzer {
       }
       
     } catch (e) {
-      if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] 预分析脚本失败: $e');
-      }
+      // 静默处理脚本分析异常
     }
   }
   
@@ -136,10 +121,6 @@ class CgScriptPreAnalyzer {
   ) async {
     final startTime = DateTime.now();
     try {
-      if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] 开始预合成: $resourceId $pose $expression');
-      }
-      
       String? compositePath;
       
       // 选择合成器
@@ -163,11 +144,6 @@ class CgScriptPreAnalyzer {
         final compositionTime = DateTime.now();
         final compositionDuration = compositionTime.difference(startTime).inMilliseconds;
         
-        if (kDebugMode) {
-          final mode = _useGpuAcceleration ? 'GPU' : 'CPU';
-          print('[CgScriptPreAnalyzer] ✅ $mode图像合成完成 ($compositionDuration ms): $compositePath');
-        }
-        
         // 2. 立即启动预热任务（高优先级，因为即将出现）
         await _preWarmManager.preWarm(
           resourceId: resourceId,
@@ -180,18 +156,12 @@ class CgScriptPreAnalyzer {
         final totalDuration = endTime.difference(startTime).inMilliseconds;
         final preWarmDuration = endTime.difference(compositionTime).inMilliseconds;
         
-        if (kDebugMode) {
-          print('[CgScriptPreAnalyzer] 🔥 预热完成 ($preWarmDuration ms): $cacheKey');
-          print('[CgScriptPreAnalyzer] 📊 总耗时 $totalDuration ms (合成: $compositionDuration ms, 预热: $preWarmDuration ms): $resourceId $pose $expression');
-        }
       }
       
     } catch (e) {
       final endTime = DateTime.now();
       final totalDuration = endTime.difference(startTime).inMilliseconds;
-      if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] ❌ 预合成失败 ($totalDuration ms): $e');
-      }
+      // 预热失败时静默处理，避免刷屏
     } finally {
       // 清理任务记录
       _precompositionTasks.remove(cacheKey);
@@ -224,10 +194,6 @@ class CgScriptPreAnalyzer {
     required String pose,
     required String expression,
   }) async {
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] 预热当前CG: $resourceId $pose $expression');
-    }
-    
     return await _preWarmManager.preWarmUrgent(
       resourceId: resourceId,
       pose: pose,
@@ -240,11 +206,6 @@ class CgScriptPreAnalyzer {
     if (cgCommands.isEmpty) return;
     
     final startTime = DateTime.now();
-    
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] 🚀 启动批量预合成 ${cgCommands.length} 个CG命令（GPU加速: $_useGpuAcceleration）');
-    }
-    
     try {
       if (_useGpuAcceleration && _useBatchProcessing) {
         // GPU批量处理模式
@@ -256,15 +217,9 @@ class CgScriptPreAnalyzer {
       
       final totalTime = DateTime.now().difference(startTime).inMilliseconds;
       
-      if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] ✅ 批量预合成完成，总耗时: ${totalTime}ms，平均每张: ${(totalTime / cgCommands.length).round()}ms');
-      }
-      
     } catch (e) {
       final errorTime = DateTime.now().difference(startTime).inMilliseconds;
-      if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] ❌ 批量预合成失败 ($errorTime ms): $e');
-      }
+      // 静默处理批量失败，避免日志噪音
     }
   }
 
@@ -336,13 +291,6 @@ class CgScriptPreAnalyzer {
       }
     }
     
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] 发现的CG组合:');
-      combinations.forEach((key, expressions) {
-        print('  $key: ${expressions.toList()}');
-      });
-    }
-    
     return combinations;
   }
   
@@ -393,17 +341,11 @@ class CgScriptPreAnalyzer {
   void setGpuAcceleration(bool enabled) {
     _useGpuAcceleration = enabled;
     _preWarmManager.setGpuAcceleration(enabled);
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] GPU加速已${enabled ? "启用" : "禁用"}（同步设置预热管理器）');
-    }
   }
-  
+
   /// 设置批量处理开关
   void setBatchProcessing(bool enabled) {
     _useBatchProcessing = enabled;
-    if (kDebugMode) {
-      print('[CgScriptPreAnalyzer] 批量处理已${enabled ? "启用" : "禁用"}');
-    }
   }
   
   /// 获取性能统计信息

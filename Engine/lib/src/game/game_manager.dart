@@ -263,8 +263,6 @@ class GameManager {
   /// 智能分析并预热局部CG组合
   void _analyzeCgCombinationsAndPreWarm({bool isLoadGame = false}) {
     if (kDebugMode) {
-      print('[GameManager] 初始化智能CG预热... (读档模式: $isLoadGame)');
-      print('[GameManager] 当前脚本索引: $_scriptIndex');
     }
     
     // 获取当前标签
@@ -276,7 +274,6 @@ class GameManager {
         if (node is LabelNode) {
           currentLabel = node.name;
           if (kDebugMode) {
-            print('[GameManager] 向前查找找到标签: $currentLabel (位置: $i)');
           }
           break;
         }
@@ -289,7 +286,6 @@ class GameManager {
           if (node is LabelNode) {
             currentLabel = node.name;
             if (kDebugMode) {
-              print('[GameManager] 向后查找找到标签: $currentLabel (位置: $i)');
             }
             break;
           }
@@ -304,7 +300,6 @@ class GameManager {
         if (node is LabelNode) {
           currentLabel = node.name;
           if (kDebugMode) {
-            print('[GameManager] 新游戏模式，找到第一个标签: $currentLabel (位置: $i)');
           }
           break;
         }
@@ -313,7 +308,6 @@ class GameManager {
     
     if (currentLabel == null) {
       if (kDebugMode) {
-        print('[GameManager] ⚠️ 警告：在位置 $_scriptIndex 没有找到标签！使用基于位置的预热');
       }
     }
     
@@ -328,7 +322,6 @@ class GameManager {
   /// 轻量级初始预热 - 只预热游戏开始附近的少量CG
   void _performLightweightInitialPreWarm() {
     if (kDebugMode) {
-      print('[GameManager] 开始轻量级初始预热');
     }
     
     // 只搜索前200行的CG组合
@@ -355,7 +348,6 @@ class GameManager {
     
     if (combinations.isNotEmpty) {
       if (kDebugMode) {
-        print('[GameManager] 轻量级预热找到 ${combinations.length} 个CG组合');
         combinations.forEach((key, expressions) {
           print('  轻量级CG: $key -> ${expressions.take(2).toList()}'); // 只显示前2个表情
         });
@@ -367,7 +359,6 @@ class GameManager {
       });
     } else {
       if (kDebugMode) {
-        print('[GameManager] 轻量级预热未发现CG组合');
       }
     }
   }
@@ -407,7 +398,6 @@ class GameManager {
     }
     
     if (kDebugMode) {
-      print('[GameManager] 轻量级预热完成！共预热 $totalPrewarmed 个组合');
     }
   }
 
