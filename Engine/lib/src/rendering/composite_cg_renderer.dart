@@ -968,20 +968,8 @@ class DirectCgPainter extends CustomPainter {
 
     if (hasPrevious && !isFadingOut) {
       canvas.saveLayer(null, ui.Paint());
-      _drawImage(
-        canvas,
-        size,
-        previousImage!,
-        1.0 - clampedProgress,
-        blendMode: ui.BlendMode.src,
-      );
-      _drawImage(
-        canvas,
-        size,
-        currentImage,
-        clampedProgress,
-        blendMode: ui.BlendMode.plus,
-      );
+      _drawImage(canvas, size, previousImage!, 1.0 - clampedProgress);
+      _drawImage(canvas, size, currentImage, clampedProgress);
       canvas.restore();
       return;
     }
@@ -996,9 +984,8 @@ class DirectCgPainter extends CustomPainter {
     ui.Canvas canvas,
     ui.Size size,
     ui.Image image,
-    double opacity, {
-    ui.BlendMode blendMode = ui.BlendMode.srcOver,
-  }) {
+    double opacity,
+  ) {
     if (opacity <= 0) return;
 
     final imageSize = Size(image.width.toDouble(), image.height.toDouble());
@@ -1016,8 +1003,7 @@ class DirectCgPainter extends CustomPainter {
     final paint = ui.Paint()
       ..color = ui.Color.fromRGBO(255, 255, 255, opacity.clamp(0.0, 1.0))
       ..isAntiAlias = true
-      ..filterQuality = ui.FilterQuality.high
-      ..blendMode = blendMode;
+      ..filterQuality = ui.FilterQuality.high;
 
     canvas.drawImageRect(
       image,

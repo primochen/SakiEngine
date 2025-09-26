@@ -130,9 +130,6 @@ class CharacterCompositeCache {
   }
 
   void clear() {
-    for (final image in _imageCache.values) {
-      image.dispose();
-    }
     _imageCache.clear();
     _pendingTasks.clear();
   }
@@ -143,7 +140,7 @@ class CharacterCompositeCache {
         .where((key) => key.startsWith(prefix))
         .toList(growable: false);
     for (final key in keysToRemove) {
-      _imageCache.remove(key)?.dispose();
+      _imageCache.remove(key);
       _pendingTasks.remove(key);
     }
   }
