@@ -189,15 +189,18 @@ class GpuImageCompositor {
     // 命中缓存
     final cachedEntry = _entryCache[cacheKey];
     if (cachedEntry != null) {
+      print('[GpuImageCompositor] 缓存命中: $cacheKey');
       return cachedEntry;
     }
 
     // 是否已有并发任务
     final existingTask = _compositingTasks[cacheKey];
     if (existingTask != null) {
+      print('[GpuImageCompositor] 等待进行中的任务: $cacheKey');
       return await existingTask;
     }
 
+    print('[GpuImageCompositor] 缓存未命中，启动GPU合成: $cacheKey');
     final compositionTask =
         _performOptimizedComposition(resourceId, pose, expression, cacheKey);
     _compositingTasks[cacheKey] = compositionTask;
@@ -256,6 +259,8 @@ class GpuImageCompositor {
         pose: pose,
         expression: expression,
       );
+      final parseEndTime = DateTime.now();
+      final parseDuration = parseEndTime.difference(startTime).inMilliseconds;
 
       if (layerInfos.isEmpty) return null;
 
@@ -265,14 +270,15 @@ class GpuImageCompositor {
           .toList();
 
       final layerHandles = await Future.wait(layerLoadTasks);
+      final loadEndTime = DateTime.now();
+      final loadDuration = loadEndTime.difference(parseEndTime).inMilliseconds;
       final validHandles =
           layerHandles.whereType<_LayerHandle>().toList(growable: false);
 
       if (validHandles.isEmpty) {
+        print('[GpuImageCompositor] 图层加载失败: $cacheKey');
         return null;
       }
-
-      final loadTime = DateTime.now().difference(startTime).inMilliseconds;
 
       final width = validHandles.first.image.width;
       final height = validHandles.first.image.height;
@@ -295,11 +301,13 @@ class GpuImageCompositor {
       _pathToCacheKey[virtualPath] = cacheKey;
 
       final totalTime = DateTime.now().difference(startTime).inMilliseconds;
+      print('[GpuImageCompositor] 合成完成: $cacheKey, 图层=${validHandles.length}, 解析=${parseDuration}ms, 加载=${loadDuration}ms, 总=${totalTime}ms');
 
       return entry;
 
     } catch (e) {
       final errorTime = DateTime.now().difference(startTime).inMilliseconds;
+      print('[GpuImageCompositor] 合成异常: $cacheKey, 用时 ${errorTime}ms, 错误: $e');
       return null;
     }
   }

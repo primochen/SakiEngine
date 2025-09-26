@@ -39,7 +39,35 @@ class CompositeCgRenderer {
   static final Map<String, GpuCompositeResult> _gpuCompletedResults = {};
   static final Map<String, GpuCompositeResult> _gpuPreloadedResults = {};
   static final Map<String, String> _currentDisplayedGpuKeys = {};
-  
+
+  /// 供后台预合成逻辑注册缓存结果，避免首次切换差分时重新加载
+  static void cachePrecomposedResult({
+    required String resourceId,
+    required String pose,
+    required String expression,
+    String? compositePath,
+    GpuCompositeEntry? gpuEntry,
+  }) {
+    final cacheKey = '${resourceId}_${pose}_${expression}';
+
+    print('[CompositeCgRenderer] 缓存注册: $cacheKey (gpu=${gpuEntry != null}, path=${compositePath != null})');
+
+    if (gpuEntry != null) {
+      _gpuCompletedResults[cacheKey] = gpuEntry.result;
+      _gpuPreloadedResults[cacheKey] = gpuEntry.result;
+      _gpuFutureCache[cacheKey] = Future.value(gpuEntry);
+
+      final virtualPath = gpuEntry.virtualPath;
+      _completedPaths[cacheKey] = virtualPath;
+      _futureCache[cacheKey] = Future.value(virtualPath);
+    }
+
+    if (compositePath != null) {
+      _completedPaths[cacheKey] = compositePath;
+      _futureCache[cacheKey] = Future.value(compositePath);
+    }
+  }
+
   // 预热是否已经开始
   static bool _preWarmingStarted = false;
   
@@ -203,6 +231,7 @@ class CompositeCgRenderer {
     final currentResult = _resolveGpuResult(currentKey);
 
     if (_gpuPreloadedResults.containsKey(cacheKey)) {
+      print('[CompositeCgRenderer] 🟢 直接显示预加载GPU结果: $cacheKey');
       final preloadedResult = _gpuPreloadedResults[cacheKey]!;
       _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
 
@@ -215,6 +244,7 @@ class CompositeCgRenderer {
     }
 
     if (_gpuCompletedResults.containsKey(cacheKey)) {
+      print('[CompositeCgRenderer] 🔁 使用已完成GPU结果: $cacheKey');
       final completedResult = _gpuCompletedResults[cacheKey]!;
       _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
 
@@ -228,6 +258,7 @@ class CompositeCgRenderer {
     }
 
     if (!_gpuFutureCache.containsKey(cacheKey)) {
+      print('[CompositeCgRenderer] 🔄 缓存未命中，创建GPU合成Future: $cacheKey');
       _gpuFutureCache[cacheKey] = _gpuCompositor
           .getCompositeEntry(
         resourceId: characterState.resourceId,
@@ -235,6 +266,7 @@ class CompositeCgRenderer {
         expression: characterState.expression ?? 'happy',
       )
           .then((entry) {
+        print('[CompositeCgRenderer] ✅ Future完成: $cacheKey, 成功=${entry != null}');
         if (entry != null) {
           _gpuCompletedResults[cacheKey] = entry.result;
           _gpuPreloadedResults[cacheKey] = entry.result;

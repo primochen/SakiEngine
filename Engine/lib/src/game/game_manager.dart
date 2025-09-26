@@ -20,8 +20,10 @@ import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
 import 'package:sakiengine/src/utils/smart_cg_predictor.dart';
 import 'package:sakiengine/src/utils/cg_script_pre_analyzer.dart';
+import 'package:sakiengine/src/rendering/composite_cg_renderer.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/cg_pre_warm_manager.dart';
+import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
@@ -1252,17 +1254,42 @@ class GameManager {
         if (kDebugMode) {
           //print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
         }
-        
-        // CG显示命令：确保背景始终为当前CG图像
-        
-        // 无论是首次显示还是差分切换，都设置背景为当前要显示的CG
-        
-        String? backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
+        final cgCacheKey = '${resourceId}_${newPose}_${newExpression}';
+        final gpuStartTime = DateTime.now();
+        final gpuEntry = await GpuImageCompositor().getCompositeEntry(
           resourceId: resourceId,
           pose: newPose,
           expression: newExpression,
         );
-        
+        final gpuElapsed = DateTime.now().difference(gpuStartTime).inMilliseconds;
+
+        if (gpuEntry != null) {
+          print('[GameManager][CG] GPU合成完成: $cgCacheKey, 用时 ${gpuElapsed}ms');
+          CompositeCgRenderer.cachePrecomposedResult(
+            resourceId: resourceId,
+            pose: newPose,
+            expression: newExpression,
+            gpuEntry: gpuEntry,
+          );
+        } else {
+          print('[GameManager][CG] ⚠️ GPU合成失败: $cgCacheKey, 用时 ${gpuElapsed}ms，尝试回退CPU');
+        }
+
+        // CG显示命令：确保背景始终为当前CG图像
+        // 无论是首次显示还是差分切换，都设置背景为当前要显示的CG
+        String? backgroundImagePath = gpuEntry?.virtualPath;
+
+        if (backgroundImagePath == null) {
+          final cpuStartTime = DateTime.now();
+          backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
+            resourceId: resourceId,
+            pose: newPose,
+            expression: newExpression,
+          );
+          final cpuElapsed = DateTime.now().difference(cpuStartTime).inMilliseconds;
+          print('[GameManager][CG] CPU回退完成: $cgCacheKey, 用时 ${cpuElapsed}ms, 路径: $backgroundImagePath');
+        }
+
         // 设置背景为当前CG图像
         final finalBackground = backgroundImagePath ?? 'fallback_bg';
         

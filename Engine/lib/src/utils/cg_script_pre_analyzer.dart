@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:sakiengine/src/rendering/composite_cg_renderer.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
@@ -120,30 +121,45 @@ class CgScriptPreAnalyzer {
     String cacheKey
   ) async {
     final startTime = DateTime.now();
+    if (_useGpuAcceleration) {
+      final cached = _gpuCompositor.getCachedResult(cacheKey);
+      print('[CgPreAnalyzer] [$cacheKey] 开始GPU预合成，已有缓存: ${cached != null}');
+    } else {
+      print('[CgPreAnalyzer] [$cacheKey] 开始CPU预合成');
+    }
     try {
       String? compositePath;
-      
-      // 选择合成器
+      GpuCompositeEntry? gpuEntry;
+
       if (_useGpuAcceleration) {
-        // 使用GPU加速合成器
-        compositePath = await _gpuCompositor.getCompositeImagePath(
+        gpuEntry = await _gpuCompositor.getCompositeEntry(
           resourceId: resourceId,
           pose: pose,
           expression: expression,
         );
+        final composeDuration = DateTime.now().difference(startTime).inMilliseconds;
+        print('[CgPreAnalyzer] [$cacheKey] GPU合成阶段完成，用时 ${composeDuration}ms (entry=${gpuEntry != null})');
+        compositePath = gpuEntry?.virtualPath;
       } else {
-        // 使用传统CPU合成器
         compositePath = await _compositor.getCompositeImagePath(
           resourceId: resourceId,
           pose: pose,
           expression: expression,
         );
+        final composeDuration = DateTime.now().difference(startTime).inMilliseconds;
+        print('[CgPreAnalyzer] [$cacheKey] CPU合成阶段完成，用时 ${composeDuration}ms (path=${compositePath != null})');
       }
-      
-      if (compositePath != null) {
-        final compositionTime = DateTime.now();
-        final compositionDuration = compositionTime.difference(startTime).inMilliseconds;
-        
+
+      if (compositePath != null || gpuEntry != null) {
+        // 先将结果注册到渲染器缓存，方便界面立即复用
+        CompositeCgRenderer.cachePrecomposedResult(
+          resourceId: resourceId,
+          pose: pose,
+          expression: expression,
+          compositePath: compositePath,
+          gpuEntry: gpuEntry,
+        );
+
         // 2. 立即启动预热任务（高优先级，因为即将出现）
         await _preWarmManager.preWarm(
           resourceId: resourceId,
@@ -151,11 +167,8 @@ class CgScriptPreAnalyzer {
           expression: expression,
           priority: PreWarmPriority.high,
         );
-        
-        final endTime = DateTime.now();
-        final totalDuration = endTime.difference(startTime).inMilliseconds;
-        final preWarmDuration = endTime.difference(compositionTime).inMilliseconds;
-        
+        final totalDuration = DateTime.now().difference(startTime).inMilliseconds;
+        print('[CgPreAnalyzer] [$cacheKey] 预热完成，总耗时 ${totalDuration}ms');
       }
       
     } catch (e) {
