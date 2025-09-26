@@ -960,13 +960,25 @@ class DirectCgPainter extends CustomPainter {
     final hasPrevious = previousImage != null;
 
     if (hasPrevious && !isFadingOut) {
-      // 先绘制上一帧为全不透明，保持亮度，再叠加新图
-      _drawImage(canvas, size, previousImage!, 1.0);
-      _drawImage(canvas, size, currentImage, clampedProgress);
+      canvas.saveLayer(null, ui.Paint());
+      _drawImage(
+        canvas,
+        size,
+        previousImage!,
+        1.0 - clampedProgress,
+        blendMode: ui.BlendMode.src,
+      );
+      _drawImage(
+        canvas,
+        size,
+        currentImage,
+        clampedProgress,
+        blendMode: ui.BlendMode.plus,
+      );
+      canvas.restore();
       return;
     }
 
-    // 没有上一帧或正在淡出：当前图像根据进度调整透明度
     final opacity = isFadingOut ? 1.0 - clampedProgress : 1.0;
     _drawImage(canvas, size, currentImage, opacity);
   }
@@ -975,8 +987,9 @@ class DirectCgPainter extends CustomPainter {
     ui.Canvas canvas,
     ui.Size size,
     ui.Image image,
-    double opacity,
-  ) {
+    double opacity, {
+    ui.BlendMode blendMode = ui.BlendMode.srcOver,
+  }) {
     if (opacity <= 0) return;
 
     final imageSize = Size(image.width.toDouble(), image.height.toDouble());
@@ -994,7 +1007,8 @@ class DirectCgPainter extends CustomPainter {
     final paint = ui.Paint()
       ..color = ui.Color.fromRGBO(255, 255, 255, opacity.clamp(0.0, 1.0))
       ..isAntiAlias = true
-      ..filterQuality = ui.FilterQuality.high;
+      ..filterQuality = ui.FilterQuality.high
+      ..blendMode = blendMode;
 
     canvas.drawImageRect(
       image,
