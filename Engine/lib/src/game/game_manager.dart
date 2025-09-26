@@ -1871,9 +1871,6 @@ class GameManager {
       //print('[GameManager] 存档恢复后：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
     }
     
-    // 立即发送状态更新以确保UI正确显示包括场景动画属性
-    _gameStateController.add(_currentState);
-    
     if (snapshot.dialogueHistory.isNotEmpty) {
       _dialogueHistory = List.from(snapshot.dialogueHistory);
     }
@@ -1882,12 +1879,14 @@ class GameManager {
     await _checkMusicRegionAtCurrentIndex(forceCheck: true);
     
     // 检测并恢复当前场景的动画
-    await _checkAndRestoreSceneAnimation();
+    await _checkAndRestoreSceneAnimation(notifyListeners: false);
     
     // 预热当前游戏状态的CG（读档后立即预热，避免第一次显示黑屏）
     await _preWarmCurrentGameState();
     
     if (shouldReExecute) {
+      // 预热完成后再推送状态，确保CG已准备好
+      _gameStateController.add(_currentState);
       await _executeScript();
     } else {
       // 不重新执行脚本时，检查当前位置是否是MenuNode
@@ -2434,7 +2433,7 @@ class GameManager {
   }
 
   /// 检测当前脚本位置的场景动画并重新启动
-  Future<void> _checkAndRestoreSceneAnimation() async {
+  Future<void> _checkAndRestoreSceneAnimation({bool notifyListeners = true}) async {
     if (_tickerProvider == null) return;
     
     // 检查_script是否已初始化
@@ -2465,7 +2464,9 @@ class GameManager {
       _startSceneAnimation(lastBackgroundNode.animation!, lastBackgroundNode.repeatCount);
       
       // 发送状态更新
-      _gameStateController.add(_currentState);
+      if (notifyListeners) {
+        _gameStateController.add(_currentState);
+      }
     } else {
       ////print('[GameManager] 当前场景没有检测到动画');
     }
