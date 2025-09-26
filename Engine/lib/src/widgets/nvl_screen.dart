@@ -305,11 +305,13 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
           children: [
             // 背景遮罩（仅在非无遮罩模式下显示）
             if (!widget.isNoMask)
-              Container(
-                width: double.infinity,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+              IgnorePointer(
+                child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                  ),
                 ),
               ),
             
@@ -442,9 +444,11 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
             top: topPosition,
             left: 0,
             right: 0,
-            child: Container(
-              height: barHeight,
-              color: Colors.black,
+            child: IgnorePointer(
+              child: Container(
+                height: barHeight,
+                color: Colors.black,
+              ),
             ),
           );
         },
@@ -460,9 +464,11 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
             bottom: bottomPosition,
             left: 0,
             right: 0,
-            child: Container(
-              height: barHeight,
-              color: Colors.black,
+            child: IgnorePointer(
+              child: Container(
+                height: barHeight,
+                color: Colors.black,
+              ),
             ),
           );
         },
