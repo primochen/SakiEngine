@@ -217,7 +217,6 @@ class ImageLoader {
         return frame.image;
       } catch (e) {
         // 如果标准解码器失败，再尝试flutter_avif
-        print('标准AVIF解码失败，尝试flutter_avif解码器: $e');
         final frames = await decodeAvif(bytes);
         
         if (frames.isNotEmpty) {
@@ -227,7 +226,6 @@ class ImageLoader {
       
       return null;
     } catch (e) {
-      print('加载AVIF图像失败 $assetPath: $e');
       return null;
     }
   }
@@ -276,9 +274,6 @@ class ImageLoader {
       
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('从外部文件系统加载图像失败 $assetPath: $e');
-      }
       return null;
     }
   }
@@ -291,7 +286,6 @@ class ImageLoader {
       final frame = await codec.getNextFrame();
       return frame.image;
     } catch (e) {
-      print('加载标准图像失败 $assetPath: $e');
       return null;
     }
   }

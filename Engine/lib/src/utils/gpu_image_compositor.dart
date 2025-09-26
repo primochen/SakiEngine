@@ -9,10 +9,18 @@ import 'package:sakiengine/src/utils/image_loader.dart';
 /// GPU 合成结果，包含所有需要在 GPU 上绘制的图层
 class GpuCompositeResult {
   GpuCompositeResult({
-    required List<ui.Image> layers,
+    required List<_LayerHandle> handles,
     required this.width,
     required this.height,
-  }) : layers = UnmodifiableListView<ui.Image>(layers);
+    required void Function(String cacheKey) releaseLayer,
+  })  : _handles = handles,
+        _releaseLayer = releaseLayer,
+        layers = UnmodifiableListView<ui.Image>(
+          handles.map((handle) => handle.image).toList(growable: false),
+        );
+
+  final List<_LayerHandle> _handles;
+  final void Function(String cacheKey) _releaseLayer;
 
   /// 参与绘制的所有图层（已经解码为 GPU 纹理）
   final UnmodifiableListView<ui.Image> layers;
@@ -23,11 +31,16 @@ class GpuCompositeResult {
   /// 合成画布高度（像素）
   final int height;
 
-  /// 释放所有图层资源
+  bool _disposed = false;
+
+  /// 释放所有图层资源（减少引用计数，必要时真正释放纹理）
   void dispose() {
-    for (final image in layers) {
-      image.dispose();
+    if (_disposed) return;
+    for (final handle in _handles) {
+      _releaseLayer(handle.cacheKey);
     }
+    _handles.clear();
+    _disposed = true;
   }
 }
 
@@ -42,6 +55,25 @@ class GpuCompositeEntry {
   final String cacheKey;
   final String virtualPath;
   final GpuCompositeResult result;
+}
+
+class _LayerHandle {
+  _LayerHandle({
+    required this.cacheKey,
+    required this.image,
+  });
+
+  final String cacheKey;
+  final ui.Image image;
+}
+
+class _LayerCacheEntry {
+  _LayerCacheEntry({
+    required this.image,
+  });
+
+  final ui.Image image;
+  int refCount = 0;
 }
 
 /// GPU加速图像合成器
@@ -61,6 +93,10 @@ class GpuImageCompositor {
   final Map<String, String> _pathToCacheKey = <String, String>{};
   final Map<String, Future<GpuCompositeEntry?>> _compositingTasks =
       <String, Future<GpuCompositeEntry?>>{};
+
+  final Map<String, _LayerCacheEntry> _layerCache = <String, _LayerCacheEntry>{};
+  final Map<String, Future<_LayerHandle?>> _layerLoadTasks =
+      <String, Future<_LayerHandle?>>{};
   
   /// GPU加速可用性检查
   bool _gpuAvailable = false;
@@ -75,13 +111,7 @@ class GpuImageCompositor {
       _gpuAvailable = true; // 默认启用优化合成模式
       _checkedGpuAvailability = true;
       
-      if (kDebugMode) {
-        print('[GpuImageCompositor] 🚀 优化合成模式已启用');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        print('[GpuImageCompositor] ⚠️ 回退到标准CPU模式: $e');
-      }
       _gpuAvailable = false;
       _checkedGpuAvailability = true;
     }
@@ -201,15 +231,9 @@ class GpuImageCompositor {
       final entries = await Future.wait(tasks, eagerError: false);
 
       final duration = DateTime.now().difference(startTime).inMilliseconds;
-      if (kDebugMode) {
-        print('[GpuImageCompositor] ⚡ 批量准备 ${requests.length} 组图层耗时: ${duration}ms');
-      }
 
       return entries.map((entry) => entry?.virtualPath).toList();
     } catch (e) {
-      if (kDebugMode) {
-        print('[GpuImageCompositor] ❌ 批量处理失败: $e');
-      }
       return List<String?>.filled(requests.length, null);
     }
   }
@@ -235,27 +259,29 @@ class GpuImageCompositor {
 
       if (layerInfos.isEmpty) return null;
 
-      // 并行加载所有图层
-      final layerLoadTasks = layerInfos.map((layerInfo) => 
-          _loadLayerImageAsync(layerInfo.assetName)).toList();
-      
-      final layerImages = await Future.wait(layerLoadTasks);
-      final validImages =
-          layerImages.whereType<ui.Image>().toList(growable: false);
+      // 并行加载所有图层，并使用缓存避免重复解码
+      final layerLoadTasks = layerInfos
+          .map((layerInfo) => _loadLayerImageAsync(layerInfo.assetName))
+          .toList();
 
-      if (validImages.isEmpty) {
+      final layerHandles = await Future.wait(layerLoadTasks);
+      final validHandles =
+          layerHandles.whereType<_LayerHandle>().toList(growable: false);
+
+      if (validHandles.isEmpty) {
         return null;
       }
 
       final loadTime = DateTime.now().difference(startTime).inMilliseconds;
 
-      final width = validImages.first.width;
-      final height = validImages.first.height;
+      final width = validHandles.first.image.width;
+      final height = validHandles.first.image.height;
 
       final result = GpuCompositeResult(
-        layers: validImages,
+        handles: validHandles,
         width: width,
         height: height,
+        releaseLayer: _releaseLayer,
       );
 
       final virtualPath = _generateVirtualPath(cacheKey);
@@ -270,31 +296,76 @@ class GpuImageCompositor {
 
       final totalTime = DateTime.now().difference(startTime).inMilliseconds;
 
-      if (kDebugMode) {
-        print('[GpuImageCompositor] ⚡ 准备 GPU 图层 $cacheKey: 加载${loadTime}ms，总耗时${totalTime}ms');
-      }
-
       return entry;
 
     } catch (e) {
       final errorTime = DateTime.now().difference(startTime).inMilliseconds;
-      if (kDebugMode) {
-        print('[GpuImageCompositor] ❌ 合成失败 ($errorTime ms): $e');
-      }
       return null;
     }
   }
 
   /// 异步加载图层图像
-  Future<ui.Image?> _loadLayerImageAsync(String assetName) async {
+  Future<_LayerHandle?> _loadLayerImageAsync(String assetName) async {
+    // 命中缓存
+    final cached = _layerCache[assetName];
+    if (cached != null) {
+      return _retainLayer(assetName);
+    }
+
+    // 等待正在进行的加载任务
+    final existingTask = _layerLoadTasks[assetName];
+    if (existingTask != null) {
+      final handle = await existingTask;
+      if (handle == null) {
+        return null;
+      }
+      return _retainLayer(assetName);
+    }
+
+    final loadTask = _loadLayerImageInternal(assetName);
+    _layerLoadTasks[assetName] = loadTask;
+
+    try {
+      return await loadTask;
+    } finally {
+      _layerLoadTasks.remove(assetName);
+    }
+  }
+
+  Future<_LayerHandle?> _loadLayerImageInternal(String assetName) async {
     try {
       final assetPath = await AssetManager().findAsset(assetName);
       if (assetPath == null) return null;
-      
-      return await ImageLoader.loadImage(assetPath);
+
+      final image = await ImageLoader.loadImage(assetPath);
+      if (image == null) return null;
+
+      final cacheEntry = _LayerCacheEntry(image: image)..refCount = 1;
+      _layerCache[assetName] = cacheEntry;
+      return _LayerHandle(cacheKey: assetName, image: image);
     } catch (e) {
       return null;
     }
+  }
+
+  void _releaseLayer(String cacheKey) {
+    final entry = _layerCache[cacheKey];
+    if (entry == null) {
+      return;
+    }
+
+    entry.refCount -= 1;
+    if (entry.refCount <= 0) {
+      entry.image.dispose();
+      _layerCache.remove(cacheKey);
+    }
+  }
+
+  _LayerHandle? _retainLayer(String cacheKey) {
+    final entry = _layerCache[cacheKey];
+    if (entry == null) return null;
+    entry.refCount += 1;
+    return _LayerHandle(cacheKey: cacheKey, image: entry.image);
   }
 
   /// 获取缓存图像字节
@@ -311,10 +382,15 @@ class GpuImageCompositor {
     _entryCache.clear();
     _pathToCacheKey.clear();
     _compositingTasks.clear();
-    
-    if (kDebugMode) {
-      print('[GpuImageCompositor] 🧹 优化缓存已清理');
+    _layerLoadTasks.clear();
+
+    if (_layerCache.isNotEmpty) {
+      for (final cacheEntry in _layerCache.values) {
+        cacheEntry.image.dispose();
+      }
+      _layerCache.clear();
     }
+
   }
 
   /// 获取缓存统计
@@ -336,8 +412,5 @@ class GpuImageCompositor {
   /// 预热优化器（可选调用）
   Future<void> warmUpGpu() async {
     await _checkGpuAvailability();
-    if (kDebugMode) {
-      print('[GpuImageCompositor] 🔥 优化器预热${_gpuAvailable ? "成功" : "失败"}');
-    }
   }
 }
