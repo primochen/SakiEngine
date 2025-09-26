@@ -232,7 +232,7 @@ class SmartImage extends StatelessWidget {
   
   /// 构建内存缓存图像（集成预热管理器）
   Widget _buildMemoryCacheImage() {
-    print('[SmartImage] 🐛 尝试从内存缓存加载: $assetPath');
+    //print('[SmartImage] 🐛 尝试从内存缓存加载: $assetPath');
     
     // 提取缓存键信息
     String? cacheKey;
@@ -245,7 +245,7 @@ class SmartImage extends StatelessWidget {
     final preWarmManager = CgPreWarmManager();
     
     if (imageBytes == null) {
-      print('[SmartImage] ❌ 内存缓存中未找到图像数据: $assetPath');
+      //print('[SmartImage] ❌ 内存缓存中未找到图像数据: $assetPath');
       
       // 如果是CG缓存键，尝试触发紧急预热
       if (cacheKey != null) {
@@ -273,7 +273,7 @@ class SmartImage extends StatelessWidget {
       );
     }
     
-    print('[SmartImage] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
+    //print('[SmartImage] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
     
     // 检查是否有预热的ui.Image对象
     ui.Image? preWarmedImage;
@@ -287,7 +287,7 @@ class SmartImage extends StatelessWidget {
         preWarmedImage = preWarmManager.getPreWarmedImage(resourceId, pose, expression);
         
         if (preWarmedImage != null) {
-          print('[SmartImage] 🔥 使用预热的图像对象: $cacheKey');
+          //print('[SmartImage] 🔥 使用预热的图像对象: $cacheKey');
           return RawImage(
             image: preWarmedImage,
             fit: fit ?? BoxFit.contain,
@@ -328,11 +328,11 @@ class SmartImage extends StatelessWidget {
       },
       errorBuilder: errorWidget != null 
         ? (context, error, stackTrace) {
-            print('[SmartImage] ❌ Image.memory加载失败: $error');
+            //print('[SmartImage] ❌ Image.memory加载失败: $error');
             return errorWidget!;
           }
         : (context, error, stackTrace) {
-            print('[SmartImage] ❌ Image.memory加载失败: $error');
+            //print('[SmartImage] ❌ Image.memory加载失败: $error');
             return Container(
               width: width,
               height: height,

@@ -112,7 +112,7 @@ class CgPreWarmManager {
       _runPreWarmWorker();
       
       if (kDebugMode) {
-        print('[CgPreWarmManager] 🔥 预热管理器已启动');
+        //print('[CgPreWarmManager] 🔥 预热管理器已启动');
       }
     }
   }
@@ -124,7 +124,7 @@ class CgPreWarmManager {
     _clearPreWarmCache();
     
     if (kDebugMode) {
-      print('[CgPreWarmManager] 🔥 预热管理器已停止');
+      //print('[CgPreWarmManager] 🔥 预热管理器已停止');
     }
   }
 
@@ -140,7 +140,7 @@ class CgPreWarmManager {
     // 检查是否已经预热完成
     if (_warmStatus[cacheKey] == PreWarmStatus.warmed) {
       if (kDebugMode) {
-        print('[CgPreWarmManager] ✅ 已预热: $cacheKey');
+        //print('[CgPreWarmManager] ✅ 已预热: $cacheKey');
       }
       return true;
     }
@@ -148,7 +148,7 @@ class CgPreWarmManager {
     // 检查是否已在队列中或正在处理
     if (_warmStatus[cacheKey] == PreWarmStatus.warming || _processingTasks.contains(cacheKey)) {
       if (kDebugMode) {
-        print('[CgPreWarmManager] ⏳ 预热中: $cacheKey');
+        //print('[CgPreWarmManager] ⏳ 预热中: $cacheKey');
       }
       return await _waitForCompletion(cacheKey);
     }
@@ -167,7 +167,7 @@ class CgPreWarmManager {
     _warmStatus[cacheKey] = PreWarmStatus.warming;
     
     if (kDebugMode) {
-      print('[CgPreWarmManager] 🔥 添加预热任务: $cacheKey (优先级: ${priority.name})');
+      //print('[CgPreWarmManager] 🔥 添加预热任务: $cacheKey (优先级: ${priority.name})');
     }
     
     // 确保工作器运行
@@ -252,7 +252,7 @@ class CgPreWarmManager {
         
       } catch (e) {
         if (kDebugMode) {
-          print('[CgPreWarmManager] ⚠️ 预热工作器错误: $e');
+          //print('[CgPreWarmManager] ⚠️ 预热工作器错误: $e');
         }
         await Future.delayed(const Duration(milliseconds: 500));
       }
@@ -265,7 +265,7 @@ class CgPreWarmManager {
     
     try {
       if (kDebugMode) {
-        print('[CgPreWarmManager] 🔥 开始预热: ${task.cacheKey} (优先级: ${task.priority.name})');
+        //print('[CgPreWarmManager] 🔥 开始预热: ${task.cacheKey} (优先级: ${task.priority.name})');
       }
       
       // 首先确保图像已合成到内存缓存
@@ -293,7 +293,7 @@ class CgPreWarmManager {
       task.complete(true);
       
       if (kDebugMode) {
-        print('[CgPreWarmManager] ✅ 预热完成: ${task.cacheKey}');
+        //print('[CgPreWarmManager] ✅ 预热完成: ${task.cacheKey}');
       }
       
     } catch (e) {
@@ -301,7 +301,7 @@ class CgPreWarmManager {
       task.completeWithError(e);
       
       if (kDebugMode) {
-        print('[CgPreWarmManager] ❌ 预热失败: ${task.cacheKey}, 错误: $e');
+        //print('[CgPreWarmManager] ❌ 预热失败: ${task.cacheKey}, 错误: $e');
       }
     } finally {
       _processingTasks.remove(task.cacheKey);
@@ -345,7 +345,7 @@ class CgPreWarmManager {
       oldImage?.dispose();
       
       if (kDebugMode) {
-        print('[CgPreWarmManager] 🗑️ 清理旧预热缓存: $oldestKey');
+        //print('[CgPreWarmManager] 🗑️ 清理旧预热缓存: $oldestKey');
       }
     }
     

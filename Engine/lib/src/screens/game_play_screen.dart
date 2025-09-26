@@ -987,12 +987,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画
   Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers, Map<String, double>? animationProperties]) {
-    //print('[_buildBackground] 开始构建背景: $background');
+    ////print('[_buildBackground] 开始构建背景: $background');
     Widget backgroundWidget;
     
     // 如果有多图层数据，使用多图层渲染器
     if (sceneLayers != null && sceneLayers.isNotEmpty) {
-      //print('[_buildBackground] 使用多图层渲染器');
+      ////print('[_buildBackground] 使用多图层渲染器');
       final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
           .where((layer) => layer != null)
           .cast<SceneLayer>()
@@ -1004,22 +1004,22 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           screenSize: MediaQuery.of(context).size,
         );
       } else {
-        //print('[_buildBackground] 多图层为空，使用黑色背景');
+        ////print('[_buildBackground] 多图层为空，使用黑色背景');
         backgroundWidget = Container(color: Colors.black);
       }
     } else {
-      //print('[_buildBackground] 单图层模式，背景内容: $background');
+      ////print('[_buildBackground] 单图层模式，背景内容: $background');
       // 单图层模式（原有逻辑）
       // 检查是否为十六进制颜色格式
       if (ColorBackgroundRenderer.isValidHexColor(background)) {
-        //print('[_buildBackground] 识别为十六进制颜色背景');
+        ////print('[_buildBackground] 识别为十六进制颜色背景');
         backgroundWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
       } else {
-        //print('[_buildBackground] 识别为图片背景，开始处理图片路径');
+        ////print('[_buildBackground] 识别为图片背景，开始处理图片路径');
         
         // 检查是否为内存缓存路径
         if (background.startsWith('/memory_cache/cg_cache/')) {
-          print('[_buildBackground] 🐛 检测到内存缓存路径，使用SmartImage加载: $background');
+          //print('[_buildBackground] 🐛 检测到内存缓存路径，使用SmartImage加载: $background');
           // 使用SmartImage处理内存缓存路径
           backgroundWidget = SmartImage.asset(
             background,
@@ -1030,7 +1030,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             errorWidget: Container(color: Colors.black),
           );
         } else if (background.startsWith('/')) {
-          print('[_buildBackground] 🐛 检测到绝对文件路径，直接使用Image.file加载: $background');
+          //print('[_buildBackground] 🐛 检测到绝对文件路径，直接使用Image.file加载: $background');
           // 直接使用Image.file，不预缓存，避免FutureBuilder导致的黑屏
           backgroundWidget = Image.file(
             File(background),
@@ -1040,12 +1040,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             height: double.infinity,
             // 关键：不使用frameBuilder，让图像立即显示
             errorBuilder: (context, error, stackTrace) {
-              print('[_buildBackground] ❌ 直接文件加载失败: $background, 错误: $error');
+              //print('[_buildBackground] ❌ 直接文件加载失败: $background, 错误: $error');
               return Container(color: Colors.black);
             },
           );
         } else {
-          //print('[_buildBackground] 使用AssetManager查找相对路径');
+          ////print('[_buildBackground] 使用AssetManager查找相对路径');
           // 处理相对路径图片背景（原有逻辑）
           backgroundWidget = FutureBuilder<String?>(
             key: ValueKey('bg_$background'), // 添加key避免重建

@@ -20,6 +20,7 @@ import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
 import 'package:sakiengine/src/utils/cg_script_pre_analyzer.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
+import 'package:sakiengine/src/utils/cg_pre_warm_manager.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
@@ -593,22 +594,13 @@ class GameManager {
     await _loadConfigs();
     await GlobalVariableManager().init(); // 初始化全局变量管理器
     
-    // 打印所有全局变量的值
-    final allVars = GlobalVariableManager().getAllVariables();
-    print('=== 游戏启动 - 全局变量状态 ===');
-    if (allVars.isEmpty) {
-      print('暂无全局变量');
-    } else {
-      allVars.forEach((name, value) {
-        print('全局变量: $name = $value');
-      });
-    }
-    print('=== 全局变量状态结束 ===');
-    
     await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
+    
+    // 启动CG预热管理器
+    CgPreWarmManager().start();
     
     // 预加载anime资源（同步执行，确保能看到错误）
     try {
@@ -1092,22 +1084,12 @@ class GameManager {
         // CG显示命令：确保背景始终为当前CG图像
         
         // 无论是首次显示还是差分切换，都设置背景为当前要显示的CG
-        if (kDebugMode) {
-          print('[GameManager] CG显示命令，设置背景为当前CG: resourceId=$resourceId, pose=$newPose, expression=$newExpression');
-        }
         
         String? backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
           resourceId: resourceId,
           pose: newPose,
           expression: newExpression,
         );
-        
-        if (kDebugMode) {
-          print('[GameManager] CG背景路径: $backgroundImagePath');
-          if (backgroundImagePath == null) {
-            print('[GameManager] ⚠️ 警告：CG背景图像路径为空！');
-          }
-        }
         
         // 设置背景为当前CG图像
         final finalBackground = backgroundImagePath ?? 'fallback_bg';
@@ -1119,11 +1101,6 @@ class GameManager {
           clearSceneAnimation: true,
           everShownCharacters: _everShownCharacters
         );
-        
-        if (kDebugMode) {
-          print('[GameManager] 已设置CG背景: $finalBackground');
-          print('[GameManager] 当前GameState背景: ${_currentState.background}');
-        }
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
@@ -1195,16 +1172,8 @@ class GameManager {
         
         if (currentValue != node.conditionValue) {
           // 条件不满足，跳过这个节点
-          if (kDebugMode) {
-            print('[ConditionalSay] 条件不满足，跳过对话: ${node.dialogue}');
-            print('[ConditionalSay] 变量 ${node.conditionVariable} = $currentValue, 需要 ${node.conditionValue}');
-          }
           _scriptIndex++;
           continue;
-        }
-        
-        if (kDebugMode) {
-          print('[ConditionalSay] 条件满足，显示对话: ${node.dialogue}');
         }
         
         // 条件满足，按照正常SayNode处理
@@ -1748,10 +1717,6 @@ class GameManager {
           fadeDuration: const Duration(milliseconds: 300), // 音效淡入较快
           loop: node.loop,
         );
-        
-        if (kDebugMode) {
-          print('[SoundManager] 播放音效: ${node.soundFile}, loop: ${node.loop} at index $_scriptIndex');
-        }
         _scriptIndex++;
         continue;
       }
@@ -1763,10 +1728,6 @@ class GameManager {
           fadeOut: true,
           fadeDuration: const Duration(milliseconds: 200),
         );
-        
-        if (kDebugMode) {
-          print('[SoundManager] 停止音效 at index $_scriptIndex');
-        }
         _scriptIndex++;
         continue;
       }
@@ -1774,19 +1735,12 @@ class GameManager {
       if (node is BoolNode) {
         // 设置全局bool变量
         await GlobalVariableManager().setBoolVariable(node.variableName, node.value);
-        if (kDebugMode) {
-          print('[GlobalVariable] 设置变量 ${node.variableName} = ${node.value}');
-        }
         _scriptIndex++;
         continue;
       }
 
       if (node is PauseNode) {
         // 处理暂停命令：pause(0.5)
-        if (kDebugMode) {
-          print('[PauseNode] 暂停 ${node.duration} 秒');
-        }
-        
         // 设置暂停等待标志
         _isWaitingForTimer = true;
         _isProcessing = false; // 释放处理锁，但保持timer锁
@@ -1794,9 +1748,6 @@ class GameManager {
         
         // 启动计时器
         Timer(Duration(milliseconds: (node.duration * 1000).round()), () {
-          if (kDebugMode) {
-            print('[PauseNode] 暂停结束，继续执行脚本');
-          }
           _isWaitingForTimer = false;
           _executeScript(); // 恢复脚本执行
         });
@@ -1809,10 +1760,6 @@ class GameManager {
         final duration = node.duration ?? 1.0; // 默认1秒
         final intensity = node.intensity ?? 8.0; // 默认强度8
         final target = node.target ?? 'background'; // 默认震动背景
-        
-        if (kDebugMode) {
-          print('[ShakeNode] 触发震动: target=$target, duration=$duration, intensity=$intensity');
-        }
         
         // 设置震动状态
         _currentState = _currentState.copyWith(
@@ -1936,6 +1883,9 @@ class GameManager {
     
     // 检测并恢复当前场景的动画
     await _checkAndRestoreSceneAnimation();
+    
+    // 预热当前游戏状态的CG（读档后立即预热，避免第一次显示黑屏）
+    await _preWarmCurrentGameState();
     
     if (shouldReExecute) {
       await _executeScript();
@@ -2824,12 +2774,97 @@ class GameManager {
     _gameStateController.add(_currentState);
   }
 
+  /// 预热当前游戏状态的CG
+  /// 在读档后立即调用，确保当前显示的CG已经预热完成
+  Future<void> _preWarmCurrentGameState() async {
+    final preWarmManager = CgPreWarmManager();
+    
+    // 确保预热管理器正在运行
+    preWarmManager.start();
+    
+    final preWarmTasks = <Future<bool>>[];
+    
+    // 检查当前背景是否为CG背景
+    final currentBackground = _currentState.background;
+    if (currentBackground != null && _isCurrentBackgroundCG()) {
+      // 从背景路径推断CG参数（这需要根据实际的路径格式调整）
+      final cgInfo = _extractCgInfoFromBackground(currentBackground);
+      if (cgInfo != null) {
+        final preWarmTask = preWarmManager.preWarmUrgent(
+          resourceId: cgInfo['resourceId']!,
+          pose: cgInfo['pose']!,
+          expression: cgInfo['expression']!,
+        );
+        preWarmTasks.add(preWarmTask);
+      }
+    }
+    
+    // 预热当前显示的CG角色
+    for (final entry in _currentState.cgCharacters.entries) {
+      final characterState = entry.value;
+      final resourceId = characterState.resourceId;
+      final pose = characterState.pose ?? 'pose1';
+      final expression = characterState.expression ?? 'happy';
+      
+      final preWarmTask = preWarmManager.preWarmUrgent(
+        resourceId: resourceId,
+        pose: pose,
+        expression: expression,
+      );
+      preWarmTasks.add(preWarmTask);
+    }
+    
+    // 等待所有预热任务完成
+    if (preWarmTasks.isNotEmpty) {
+      try {
+        await Future.wait(preWarmTasks);
+      } catch (e) {
+        // 预热失败时静默处理，不影响游戏继续
+      }
+    }
+  }
+  
+  /// 从背景路径中提取CG信息
+  /// 返回Map包含resourceId, pose, expression，如果不是CG背景则返回null
+  Map<String, String>? _extractCgInfoFromBackground(String backgroundPath) {
+    try {
+      // 检查是否为内存缓存路径格式：/memory_cache/cg_cache/resourceId_pose_expression.png
+      if (backgroundPath.startsWith('/memory_cache/cg_cache/')) {
+        final filename = backgroundPath.split('/').last;
+        final cacheKey = filename.replaceAll('.png', '');
+        final parts = cacheKey.split('_');
+        
+        if (parts.length >= 3) {
+          final resourceId = parts.sublist(0, parts.length - 2).join('_');
+          final pose = parts[parts.length - 2];
+          final expression = parts[parts.length - 1];
+          
+          return {
+            'resourceId': resourceId,
+            'pose': pose,
+            'expression': expression,
+          };
+        }
+      }
+      
+      // 如果是其他格式的CG背景，可以在这里添加更多解析逻辑
+      // 目前只处理内存缓存格式
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   void dispose() {
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
     
     // 清理CG预分析器
     _cgPreAnalyzer.dispose();
+    
+    // 停止CG预热管理器
+    CgPreWarmManager().stop();
     
     // 清理所有活跃的角色动画控制器
     for (final controller in _activeCharacterAnimations.values) {
