@@ -730,6 +730,7 @@ class GameManager {
     
     // 初始化差分偏移管理器
     ExpressionOffsetManager().initializeDefaultConfigs();
+    CharacterCompositeCache.instance.clear();
   }
 
   Future<void> startGame(String scriptName) async {

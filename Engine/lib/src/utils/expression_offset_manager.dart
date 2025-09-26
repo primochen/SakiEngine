@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sakiengine/src/utils/character_composite_cache.dart';
 
 /// 差分偏移配置类
 class ExpressionOffsetConfig {
@@ -43,9 +44,9 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose6',
       xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0279, // 纵向偏移（可调整）
-      alpha: 1.0, // 透明度便于对准
-      scale: 0.97, // 新增：缩放比例（可调整）
+      yOffset: 0.028, // 纵向偏移（可调整）
+      alpha: 0.4, // 透明度便于对准
+      scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
     // xiayo1 pose6 帽子配置
@@ -62,9 +63,9 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose7',
       xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0279, // 纵向偏移（可调整）
-      alpha: 1.0, // 透明度便于对准
-      scale: 0.97, // 新增：缩放比例（可调整）
+      yOffset: 0.028, // 纵向偏移（可调整）
+      alpha: 0.4, // 透明度便于对准
+      scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
     // xiayo1 pose7 帽子配置
@@ -81,9 +82,9 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose8',
       xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0279, // 纵向偏移（可调整）
-      alpha: 1.0, // 透明度便于对准
-      scale: 0.97, // 新增：缩放比例（可调整）
+      yOffset: 0.028, // 纵向偏移（可调整）
+      alpha: 0.4, // 透明度便于对准
+      scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
     // xiayo1 pose8 帽子配置
@@ -102,7 +103,10 @@ class ExpressionOffsetManager {
   /// 添加偏移配置
   void addOffsetConfig(ExpressionOffsetConfig config) {
     _offsetConfigs[config.key] = config;
-    // 保留静默行为
+    CharacterCompositeCache.instance.invalidate(
+      config.characterId,
+      config.pose,
+    );
   }
   
   /// 移除偏移配置
@@ -110,7 +114,7 @@ class ExpressionOffsetManager {
     final key = '${characterId}_$pose';
     final removed = _offsetConfigs.remove(key);
     if (removed != null) {
-      // 静默移除
+      CharacterCompositeCache.instance.invalidate(characterId, pose);
     }
   }
   

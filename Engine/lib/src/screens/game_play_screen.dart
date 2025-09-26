@@ -1243,7 +1243,7 @@ class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
     }
 
     if (!oldWidget.isFadingOut && widget.isFadingOut) {
-      Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(const Duration(milliseconds: 220), () {
         if (mounted && widget.isFadingOut) {
           widget.onFadeOutComplete?.call();
         }

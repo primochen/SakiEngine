@@ -128,6 +128,25 @@ class CharacterCompositeCache {
       return null;
     }
   }
+
+  void clear() {
+    for (final image in _imageCache.values) {
+      image.dispose();
+    }
+    _imageCache.clear();
+    _pendingTasks.clear();
+  }
+
+  void invalidate(String resourceId, String pose) {
+    final prefix = '$resourceId::$pose::';
+    final keysToRemove = _imageCache.keys
+        .where((key) => key.startsWith(prefix))
+        .toList(growable: false);
+    for (final key in keysToRemove) {
+      _imageCache.remove(key)?.dispose();
+      _pendingTasks.remove(key);
+    }
+  }
 }
 
 class _CompositeLayer {
