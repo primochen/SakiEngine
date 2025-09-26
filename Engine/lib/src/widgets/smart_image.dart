@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:sakiengine/src/widgets/animated_webp_image.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
+import 'package:sakiengine/src/utils/cg_pre_warm_manager.dart';
 
 /// 智能图像小部件 - 自动处理AVIF、WebP和其他格式
 /// 
@@ -228,15 +230,39 @@ class SmartImage extends StatelessWidget {
     return path.startsWith('/memory_cache/cg_cache/');
   }
   
-  /// 构建内存缓存图像
+  /// 构建内存缓存图像（集成预热管理器）
   Widget _buildMemoryCacheImage() {
     print('[SmartImage] 🐛 尝试从内存缓存加载: $assetPath');
     
+    // 提取缓存键信息
+    String? cacheKey;
+    if (assetPath.startsWith('/memory_cache/cg_cache/')) {
+      final filename = assetPath.split('/').last;
+      cacheKey = filename.replaceAll('.png', '');
+    }
+    
     final imageBytes = CgImageCompositor().getImageBytes(assetPath);
+    final preWarmManager = CgPreWarmManager();
     
     if (imageBytes == null) {
       print('[SmartImage] ❌ 内存缓存中未找到图像数据: $assetPath');
-      // 如果内存中没有找到图像数据，显示错误或占位符
+      
+      // 如果是CG缓存键，尝试触发紧急预热
+      if (cacheKey != null) {
+        final parts = cacheKey.split('_');
+        if (parts.length >= 3) {
+          final resourceId = parts.sublist(0, parts.length - 2).join('_');
+          final pose = parts[parts.length - 2];
+          final expression = parts[parts.length - 1];
+          
+          preWarmManager.preWarmUrgent(
+            resourceId: resourceId,
+            pose: pose, 
+            expression: expression,
+          );
+        }
+      }
+      
       return errorWidget ?? Container(
         width: width,
         height: height,
@@ -249,11 +275,57 @@ class SmartImage extends StatelessWidget {
     
     print('[SmartImage] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
     
+    // 检查是否有预热的ui.Image对象
+    ui.Image? preWarmedImage;
+    if (cacheKey != null) {
+      final parts = cacheKey.split('_');
+      if (parts.length >= 3) {
+        final resourceId = parts.sublist(0, parts.length - 2).join('_');
+        final pose = parts[parts.length - 2];
+        final expression = parts[parts.length - 1];
+        
+        preWarmedImage = preWarmManager.getPreWarmedImage(resourceId, pose, expression);
+        
+        if (preWarmedImage != null) {
+          print('[SmartImage] 🔥 使用预热的图像对象: $cacheKey');
+          return RawImage(
+            image: preWarmedImage,
+            fit: fit ?? BoxFit.contain,
+            width: width,
+            height: height,
+          );
+        }
+      }
+    }
+    
+    // 使用Image.memory，但添加frameBuilder来处理第一帧
     return Image.memory(
       imageBytes,
       fit: fit ?? BoxFit.contain,
       width: width,
       height: height,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded == true) {
+          // 同步加载，直接显示
+          return child;
+        }
+        
+        if (frame == null) {
+          // 第一帧尚未准备好，显示透明容器避免黑屏
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.transparent,
+          );
+        }
+        
+        // 第二帧及之后，显示真实图像
+        return AnimatedOpacity(
+          opacity: 1.0,
+          duration: const Duration(milliseconds: 100),
+          child: child,
+        );
+      },
       errorBuilder: errorWidget != null 
         ? (context, error, stackTrace) {
             print('[SmartImage] ❌ Image.memory加载失败: $error');

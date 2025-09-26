@@ -1,7 +1,5 @@
 import 'dart:ui' as ui;
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
@@ -203,7 +201,7 @@ class CgImageCompositor {
     }
   }
 
-  /// 保存合成图像到内存缓存（调试模式下同时保存到本地）
+  /// 保存合成图像到内存缓存
   Future<bool> _saveCompositeToMemory(ui.Image image, String cacheKey) async {
     try {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -216,13 +214,7 @@ class CgImageCompositor {
       
       if (kDebugMode) {
         print('[CgImageCompositor] Memory cache saved: $cacheKey (${bytes.length} bytes)');
-        
-        // 调试模式下同时保存到本地文件
-        await _saveDebugImageToLocal(bytes, cacheKey);
       }
-      
-      // 立即进行图像预热，确保真正显示时是"第二次"渲染
-      await _preWarmImage(bytes, cacheKey);
       
       return true;
     } catch (e) {
@@ -230,99 +222,6 @@ class CgImageCompositor {
         print('[CgImageCompositor] Failed to save composite image: $e');
       }
       return false;
-    }
-  }
-  
-  /// 图像预热：在离屏进行一次完整的图像解码和绘制
-  /// 确保Flutter图像渲染管线完全准备好，真正显示时避免第一帧延迟
-  Future<void> _preWarmImage(Uint8List imageBytes, String cacheKey) async {
-    try {
-      if (kDebugMode) {
-        print('[CgImageCompositor] 🔥 开始预热图像: $cacheKey');
-      }
-      
-      // 解码图像
-      final codec = await ui.instantiateImageCodec(imageBytes);
-      final frame = await codec.getNextFrame();
-      final preWarmImage = frame.image;
-      
-      if (kDebugMode) {
-        print('[CgImageCompositor] 🔥 图像解码完成: ${preWarmImage.width}x${preWarmImage.height}');
-      }
-      
-      // 创建离屏Canvas进行预热绘制
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(recorder);
-      
-      // 绘制图像到离屏Canvas，触发Flutter的图像缓存和渲染管线
-      canvas.drawImage(preWarmImage, ui.Offset.zero, ui.Paint());
-      
-      // 完成绘制并生成Picture（这会触发GPU预热）
-      final picture = recorder.endRecording();
-      
-      // 可选：将Picture转换为Image以进一步预热（但会增加内存和时间开销）
-      // final preWarmRaster = await picture.toImage(preWarmImage.width, preWarmImage.height);
-      // preWarmRaster.dispose();
-      
-      // 清理资源
-      picture.dispose();
-      preWarmImage.dispose();
-      codec.dispose();
-      
-      if (kDebugMode) {
-        print('[CgImageCompositor] ✅ 图像预热完成: $cacheKey');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('[CgImageCompositor] ⚠️ 图像预热失败: $cacheKey, 错误: $e');
-      }
-      // 预热失败不影响核心功能，继续执行
-    }
-  }
-  
-  /// 调试功能：保存图像到本地文件
-  Future<void> _saveDebugImageToLocal(Uint8List imageBytes, String cacheKey) async {
-    try {
-      // 获取游戏目录作为保存位置
-      final gamePath = await _getDebugGamePath();
-      final debugDir = Directory(p.join(gamePath, '.debug_cg_cache'));
-      
-      // 确保调试目录存在
-      if (!await debugDir.exists()) {
-        await debugDir.create(recursive: true);
-      }
-      
-      // 保存文件
-      final debugFile = File(p.join(debugDir.path, '$cacheKey.png'));
-      await debugFile.writeAsBytes(imageBytes);
-      
-      print('[CgImageCompositor] 🐛 调试图像已保存: ${debugFile.path}');
-    } catch (e) {
-      print('[CgImageCompositor] 调试保存失败: $e');
-    }
-  }
-  
-  /// 获取游戏路径用于调试保存（复用AssetManager逻辑）
-  Future<String> _getDebugGamePath() async {
-    const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
-    if (fromDefine.isNotEmpty) return fromDefine;
-    
-    final fromEnv = Platform.environment['SAKI_GAME_PATH'];
-    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
-    
-    try {
-      // 从assets读取default_game.txt
-      final assetContent = await AssetManager().loadString('assets/default_game.txt');
-      final defaultGame = assetContent.trim();
-      
-      if (defaultGame.isEmpty) {
-        throw Exception('default_game.txt is empty');
-      }
-      
-      final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
-      return gamePath;
-    } catch (e) {
-      throw Exception('Failed to load default_game.txt: $e');
     }
   }
 
