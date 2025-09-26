@@ -1254,25 +1254,18 @@ class GameManager {
         if (kDebugMode) {
           //print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
         }
-        final cgCacheKey = '${resourceId}_${newPose}_${newExpression}';
-        final gpuStartTime = DateTime.now();
         final gpuEntry = await GpuImageCompositor().getCompositeEntry(
           resourceId: resourceId,
           pose: newPose,
           expression: newExpression,
         );
-        final gpuElapsed = DateTime.now().difference(gpuStartTime).inMilliseconds;
-
         if (gpuEntry != null) {
-          print('[GameManager][CG] GPU合成完成: $cgCacheKey, 用时 ${gpuElapsed}ms');
-          CompositeCgRenderer.cachePrecomposedResult(
+          await CompositeCgRenderer.cachePrecomposedResult(
             resourceId: resourceId,
             pose: newPose,
             expression: newExpression,
             gpuEntry: gpuEntry,
           );
-        } else {
-          print('[GameManager][CG] ⚠️ GPU合成失败: $cgCacheKey, 用时 ${gpuElapsed}ms，尝试回退CPU');
         }
 
         // CG显示命令：确保背景始终为当前CG图像
@@ -1280,14 +1273,11 @@ class GameManager {
         String? backgroundImagePath = gpuEntry?.virtualPath;
 
         if (backgroundImagePath == null) {
-          final cpuStartTime = DateTime.now();
           backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
             resourceId: resourceId,
             pose: newPose,
             expression: newExpression,
           );
-          final cpuElapsed = DateTime.now().difference(cpuStartTime).inMilliseconds;
-          print('[GameManager][CG] CPU回退完成: $cgCacheKey, 用时 ${cpuElapsed}ms, 路径: $backgroundImagePath');
         }
 
         // 设置背景为当前CG图像

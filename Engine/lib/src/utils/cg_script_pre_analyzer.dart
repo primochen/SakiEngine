@@ -120,13 +120,6 @@ class CgScriptPreAnalyzer {
     String expression, 
     String cacheKey
   ) async {
-    final startTime = DateTime.now();
-    if (_useGpuAcceleration) {
-      final cached = _gpuCompositor.getCachedResult(cacheKey);
-      print('[CgPreAnalyzer] [$cacheKey] 开始GPU预合成，已有缓存: ${cached != null}');
-    } else {
-      print('[CgPreAnalyzer] [$cacheKey] 开始CPU预合成');
-    }
     try {
       String? compositePath;
       GpuCompositeEntry? gpuEntry;
@@ -137,8 +130,6 @@ class CgScriptPreAnalyzer {
           pose: pose,
           expression: expression,
         );
-        final composeDuration = DateTime.now().difference(startTime).inMilliseconds;
-        print('[CgPreAnalyzer] [$cacheKey] GPU合成阶段完成，用时 ${composeDuration}ms (entry=${gpuEntry != null})');
         compositePath = gpuEntry?.virtualPath;
       } else {
         compositePath = await _compositor.getCompositeImagePath(
@@ -146,13 +137,11 @@ class CgScriptPreAnalyzer {
           pose: pose,
           expression: expression,
         );
-        final composeDuration = DateTime.now().difference(startTime).inMilliseconds;
-        print('[CgPreAnalyzer] [$cacheKey] CPU合成阶段完成，用时 ${composeDuration}ms (path=${compositePath != null})');
       }
 
       if (compositePath != null || gpuEntry != null) {
         // 先将结果注册到渲染器缓存，方便界面立即复用
-        CompositeCgRenderer.cachePrecomposedResult(
+        await CompositeCgRenderer.cachePrecomposedResult(
           resourceId: resourceId,
           pose: pose,
           expression: expression,
@@ -167,13 +156,9 @@ class CgScriptPreAnalyzer {
           expression: expression,
           priority: PreWarmPriority.high,
         );
-        final totalDuration = DateTime.now().difference(startTime).inMilliseconds;
-        print('[CgPreAnalyzer] [$cacheKey] 预热完成，总耗时 ${totalDuration}ms');
       }
       
     } catch (e) {
-      final endTime = DateTime.now();
-      final totalDuration = endTime.difference(startTime).inMilliseconds;
       // 预热失败时静默处理，避免刷屏
     } finally {
       // 清理任务记录

@@ -40,17 +40,17 @@ class CompositeCgRenderer {
   static final Map<String, GpuCompositeResult> _gpuPreloadedResults = {};
   static final Map<String, String> _currentDisplayedGpuKeys = {};
 
+  static final Map<String, Future<ui.Image?>> _gpuFlattenTasks = {};
+
   /// 供后台预合成逻辑注册缓存结果，避免首次切换差分时重新加载
-  static void cachePrecomposedResult({
+  static Future<void> cachePrecomposedResult({
     required String resourceId,
     required String pose,
     required String expression,
     String? compositePath,
     GpuCompositeEntry? gpuEntry,
-  }) {
+  }) async {
     final cacheKey = '${resourceId}_${pose}_${expression}';
-
-    print('[CompositeCgRenderer] 缓存注册: $cacheKey (gpu=${gpuEntry != null}, path=${compositePath != null})');
 
     if (gpuEntry != null) {
       _gpuCompletedResults[cacheKey] = gpuEntry.result;
@@ -60,6 +60,19 @@ class CompositeCgRenderer {
       final virtualPath = gpuEntry.virtualPath;
       _completedPaths[cacheKey] = virtualPath;
       _futureCache[cacheKey] = Future.value(virtualPath);
+
+      final flattenTask = _gpuFlattenTasks[cacheKey] ??=
+          _flattenGpuResultToImage(gpuEntry.result);
+      final flattenedImage = await flattenTask;
+      if (flattenedImage != null) {
+        final previous = _preloadedImages[cacheKey];
+        if (previous != null && previous != flattenedImage) {
+          previous.dispose();
+        }
+        _preloadedImages[cacheKey] = flattenedImage;
+      } else {
+        _gpuFlattenTasks.remove(cacheKey);
+      }
     }
 
     if (compositePath != null) {
@@ -230,8 +243,19 @@ class CompositeCgRenderer {
     final currentKey = _currentDisplayedGpuKeys[characterState.resourceId];
     final currentResult = _resolveGpuResult(currentKey);
 
+    if (_preloadedImages.containsKey(cacheKey)) {
+      final preloadedImage = _preloadedImages[cacheKey]!;
+      _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+
+      return DirectCgDisplay(
+        key: ValueKey('direct_display_gpu_${characterState.resourceId}'),
+        image: preloadedImage,
+        resourceId: characterState.resourceId,
+        isFadingOut: characterState.isFadingOut,
+      );
+    }
+
     if (_gpuPreloadedResults.containsKey(cacheKey)) {
-      print('[CompositeCgRenderer] 🟢 直接显示预加载GPU结果: $cacheKey');
       final preloadedResult = _gpuPreloadedResults[cacheKey]!;
       _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
 
@@ -244,7 +268,6 @@ class CompositeCgRenderer {
     }
 
     if (_gpuCompletedResults.containsKey(cacheKey)) {
-      print('[CompositeCgRenderer] 🔁 使用已完成GPU结果: $cacheKey');
       final completedResult = _gpuCompletedResults[cacheKey]!;
       _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
 
@@ -258,7 +281,6 @@ class CompositeCgRenderer {
     }
 
     if (!_gpuFutureCache.containsKey(cacheKey)) {
-      print('[CompositeCgRenderer] 🔄 缓存未命中，创建GPU合成Future: $cacheKey');
       _gpuFutureCache[cacheKey] = _gpuCompositor
           .getCompositeEntry(
         resourceId: characterState.resourceId,
@@ -266,7 +288,6 @@ class CompositeCgRenderer {
         expression: characterState.expression ?? 'happy',
       )
           .then((entry) {
-        print('[CompositeCgRenderer] ✅ Future完成: $cacheKey, 成功=${entry != null}');
         if (entry != null) {
           _gpuCompletedResults[cacheKey] = entry.result;
           _gpuPreloadedResults[cacheKey] = entry.result;
@@ -338,6 +359,41 @@ class CompositeCgRenderer {
     return _gpuCompletedResults[cacheKey] ??
         _gpuPreloadedResults[cacheKey] ??
         _gpuCompositor.getCachedResult(cacheKey);
+  }
+
+  static Future<ui.Image?> _flattenGpuResultToImage(
+    GpuCompositeResult result,
+  ) async {
+    try {
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      final width = result.width.toDouble();
+      final height = result.height.toDouble();
+
+      final targetRect = ui.Rect.fromLTWH(0, 0, width, height);
+      final paint = ui.Paint()
+        ..isAntiAlias = false
+        ..filterQuality = ui.FilterQuality.none;
+
+      for (var layerIndex = 0; layerIndex < result.layers.length; layerIndex++) {
+        final layer = result.layers[layerIndex];
+        final srcRect = ui.Rect.fromLTWH(
+          0,
+          0,
+          layer.width.toDouble(),
+          layer.height.toDouble(),
+        );
+        paint.blendMode = layerIndex == 0 ? ui.BlendMode.src : ui.BlendMode.srcOver;
+        canvas.drawImageRect(layer, srcRect, targetRect, paint);
+      }
+
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(result.width, result.height);
+      picture.dispose();
+      return image;
+    } catch (_) {
+      return null;
+    }
   }
   
   /// 加载并缓存图像到内存（关键方法）
@@ -452,6 +508,7 @@ class CompositeCgRenderer {
     _gpuCompletedResults.clear();
     _gpuPreloadedResults.clear();
     _currentDisplayedGpuKeys.clear();
+    _gpuFlattenTasks.clear();
     
     // 释放预加载的图像内存
     for (final image in _preloadedImages.values) {
