@@ -18,6 +18,7 @@ import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
+import 'package:sakiengine/src/utils/smart_cg_predictor.dart';
 import 'package:sakiengine/src/utils/cg_script_pre_analyzer.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/cg_pre_warm_manager.dart';
@@ -106,6 +107,9 @@ class GameManager {
   
   // CG脚本预分析器
   final CgScriptPreAnalyzer _cgPreAnalyzer = CgScriptPreAnalyzer();
+  
+  // 智能CG预测器
+  final SmartCgPredictor _smartPredictor = SmartCgPredictor();
   
   /// 检测并播放角色属性变化动画（用于pose切换）
   Future<void> _checkAndAnimatePoseAttributeChanges({
@@ -256,55 +260,155 @@ class GameManager {
     }
   }
 
-  /// 分析脚本中的所有CG组合并预热
-  void _analyzeCgCombinationsAndPreWarm() {
+  /// 智能分析并预热局部CG组合
+  void _analyzeCgCombinationsAndPreWarm({bool isLoadGame = false}) {
     if (kDebugMode) {
-      print('[GameManager] 开始分析脚本中的CG组合...');
+      print('[GameManager] 初始化智能CG预热... (读档模式: $isLoadGame)');
+      print('[GameManager] 当前脚本索引: $_scriptIndex');
     }
     
-    // 使用预分析器分析所有CG组合
-    final cgCombinations = _cgPreAnalyzer.analyzeAllCgCombinations(_script.children);
-    
-    // 异步预热所有发现的组合
-    Future.microtask(() async {
-      int totalPrewarmed = 0;
-      
-      for (final entry in cgCombinations.entries) {
-        final parts = entry.key.split('_');
-        if (parts.length >= 3) {
-          final resourceId = parts.sublist(0, parts.length - 1).join('_');
-          final pose = parts.last;
-          final expressions = entry.value;
-          
+    // 获取当前标签
+    String? currentLabel;
+    if (_scriptIndex < _script.children.length) {
+      // 向前查找最近的标签
+      for (int i = _scriptIndex; i >= 0; i--) {
+        final node = _script.children[i];
+        if (node is LabelNode) {
+          currentLabel = node.name;
           if (kDebugMode) {
-            print('[GameManager] 预热 $resourceId $pose 的差分: ${expressions.toList()}');
+            print('[GameManager] 向前查找找到标签: $currentLabel (位置: $i)');
           }
-          
-          for (final expression in expressions) {
-            try {
-              // 通过预分析器预热
-              await _cgPreAnalyzer.precomposeCg(
-                resourceId: resourceId,
-                pose: pose,
-                expression: expression,
-              );
-              totalPrewarmed++;
-              
-              // 小延迟避免阻塞
-              if (totalPrewarmed % 3 == 0) {
-                await Future.delayed(const Duration(milliseconds: 5));
-              }
-            } catch (e) {
-              // 静默处理失败
-            }
-          }
+          break;
         }
       }
       
-      if (kDebugMode) {
-        print('[GameManager] CG预热完成！共预热 $totalPrewarmed 个组合');
+      // 如果向前没找到，向后查找最近的标签
+      if (currentLabel == null) {
+        for (int i = _scriptIndex; i < _script.children.length; i++) {
+          final node = _script.children[i];
+          if (node is LabelNode) {
+            currentLabel = node.name;
+            if (kDebugMode) {
+              print('[GameManager] 向后查找找到标签: $currentLabel (位置: $i)');
+            }
+            break;
+          }
+        }
       }
-    });
+    }
+    
+    // 如果是新游戏且在位置0没找到标签，向后查找第一个标签
+    if (!isLoadGame && _scriptIndex == 0 && currentLabel == null) {
+      for (int i = 0; i < _script.children.length; i++) {
+        final node = _script.children[i];
+        if (node is LabelNode) {
+          currentLabel = node.name;
+          if (kDebugMode) {
+            print('[GameManager] 新游戏模式，找到第一个标签: $currentLabel (位置: $i)');
+          }
+          break;
+        }
+      }
+    }
+    
+    if (currentLabel == null) {
+      if (kDebugMode) {
+        print('[GameManager] ⚠️ 警告：在位置 $_scriptIndex 没有找到标签！使用基于位置的预热');
+      }
+    }
+    
+    // 使用智能预热
+    _smartPredictor.smartPreWarm(
+      scriptNodes: _script.children,
+      currentIndex: _scriptIndex,
+      currentLabel: currentLabel,
+    );
+  }
+  
+  /// 轻量级初始预热 - 只预热游戏开始附近的少量CG
+  void _performLightweightInitialPreWarm() {
+    if (kDebugMode) {
+      print('[GameManager] 开始轻量级初始预热');
+    }
+    
+    // 只搜索前200行的CG组合
+    final lightRange = 200;
+    final combinations = <String, Set<String>>{};
+    
+    for (int i = 0; i < lightRange && i < _script.children.length; i++) {
+      final node = _script.children[i];
+      if (node is CgNode) {
+        final resourceId = node.character;
+        final pose = node.pose ?? 'pose1';
+        final expression = node.expression ?? 'happy';
+        
+        final key = '${resourceId}_$pose';
+        if (!combinations.containsKey(key)) {
+          combinations[key] = <String>{};
+        }
+        combinations[key]!.add(expression);
+        
+        // 限制最多预热5个CG组合，避免过度预热
+        if (combinations.length >= 5) break;
+      }
+    }
+    
+    if (combinations.isNotEmpty) {
+      if (kDebugMode) {
+        print('[GameManager] 轻量级预热找到 ${combinations.length} 个CG组合');
+        combinations.forEach((key, expressions) {
+          print('  轻量级CG: $key -> ${expressions.take(2).toList()}'); // 只显示前2个表情
+        });
+      }
+      
+      // 异步预热，延迟执行避免影响启动速度
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _preWarmLightweightCombinations(combinations);
+      });
+    } else {
+      if (kDebugMode) {
+        print('[GameManager] 轻量级预热未发现CG组合');
+      }
+    }
+  }
+  
+  /// 预热轻量级组合
+  void _preWarmLightweightCombinations(Map<String, Set<String>> combinations) async {
+    int totalPrewarmed = 0;
+    
+    for (final entry in combinations.entries) {
+      final parts = entry.key.split('_');
+      if (parts.length >= 3) {
+        final resourceId = parts.sublist(0, parts.length - 1).join('_');
+        final pose = parts.last;
+        final expressions = entry.value;
+        
+        // 每个组合只预热前2个表情
+        final limitedExpressions = expressions.take(2);
+        
+        for (final expression in limitedExpressions) {
+          try {
+            await CgScriptPreAnalyzer().precomposeCg(
+              resourceId: resourceId,
+              pose: pose,
+              expression: expression,
+            );
+            totalPrewarmed++;
+            
+            // 每个预热后暂停一下，避免阻塞UI
+            if (totalPrewarmed % 2 == 0) {
+              await Future.delayed(const Duration(milliseconds: 50));
+            }
+          } catch (e) {
+            // 静默处理失败
+          }
+        }
+      }
+    }
+    
+    if (kDebugMode) {
+      print('[GameManager] 轻量级预热完成！共预热 $totalPrewarmed 个组合');
+    }
   }
 
   /// 分析脚本并预加载anime资源
@@ -654,7 +758,7 @@ class GameManager {
     _buildMusicRegions(); // 构建音乐区间
     
     // 分析脚本中的所有CG组合并预热
-    _analyzeCgCombinationsAndPreWarm();
+    _analyzeCgCombinationsAndPreWarm(isLoadGame: false);
     
     // 启动CG预热管理器
     CgPreWarmManager().start();
@@ -795,6 +899,26 @@ class GameManager {
         lookAheadLines: _isFastForwardMode ? 50 : 10,
         isSkipping: _isFastForwardMode,
       );
+      
+      // 智能预测器：每10个节点更新一次预热范围
+      if (_scriptIndex % 10 == 0) {
+        // 获取当前标签
+        String? currentLabel;
+        for (int i = _scriptIndex; i >= 0; i--) {
+          final checkNode = _script.children[i];
+          if (checkNode is LabelNode) {
+            currentLabel = checkNode.name;
+            break;
+          }
+        }
+        
+        // 更新智能预热
+        _smartPredictor.smartPreWarm(
+          scriptNodes: _script.children,
+          currentIndex: _scriptIndex,
+          currentLabel: currentLabel,
+        );
+      }
 
       // 跳过注释节点（文件边界标记）
       if (node is CommentNode) {
@@ -1879,8 +2003,12 @@ class GameManager {
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
     
-    // 分析脚本中的所有CG组合并预热（存档恢复时也需要）
-    _analyzeCgCombinationsAndPreWarm();
+    //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
+    
+    _scriptIndex = snapshot.scriptIndex;
+    
+    // 分析脚本中的所有CG组合并预热（在恢复索引后）
+    _analyzeCgCombinationsAndPreWarm(isLoadGame: true);
     
     // 预加载anime资源（同步执行）
     try {
@@ -1890,9 +2018,6 @@ class GameManager {
         ////print('[GameManager] 存档恢复：预加载anime资源失败: $e');
       }
     }
-    //print('📚 加载合并脚本后: _script.children.length = ${_script.children.length}');
-    
-    _scriptIndex = snapshot.scriptIndex;
     
     // 重置所有处理标志，确保恢复状态时没有遗留的锁定状态
     _isProcessing = false;

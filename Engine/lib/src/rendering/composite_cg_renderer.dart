@@ -194,20 +194,20 @@ class CompositeCgRenderer {
         // 缓存完成的路径
         _completedPaths[cacheKey] = compositeImagePath;
         
-        // 关键：同时将图像加载到内存缓存中
-        final file = File(compositeImagePath);
-        print('[CompositeCgRenderer] 文件存在: ${await file.exists()}');
+        // 关键修复：从内存缓存获取图像数据而不是检查文件系统
+        final imageBytes = CgImageCompositor().getImageBytes(compositeImagePath);
+        print('[CompositeCgRenderer] 内存缓存存在: ${imageBytes != null}');
         
-        if (await file.exists()) {
-          final bytes = await file.readAsBytes();
-          final codec = await ui.instantiateImageCodec(bytes);
+        if (imageBytes != null) {
+          // 将字节数据转换为ui.Image
+          final codec = await ui.instantiateImageCodec(imageBytes);
           final frame = await codec.getNextFrame();
           
           // 缓存到内存，确保下次访问时没有"第一次加载"
           _preloadedImages[cacheKey] = frame.image;
           print('[CompositeCgRenderer] 成功缓存到内存: $cacheKey, 总缓存数: ${_preloadedImages.length}');
         } else {
-          print('[CompositeCgRenderer] 文件不存在: $compositeImagePath');
+          print('[CompositeCgRenderer] 内存缓存中无数据: $compositeImagePath');
         }
         
         // 更新当前显示的图像
@@ -470,6 +470,30 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
 
   Future<void> _loadAndSetImage(String imagePath) async {
     try {
+      // 修复：优先从内存缓存获取图像数据
+      final imageBytes = CgImageCompositor().getImageBytes(imagePath);
+      if (imageBytes != null) {
+        final codec = await ui.instantiateImageCodec(imageBytes);
+        final frame = await codec.getNextFrame();
+        
+        if (mounted) {
+          // 关键修复：只有在成功加载新图像后才替换显示的图像
+          final oldImage = _displayedImage;
+          
+          setState(() {
+            _displayedImage = frame.image;
+          });
+          
+          // 开始淡入动画
+          _fadeController.forward();
+          
+          // 释放旧图像
+          oldImage?.dispose();
+        }
+        return;
+      }
+      
+      // 降级到文件系统（兼容性处理）
       final file = File(imagePath);
       if (!await file.exists()) return;
 
