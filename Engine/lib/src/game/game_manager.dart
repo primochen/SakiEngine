@@ -25,6 +25,7 @@ import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/cg_pre_warm_manager.dart';
 import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
+import 'package:sakiengine/src/utils/character_composite_cache.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 
 /// 音乐区间类
@@ -1200,6 +1201,13 @@ class GameManager {
         if (!_isFastForwardMode) {
           await _checkAndAnimateCharacterPositions(tempCharacters);
         }
+
+        final targetPose = node.pose ?? currentCharacterState.pose ?? 'pose1';
+        final targetExpression =
+            node.expression ?? currentCharacterState.expression ?? 'happy';
+
+        await CharacterCompositeCache.instance
+            .preload(resourceId, targetPose, targetExpression);
 
         newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
           pose: node.pose,
