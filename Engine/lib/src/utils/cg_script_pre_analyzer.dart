@@ -122,9 +122,10 @@ class CgScriptPreAnalyzer {
     String expression, 
     String cacheKey
   ) async {
+    final startTime = DateTime.now();
     try {
       if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] 后台预合成和预热: $resourceId $pose $expression');
+        print('[CgScriptPreAnalyzer] 开始预合成: $resourceId $pose $expression');
       }
       
       // 1. 首先进行图像合成
@@ -135,8 +136,11 @@ class CgScriptPreAnalyzer {
       );
       
       if (compositePath != null) {
+        final compositionTime = DateTime.now();
+        final compositionDuration = compositionTime.difference(startTime).inMilliseconds;
+        
         if (kDebugMode) {
-          print('[CgScriptPreAnalyzer] ✅ 预合成完成: $compositePath');
+          print('[CgScriptPreAnalyzer] ✅ 图像合成完成 ($compositionDuration ms): $compositePath');
         }
         
         // 2. 立即启动预热任务（高优先级，因为即将出现）
@@ -147,14 +151,21 @@ class CgScriptPreAnalyzer {
           priority: PreWarmPriority.high,
         );
         
+        final endTime = DateTime.now();
+        final totalDuration = endTime.difference(startTime).inMilliseconds;
+        final preWarmDuration = endTime.difference(compositionTime).inMilliseconds;
+        
         if (kDebugMode) {
-          print('[CgScriptPreAnalyzer] 🔥 预热任务已启动: $cacheKey');
+          print('[CgScriptPreAnalyzer] 🔥 预热完成 ($preWarmDuration ms): $cacheKey');
+          print('[CgScriptPreAnalyzer] 📊 总耗时 $totalDuration ms (合成: $compositionDuration ms, 预热: $preWarmDuration ms): $resourceId $pose $expression');
         }
       }
       
     } catch (e) {
+      final endTime = DateTime.now();
+      final totalDuration = endTime.difference(startTime).inMilliseconds;
       if (kDebugMode) {
-        print('[CgScriptPreAnalyzer] 后台合成和预热失败: $e');
+        print('[CgScriptPreAnalyzer] ❌ 预合成失败 ($totalDuration ms): $e');
       }
     } finally {
       // 清理任务记录
