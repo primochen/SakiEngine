@@ -1,5 +1,6 @@
-import 'dart:ui' as ui;
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
@@ -273,36 +274,36 @@ class CgPreWarmManager {
         //print('[CgPreWarmManager] 🔥 开始预热: ${task.cacheKey} (优先级: ${task.priority.name})');
       }
       
-      // 首先确保图像已合成到内存缓存 - 使用GPU加速器
-      String? imagePath;
       if (_useGpuAcceleration) {
-        imagePath = await _gpuCompositor.getCompositeImagePath(
+        final entry = await _gpuCompositor.getCompositeEntry(
           resourceId: task.resourceId,
           pose: task.pose,
           expression: task.expression,
         );
+
+        if (entry == null) {
+          throw Exception('Failed to compose image');
+        }
+
+        await _performGpuPreWarm(task.cacheKey, entry.result);
       } else {
-        imagePath = await _compositor.getCompositeImagePath(
+        final imagePath = await _compositor.getCompositeImagePath(
           resourceId: task.resourceId,
           pose: task.pose,
           expression: task.expression,
         );
+
+        if (imagePath == null) {
+          throw Exception('Failed to compose image');
+        }
+
+        final imageBytes = _compositor.getImageBytes(imagePath);
+        if (imageBytes == null) {
+          throw Exception('Failed to get image bytes');
+        }
+
+        await _performCpuPreWarm(task.cacheKey, imageBytes);
       }
-      
-      if (imagePath == null) {
-        throw Exception('Failed to compose image');
-      }
-      
-      // 获取图像字节数据 - 根据合成器类型选择
-      final imageBytes = _useGpuAcceleration 
-          ? _gpuCompositor.getImageBytes(imagePath)
-          : _compositor.getImageBytes(imagePath);
-      if (imageBytes == null) {
-        throw Exception('Failed to get image bytes');
-      }
-      
-      // 进行预热：解码并创建ui.Image对象
-      await _performPreWarm(task.cacheKey, imageBytes);
       
       // 标记完成
       _warmStatus[task.cacheKey] = PreWarmStatus.warmed;
@@ -324,8 +325,8 @@ class CgPreWarmManager {
     }
   }
 
-  /// 执行实际的预热操作
-  Future<void> _performPreWarm(String cacheKey, Uint8List imageBytes) async {
+  /// 执行 CPU 合成路径的预热操作
+  Future<void> _performCpuPreWarm(String cacheKey, Uint8List imageBytes) async {
     // 解码图像
     final codec = await ui.instantiateImageCodec(imageBytes);
     final frame = await codec.getNextFrame();
@@ -350,6 +351,47 @@ class CgPreWarmManager {
     
     // 缓存预热后的Image对象（可选，用于极致性能）
     _cachePreWarmedImage(cacheKey, preWarmRaster);
+  }
+
+  /// 执行 GPU 图层的预热操作
+  Future<void> _performGpuPreWarm(
+    String cacheKey,
+    GpuCompositeResult result,
+  ) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+
+    final targetRect = ui.Rect.fromLTWH(
+      0,
+      0,
+      result.width.toDouble(),
+      result.height.toDouble(),
+    );
+    final srcRect = ui.Rect.fromLTWH(
+      0,
+      0,
+      result.width.toDouble(),
+      result.height.toDouble(),
+    );
+    final paint = ui.Paint()
+      ..isAntiAlias = false
+      ..filterQuality = ui.FilterQuality.none;
+
+    for (var i = 0; i < result.layers.length; i++) {
+      paint.blendMode = i == 0 ? ui.BlendMode.src : ui.BlendMode.srcOver;
+      canvas.drawImageRect(
+        result.layers[i],
+        srcRect,
+        targetRect,
+        paint,
+      );
+    }
+
+    final picture = recorder.endRecording();
+    final raster = await picture.toImage(result.width, result.height);
+    picture.dispose();
+
+    _cachePreWarmedImage(cacheKey, raster);
   }
 
   /// 缓存预热后的图像

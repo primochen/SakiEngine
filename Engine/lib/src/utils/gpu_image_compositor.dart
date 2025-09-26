@@ -1,8 +1,48 @@
+import 'dart:collection';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
+
+/// GPU 合成结果，包含所有需要在 GPU 上绘制的图层
+class GpuCompositeResult {
+  GpuCompositeResult({
+    required List<ui.Image> layers,
+    required this.width,
+    required this.height,
+  }) : layers = UnmodifiableListView<ui.Image>(layers);
+
+  /// 参与绘制的所有图层（已经解码为 GPU 纹理）
+  final UnmodifiableListView<ui.Image> layers;
+
+  /// 合成画布宽度（像素）
+  final int width;
+
+  /// 合成画布高度（像素）
+  final int height;
+
+  /// 释放所有图层资源
+  void dispose() {
+    for (final image in layers) {
+      image.dispose();
+    }
+  }
+}
+
+/// GPU 合成条目，包含缓存键、虚拟路径以及合成结果
+class GpuCompositeEntry {
+  const GpuCompositeEntry({
+    required this.cacheKey,
+    required this.virtualPath,
+    required this.result,
+  });
+
+  final String cacheKey;
+  final String virtualPath;
+  final GpuCompositeResult result;
+}
 
 /// GPU加速图像合成器
 /// 
@@ -17,9 +57,10 @@ class GpuImageCompositor {
   GpuImageCompositor._internal();
 
   /// 内存缓存
-  final Map<String, Uint8List> _imageCache = {};
-  final Map<String, String> _compositePathCache = {};
-  final Map<String, Future<String?>> _compositingTasks = {};
+  final Map<String, GpuCompositeEntry> _entryCache = <String, GpuCompositeEntry>{};
+  final Map<String, String> _pathToCacheKey = <String, String>{};
+  final Map<String, Future<GpuCompositeEntry?>> _compositingTasks =
+      <String, Future<GpuCompositeEntry?>>{};
   
   /// GPU加速可用性检查
   bool _gpuAvailable = false;
@@ -62,24 +103,78 @@ class GpuImageCompositor {
     required String pose,
     required String expression,
   }) async {
+    final entry = await _getOrCreateEntry(
+      resourceId: resourceId,
+      pose: pose,
+      expression: expression,
+    );
+
+    return entry?.virtualPath;
+  }
+
+  /// 获取 GPU 合成结果（仅包含内存中的图层数据）
+  Future<GpuCompositeResult?> getCompositeResult({
+    required String resourceId,
+    required String pose,
+    required String expression,
+  }) async {
+    final entry = await _getOrCreateEntry(
+      resourceId: resourceId,
+      pose: pose,
+      expression: expression,
+    );
+    return entry?.result;
+  }
+
+  /// 获取完整的合成条目（带虚拟路径）
+  Future<GpuCompositeEntry?> getCompositeEntry({
+    required String resourceId,
+    required String pose,
+    required String expression,
+  }) {
+    return _getOrCreateEntry(
+      resourceId: resourceId,
+      pose: pose,
+      expression: expression,
+    );
+  }
+
+  /// 读取已缓存的 GPU 合成结果
+  GpuCompositeResult? getCachedResult(String keyOrPath) {
+    final cacheKey = keyOrPath.startsWith('/gpu_cache/')
+        ? _pathToCacheKey[keyOrPath]
+        : keyOrPath;
+    if (cacheKey == null) return null;
+    return _entryCache[cacheKey]?.result;
+  }
+
+  /// 获取（或创建）完整的合成条目
+  Future<GpuCompositeEntry?> _getOrCreateEntry({
+    required String resourceId,
+    required String pose,
+    required String expression,
+  }) async {
     final cacheKey = _generateCacheKey(resourceId, pose, expression);
-    
-    // 检查缓存
-    if (_compositePathCache.containsKey(cacheKey) && _imageCache.containsKey(cacheKey)) {
-      return _compositePathCache[cacheKey];
+
+    // 命中缓存
+    final cachedEntry = _entryCache[cacheKey];
+    if (cachedEntry != null) {
+      return cachedEntry;
     }
 
-    // 检查是否正在处理
-    if (_compositingTasks.containsKey(cacheKey)) {
-      return await _compositingTasks[cacheKey];
+    // 是否已有并发任务
+    final existingTask = _compositingTasks[cacheKey];
+    if (existingTask != null) {
+      return await existingTask;
     }
 
-    // 开始新的合成任务
-    final compositeTask = _performOptimizedComposition(resourceId, pose, expression, cacheKey);
-    _compositingTasks[cacheKey] = compositeTask;
+    final compositionTask =
+        _performOptimizedComposition(resourceId, pose, expression, cacheKey);
+    _compositingTasks[cacheKey] = compositionTask;
 
     try {
-      return await compositeTask;
+      final entry = await compositionTask;
+      return entry;
     } finally {
       _compositingTasks.remove(cacheKey);
     }
@@ -88,64 +183,47 @@ class GpuImageCompositor {
   /// 批量GPU合成（性能优化核心）
   Future<List<String?>> batchCompose(List<Map<String, String>> requests) async {
     await _checkGpuAvailability();
-    
-    if (!_gpuAvailable) {
-      // GPU不可用，使用优化的CPU批量处理
-      return await _batchCpuComposition(requests);
-    }
 
-    final results = <String?>[];
-    
-    // 并行处理所有请求（移除GPU纹理限制）
-    final batchResults = await _processBatchOptimized(requests);
-    results.addAll(batchResults);
-    
-    return results;
-  }
-
-  /// 优化批量处理
-  Future<List<String?>> _processBatchOptimized(List<Map<String, String>> batch) async {
     final startTime = DateTime.now();
-    
+
     try {
-      // 并行处理所有合成任务
-      final compositeTasks = batch.map((request) {
+      final tasks = requests.map((request) {
         final resourceId = request['resourceId']!;
         final pose = request['pose'] ?? 'pose1';
         final expression = request['expression'] ?? 'happy';
-        
-        return _performOptimizedComposition(resourceId, pose, expression, 
-            _generateCacheKey(resourceId, pose, expression));
+        return _getOrCreateEntry(
+          resourceId: resourceId,
+          pose: pose,
+          expression: expression,
+        );
       }).toList();
-      
-      final results = await Future.wait(compositeTasks, eagerError: false);
-      
+
+      final entries = await Future.wait(tasks, eagerError: false);
+
       final duration = DateTime.now().difference(startTime).inMilliseconds;
       if (kDebugMode) {
-        print('[GpuImageCompositor] ⚡ 优化批量处理${batch.length}张图像耗时: ${duration}ms');
+        print('[GpuImageCompositor] ⚡ 批量准备 ${requests.length} 组图层耗时: ${duration}ms');
       }
-      
-      return results;
+
+      return entries.map((entry) => entry?.virtualPath).toList();
     } catch (e) {
       if (kDebugMode) {
         print('[GpuImageCompositor] ❌ 批量处理失败: $e');
       }
-      return List.filled(batch.length, null);
+      return List<String?>.filled(requests.length, null);
     }
   }
 
-  /// 执行优化合成
-  Future<String?> _performOptimizedComposition(String resourceId, String pose, String expression, String cacheKey) async {
+  /// 执行优化合成，准备 GPU 渲染所需的图层
+  Future<GpuCompositeEntry?> _performOptimizedComposition(
+    String resourceId,
+    String pose,
+    String expression,
+    String cacheKey,
+  ) async {
     final startTime = DateTime.now();
     
     try {
-      // 检查缓存
-      if (_imageCache.containsKey(cacheKey)) {
-        final virtualPath = _generateVirtualPath(cacheKey);
-        _compositePathCache[cacheKey] = virtualPath;
-        return virtualPath;
-      }
-
       await _checkGpuAvailability();
 
       // 解析图层信息
@@ -162,38 +240,41 @@ class GpuImageCompositor {
           _loadLayerImageAsync(layerInfo.assetName)).toList();
       
       final layerImages = await Future.wait(layerLoadTasks);
-      final validImages = layerImages.where((img) => img != null).cast<ui.Image>().toList();
+      final validImages =
+          layerImages.whereType<ui.Image>().toList(growable: false);
 
-      if (validImages.isEmpty) return null;
+      if (validImages.isEmpty) {
+        return null;
+      }
 
       final loadTime = DateTime.now().difference(startTime).inMilliseconds;
 
-      // 优化合成（使用高效的CPU方法）
-      final compositeImage = await _optimizedComposeImages(validImages);
+      final width = validImages.first.width;
+      final height = validImages.first.height;
 
-      if (compositeImage == null) return null;
+      final result = GpuCompositeResult(
+        layers: validImages,
+        width: width,
+        height: height,
+      );
 
-      final composeTime = DateTime.now().difference(startTime).inMilliseconds - loadTime;
+      final virtualPath = _generateVirtualPath(cacheKey);
+      final entry = GpuCompositeEntry(
+        cacheKey: cacheKey,
+        virtualPath: virtualPath,
+        result: result,
+      );
 
-      // 保存到内存缓存
-      final success = await _saveCompositeToMemory(compositeImage, cacheKey);
-      if (!success) return null;
+      _entryCache[cacheKey] = entry;
+      _pathToCacheKey[virtualPath] = cacheKey;
 
       final totalTime = DateTime.now().difference(startTime).inMilliseconds;
 
       if (kDebugMode) {
-        print('[GpuImageCompositor] ⚡ 优化合成完成 $cacheKey: 加载${loadTime}ms + 合成${composeTime}ms = 总计${totalTime}ms');
+        print('[GpuImageCompositor] ⚡ 准备 GPU 图层 $cacheKey: 加载${loadTime}ms，总耗时${totalTime}ms');
       }
 
-      // 清理资源
-      for (final image in validImages) {
-        image.dispose();
-      }
-      compositeImage.dispose();
-
-      final virtualPath = _generateVirtualPath(cacheKey);
-      _compositePathCache[cacheKey] = virtualPath;
-      return virtualPath;
+      return entry;
 
     } catch (e) {
       final errorTime = DateTime.now().difference(startTime).inMilliseconds;
@@ -202,48 +283,6 @@ class GpuImageCompositor {
       }
       return null;
     }
-  }
-
-  /// 优化的图像合成方法
-  Future<ui.Image?> _optimizedComposeImages(List<ui.Image> layerImages) async {
-    if (layerImages.isEmpty) return null;
-
-    final baseImage = layerImages.first;
-    final canvasWidth = baseImage.width;
-    final canvasHeight = baseImage.height;
-
-    // 创建高性能画布
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-    final canvasRect = ui.Rect.fromLTWH(0, 0, canvasWidth.toDouble(), canvasHeight.toDouble());
-
-    // 优化的绘制参数
-    final paint = ui.Paint()
-      ..isAntiAlias = false        // 禁用抗锯齿提升性能
-      ..filterQuality = ui.FilterQuality.none  // 最快的过滤质量
-      ..blendMode = ui.BlendMode.srcOver;      // 最适合图层叠加的混合模式
-
-    // 按图层顺序快速绘制
-    for (int i = 0; i < layerImages.length; i++) {
-      final image = layerImages[i];
-      final srcRect = ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
-      
-      // 对于第一张图片使用src模式，后续使用srcOver
-      if (i == 0) {
-        paint.blendMode = ui.BlendMode.src;
-      } else {
-        paint.blendMode = ui.BlendMode.srcOver;
-      }
-      
-      canvas.drawImageRect(image, srcRect, canvasRect, paint);
-    }
-
-    // 完成绘制
-    final picture = recorder.endRecording();
-    final compositeImage = await picture.toImage(canvasWidth, canvasHeight);
-    picture.dispose();
-
-    return compositeImage;
   }
 
   /// 异步加载图层图像
@@ -258,64 +297,19 @@ class GpuImageCompositor {
     }
   }
 
-  /// CPU批量处理回退
-  Future<List<String?>> _batchCpuComposition(List<Map<String, String>> requests) async {
-    final startTime = DateTime.now();
-    
-    // 并行处理所有请求
-    final compositeTasks = requests.map((request) {
-      final resourceId = request['resourceId']!;
-      final pose = request['pose'] ?? 'pose1';
-      final expression = request['expression'] ?? 'happy';
-      final cacheKey = _generateCacheKey(resourceId, pose, expression);
-      
-      return _performOptimizedComposition(resourceId, pose, expression, cacheKey);
-    }).toList();
-
-    final results = await Future.wait(compositeTasks, eagerError: false);
-    
-    final duration = DateTime.now().difference(startTime).inMilliseconds;
-    if (kDebugMode) {
-      print('[GpuImageCompositor] 🔄 CPU批量处理${requests.length}张图像耗时: ${duration}ms');
-    }
-    
-    return results;
-  }
-
-  /// 保存合成图像到内存
-  Future<bool> _saveCompositeToMemory(ui.Image image, String cacheKey) async {
-    try {
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return false;
-
-      final bytes = byteData.buffer.asUint8List();
-      _imageCache[cacheKey] = bytes;
-      
-      if (kDebugMode) {
-        print('[GpuImageCompositor] 💾 缓存保存: $cacheKey (${bytes.length} bytes)');
-      }
-      
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
   /// 获取缓存图像字节
   Uint8List? getImageBytes(String pathOrKey) {
-    if (pathOrKey.startsWith('/gpu_cache/cg_cache/')) {
-      final filename = pathOrKey.split('/').last;
-      final cacheKey = filename.replaceAll('.png', '');
-      return _imageCache[cacheKey];
-    }
-    
-    return _imageCache[pathOrKey];
+    // GPU 渲染路径不再返回 CPU 合成的二进制数据
+    return null;
   }
 
   /// 清理缓存
   Future<void> clearCache() async {
-    _imageCache.clear();
-    _compositePathCache.clear();
+    for (final entry in _entryCache.values) {
+      entry.result.dispose();
+    }
+    _entryCache.clear();
+    _pathToCacheKey.clear();
     _compositingTasks.clear();
     
     if (kDebugMode) {
@@ -325,13 +319,16 @@ class GpuImageCompositor {
 
   /// 获取缓存统计
   Map<String, dynamic> getCacheStats() {
-    int totalSize = _imageCache.values.fold(0, (sum, bytes) => sum + bytes.length);
-    
+    final totalLayers = _entryCache.values.fold<int>(
+      0,
+      (previousValue, entry) => previousValue + entry.result.layers.length,
+    );
+
     return {
-      'cache_type': 'optimized_cpu',
+      'cache_type': 'gpu_layers',
       'gpu_available': _gpuAvailable,
-      'cached_images': _imageCache.length,
-      'total_size': totalSize,
+      'cached_entries': _entryCache.length,
+      'total_layers': totalLayers,
       'active_tasks': _compositingTasks.length,
     };
   }

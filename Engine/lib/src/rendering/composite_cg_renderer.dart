@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
@@ -31,6 +33,12 @@ class CompositeCgRenderer {
   
   // 预加载完成的图像缓存（关键：确保没有"第一次加载"）
   static final Map<String, ui.Image> _preloadedImages = {};
+
+  // GPU 纹理缓存与状态
+  static final Map<String, Future<GpuCompositeEntry?>> _gpuFutureCache = {};
+  static final Map<String, GpuCompositeResult> _gpuCompletedResults = {};
+  static final Map<String, GpuCompositeResult> _gpuPreloadedResults = {};
+  static final Map<String, String> _currentDisplayedGpuKeys = {};
   
   // 预热是否已经开始
   static bool _preWarmingStarted = false;
@@ -57,47 +65,116 @@ class CompositeCgRenderer {
       charactersByResourceId[resourceId] = entry;
     }
     
-    return charactersByResourceId.values.map((entry) {
-      final characterId = entry.key;
-      final characterState = entry.value;
-
-      // 使用resourceId作为key，确保唯一性
-      final widgetKey = 'composite_cg_${characterState.resourceId}';
-      
-      // 生成缓存键用于Future缓存
-      final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
-      
-      // 检查是否需要预显示常见差分
-      final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
-      if (!_preDisplayedCgs.contains(resourceBaseId)) {
-        _preDisplayedCgs.add(resourceBaseId);
-        // 异步预显示常见的差分
-        _preDisplayCommonVariations(characterState.resourceId, characterState.pose ?? 'pose1');
-      }
-      
-      // 获取当前显示的图像路径（用于无缝切换）
-      final currentImagePath = _currentDisplayedImages[characterState.resourceId];
-      
-      // 关键修复：检查是否已经预加载了这个图像
-      if (_preloadedImages.containsKey(cacheKey)) {
-        final preloadedImage = _preloadedImages[cacheKey]!;
-        _currentDisplayedImages[characterState.resourceId] = cacheKey; // 使用cacheKey作为标识
-        
-        return DirectCgDisplay(
-          key: ValueKey('direct_display_${characterState.resourceId}'),
-          image: preloadedImage,
-          resourceId: characterState.resourceId,
-          isFadingOut: characterState.isFadingOut,
+    return charactersByResourceId.values.map<Widget>((entry) {
+      if (_useGpuAcceleration) {
+        return _buildGpuCharacterWidget(
+          context: context,
+          entry: entry,
         );
       }
-      
-      // 检查是否已经有完成的路径
-      if (_completedPaths.containsKey(cacheKey)) {
-        final compositeImagePath = _completedPaths[cacheKey]!;
-        
-        // 更新当前显示的图像
+
+      return _buildCpuCharacterWidget(
+        context: context,
+        entry: entry,
+      );
+    }).toList();
+  }
+  
+  static Widget _buildCpuCharacterWidget({
+    required BuildContext context,
+    required MapEntry<String, CharacterState> entry,
+  }) {
+    final characterState = entry.value;
+
+    final widgetKey = 'composite_cg_${characterState.resourceId}';
+    final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
+
+    final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
+    if (!_preDisplayedCgs.contains(resourceBaseId)) {
+      _preDisplayedCgs.add(resourceBaseId);
+      _preDisplayCommonVariations(characterState.resourceId, characterState.pose ?? 'pose1');
+    }
+
+    final currentImagePath = _currentDisplayedImages[characterState.resourceId];
+
+    if (_preloadedImages.containsKey(cacheKey)) {
+      final preloadedImage = _preloadedImages[cacheKey]!;
+      _currentDisplayedImages[characterState.resourceId] = cacheKey;
+
+      return DirectCgDisplay(
+        key: ValueKey('direct_display_${characterState.resourceId}'),
+        image: preloadedImage,
+        resourceId: characterState.resourceId,
+        isFadingOut: characterState.isFadingOut,
+      );
+    }
+
+    if (_completedPaths.containsKey(cacheKey)) {
+      final compositeImagePath = _completedPaths[cacheKey]!;
+      _currentDisplayedImages[characterState.resourceId] = compositeImagePath;
+
+      return SeamlessCgDisplay(
+        key: ValueKey('seamless_display_${characterState.resourceId}'),
+        newImagePath: compositeImagePath,
+        currentImagePath: currentImagePath,
+        resourceId: characterState.resourceId,
+        isFadingOut: characterState.isFadingOut,
+      );
+    }
+
+    if (!_futureCache.containsKey(cacheKey)) {
+      _futureCache[cacheKey] = _loadAndCacheImage(
+        resourceId: characterState.resourceId,
+        pose: characterState.pose ?? 'pose1',
+        expression: characterState.expression ?? 'happy',
+        cacheKey: cacheKey,
+      );
+    }
+
+    return FutureBuilder<String?>(
+      key: ValueKey(widgetKey),
+      future: _futureCache[cacheKey],
+      builder: (context, snapshot) {
+        final shouldShowCurrent = currentImagePath != null;
+        final hasNewImage = snapshot.hasData && snapshot.data != null;
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          if (shouldShowCurrent) {
+            return SeamlessCgDisplay(
+              key: ValueKey('seamless_display_${characterState.resourceId}'),
+              newImagePath: null,
+              currentImagePath: currentImagePath,
+              resourceId: characterState.resourceId,
+              isFadingOut: characterState.isFadingOut,
+            );
+          }
+          return Container(
+            key: ValueKey('loading_placeholder_${characterState.resourceId}'),
+            width: double.infinity,
+            height: double.infinity,
+          );
+        }
+
+        if (!hasNewImage) {
+          if (shouldShowCurrent) {
+            return SeamlessCgDisplay(
+              key: ValueKey('seamless_display_${characterState.resourceId}'),
+              newImagePath: null,
+              currentImagePath: currentImagePath,
+              resourceId: characterState.resourceId,
+              isFadingOut: characterState.isFadingOut,
+            );
+          }
+          return Container(
+            key: ValueKey('error_placeholder_${characterState.resourceId}'),
+            width: double.infinity,
+            height: double.infinity,
+          );
+        }
+
+        final compositeImagePath = snapshot.data!;
         _currentDisplayedImages[characterState.resourceId] = compositeImagePath;
-        
+
         return SeamlessCgDisplay(
           key: ValueKey('seamless_display_${characterState.resourceId}'),
           newImagePath: compositeImagePath,
@@ -105,78 +182,130 @@ class CompositeCgRenderer {
           resourceId: characterState.resourceId,
           isFadingOut: characterState.isFadingOut,
         );
-      }
-      
-      // 获取或创建Future
-      if (!_futureCache.containsKey(cacheKey)) {
-        _futureCache[cacheKey] = _loadAndCacheImage(
-          resourceId: characterState.resourceId,
-          pose: characterState.pose ?? 'pose1',
-          expression: characterState.expression ?? 'happy',
-          cacheKey: cacheKey,
-        );
-      }
-      
-      return FutureBuilder<String?>(
-        key: ValueKey(widgetKey),
-        future: _futureCache[cacheKey],
-        builder: (context, snapshot) {
-          // 核心修复：无论什么状态都先尝试显示当前图像
-          final shouldShowCurrent = currentImagePath != null;
-          final hasNewImage = snapshot.hasData && snapshot.data != null;
-          
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            // 等待中：如果有当前图像就显示，没有则显示占位符但不返回空白
-            if (shouldShowCurrent) {
-              return SeamlessCgDisplay(
-                key: ValueKey('seamless_display_${characterState.resourceId}'),
-                newImagePath: null, // 正在加载
-                currentImagePath: currentImagePath,
-                resourceId: characterState.resourceId,
-                isFadingOut: characterState.isFadingOut,
-              );
-            }
-            // 首次加载时显示透明占位符，避免布局闪烁
-            return Container(
-              key: ValueKey('loading_placeholder_${characterState.resourceId}'),
-              width: double.infinity,
-              height: double.infinity,
-            );
-          }
-          
-          if (!hasNewImage) {
-            // 加载失败：如果有当前图像继续显示，否则返回占位符
-            if (shouldShowCurrent) {
-              return SeamlessCgDisplay(
-                key: ValueKey('seamless_display_${characterState.resourceId}'),
-                newImagePath: null,
-                currentImagePath: currentImagePath,
-                resourceId: characterState.resourceId,
-                isFadingOut: characterState.isFadingOut,
-              );
-            }
-            return Container(
-              key: ValueKey('error_placeholder_${characterState.resourceId}'),
-              width: double.infinity,
-              height: double.infinity,
-            );
-          }
+      },
+    );
+  }
 
-          final compositeImagePath = snapshot.data!;
-          
-          // 更新当前显示的图像
-          _currentDisplayedImages[characterState.resourceId] = compositeImagePath;
+  static Widget _buildGpuCharacterWidget({
+    required BuildContext context,
+    required MapEntry<String, CharacterState> entry,
+  }) {
+    final characterState = entry.value;
+    final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
-          return SeamlessCgDisplay(
-            key: ValueKey('seamless_display_${characterState.resourceId}'),
-            newImagePath: compositeImagePath,
-            currentImagePath: currentImagePath,
-            resourceId: characterState.resourceId,
-            isFadingOut: characterState.isFadingOut,
-          );
-        },
+    final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
+    if (!_preDisplayedCgs.contains(resourceBaseId)) {
+      _preDisplayedCgs.add(resourceBaseId);
+      _preDisplayCommonVariations(characterState.resourceId, characterState.pose ?? 'pose1');
+    }
+
+    final currentKey = _currentDisplayedGpuKeys[characterState.resourceId];
+    final currentResult = _resolveGpuResult(currentKey);
+
+    if (_gpuPreloadedResults.containsKey(cacheKey)) {
+      final preloadedResult = _gpuPreloadedResults[cacheKey]!;
+      _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+
+      return GpuDirectCgDisplay(
+        key: ValueKey('gpu_direct_${characterState.resourceId}'),
+        result: preloadedResult,
+        resourceId: characterState.resourceId,
+        isFadingOut: characterState.isFadingOut,
       );
-    }).toList();
+    }
+
+    if (_gpuCompletedResults.containsKey(cacheKey)) {
+      final completedResult = _gpuCompletedResults[cacheKey]!;
+      _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+
+      return GpuSeamlessCgDisplay(
+        key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+        newResult: completedResult,
+        currentResult: currentResult,
+        resourceId: characterState.resourceId,
+        isFadingOut: characterState.isFadingOut,
+      );
+    }
+
+    if (!_gpuFutureCache.containsKey(cacheKey)) {
+      _gpuFutureCache[cacheKey] = _gpuCompositor
+          .getCompositeEntry(
+        resourceId: characterState.resourceId,
+        pose: characterState.pose ?? 'pose1',
+        expression: characterState.expression ?? 'happy',
+      )
+          .then((entry) {
+        if (entry != null) {
+          _gpuCompletedResults[cacheKey] = entry.result;
+          _gpuPreloadedResults[cacheKey] = entry.result;
+        }
+        return entry;
+      });
+    }
+
+    return FutureBuilder<GpuCompositeEntry?>(
+      key: ValueKey('gpu_future_${characterState.resourceId}'),
+      future: _gpuFutureCache[cacheKey],
+      builder: (context, snapshot) {
+        final entryData = snapshot.data;
+        final newResult = entryData?.result;
+
+        final hasNewResult = snapshot.hasData && newResult != null;
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          if (currentResult != null) {
+            return GpuSeamlessCgDisplay(
+              key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+              newResult: null,
+              currentResult: currentResult,
+              resourceId: characterState.resourceId,
+              isFadingOut: characterState.isFadingOut,
+            );
+          }
+          return Container(
+            key: ValueKey('gpu_loading_${characterState.resourceId}'),
+            width: double.infinity,
+            height: double.infinity,
+          );
+        }
+
+        if (!hasNewResult) {
+          if (currentResult != null) {
+            return GpuSeamlessCgDisplay(
+              key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+              newResult: null,
+              currentResult: currentResult,
+              resourceId: characterState.resourceId,
+              isFadingOut: characterState.isFadingOut,
+            );
+          }
+          return Container(
+            key: ValueKey('gpu_error_${characterState.resourceId}'),
+            width: double.infinity,
+            height: double.infinity,
+          );
+        }
+
+        _gpuCompletedResults[cacheKey] = newResult;
+        _gpuPreloadedResults[cacheKey] = newResult;
+        _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+
+        return GpuSeamlessCgDisplay(
+          key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+          newResult: newResult,
+          currentResult: currentResult,
+          resourceId: characterState.resourceId,
+          isFadingOut: characterState.isFadingOut,
+        );
+      },
+    );
+  }
+
+  static GpuCompositeResult? _resolveGpuResult(String? cacheKey) {
+    if (cacheKey == null) return null;
+    return _gpuCompletedResults[cacheKey] ??
+        _gpuPreloadedResults[cacheKey] ??
+        _gpuCompositor.getCachedResult(cacheKey);
   }
   
   /// 加载并缓存图像到内存（关键方法）
@@ -189,18 +318,29 @@ class CompositeCgRenderer {
     try {
       print('[CompositeCgRenderer] 开始加载: $cacheKey');
       
-      // 先获取合成图像路径 - 使用GPU加速合成器
-      final compositeImagePath = _useGpuAcceleration 
-          ? await _gpuCompositor.getCompositeImagePath(
-              resourceId: resourceId,
-              pose: pose,
-              expression: expression,
-            )
-          : await _legacyCompositor.getCompositeImagePath(
-              resourceId: resourceId,
-              pose: pose,
-              expression: expression,
-            );
+      if (_useGpuAcceleration) {
+        final entry = await _gpuCompositor.getCompositeEntry(
+          resourceId: resourceId,
+          pose: pose,
+          expression: expression,
+        );
+
+        if (entry == null) {
+          print('[CompositeCgRenderer] 合成失败: $cacheKey');
+          return null;
+        }
+
+        _gpuCompletedResults[cacheKey] = entry.result;
+        _gpuPreloadedResults[cacheKey] = entry.result;
+        return entry.virtualPath;
+      }
+
+      // 先获取合成图像路径 - 使用传统合成器
+      final compositeImagePath = await _legacyCompositor.getCompositeImagePath(
+        resourceId: resourceId,
+        pose: pose,
+        expression: expression,
+      );
       
       print('[CompositeCgRenderer] 合成路径: $compositeImagePath');
       
@@ -208,10 +348,7 @@ class CompositeCgRenderer {
         // 缓存完成的路径
         _completedPaths[cacheKey] = compositeImagePath;
         
-        // 关键修复：从内存缓存获取图像数据而不是检查文件系统 - 使用GPU合成器
-        final imageBytes = _useGpuAcceleration 
-            ? _gpuCompositor.getImageBytes(compositeImagePath)
-            : _legacyCompositor.getImageBytes(compositeImagePath);
+        final imageBytes = _legacyCompositor.getImageBytes(compositeImagePath);
         print('[CompositeCgRenderer] 内存缓存存在: ${imageBytes != null}');
         
         if (imageBytes != null) {
@@ -279,6 +416,10 @@ class CompositeCgRenderer {
     _completedPaths.clear();
     _preDisplayedCgs.clear();
     _currentDisplayedImages.clear();
+    _gpuFutureCache.clear();
+    _gpuCompletedResults.clear();
+    _gpuPreloadedResults.clear();
+    _currentDisplayedGpuKeys.clear();
     
     // 释放预加载的图像内存
     for (final image in _preloadedImages.values) {
@@ -306,6 +447,302 @@ class CompositeCgRenderer {
   
   /// 获取当前GPU加速状态
   static bool get isGpuAccelerationEnabled => _useGpuAcceleration;
+}
+
+/// GPU 直接显示控件（使用 GPU 图层实时合成）
+class GpuDirectCgDisplay extends StatefulWidget {
+  final GpuCompositeResult result;
+  final String resourceId;
+  final bool isFadingOut;
+
+  const GpuDirectCgDisplay({
+    super.key,
+    required this.result,
+    required this.resourceId,
+    this.isFadingOut = false,
+  });
+
+  @override
+  State<GpuDirectCgDisplay> createState() => _GpuDirectCgDisplayState();
+}
+
+class _GpuDirectCgDisplayState extends State<GpuDirectCgDisplay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+      value: widget.isFadingOut ? 0.0 : 1.0,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    );
+
+    if (!widget.isFadingOut) {
+      _fadeController.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant GpuDirectCgDisplay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.result != oldWidget.result) {
+      _fadeController.forward(from: 0.0);
+    }
+
+    if (!oldWidget.isFadingOut && widget.isFadingOut) {
+      _fadeController.reverse();
+    } else if (oldWidget.isFadingOut && !widget.isFadingOut) {
+      _fadeController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _fadeAnimation,
+      builder: (context, child) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return CustomPaint(
+              size: Size(constraints.maxWidth, constraints.maxHeight),
+              painter: GpuCompositePainter(
+                result: widget.result,
+                opacity: _fadeAnimation.value,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// GPU 无缝切换控件，支持在两组图层之间进行平滑过渡
+class GpuSeamlessCgDisplay extends StatefulWidget {
+  final GpuCompositeResult? newResult;
+  final GpuCompositeResult? currentResult;
+  final String resourceId;
+  final bool isFadingOut;
+
+  const GpuSeamlessCgDisplay({
+    super.key,
+    this.newResult,
+    this.currentResult,
+    required this.resourceId,
+    this.isFadingOut = false,
+  });
+
+  @override
+  State<GpuSeamlessCgDisplay> createState() => _GpuSeamlessCgDisplayState();
+}
+
+class _GpuSeamlessCgDisplayState extends State<GpuSeamlessCgDisplay>
+    with TickerProviderStateMixin {
+  late final AnimationController _transitionController;
+  late final Animation<double> _transitionAnimation;
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
+
+  GpuCompositeResult? _currentResult;
+  GpuCompositeResult? _incomingResult;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _transitionController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+      value: 1.0,
+    );
+    _transitionAnimation = CurvedAnimation(
+      parent: _transitionController,
+      curve: Curves.easeInOut,
+    );
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+      value: widget.isFadingOut ? 0.0 : 1.0,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    );
+
+    _currentResult = widget.currentResult ?? widget.newResult;
+    if (widget.newResult != null && widget.newResult != widget.currentResult) {
+      _startTransition(widget.newResult!);
+    }
+
+    if (widget.isFadingOut) {
+      _fadeController.reverse(from: 1.0);
+    }
+
+    _transitionController.addStatusListener(_handleTransitionStatus);
+  }
+
+  void _handleTransitionStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && _incomingResult != null) {
+      _currentResult = _incomingResult;
+      _incomingResult = null;
+      setState(() {});
+    }
+  }
+
+  void _startTransition(GpuCompositeResult nextResult) {
+    _incomingResult = nextResult;
+    _transitionController
+      ..value = 0.0
+      ..forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant GpuSeamlessCgDisplay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final newResult = widget.newResult;
+    if (newResult != null &&
+        newResult != _incomingResult &&
+        newResult != _currentResult) {
+      _startTransition(newResult);
+    } else if (newResult == null && widget.currentResult != null &&
+        widget.currentResult != _currentResult) {
+      _currentResult = widget.currentResult;
+      _incomingResult = null;
+      _transitionController.value = 1.0;
+      setState(() {});
+    }
+
+    if (!oldWidget.isFadingOut && widget.isFadingOut) {
+      _fadeController.reverse();
+    } else if (oldWidget.isFadingOut && !widget.isFadingOut) {
+      _fadeController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _transitionController.removeStatusListener(_handleTransitionStatus);
+    _transitionController.dispose();
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_currentResult == null && _incomingResult == null) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.transparent,
+      );
+    }
+
+    final listenable = Listenable.merge(<Listenable>[
+      _transitionController,
+      _fadeController,
+    ]);
+
+    return AnimatedBuilder(
+      animation: listenable,
+      builder: (context, child) {
+        final transitionValue = _incomingResult == null
+            ? 0.0
+            : _transitionAnimation.value.clamp(0.0, 1.0);
+        final fadeValue = _fadeAnimation.value.clamp(0.0, 1.0);
+
+        final currentOpacity = _incomingResult != null
+            ? (1.0 - transitionValue) * fadeValue
+            : fadeValue;
+        final newOpacity = _incomingResult != null
+            ? transitionValue * fadeValue
+            : 0.0;
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return CustomPaint(
+              size: Size(constraints.maxWidth, constraints.maxHeight),
+              painter: GpuSeamlessCgPainter(
+                currentResult: _currentResult,
+                newResult: _incomingResult,
+                currentOpacity: currentOpacity,
+                newOpacity: newOpacity,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class GpuCompositePainter extends CustomPainter {
+  final GpuCompositeResult result;
+  final double opacity;
+
+  GpuCompositePainter({
+    required this.result,
+    required this.opacity,
+  });
+
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    _drawCompositeResult(canvas, size, result, opacity);
+  }
+
+  @override
+  bool shouldRepaint(GpuCompositePainter oldDelegate) {
+    return result != oldDelegate.result || opacity != oldDelegate.opacity;
+  }
+}
+
+class GpuSeamlessCgPainter extends CustomPainter {
+  final GpuCompositeResult? currentResult;
+  final GpuCompositeResult? newResult;
+  final double currentOpacity;
+  final double newOpacity;
+
+  GpuSeamlessCgPainter({
+    required this.currentResult,
+    required this.newResult,
+    required this.currentOpacity,
+    required this.newOpacity,
+  });
+
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    if (size.isEmpty) return;
+
+    if (currentResult != null && currentOpacity > 0) {
+      _drawCompositeResult(canvas, size, currentResult!, currentOpacity);
+    }
+    if (newResult != null && newOpacity > 0) {
+      _drawCompositeResult(canvas, size, newResult!, newOpacity);
+    }
+  }
+
+  @override
+  bool shouldRepaint(GpuSeamlessCgPainter oldDelegate) {
+    return currentResult != oldDelegate.currentResult ||
+        newResult != oldDelegate.newResult ||
+        currentOpacity != oldDelegate.currentOpacity ||
+        newOpacity != oldDelegate.newOpacity;
+  }
 }
 
 /// 直接CG显示组件（用于已预加载的图像）
@@ -505,10 +942,9 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
 
   Future<void> _loadAndSetImage(String imagePath) async {
     try {
-      // 修复：优先从内存缓存获取图像数据 - 使用GPU合成器
-      final imageBytes = CompositeCgRenderer._useGpuAcceleration 
-          ? CompositeCgRenderer._gpuCompositor.getImageBytes(imagePath)
-          : CompositeCgRenderer._legacyCompositor.getImageBytes(imagePath);
+      // 修复：优先从内存缓存获取图像数据
+      final imageBytes =
+          CompositeCgRenderer._legacyCompositor.getImageBytes(imagePath);
       if (imageBytes != null) {
         final codec = await ui.instantiateImageCodec(imageBytes);
         final frame = await codec.getNextFrame();
@@ -852,5 +1288,56 @@ class CompositeCgPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CompositeCgPainter oldDelegate) {
     return image != oldDelegate.image || opacity != oldDelegate.opacity;
+  }
+}
+
+ui.Rect _calculateCoverRect(ui.Size canvasSize, int width, int height) {
+  if (canvasSize.isEmpty || width == 0 || height == 0) {
+    return ui.Rect.zero;
+  }
+
+  final imageWidth = width.toDouble();
+  final imageHeight = height.toDouble();
+  final scaleX = canvasSize.width / imageWidth;
+  final scaleY = canvasSize.height / imageHeight;
+  final scale = math.max(scaleX, scaleY);
+
+  final scaledWidth = imageWidth * scale;
+  final scaledHeight = imageHeight * scale;
+  final offsetX = (canvasSize.width - scaledWidth) / 2;
+  final offsetY = (canvasSize.height - scaledHeight) / 2;
+
+  return ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
+}
+
+void _drawCompositeResult(
+  ui.Canvas canvas,
+  ui.Size size,
+  GpuCompositeResult result,
+  double opacity,
+) {
+  if (opacity <= 0 || size.isEmpty) return;
+
+  final targetRect = _calculateCoverRect(size, result.width, result.height);
+  if (targetRect.isEmpty) return;
+
+  final srcRect = ui.Rect.fromLTWH(
+    0,
+    0,
+    result.width.toDouble(),
+    result.height.toDouble(),
+  );
+
+  final alpha = opacity.clamp(0.0, 1.0);
+  final paint = ui.Paint()
+    ..isAntiAlias = true
+    ..filterQuality = ui.FilterQuality.high;
+
+  for (var index = 0; index < result.layers.length; index++) {
+    final layer = result.layers[index];
+    paint
+      ..blendMode = index == 0 ? ui.BlendMode.src : ui.BlendMode.srcOver
+      ..color = ui.Color.fromRGBO(255, 255, 255, alpha);
+    canvas.drawImageRect(layer, srcRect, targetRect, paint);
   }
 }
