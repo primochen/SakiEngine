@@ -594,6 +594,9 @@ class GameManager {
     await _loadConfigs();
     await GlobalVariableManager().init(); // 初始化全局变量管理器
     
+    // 初始化CG预分析器
+    _cgPreAnalyzer.initialize();
+    
     await AnimationManager.loadAnimations(); // 加载动画
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
@@ -735,7 +738,8 @@ class GameManager {
       _cgPreAnalyzer.preAnalyzeScript(
         scriptNodes: _script.children,
         currentIndex: _scriptIndex,
-        lookAheadLines: 10,
+        lookAheadLines: _isFastForwardMode ? 50 : 10,
+        isSkipping: _isFastForwardMode,
       );
 
       // 跳过注释节点（文件边界标记）

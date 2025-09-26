@@ -40,15 +40,26 @@ class CgScriptPreAnalyzer {
   /// 
   /// [scriptNodes] - 脚本节点列表
   /// [currentIndex] - 当前脚本位置
-  /// [lookAheadLines] - 向前查看的行数（默认10行）
+  /// [lookAheadLines] - 向前查看的行数（快进模式下大幅增加）
+  /// [isSkipping] - 是否处于快进模式
   Future<void> preAnalyzeScript({
     required List<SksNode> scriptNodes,
     required int currentIndex,
     int lookAheadLines = 10,
+    bool isSkipping = false,
   }) async {
     try {
+      // 快进模式下大幅增加预分析范围
+      int effectiveLookAhead = lookAheadLines;
+      if (isSkipping) {
+        effectiveLookAhead = (scriptNodes.length * 0.1).round().clamp(50, 200); // 快进时看整个脚本的10%，至少50行，最多200行
+        if (kDebugMode) {
+          print('[CgScriptPreAnalyzer] 快进模式：扩大预分析范围到 $effectiveLookAhead 行');
+        }
+      }
+      
       // 计算分析范围
-      final endIndex = (currentIndex + lookAheadLines).clamp(0, scriptNodes.length - 1);
+      final endIndex = (currentIndex + effectiveLookAhead).clamp(0, scriptNodes.length - 1);
       
       // 收集即将出现的CG命令
       final upcomingCgCommands = <CgNode>[];
@@ -68,9 +79,14 @@ class CgScriptPreAnalyzer {
         print('[CgScriptPreAnalyzer] 发现 ${upcomingCgCommands.length} 个即将出现的CG命令');
       }
       
-      // 异步预合成CG图像
-      for (final cgNode in upcomingCgCommands) {
-        _schedulePrecomposition(cgNode);
+      // 快进模式下并行预合成，否则序列预合成
+      if (isSkipping) {
+        await _batchPrecomposition(upcomingCgCommands);
+      } else {
+        // 异步预合成CG图像
+        for (final cgNode in upcomingCgCommands) {
+          _schedulePrecomposition(cgNode);
+        }
       }
       
     } catch (e) {
@@ -183,6 +199,43 @@ class CgScriptPreAnalyzer {
     );
   }
   
+  /// 批量预合成（快进模式专用）
+  Future<void> _batchPrecomposition(List<CgNode> cgCommands) async {
+    if (cgCommands.isEmpty) return;
+    
+    if (kDebugMode) {
+      print('[CgScriptPreAnalyzer] 批量预合成 ${cgCommands.length} 个CG命令');
+    }
+    
+    // 并行预合成所有CG组合
+    final precompositionTasks = cgCommands.map((cgNode) {
+      final resourceId = cgNode.character;
+      final pose = cgNode.pose ?? 'pose1';
+      final expression = cgNode.expression ?? 'happy';
+      
+      return _performBackgroundCompositionAndPreWarm(
+        resourceId, 
+        pose, 
+        expression, 
+        '${resourceId}_${pose}_${expression}_batch'
+      );
+    }).toList();
+    
+    try {
+      // 等待所有预合成任务完成
+      await Future.wait(precompositionTasks, eagerError: false);
+      
+      if (kDebugMode) {
+        print('[CgScriptPreAnalyzer] ✅ 批量预合成完成，已准备${cgCommands.length}个CG组合');
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('[CgScriptPreAnalyzer] 批量预合成部分失败: $e');
+      }
+    }
+  }
+
   /// 批量预热CG列表
   Future<void> batchPreWarm(List<Map<String, String>> cgList) async {
     final preWarmList = cgList.map((cg) => {

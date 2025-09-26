@@ -22,6 +22,7 @@ import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/rendering/cg_character_renderer.dart';
 import 'package:sakiengine/src/rendering/composite_cg_renderer.dart';
+import 'package:sakiengine/src/rendering/rendering_system_integration.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
@@ -912,9 +913,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           // 角色和CG层 - 只有在没有视频时才显示
           if (gameState.movieFile == null) ...[
             ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-            // CG角色渲染，像scene一样铺满屏幕
-            // 使用新的合成CG渲染器替代多层渲染
-            ...CompositeCgRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager),
+            // CG角色渲染，使用新的层叠渲染系统
+            // 支持在预合成和层叠渲染间智能切换，优化快进性能
+            ...RenderingSystemManager().buildCgCharacters(context, gameState.cgCharacters, _gameManager),
           ],
           
           // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
