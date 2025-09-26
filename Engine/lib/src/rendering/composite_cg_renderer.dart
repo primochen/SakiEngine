@@ -835,13 +835,13 @@ class GpuSeamlessCgPainter extends CustomPainter {
 }
 
 /// 直接CG显示组件（用于已预加载的图像）
-/// 
-/// 直接显示已在内存中的图像，无需加载过程
+///
+/// 会在同一角色的差分切换时使用溶解效果过渡
 class DirectCgDisplay extends StatefulWidget {
   final ui.Image image;
   final String resourceId;
   final bool isFadingOut;
-  
+
   const DirectCgDisplay({
     super.key,
     required this.image,
@@ -855,46 +855,80 @@ class DirectCgDisplay extends StatefulWidget {
 
 class _DirectCgDisplayState extends State<DirectCgDisplay>
     with SingleTickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
+  late AnimationController _controller;
+  late Animation<double> _progress;
+
+  ui.Image? _currentImage;
+  ui.Image? _previousImage;
 
   @override
   void initState() {
     super.initState();
-    
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 200),
+
+    _controller = AnimationController(
       vsync: this,
+      duration: const Duration(milliseconds: 220),
     );
-    
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
+    _progress = CurvedAnimation(
+      parent: _controller,
       curve: Curves.easeInOut,
     );
 
-    // 立即开始淡入，因为图像已经在内存中
-    _fadeController.forward();
+    _currentImage = widget.image;
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_controller.isAnimating) {
+        _previousImage = null;
+      }
+    });
+
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant DirectCgDisplay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final imageChanged = widget.image != _currentImage;
+    final fadingChanged = widget.isFadingOut != oldWidget.isFadingOut;
+
+    if (imageChanged) {
+      _previousImage = _currentImage;
+      _currentImage = widget.image;
+      _controller.forward(from: 0.0);
+    } else if (fadingChanged) {
+      if (widget.isFadingOut) {
+        // 淡出时不参与差分溶解
+        _previousImage = null;
+      }
+      _controller.forward(from: 0.0);
+    }
   }
 
   @override
   void dispose() {
-    _fadeController.dispose();
-    // 注意：不要在这里dispose image，因为它可能被其他地方使用
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final image = _currentImage;
+    if (image == null) {
+      return const SizedBox.shrink();
+    }
+
     return AnimatedBuilder(
-      animation: _fadeAnimation,
+      animation: _progress,
       builder: (context, child) {
         return LayoutBuilder(
           builder: (context, constraints) {
             return CustomPaint(
               size: Size(constraints.maxWidth, constraints.maxHeight),
               painter: DirectCgPainter(
-                image: widget.image,
-                opacity: _fadeAnimation.value,
+                currentImage: image,
+                previousImage: _previousImage,
+                progress: _progress.value,
+                isFadingOut: widget.isFadingOut,
               ),
             );
           },
@@ -904,62 +938,78 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
   }
 }
 
-/// 直接CG绘制器
+/// 使用预合成图像的交叉淡入淡出绘制器
 class DirectCgPainter extends CustomPainter {
-  final ui.Image image;
-  final double opacity;
+  final ui.Image currentImage;
+  final ui.Image? previousImage;
+  final double progress;
+  final bool isFadingOut;
 
   DirectCgPainter({
-    required this.image,
-    required this.opacity,
+    required this.currentImage,
+    required this.previousImage,
+    required this.progress,
+    required this.isFadingOut,
   });
 
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
-    if (size.isEmpty || opacity <= 0) return;
-    
-    try {
-      // 计算BoxFit.cover的缩放和定位
-      final imageSize = Size(image.width.toDouble(), image.height.toDouble());
-      
-      // 计算缩放比例（cover模式取较大的缩放比例）
-      final scaleX = size.width / imageSize.width;
-      final scaleY = size.height / imageSize.height;
-      final scale = scaleX > scaleY ? scaleX : scaleY;
-      
-      // 计算缩放后的尺寸
-      final scaledWidth = imageSize.width * scale;
-      final scaledHeight = imageSize.height * scale;
-      
-      // 计算居中偏移
-      final offsetX = (size.width - scaledWidth) / 2;
-      final offsetY = (size.height - scaledHeight) / 2;
-      
-      // 创建目标矩形
-      final targetRect = ui.Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
-      
-      // 创建画笔，设置透明度
-      final paint = ui.Paint()
-        ..color = Color.fromRGBO(255, 255, 255, opacity.clamp(0.0, 1.0))
-        ..isAntiAlias = true
-        ..filterQuality = ui.FilterQuality.high;
-      
-      // 绘制图像
-      canvas.drawImageRect(
-        image,
-        ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-        targetRect,
-        paint,
-      );
-      
-    } catch (e) {
-      // 静默处理绘制错误
+    if (size.isEmpty) return;
+
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    final hasPrevious = previousImage != null;
+
+    if (hasPrevious && !isFadingOut) {
+      // 先绘制上一帧为全不透明，保持亮度，再叠加新图
+      _drawImage(canvas, size, previousImage!, 1.0);
+      _drawImage(canvas, size, currentImage, clampedProgress);
+      return;
     }
+
+    // 没有上一帧或正在淡出：当前图像根据进度调整透明度
+    final opacity = isFadingOut ? 1.0 - clampedProgress : 1.0;
+    _drawImage(canvas, size, currentImage, opacity);
+  }
+
+  void _drawImage(
+    ui.Canvas canvas,
+    ui.Size size,
+    ui.Image image,
+    double opacity,
+  ) {
+    if (opacity <= 0) return;
+
+    final imageSize = Size(image.width.toDouble(), image.height.toDouble());
+    final scaleX = size.width / imageSize.width;
+    final scaleY = size.height / imageSize.height;
+    final scale = math.max(scaleX, scaleY);
+
+    final targetWidth = imageSize.width * scale;
+    final targetHeight = imageSize.height * scale;
+    final offsetX = (size.width - targetWidth) / 2;
+    final offsetY = (size.height - targetHeight) / 2;
+
+    final targetRect = ui.Rect.fromLTWH(offsetX, offsetY, targetWidth, targetHeight);
+
+    final paint = ui.Paint()
+      ..color = ui.Color.fromRGBO(255, 255, 255, opacity.clamp(0.0, 1.0))
+      ..isAntiAlias = true
+      ..filterQuality = ui.FilterQuality.high;
+
+    canvas.drawImageRect(
+      image,
+      ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      targetRect,
+      paint,
+    );
   }
 
   @override
   bool shouldRepaint(DirectCgPainter oldDelegate) {
-    return image != oldDelegate.image || opacity != oldDelegate.opacity;
+    return currentImage != oldDelegate.currentImage ||
+        previousImage != oldDelegate.previousImage ||
+        progress != oldDelegate.progress ||
+        isFadingOut != oldDelegate.isFadingOut;
   }
 }
 
