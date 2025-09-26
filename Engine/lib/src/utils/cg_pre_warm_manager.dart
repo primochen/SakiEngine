@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
+import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
 
 /// CG预热任务优先级
 enum PreWarmPriority {
@@ -81,6 +82,10 @@ class CgPreWarmManager {
   CgPreWarmManager._internal();
 
   final CgImageCompositor _compositor = CgImageCompositor();
+  final GpuImageCompositor _gpuCompositor = GpuImageCompositor();
+  
+  /// 性能优化开关
+  bool _useGpuAcceleration = true;
   
   /// 预热任务优先级队列
   final PriorityQueue<PreWarmTask> _taskQueue = PriorityQueue<PreWarmTask>(
@@ -268,19 +273,30 @@ class CgPreWarmManager {
         //print('[CgPreWarmManager] 🔥 开始预热: ${task.cacheKey} (优先级: ${task.priority.name})');
       }
       
-      // 首先确保图像已合成到内存缓存
-      final imagePath = await _compositor.getCompositeImagePath(
-        resourceId: task.resourceId,
-        pose: task.pose,
-        expression: task.expression,
-      );
+      // 首先确保图像已合成到内存缓存 - 使用GPU加速器
+      String? imagePath;
+      if (_useGpuAcceleration) {
+        imagePath = await _gpuCompositor.getCompositeImagePath(
+          resourceId: task.resourceId,
+          pose: task.pose,
+          expression: task.expression,
+        );
+      } else {
+        imagePath = await _compositor.getCompositeImagePath(
+          resourceId: task.resourceId,
+          pose: task.pose,
+          expression: task.expression,
+        );
+      }
       
       if (imagePath == null) {
         throw Exception('Failed to compose image');
       }
       
-      // 获取图像字节数据
-      final imageBytes = _compositor.getImageBytes(imagePath);
+      // 获取图像字节数据 - 根据合成器类型选择
+      final imageBytes = _useGpuAcceleration 
+          ? _gpuCompositor.getImageBytes(imagePath)
+          : _compositor.getImageBytes(imagePath);
       if (imageBytes == null) {
         throw Exception('Failed to get image bytes');
       }
@@ -377,9 +393,18 @@ class CgPreWarmManager {
     _preWarmCache.clear();
   }
 
+  /// 设置GPU加速开关
+  void setGpuAcceleration(bool enabled) {
+    _useGpuAcceleration = enabled;
+    if (kDebugMode) {
+      print('[CgPreWarmManager] GPU加速已${enabled ? "启用" : "禁用"}');
+    }
+  }
+
   /// 获取预热管理器状态
   Map<String, dynamic> getStatus() {
     return {
+      'gpu_acceleration': _useGpuAcceleration,
       'worker_running': _isWorkerRunning,
       'queue_size': _taskQueue.length,
       'processing_tasks': _processingTasks.length,

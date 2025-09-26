@@ -4,12 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
+import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 
 /// 基于预合成图像的CG角色渲染器
 /// 
 /// 替代原有的多层实时渲染方式，直接使用预合成的单张图像
 class CompositeCgRenderer {
+  // GPU加速合成器实例
+  static final GpuImageCompositor _gpuCompositor = GpuImageCompositor();
+  static final CgImageCompositor _legacyCompositor = CgImageCompositor();
+  
+  // 性能优化开关
+  static bool _useGpuAcceleration = true;
+  
   // 缓存Future，避免重复创建导致的loading状态
   static final Map<String, Future<String?>> _futureCache = {};
   // 缓存已完成的合成路径
@@ -181,12 +189,18 @@ class CompositeCgRenderer {
     try {
       print('[CompositeCgRenderer] 开始加载: $cacheKey');
       
-      // 先获取合成图像路径
-      final compositeImagePath = await CgImageCompositor().getCompositeImagePath(
-        resourceId: resourceId,
-        pose: pose,
-        expression: expression,
-      );
+      // 先获取合成图像路径 - 使用GPU加速合成器
+      final compositeImagePath = _useGpuAcceleration 
+          ? await _gpuCompositor.getCompositeImagePath(
+              resourceId: resourceId,
+              pose: pose,
+              expression: expression,
+            )
+          : await _legacyCompositor.getCompositeImagePath(
+              resourceId: resourceId,
+              pose: pose,
+              expression: expression,
+            );
       
       print('[CompositeCgRenderer] 合成路径: $compositeImagePath');
       
@@ -194,8 +208,10 @@ class CompositeCgRenderer {
         // 缓存完成的路径
         _completedPaths[cacheKey] = compositeImagePath;
         
-        // 关键修复：从内存缓存获取图像数据而不是检查文件系统
-        final imageBytes = CgImageCompositor().getImageBytes(compositeImagePath);
+        // 关键修复：从内存缓存获取图像数据而不是检查文件系统 - 使用GPU合成器
+        final imageBytes = _useGpuAcceleration 
+            ? _gpuCompositor.getImageBytes(compositeImagePath)
+            : _legacyCompositor.getImageBytes(compositeImagePath);
         print('[CompositeCgRenderer] 内存缓存存在: ${imageBytes != null}');
         
         if (imageBytes != null) {
@@ -231,11 +247,17 @@ class CompositeCgRenderer {
   /// 检查CG组合是否存在
   static Future<bool> _checkCgCombinationExists(String resourceId, String pose, String expression) async {
     try {
-      final compositeImagePath = await CgImageCompositor().getCompositeImagePath(
-        resourceId: resourceId,
-        pose: pose,
-        expression: expression,
-      );
+      final compositeImagePath = _useGpuAcceleration 
+          ? await _gpuCompositor.getCompositeImagePath(
+              resourceId: resourceId,
+              pose: pose,
+              expression: expression,
+            )
+          : await _legacyCompositor.getCompositeImagePath(
+              resourceId: resourceId,
+              pose: pose,
+              expression: expression,
+            );
       return compositeImagePath != null;
     } catch (e) {
       return false;
@@ -271,6 +293,19 @@ class CompositeCgRenderer {
     // 重置预热标志，允许重新预热
     _preWarmingStarted = false;
   }
+  
+  /// 设置GPU加速开关
+  static void setGpuAcceleration(bool enabled) {
+    _useGpuAcceleration = enabled;
+    if (enabled) {
+      print('[CompositeCgRenderer] 🚀 GPU加速已启用');
+    } else {
+      print('[CompositeCgRenderer] 🔄 已切换到传统CPU合成器');
+    }
+  }
+  
+  /// 获取当前GPU加速状态
+  static bool get isGpuAccelerationEnabled => _useGpuAcceleration;
 }
 
 /// 直接CG显示组件（用于已预加载的图像）
@@ -470,8 +505,10 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
 
   Future<void> _loadAndSetImage(String imagePath) async {
     try {
-      // 修复：优先从内存缓存获取图像数据
-      final imageBytes = CgImageCompositor().getImageBytes(imagePath);
+      // 修复：优先从内存缓存获取图像数据 - 使用GPU合成器
+      final imageBytes = CompositeCgRenderer._useGpuAcceleration 
+          ? CompositeCgRenderer._gpuCompositor.getImageBytes(imagePath)
+          : CompositeCgRenderer._legacyCompositor.getImageBytes(imagePath);
       if (imageBytes != null) {
         final codec = await ui.instantiateImageCodec(imageBytes);
         final frame = await codec.getNextFrame();
