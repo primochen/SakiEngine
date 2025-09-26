@@ -256,6 +256,57 @@ class GameManager {
     }
   }
 
+  /// 分析脚本中的所有CG组合并预热
+  void _analyzeCgCombinationsAndPreWarm() {
+    if (kDebugMode) {
+      print('[GameManager] 开始分析脚本中的CG组合...');
+    }
+    
+    // 使用预分析器分析所有CG组合
+    final cgCombinations = _cgPreAnalyzer.analyzeAllCgCombinations(_script.children);
+    
+    // 异步预热所有发现的组合
+    Future.microtask(() async {
+      int totalPrewarmed = 0;
+      
+      for (final entry in cgCombinations.entries) {
+        final parts = entry.key.split('_');
+        if (parts.length >= 3) {
+          final resourceId = parts.sublist(0, parts.length - 1).join('_');
+          final pose = parts.last;
+          final expressions = entry.value;
+          
+          if (kDebugMode) {
+            print('[GameManager] 预热 $resourceId $pose 的差分: ${expressions.toList()}');
+          }
+          
+          for (final expression in expressions) {
+            try {
+              // 通过预分析器预热
+              await _cgPreAnalyzer.precomposeCg(
+                resourceId: resourceId,
+                pose: pose,
+                expression: expression,
+              );
+              totalPrewarmed++;
+              
+              // 小延迟避免阻塞
+              if (totalPrewarmed % 3 == 0) {
+                await Future.delayed(const Duration(milliseconds: 5));
+              }
+            } catch (e) {
+              // 静默处理失败
+            }
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        print('[GameManager] CG预热完成！共预热 $totalPrewarmed 个组合');
+      }
+    });
+  }
+
   /// 分析脚本并预加载anime资源
   Future<void> _analyzeAndPreloadAnimeResources() async {
     final animeResources = <String>{};
@@ -601,6 +652,9 @@ class GameManager {
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
+    
+    // 分析脚本中的所有CG组合并预热
+    _analyzeCgCombinationsAndPreWarm();
     
     // 启动CG预热管理器
     CgPreWarmManager().start();
@@ -1824,6 +1878,9 @@ class GameManager {
     _script = await _scriptMerger.getMergedScript();
     _buildLabelIndexMap();
     _buildMusicRegions(); // 构建音乐区间
+    
+    // 分析脚本中的所有CG组合并预热（存档恢复时也需要）
+    _analyzeCgCombinationsAndPreWarm();
     
     // 预加载anime资源（同步执行）
     try {

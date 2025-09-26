@@ -236,6 +236,49 @@ class CgScriptPreAnalyzer {
     }
   }
 
+  /// 分析整个脚本，收集所有CG差分组合
+  Map<String, Set<String>> analyzeAllCgCombinations(List<SksNode> scriptNodes) {
+    final combinations = <String, Set<String>>{};
+    
+    for (final node in scriptNodes) {
+      if (node is CgNode) {
+        final resourceId = node.character;
+        final pose = node.pose ?? 'pose1';
+        final expression = node.expression ?? 'happy';
+        
+        final key = '${resourceId}_$pose';
+        if (!combinations.containsKey(key)) {
+          combinations[key] = <String>{};
+        }
+        combinations[key]!.add(expression);
+      }
+    }
+    
+    if (kDebugMode) {
+      print('[CgScriptPreAnalyzer] 发现的CG组合:');
+      combinations.forEach((key, expressions) {
+        print('  $key: ${expressions.toList()}');
+      });
+    }
+    
+    return combinations;
+  }
+  
+  /// 获取指定角色和姿势的所有表情差分
+  Set<String> getExpressionsForCharacter(String resourceId, String pose, List<SksNode> scriptNodes) {
+    final expressions = <String>{};
+    
+    for (final node in scriptNodes) {
+      if (node is CgNode && 
+          node.character == resourceId && 
+          (node.pose ?? 'pose1') == pose) {
+        expressions.add(node.expression ?? 'happy');
+      }
+    }
+    
+    return expressions;
+  }
+
   /// 批量预热CG列表
   Future<void> batchPreWarm(List<Map<String, String>> cgList) async {
     final preWarmList = cgList.map((cg) => {
