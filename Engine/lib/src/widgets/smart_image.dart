@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:sakiengine/src/widgets/animated_webp_image.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 
 /// 智能图像小部件 - 自动处理AVIF、WebP和其他格式
 /// 
@@ -36,6 +36,12 @@ class SmartImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lowercasePath = assetPath.toLowerCase();
+    
+    // 检查是否为内存缓存路径
+    if (_isMemoryCachePath(assetPath)) {
+      return _buildMemoryCacheImage();
+    }
+    
     final isFilePath = _isFileSystemPath(assetPath);
     
     // 检查文件扩展名
@@ -209,8 +215,62 @@ class SmartImage extends StatelessWidget {
   
   /// 判断是否为文件系统路径（debug模式下的绝对路径）
   bool _isFileSystemPath(String path) {
+    // 排除内存缓存路径
+    if (_isMemoryCachePath(path)) {
+      return false;
+    }
     // 检查是否为绝对路径：Unix风格 (/) 或 Windows风格 (C:)
     return path.startsWith('/') || (path.length > 2 && path[1] == ':');
+  }
+  
+  /// 判断是否为内存缓存路径
+  bool _isMemoryCachePath(String path) {
+    return path.startsWith('/memory_cache/cg_cache/');
+  }
+  
+  /// 构建内存缓存图像
+  Widget _buildMemoryCacheImage() {
+    print('[SmartImage] 🐛 尝试从内存缓存加载: $assetPath');
+    
+    final imageBytes = CgImageCompositor().getImageBytes(assetPath);
+    
+    if (imageBytes == null) {
+      print('[SmartImage] ❌ 内存缓存中未找到图像数据: $assetPath');
+      // 如果内存中没有找到图像数据，显示错误或占位符
+      return errorWidget ?? Container(
+        width: width,
+        height: height,
+        color: Colors.grey.withValues(alpha: 0.3),
+        child: const Center(
+          child: Icon(Icons.broken_image, color: Colors.grey),
+        ),
+      );
+    }
+    
+    print('[SmartImage] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
+    
+    return Image.memory(
+      imageBytes,
+      fit: fit ?? BoxFit.contain,
+      width: width,
+      height: height,
+      errorBuilder: errorWidget != null 
+        ? (context, error, stackTrace) {
+            print('[SmartImage] ❌ Image.memory加载失败: $error');
+            return errorWidget!;
+          }
+        : (context, error, stackTrace) {
+            print('[SmartImage] ❌ Image.memory加载失败: $error');
+            return Container(
+              width: width,
+              height: height,
+              color: Colors.red.withValues(alpha: 0.3),
+              child: const Center(
+                child: Icon(Icons.error, color: Colors.red),
+              ),
+            );
+          },
+    );
   }
   
   /// 检查资源文件是否存在

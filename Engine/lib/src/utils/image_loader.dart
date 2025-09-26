@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 
 /// 图像加载器 - 支持多种图像格式包括AVIF和WebP
 /// 
@@ -58,6 +58,11 @@ class ImageLoader {
   /// 从资源路径加载图像
   static Future<ui.Image?> loadImage(String assetPath) async {
     try {
+      // 检查是否为内存缓存路径
+      if (_isMemoryCachePath(assetPath)) {
+        return await _loadMemoryCacheImage(assetPath);
+      }
+      
       // 在debug模式下，优先从外部文件系统加载
       if (kDebugMode) {
         final externalImage = await _loadExternalImage(assetPath);
@@ -72,6 +77,35 @@ class ImageLoader {
       return await _loadAvifImageWithFallback(assetPath);
     } catch (e) {
       print('加载图像失败 $assetPath: $e');
+      return null;
+    }
+  }
+  
+  /// 判断是否为内存缓存路径
+  static bool _isMemoryCachePath(String path) {
+    return path.startsWith('/memory_cache/cg_cache/');
+  }
+  
+  /// 从内存缓存加载图像
+  static Future<ui.Image?> _loadMemoryCacheImage(String assetPath) async {
+    try {
+      print('[ImageLoader] 🐛 尝试从内存缓存加载: $assetPath');
+      
+      final imageBytes = CgImageCompositor().getImageBytes(assetPath);
+      if (imageBytes == null) {
+        print('[ImageLoader] ❌ 内存缓存中未找到图像: $assetPath');
+        return null;
+      }
+      
+      print('[ImageLoader] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
+      
+      final codec = await ui.instantiateImageCodec(imageBytes);
+      final frame = await codec.getNextFrame();
+      
+      print('[ImageLoader] ✅ 成功解码图像: ${frame.image.width}x${frame.image.height}');
+      return frame.image;
+    } catch (e) {
+      print('[ImageLoader] ❌ 从内存缓存加载图像失败 $assetPath: $e');
       return null;
     }
   }

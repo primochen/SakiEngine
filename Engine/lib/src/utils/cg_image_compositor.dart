@@ -1,86 +1,45 @@
-import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
 
-/// CG图像合成器 - 负责将多层图像合成为单张图像并缓存
+/// CG图像合成器 - 负责将多层图像合成为单张图像并内存缓存
 /// 
 /// 功能：
 /// - 将CG的所有差分图层（背景、表情、帽子等）合成为单张图像
-/// - 智能缓存管理，避免重复合成
-/// - 提供合成图像的路径管理和验证
+/// - 智能内存缓存管理，避免重复合成
+/// - 跨平台兼容，包括Web版本
 class CgImageCompositor {
   static final CgImageCompositor _instance = CgImageCompositor._internal();
   factory CgImageCompositor() => _instance;
   CgImageCompositor._internal();
 
-  /// 缓存目录名称
-  static const String _cacheDir = '.cg_cache';
+  /// 内存缓存：缓存键 -> 合成图像的字节数据
+  final Map<String, Uint8List> _imageCache = {};
   
-  /// 内存缓存：缓存键 -> 合成图像路径
+  /// 内存缓存：缓存键 -> 合成图像路径（虚拟路径，用于兼容现有API）
   final Map<String, String> _compositePathCache = {};
   
   /// 正在合成的任务，避免重复合成
   final Map<String, Future<String?>> _compositingTasks = {};
 
-  /// 获取缓存根目录
-  Future<String> _getCacheRoot() async {
-    final gamePath = await _getGamePath();
-    return p.join(gamePath, _cacheDir);
-  }
-
-  /// 获取游戏路径（复用AssetManager的逻辑）
-  Future<String> _getGamePath() async {
-    const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
-    if (fromDefine.isNotEmpty) return fromDefine;
-    
-    final fromEnv = Platform.environment['SAKI_GAME_PATH'];
-    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
-    
-    try {
-      // 从assets读取default_game.txt
-      final assetContent = await AssetManager().loadString('assets/default_game.txt');
-      final defaultGame = assetContent.trim();
-      
-      if (defaultGame.isEmpty) {
-        throw Exception('default_game.txt is empty');
-      }
-      
-      final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
-      return gamePath;
-    } catch (e) {
-      throw Exception('Failed to load default_game.txt: $e');
-    }
-  }
-
   /// 生成缓存键
   String _generateCacheKey(String resourceId, String pose, String expression) {
-    return '${resourceId}_${pose}_${expression}';
+    return '${resourceId}_${pose}_$expression';
   }
 
-  /// 获取缓存文件路径
-  Future<String> _getCacheFilePath(String cacheKey) async {
-    final cacheRoot = await _getCacheRoot();
-    return p.join(cacheRoot, '$cacheKey.png');
-  }
-
-  /// 确保缓存目录存在
-  Future<void> _ensureCacheDirectory() async {
-    final cacheRoot = await _getCacheRoot();
-    final cacheDir = Directory(cacheRoot);
-    if (!await cacheDir.exists()) {
-      await cacheDir.create(recursive: true);
-      // 缓存目录已创建
-    }
+  /// 生成虚拟缓存路径 - 用于兼容现有API
+  String _generateVirtualPath(String cacheKey) {
+    return '/memory_cache/cg_cache/$cacheKey.png';
   }
 
   /// 获取或生成合成CG图像的路径
   /// 
-  /// 返回合成图像的文件系统路径，如果合成失败则返回null
+  /// 返回合成图像的虚拟路径，如果合成失败则返回null
+  /// 实际图像数据存储在内存中，通过getImageBytes方法获取
   Future<String?> getCompositeImagePath({
     required String resourceId,
     required String pose,
@@ -89,15 +48,8 @@ class CgImageCompositor {
     final cacheKey = _generateCacheKey(resourceId, pose, expression);
     
     // 检查内存缓存
-    if (_compositePathCache.containsKey(cacheKey)) {
-      final cachedPath = _compositePathCache[cacheKey]!;
-      // 验证文件是否仍然存在
-      if (await File(cachedPath).exists()) {
-        return cachedPath;
-      } else {
-        // 文件已被删除，清除缓存
-        _compositePathCache.remove(cacheKey);
-      }
+    if (_compositePathCache.containsKey(cacheKey) && _imageCache.containsKey(cacheKey)) {
+      return _compositePathCache[cacheKey];
     }
 
     // 检查是否已经在合成中
@@ -118,20 +70,29 @@ class CgImageCompositor {
     }
   }
 
+  /// 获取缓存的图像字节数据
+  /// 
+  /// 根据路径或缓存键获取图像的字节数据
+  Uint8List? getImageBytes(String pathOrKey) {
+    // 如果是虚拟路径，提取缓存键
+    if (pathOrKey.startsWith('/memory_cache/cg_cache/')) {
+      final filename = pathOrKey.split('/').last;
+      final cacheKey = filename.replaceAll('.png', '');
+      return _imageCache[cacheKey];
+    }
+    
+    // 直接作为缓存键查找
+    return _imageCache[pathOrKey];
+  }
+
   /// 执行实际的图像合成
   Future<String?> _performComposition(String resourceId, String pose, String expression, String cacheKey) async {
     try {
-      
-      // 确保缓存目录存在
-      await _ensureCacheDirectory();
-      
-      // 获取缓存文件路径
-      final cacheFilePath = await _getCacheFilePath(cacheKey);
-      
-      // 检查磁盘缓存
-      if (await File(cacheFilePath).exists()) {
-        _compositePathCache[cacheKey] = cacheFilePath;
-        return cacheFilePath;
+      // 检查内存缓存
+      if (_imageCache.containsKey(cacheKey)) {
+        final virtualPath = _generateVirtualPath(cacheKey);
+        _compositePathCache[cacheKey] = virtualPath;
+        return virtualPath;
       }
 
       // 解析角色图层
@@ -165,14 +126,15 @@ class CgImageCompositor {
         return null;
       }
 
-      // 保存合成图像到缓存
-      final success = await _saveCompositeImage(compositeImage, cacheFilePath);
+      // 保存合成图像到内存缓存
+      final success = await _saveCompositeToMemory(compositeImage, cacheKey);
       if (!success) {
         return null;
       }
 
-      // 更新内存缓存
-      _compositePathCache[cacheKey] = cacheFilePath;
+      // 生成虚拟路径并更新缓存
+      final virtualPath = _generateVirtualPath(cacheKey);
+      _compositePathCache[cacheKey] = virtualPath;
       
       // 清理资源
       for (final image in layerImages) {
@@ -180,9 +142,12 @@ class CgImageCompositor {
       }
       compositeImage.dispose();
 
-      return cacheFilePath;
+      return virtualPath;
 
     } catch (e) {
+      if (kDebugMode) {
+        print('[CgImageCompositor] Composition failed: $e');
+      }
       return null;
     }
   }
@@ -238,8 +203,8 @@ class CgImageCompositor {
     }
   }
 
-  /// 保存合成图像到文件
-  Future<bool> _saveCompositeImage(ui.Image image, String filePath) async {
+  /// 保存合成图像到内存缓存（调试模式下同时保存到本地）
+  Future<bool> _saveCompositeToMemory(ui.Image image, String cacheKey) async {
     try {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
@@ -247,65 +212,152 @@ class CgImageCompositor {
       }
 
       final bytes = byteData.buffer.asUint8List();
-      final file = File(filePath);
-      await file.writeAsBytes(bytes);
+      _imageCache[cacheKey] = bytes;
+      
+      if (kDebugMode) {
+        print('[CgImageCompositor] Memory cache saved: $cacheKey (${bytes.length} bytes)');
+        
+        // 调试模式下同时保存到本地文件
+        await _saveDebugImageToLocal(bytes, cacheKey);
+      }
+      
+      // 立即进行图像预热，确保真正显示时是"第二次"渲染
+      await _preWarmImage(bytes, cacheKey);
       
       return true;
     } catch (e) {
+      if (kDebugMode) {
+        print('[CgImageCompositor] Failed to save composite image: $e');
+      }
       return false;
+    }
+  }
+  
+  /// 图像预热：在离屏进行一次完整的图像解码和绘制
+  /// 确保Flutter图像渲染管线完全准备好，真正显示时避免第一帧延迟
+  Future<void> _preWarmImage(Uint8List imageBytes, String cacheKey) async {
+    try {
+      if (kDebugMode) {
+        print('[CgImageCompositor] 🔥 开始预热图像: $cacheKey');
+      }
+      
+      // 解码图像
+      final codec = await ui.instantiateImageCodec(imageBytes);
+      final frame = await codec.getNextFrame();
+      final preWarmImage = frame.image;
+      
+      if (kDebugMode) {
+        print('[CgImageCompositor] 🔥 图像解码完成: ${preWarmImage.width}x${preWarmImage.height}');
+      }
+      
+      // 创建离屏Canvas进行预热绘制
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      
+      // 绘制图像到离屏Canvas，触发Flutter的图像缓存和渲染管线
+      canvas.drawImage(preWarmImage, ui.Offset.zero, ui.Paint());
+      
+      // 完成绘制并生成Picture（这会触发GPU预热）
+      final picture = recorder.endRecording();
+      
+      // 可选：将Picture转换为Image以进一步预热（但会增加内存和时间开销）
+      // final preWarmRaster = await picture.toImage(preWarmImage.width, preWarmImage.height);
+      // preWarmRaster.dispose();
+      
+      // 清理资源
+      picture.dispose();
+      preWarmImage.dispose();
+      codec.dispose();
+      
+      if (kDebugMode) {
+        print('[CgImageCompositor] ✅ 图像预热完成: $cacheKey');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[CgImageCompositor] ⚠️ 图像预热失败: $cacheKey, 错误: $e');
+      }
+      // 预热失败不影响核心功能，继续执行
+    }
+  }
+  
+  /// 调试功能：保存图像到本地文件
+  Future<void> _saveDebugImageToLocal(Uint8List imageBytes, String cacheKey) async {
+    try {
+      // 获取游戏目录作为保存位置
+      final gamePath = await _getDebugGamePath();
+      final debugDir = Directory(p.join(gamePath, '.debug_cg_cache'));
+      
+      // 确保调试目录存在
+      if (!await debugDir.exists()) {
+        await debugDir.create(recursive: true);
+      }
+      
+      // 保存文件
+      final debugFile = File(p.join(debugDir.path, '$cacheKey.png'));
+      await debugFile.writeAsBytes(imageBytes);
+      
+      print('[CgImageCompositor] 🐛 调试图像已保存: ${debugFile.path}');
+    } catch (e) {
+      print('[CgImageCompositor] 调试保存失败: $e');
+    }
+  }
+  
+  /// 获取游戏路径用于调试保存（复用AssetManager逻辑）
+  Future<String> _getDebugGamePath() async {
+    const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    
+    final fromEnv = Platform.environment['SAKI_GAME_PATH'];
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    
+    try {
+      // 从assets读取default_game.txt
+      final assetContent = await AssetManager().loadString('assets/default_game.txt');
+      final defaultGame = assetContent.trim();
+      
+      if (defaultGame.isEmpty) {
+        throw Exception('default_game.txt is empty');
+      }
+      
+      final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
+      return gamePath;
+    } catch (e) {
+      throw Exception('Failed to load default_game.txt: $e');
     }
   }
 
   /// 清理缓存
   Future<void> clearCache() async {
     try {
-      final cacheRoot = await _getCacheRoot();
-      final cacheDir = Directory(cacheRoot);
-      
-      if (await cacheDir.exists()) {
-        await cacheDir.delete(recursive: true);
-      }
-      
+      _imageCache.clear();
       _compositePathCache.clear();
       _compositingTasks.clear();
       
+      if (kDebugMode) {
+        print('[CgImageCompositor] Memory cache cleared');
+      }
     } catch (e) {
+      if (kDebugMode) {
+        print('[CgImageCompositor] Failed to clear cache: $e');
+      }
     }
   }
 
   /// 获取缓存统计信息
   Future<Map<String, dynamic>> getCacheStats() async {
     try {
-      final cacheRoot = await _getCacheRoot();
-      final cacheDir = Directory(cacheRoot);
-      
-      if (!await cacheDir.exists()) {
-        return {
-          'cache_dir': cacheRoot,
-          'exists': false,
-          'file_count': 0,
-          'total_size': 0,
-        };
-      }
-      
-      final files = await cacheDir.list().where((entity) => entity is File).cast<File>().toList();
       int totalSize = 0;
       
-      for (final file in files) {
-        try {
-          final stat = await file.stat();
-          totalSize += stat.size;
-        } catch (e) {
-          // 忽略单个文件的统计错误
-        }
+      // 计算内存中所有图像的总大小
+      for (final bytes in _imageCache.values) {
+        totalSize += bytes.length;
       }
       
       return {
-        'cache_dir': cacheRoot,
-        'exists': true,
-        'file_count': files.length,
+        'cache_type': 'memory',
+        'cached_images': _imageCache.length,
         'total_size': totalSize,
-        'memory_cache_count': _compositePathCache.length,
+        'path_cache_count': _compositePathCache.length,
         'compositing_tasks': _compositingTasks.length,
       };
     } catch (e) {

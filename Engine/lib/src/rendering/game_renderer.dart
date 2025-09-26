@@ -37,17 +37,37 @@ class GameRenderer {
     }
 
     try {
-      final backgroundPath = await AssetManager().findAsset('backgrounds/${backgroundName.replaceAll(' ', '-')}');
-      if (backgroundPath == null) return;
+      String? backgroundPath;
+      
+      // 检查是否为内存缓存路径
+      if (backgroundName.startsWith('/memory_cache/cg_cache/')) {
+        print('[GameRenderer] 🐛 检测到内存缓存背景路径: $backgroundName');
+        backgroundPath = backgroundName; // 直接使用内存缓存路径
+      } else {
+        // 常规资源路径处理
+        backgroundPath = await AssetManager().findAsset('backgrounds/${backgroundName.replaceAll(' ', '-')}');
+      }
+      
+      if (backgroundPath == null) {
+        print('[GameRenderer] ❌ 背景路径未找到: $backgroundName');
+        return;
+      }
+      
+      print('[GameRenderer] 🐛 尝试加载背景图像: $backgroundPath');
       
       // 使用新的图像加载器加载背景图片
       final backgroundImage = await ImageLoader.loadImage(backgroundPath);
-      if (backgroundImage == null) return;
+      if (backgroundImage == null) {
+        print('[GameRenderer] ❌ 背景图像加载失败: $backgroundPath');
+        return;
+      }
+      
+      print('[GameRenderer] ✅ 背景图像加载成功: ${backgroundImage.width}x${backgroundImage.height}');
       
       // 使用与游戏界面相同的填充逻辑 (BoxFit.cover)，支持动画
       _drawImageWithBoxFitCover(canvas, backgroundImage, canvasSize, animationProperties: animationProperties);
     } catch (e) {
-      print('绘制背景失败: $e');
+      print('[GameRenderer] ❌ 绘制背景失败: $e');
     }
   }
   

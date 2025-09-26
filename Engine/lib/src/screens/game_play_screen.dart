@@ -1017,9 +1017,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       } else {
         //print('[_buildBackground] 识别为图片背景，开始处理图片路径');
         
-        // 检查是否为绝对路径（CG缓存路径）
-        if (background.startsWith('/')) {
-          //print('[_buildBackground] 检测到绝对路径，直接使用Image.file加载');
+        // 检查是否为内存缓存路径
+        if (background.startsWith('/memory_cache/cg_cache/')) {
+          print('[_buildBackground] 🐛 检测到内存缓存路径，使用SmartImage加载: $background');
+          // 使用SmartImage处理内存缓存路径
+          backgroundWidget = SmartImage.asset(
+            background,
+            key: ValueKey('memory_cache_bg_$background'),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorWidget: Container(color: Colors.black),
+          );
+        } else if (background.startsWith('/')) {
+          print('[_buildBackground] 🐛 检测到绝对文件路径，直接使用Image.file加载: $background');
           // 直接使用Image.file，不预缓存，避免FutureBuilder导致的黑屏
           backgroundWidget = Image.file(
             File(background),
@@ -1029,7 +1040,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             height: double.infinity,
             // 关键：不使用frameBuilder，让图像立即显示
             errorBuilder: (context, error, stackTrace) {
-              //print('[_buildBackground] 直接文件加载失败: $background, 错误: $error');
+              print('[_buildBackground] ❌ 直接文件加载失败: $background, 错误: $error');
               return Container(color: Colors.black);
             },
           );
