@@ -189,10 +189,15 @@ class SmartCgPredictor {
       
       for (final entry in combinations.entries) {
         final parts = entry.key.split('_');
-        if (parts.length >= 3) {
-          final resourceId = parts.sublist(0, parts.length - 1).join('_');
-          final pose = parts.last;
+        if (parts.length >= 2) { // 至少需要resourceId和pose
+          // 重新构建resourceId和pose
+          final pose = parts.last; // 最后一部分是pose
+          final resourceId = parts.sublist(0, parts.length - 1).join('_'); // 其余部分组成resourceId
           final expressions = entry.value;
+          
+          if (kDebugMode) {
+            print('[SmartCgPredictor] 预热CG组合: $resourceId, pose: $pose, 表情: ${expressions.toList()}');
+          }
           
           for (final expression in expressions) {
             try {
@@ -208,8 +213,14 @@ class SmartCgPredictor {
                 await Future.delayed(const Duration(milliseconds: 2));
               }
             } catch (e) {
-              // 静默处理失败
+              if (kDebugMode) {
+                print('[SmartCgPredictor] 预热失败: $resourceId, $pose, $expression - $e');
+              }
             }
+          }
+        } else {
+          if (kDebugMode) {
+            print('[SmartCgPredictor] 跳过无效的CG组合键: ${entry.key}');
           }
         }
       }
