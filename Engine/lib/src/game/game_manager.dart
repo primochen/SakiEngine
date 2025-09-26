@@ -1280,16 +1280,22 @@ class GameManager {
           );
         }
 
-        // 设置背景为当前CG图像
-        final finalBackground = backgroundImagePath ?? 'fallback_bg';
-        
-        _currentState = _currentState.copyWith(
-          background: finalBackground,
-          clearSceneFilter: true,
-          clearSceneLayers: true,
-          clearSceneAnimation: true,
-          everShownCharacters: _everShownCharacters
-        );
+        // 设置背景为当前CG图像；若合成失败则回退到现有背景，避免黑场
+        final isFirstCgDisplay = _currentState.cgCharacters.isEmpty;
+
+        if (backgroundImagePath != null && isFirstCgDisplay) {
+          _currentState = _currentState.copyWith(
+            background: backgroundImagePath,
+            clearSceneFilter: true,
+            clearSceneLayers: true,
+            clearSceneAnimation: true,
+            everShownCharacters: _everShownCharacters,
+          );
+        } else {
+          _currentState = _currentState.copyWith(
+            everShownCharacters: _everShownCharacters,
+          );
+        }
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
