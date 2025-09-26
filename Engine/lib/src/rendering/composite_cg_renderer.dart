@@ -841,12 +841,14 @@ class DirectCgDisplay extends StatefulWidget {
   final ui.Image image;
   final String resourceId;
   final bool isFadingOut;
+  final bool enableFadeIn;
 
   const DirectCgDisplay({
     super.key,
     required this.image,
     required this.resourceId,
     this.isFadingOut = false,
+    this.enableFadeIn = false,
   });
 
   @override
@@ -860,6 +862,7 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
 
   ui.Image? _currentImage;
   ui.Image? _previousImage;
+  bool _hasShownOnce = false;
 
   @override
   void initState() {
@@ -878,6 +881,7 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_controller.isAnimating) {
         _previousImage = null;
+        _hasShownOnce = true;
       }
     });
 
@@ -929,6 +933,7 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
                 previousImage: _previousImage,
                 progress: _progress.value,
                 isFadingOut: widget.isFadingOut,
+                enableFadeIn: widget.enableFadeIn && !_hasShownOnce,
               ),
             );
           },
@@ -944,12 +949,14 @@ class DirectCgPainter extends CustomPainter {
   final ui.Image? previousImage;
   final double progress;
   final bool isFadingOut;
+  final bool enableFadeIn;
 
   DirectCgPainter({
     required this.currentImage,
     required this.previousImage,
     required this.progress,
     required this.isFadingOut,
+    required this.enableFadeIn,
   });
 
   @override
@@ -979,7 +986,9 @@ class DirectCgPainter extends CustomPainter {
       return;
     }
 
-    final opacity = isFadingOut ? 1.0 - clampedProgress : 1.0;
+    final opacity = isFadingOut
+        ? 1.0 - clampedProgress
+        : (enableFadeIn ? clampedProgress : 1.0);
     _drawImage(canvas, size, currentImage, opacity);
   }
 
@@ -1023,7 +1032,8 @@ class DirectCgPainter extends CustomPainter {
     return currentImage != oldDelegate.currentImage ||
         previousImage != oldDelegate.previousImage ||
         progress != oldDelegate.progress ||
-        isFadingOut != oldDelegate.isFadingOut;
+        isFadingOut != oldDelegate.isFadingOut ||
+        enableFadeIn != oldDelegate.enableFadeIn;
   }
 }
 

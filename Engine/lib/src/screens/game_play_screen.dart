@@ -1275,16 +1275,17 @@ class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
     final aspectRatio = image.width / image.height;
     final targetWidth = targetHeight * aspectRatio;
 
-    return SizedBox(
-      width: targetWidth,
-      height: targetHeight,
-      child: DirectCgDisplay(
-        key: ValueKey('direct_${widget.characterKey}'),
-        image: image,
-        resourceId: widget.characterKey,
-        isFadingOut: widget.isFadingOut,
-      ),
-    );
+      return SizedBox(
+        width: targetWidth,
+        height: targetHeight,
+        child: DirectCgDisplay(
+          key: ValueKey('direct_${widget.characterKey}'),
+          image: image,
+          resourceId: widget.characterKey,
+          isFadingOut: widget.isFadingOut,
+          enableFadeIn: !widget.isFadingOut,
+        ),
+      );
   }
 }
 
