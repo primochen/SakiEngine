@@ -77,7 +77,12 @@ class RenderingSystemManager {
       
       switch (_getEffectiveSystem(cgCharacters.length)) {
         case RenderingSystemType.composite:
-          widgets = CompositeCgRenderer.buildCgCharacters(context, cgCharacters, gameManager);
+          widgets = CompositeCgRenderer.buildCgCharacters(
+            context,
+            cgCharacters,
+            gameManager,
+            skipAnimations: gameManager.isFastForwardMode,
+          );
           break;
         case RenderingSystemType.layered:
           widgets = LayeredCgRenderer.buildCgCharacters(context, cgCharacters, gameManager);
@@ -101,7 +106,12 @@ class RenderingSystemManager {
       // 出错时回退到兼容模式
       if (_currentSystem == RenderingSystemType.layered) {
         print('[RenderingSystemManager] Falling back to composite renderer');
-        return CompositeCgRenderer.buildCgCharacters(context, cgCharacters, gameManager);
+        return CompositeCgRenderer.buildCgCharacters(
+          context,
+          cgCharacters,
+          gameManager,
+          skipAnimations: gameManager.isFastForwardMode,
+        );
       }
       
       return [];
@@ -124,10 +134,20 @@ class RenderingSystemManager {
         if (kDebugMode) {
           print('[RenderingSystemManager] Layered renderer failed, falling back: $e');
         }
-        return CompositeCgRenderer.buildCgCharacters(context, cgCharacters, gameManager);
+        return CompositeCgRenderer.buildCgCharacters(
+          context,
+          cgCharacters,
+          gameManager,
+          skipAnimations: gameManager.isFastForwardMode,
+        );
       }
     } else {
-      return CompositeCgRenderer.buildCgCharacters(context, cgCharacters, gameManager);
+      return CompositeCgRenderer.buildCgCharacters(
+        context,
+        cgCharacters,
+        gameManager,
+        skipAnimations: gameManager.isFastForwardMode,
+      );
     }
   }
 

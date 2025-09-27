@@ -1160,6 +1160,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         expression: characterState.expression ?? 'happy',
         heightFactor: finalScale,
         isFadingOut: characterState.isFadingOut,
+        skipAnimation: _isFastForwarding,
         onFadeOutComplete: characterState.isFadingOut
             ? () => _removeCharacterAfterFadeOut(characterId)
             : null,
@@ -1206,6 +1207,7 @@ class _CompositeCharacterWidget extends StatefulWidget {
   final String expression;
   final double heightFactor;
   final bool isFadingOut;
+  final bool skipAnimation;
   final VoidCallback? onFadeOutComplete;
 
   const _CompositeCharacterWidget({
@@ -1216,6 +1218,7 @@ class _CompositeCharacterWidget extends StatefulWidget {
     required this.expression,
     required this.heightFactor,
     required this.isFadingOut,
+    required this.skipAnimation,
     this.onFadeOutComplete,
   });
 
@@ -1284,6 +1287,7 @@ class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
           resourceId: widget.characterKey,
           isFadingOut: widget.isFadingOut,
           enableFadeIn: !widget.isFadingOut,
+          skipAnimation: widget.skipAnimation,
         ),
       );
   }

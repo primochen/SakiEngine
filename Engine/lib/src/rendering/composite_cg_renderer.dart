@@ -103,6 +103,7 @@ class CompositeCgRenderer {
     BuildContext context,
     Map<String, CharacterState> cgCharacters,
     GameManager gameManager,
+    {bool skipAnimations = false}
   ) {
     _ensureDissolveProgram();
     // 确保预热已开始（只执行一次）
@@ -127,12 +128,14 @@ class CompositeCgRenderer {
         return _buildGpuCharacterWidget(
           context: context,
           entry: entry,
+          skipAnimations: skipAnimations,
         );
       }
 
       return _buildCpuCharacterWidget(
         context: context,
         entry: entry,
+        skipAnimations: skipAnimations,
       );
     }).toList();
   }
@@ -140,6 +143,7 @@ class CompositeCgRenderer {
   static Widget _buildCpuCharacterWidget({
     required BuildContext context,
     required MapEntry<String, CharacterState> entry,
+    required bool skipAnimations,
   }) {
     final characterState = entry.value;
 
@@ -163,6 +167,7 @@ class CompositeCgRenderer {
         image: preloadedImage,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
+        skipAnimation: skipAnimations,
       );
     }
 
@@ -177,6 +182,7 @@ class CompositeCgRenderer {
         resourceId: characterState.resourceId,
         dissolveProgram: _dissolveProgram,
         isFadingOut: characterState.isFadingOut,
+        skipAnimation: skipAnimations,
       );
     }
 
@@ -205,6 +211,7 @@ class CompositeCgRenderer {
               resourceId: characterState.resourceId,
               dissolveProgram: _dissolveProgram,
               isFadingOut: characterState.isFadingOut,
+              skipAnimation: skipAnimations,
             );
           }
           return Container(
@@ -223,6 +230,7 @@ class CompositeCgRenderer {
               resourceId: characterState.resourceId,
               dissolveProgram: _dissolveProgram,
               isFadingOut: characterState.isFadingOut,
+              skipAnimation: skipAnimations,
             );
           }
           return Container(
@@ -242,6 +250,7 @@ class CompositeCgRenderer {
           resourceId: characterState.resourceId,
           dissolveProgram: _dissolveProgram,
           isFadingOut: characterState.isFadingOut,
+          skipAnimation: skipAnimations,
         );
       },
     );
@@ -250,6 +259,7 @@ class CompositeCgRenderer {
   static Widget _buildGpuCharacterWidget({
     required BuildContext context,
     required MapEntry<String, CharacterState> entry,
+    required bool skipAnimations,
   }) {
     final characterState = entry.value;
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
@@ -272,6 +282,7 @@ class CompositeCgRenderer {
         image: preloadedImage,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
+        skipAnimation: skipAnimations,
       );
     }
 
@@ -284,6 +295,7 @@ class CompositeCgRenderer {
         result: preloadedResult,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
+        skipAnimation: skipAnimations,
       );
     }
 
@@ -297,6 +309,7 @@ class CompositeCgRenderer {
         currentResult: currentResult,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
+        skipAnimation: skipAnimations,
       );
     }
 
@@ -333,6 +346,7 @@ class CompositeCgRenderer {
               currentResult: currentResult,
               resourceId: characterState.resourceId,
               isFadingOut: characterState.isFadingOut,
+              skipAnimation: skipAnimations,
             );
           }
           return Container(
@@ -350,6 +364,7 @@ class CompositeCgRenderer {
               currentResult: currentResult,
               resourceId: characterState.resourceId,
               isFadingOut: characterState.isFadingOut,
+              skipAnimation: skipAnimations,
             );
           }
           return Container(
@@ -369,6 +384,7 @@ class CompositeCgRenderer {
           currentResult: currentResult,
           resourceId: characterState.resourceId,
           isFadingOut: characterState.isFadingOut,
+          skipAnimation: skipAnimations,
         );
       },
     );
@@ -563,12 +579,14 @@ class GpuDirectCgDisplay extends StatefulWidget {
   final GpuCompositeResult result;
   final String resourceId;
   final bool isFadingOut;
+  final bool skipAnimation;
 
   const GpuDirectCgDisplay({
     super.key,
     required this.result,
     required this.resourceId,
     this.isFadingOut = false,
+    this.skipAnimation = false,
   });
 
   @override
@@ -593,7 +611,7 @@ class _GpuDirectCgDisplayState extends State<GpuDirectCgDisplay>
       curve: Curves.easeInOut,
     );
 
-    if (!widget.isFadingOut) {
+    if (!widget.isFadingOut && !widget.skipAnimation) {
       _fadeController.forward();
     }
   }
@@ -603,13 +621,25 @@ class _GpuDirectCgDisplayState extends State<GpuDirectCgDisplay>
     super.didUpdateWidget(oldWidget);
 
     if (widget.result != oldWidget.result) {
-      _fadeController.forward(from: 0.0);
+      if (widget.skipAnimation) {
+        _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
+      } else {
+        _fadeController.forward(from: 0.0);
+      }
     }
 
     if (!oldWidget.isFadingOut && widget.isFadingOut) {
-      _fadeController.reverse();
+      if (widget.skipAnimation) {
+        _fadeController.value = 0.0;
+      } else {
+        _fadeController.reverse();
+      }
     } else if (oldWidget.isFadingOut && !widget.isFadingOut) {
-      _fadeController.forward();
+      if (widget.skipAnimation) {
+        _fadeController.value = 1.0;
+      } else {
+        _fadeController.forward();
+      }
     }
   }
 
@@ -646,6 +676,7 @@ class GpuSeamlessCgDisplay extends StatefulWidget {
   final GpuCompositeResult? currentResult;
   final String resourceId;
   final bool isFadingOut;
+  final bool skipAnimation;
 
   const GpuSeamlessCgDisplay({
     super.key,
@@ -653,6 +684,7 @@ class GpuSeamlessCgDisplay extends StatefulWidget {
     this.currentResult,
     required this.resourceId,
     this.isFadingOut = false,
+    this.skipAnimation = false,
   });
 
   @override
@@ -694,12 +726,19 @@ class _GpuSeamlessCgDisplayState extends State<GpuSeamlessCgDisplay>
     );
 
     _currentResult = widget.currentResult ?? widget.newResult;
-    if (widget.newResult != null && widget.newResult != widget.currentResult) {
-      _startTransition(widget.newResult!);
-    }
+    if (widget.skipAnimation) {
+      _currentResult = widget.newResult ?? widget.currentResult;
+      _incomingResult = null;
+      _transitionController.value = 1.0;
+      _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
+    } else {
+      if (widget.newResult != null && widget.newResult != widget.currentResult) {
+        _startTransition(widget.newResult!);
+      }
 
-    if (widget.isFadingOut) {
-      _fadeController.reverse(from: 1.0);
+      if (widget.isFadingOut) {
+        _fadeController.reverse(from: 1.0);
+      }
     }
 
     _transitionController.addStatusListener(_handleTransitionStatus);
@@ -728,7 +767,14 @@ class _GpuSeamlessCgDisplayState extends State<GpuSeamlessCgDisplay>
     if (newResult != null &&
         newResult != _incomingResult &&
         newResult != _currentResult) {
-      _startTransition(newResult);
+      if (widget.skipAnimation) {
+        _currentResult = newResult;
+        _incomingResult = null;
+        _transitionController.value = 1.0;
+        setState(() {});
+      } else {
+        _startTransition(newResult);
+      }
     } else if (newResult == null && widget.currentResult != null &&
         widget.currentResult != _currentResult) {
       _currentResult = widget.currentResult;
@@ -738,9 +784,17 @@ class _GpuSeamlessCgDisplayState extends State<GpuSeamlessCgDisplay>
     }
 
     if (!oldWidget.isFadingOut && widget.isFadingOut) {
-      _fadeController.reverse();
+      if (widget.skipAnimation) {
+        _fadeController.value = 0.0;
+      } else {
+        _fadeController.reverse();
+      }
     } else if (oldWidget.isFadingOut && !widget.isFadingOut) {
-      _fadeController.forward();
+      if (widget.skipAnimation) {
+        _fadeController.value = 1.0;
+      } else {
+        _fadeController.forward();
+      }
     }
   }
 
@@ -862,6 +916,7 @@ class DirectCgDisplay extends StatefulWidget {
   final String resourceId;
   final bool isFadingOut;
   final bool enableFadeIn;
+  final bool skipAnimation;
 
   const DirectCgDisplay({
     super.key,
@@ -869,6 +924,7 @@ class DirectCgDisplay extends StatefulWidget {
     required this.resourceId,
     this.isFadingOut = false,
     this.enableFadeIn = false,
+    this.skipAnimation = false,
   });
 
   @override
@@ -905,7 +961,12 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
       }
     });
 
-    _controller.forward();
+    if (widget.skipAnimation) {
+      _controller.value = 1.0;
+      _hasShownOnce = true;
+    } else {
+      _controller.forward();
+    }
     CompositeCgRenderer._ensureDissolveProgram().then((_) {
       if (mounted && CompositeCgRenderer._dissolveProgram != null) {
         setState(() {});
@@ -923,13 +984,29 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     if (imageChanged) {
       _previousImage = _currentImage;
       _currentImage = widget.image;
-      _controller.forward(from: 0.0);
+      if (widget.skipAnimation) {
+        _controller.value = 1.0;
+        _previousImage = null;
+        _hasShownOnce = true;
+      } else {
+        _controller.forward(from: 0.0);
+      }
     } else if (fadingChanged) {
       if (widget.isFadingOut) {
         // 淡出时不参与差分溶解
         _previousImage = null;
       }
-      _controller.forward(from: 0.0);
+      if (widget.skipAnimation) {
+        _controller.value = widget.isFadingOut ? 0.0 : 1.0;
+        _previousImage = null;
+        _hasShownOnce = true;
+      } else {
+        _controller.forward(from: 0.0);
+      }
+    } else if (widget.skipAnimation && !_hasShownOnce) {
+      _controller.value = 1.0;
+      _previousImage = null;
+      _hasShownOnce = true;
     }
   }
 
@@ -960,6 +1037,9 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
           overallAlpha = progressValue;
         } else {
           overallAlpha = 1.0;
+        }
+        if (widget.skipAnimation) {
+          overallAlpha = widget.isFadingOut ? 0.0 : 1.0;
         }
         overallAlpha = overallAlpha.clamp(0.0, 1.0);
         final ui.Image fromImage = hasPrevious ? _previousImage! : image;
@@ -1088,6 +1168,7 @@ class SeamlessCgDisplay extends StatefulWidget {
   final String resourceId;
   final ui.FragmentProgram? dissolveProgram;
   final bool isFadingOut;
+  final bool skipAnimation;
   
   const SeamlessCgDisplay({
     super.key,
@@ -1096,6 +1177,7 @@ class SeamlessCgDisplay extends StatefulWidget {
     required this.resourceId,
     this.dissolveProgram,
     this.isFadingOut = false,
+    this.skipAnimation = false,
   });
 
   @override
@@ -1138,6 +1220,9 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
         }
       });
     }
+    if (widget.skipAnimation) {
+      _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
+    }
   }
 
   @override
@@ -1154,6 +1239,13 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
              widget.currentImagePath != null &&
              widget.currentImagePath != oldWidget.currentImagePath) {
       _loadAndSetImage(widget.currentImagePath!);
+    }
+
+    if (widget.skipAnimation) {
+      _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
+      if (_previousImage != null) {
+        _previousImage = null;
+      }
     }
   }
 
@@ -1174,7 +1266,12 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
             _currentImage = frame.image;
           });
           
-          _fadeController.forward(from: 0.0);
+          if (widget.skipAnimation) {
+            _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
+            _previousImage = null;
+          } else {
+            _fadeController.forward(from: 0.0);
+          }
         }
         return;
       }
@@ -1195,7 +1292,12 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
           _currentImage = frame.image;
         });
         
-        _fadeController.forward(from: 0.0);
+        if (widget.skipAnimation) {
+          _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
+          _previousImage = null;
+        } else {
+          _fadeController.forward(from: 0.0);
+        }
       }
     } catch (e) {
       // 加载失败时保持当前显示的图像不变
@@ -1224,9 +1326,18 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
     final dissolveProgram =
         widget.dissolveProgram ?? CompositeCgRenderer._dissolveProgram;
     final bool shaderAvailable = dissolveProgram != null;
-    final bool hasPrevious = _previousImage != null && !widget.isFadingOut;
-    final double animationValue = _fadeAnimation.value.clamp(0.0, 1.0);
-    final double overallAlpha = widget.isFadingOut ? 1.0 - animationValue : 1.0;
+    final bool skipping = widget.skipAnimation;
+    final double animationValue = skipping
+        ? (widget.isFadingOut ? 0.0 : 1.0)
+        : _fadeAnimation.value.clamp(0.0, 1.0);
+    final bool hasPrevious = !skipping && _previousImage != null && !widget.isFadingOut;
+    double overallAlpha;
+    if (widget.isFadingOut) {
+      overallAlpha = skipping ? 0.0 : 1.0 - animationValue;
+    } else {
+      overallAlpha = 1.0;
+    }
+    overallAlpha = overallAlpha.clamp(0.0, 1.0);
     final ui.Image fromImage = hasPrevious ? _previousImage! : _currentImage!;
     final double dissolveProgress = hasPrevious ? animationValue : 1.0;
 
@@ -1255,6 +1366,9 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
+        final double painterOpacity = widget.skipAnimation
+            ? (widget.isFadingOut ? 0.0 : 1.0)
+            : _fadeAnimation.value;
         return LayoutBuilder(
           builder: (context, constraints) {
             return CustomPaint(
@@ -1262,7 +1376,7 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
               painter: SeamlessCgPainter(
                 currentImage: _currentImage,
                 newImage: null,
-                fadeOpacity: _fadeAnimation.value,
+                fadeOpacity: painterOpacity,
                 transitionOpacity: 0.0,
               ),
             );
