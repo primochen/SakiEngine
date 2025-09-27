@@ -51,29 +51,16 @@ class SmartImage extends StatelessWidget {
       return _buildAvifImageWithFallback();
     } else if (lowercasePath.endsWith('.webp')) {
       // WebP支持动画，使用专门的动图组件，默认不循环
-      if (isFilePath) {
-        // 文件系统路径：对于WebP文件，直接使用Image.file，因为AnimatedWebPImage没有.file构造器
-        return Image.file(
-          File(assetPath),
-          fit: fit ?? BoxFit.contain,
-          width: width,
-          height: height,
-          errorBuilder: errorWidget != null 
-            ? (context, error, stackTrace) => errorWidget!
-            : null,
-        );
-      } else {
-        return AnimatedWebPImage.asset(
-          assetPath,
-          fit: fit ?? BoxFit.contain,
-          width: width,
-          height: height,
-          errorWidget: errorWidget,
-          autoPlay: true,
-          loop: loop ?? false, // 默认不循环
-          onAnimationComplete: onAnimationComplete, // 传递动画完成回调
-        );
-      }
+      return AnimatedWebPImage.asset(
+        assetPath,
+        fit: fit ?? BoxFit.contain,
+        width: width,
+        height: height,
+        errorWidget: errorWidget,
+        autoPlay: true,
+        loop: loop ?? false, // 默认不循环
+        onAnimationComplete: onAnimationComplete, // 传递动画完成回调
+      );
     } else {
       if (isFilePath) {
         return Image.file(
@@ -119,28 +106,16 @@ class SmartImage extends StatelessWidget {
           final isBestPathFile = _isFileSystemPath(bestPath);
           if (bestPath.toLowerCase().endsWith('.webp')) {
             // 使用WebP动图组件，默认不循环
-            if (isBestPathFile) {
-              // 文件系统路径：直接使用Image.file
-              return Image.file(
-                File(bestPath),
-                fit: fit ?? BoxFit.contain,
-                width: width,
-                height: height,
-                errorBuilder: errorWidget != null 
-                  ? (context, error, stackTrace) => errorWidget!
-                  : null,
-              );
-            } else {
-              return AnimatedWebPImage.asset(
-                bestPath,
-                fit: fit ?? BoxFit.contain,
-                width: width,
-                height: height,
-                errorWidget: errorWidget,
-                autoPlay: true,
-                loop: loop ?? false, // 默认不循环
-              );
-            }
+            return AnimatedWebPImage.asset(
+              bestPath,
+              fit: fit ?? BoxFit.contain,
+              width: width,
+              height: height,
+              errorWidget: errorWidget,
+              autoPlay: true,
+              loop: loop ?? false, // 默认不循环
+              onAnimationComplete: onAnimationComplete,
+            );
           } else {
             // 使用标准Image组件
             if (isBestPathFile) {
