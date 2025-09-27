@@ -69,6 +69,16 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
     super.dispose();
   }
 
+  void _setUIHidden() {
+    if (_isUIHidden) return;
+    _toggleUIVisibility();
+  }
+
+  void _setUIVisible() {
+    if (!_isUIHidden) return;
+    _toggleUIVisibility();
+  }
+
   /// 切换UI显示状态
   void _toggleUIVisibility() {
     setState(() {
@@ -119,18 +129,21 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
             child: Listener(
               onPointerDown: (event) {
                 if (event.buttons == 2) { // 右键按下
-                  _toggleUIVisibility();
+                  if (_isUIHidden) {
+                    _setUIVisible();
+                  } else {
+                    _setUIHidden();
+                  }
                 } else if (event.buttons == 1) { // 左键按下
                   if (_isUIHidden) {
-                    // UI隐藏状态下，左键取消隐藏
-                    _toggleUIVisibility();
+                    _setUIVisible();
                   } else {
                     // UI显示状态下，左键推进剧情
                     widget.onLeftClick?.call();
                   }
                 }
               },
-              behavior: HitTestBehavior.translucent,
+              behavior: HitTestBehavior.opaque,
               child: Container(
                 color: Colors.transparent,
               ),

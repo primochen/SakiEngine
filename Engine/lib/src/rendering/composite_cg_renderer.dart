@@ -26,6 +26,50 @@ class CompositeCgRenderer {
     _fadeTokens.remove(key);
     _fadeTokens.remove('gpu_$key');
   }
+
+  static Future<void> initializeDisplayedCg({
+    required String displayKey,
+    required String resourceId,
+    required String pose,
+    required String expression,
+  }) async {
+    final cacheKey = '${resourceId}_${pose}_${expression}';
+
+    _markFadeUsed(displayKey);
+    _markFadeUsed('gpu_$displayKey');
+
+    if (!_preloadedImages.containsKey(cacheKey) && !_completedPaths.containsKey(cacheKey)) {
+      final compositePath = await _legacyCompositor.getCompositeImagePath(
+        resourceId: resourceId,
+        pose: pose,
+        expression: expression,
+      );
+      if (compositePath != null) {
+        _completedPaths[cacheKey] = compositePath;
+      }
+
+      final gpuEntry = await _gpuCompositor.getCompositeEntry(
+        resourceId: resourceId,
+        pose: pose,
+        expression: expression,
+      );
+      if (gpuEntry != null) {
+        _gpuCompletedResults[cacheKey] = gpuEntry.result;
+        _gpuPreloadedResults[cacheKey] = gpuEntry.result;
+      }
+    }
+
+    if (_preloadedImages.containsKey(cacheKey)) {
+      _currentDisplayedImages[displayKey] = cacheKey;
+    } else if (_completedPaths.containsKey(cacheKey)) {
+      _currentDisplayedImages[displayKey] = _completedPaths[cacheKey]!;
+    }
+
+    if (_gpuCompletedResults.containsKey(cacheKey) ||
+        _gpuPreloadedResults.containsKey(cacheKey)) {
+      _currentDisplayedGpuKeys[displayKey] = cacheKey;
+    }
+  }
   // GPU加速合成器实例
   static final GpuImageCompositor _gpuCompositor = GpuImageCompositor();
   static final CgImageCompositor _legacyCompositor = CgImageCompositor();

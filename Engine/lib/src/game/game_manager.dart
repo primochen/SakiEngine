@@ -2097,7 +2097,21 @@ class GameManager {
       // 明确恢复CG角色状态（修复CG存档恢复bug）
       cgCharacters: snapshot.currentState.cgCharacters,
     );
-    
+
+    // 初始化CG渲染器的淡入状态，避免恢复存档后首次差分出现全透明
+    for (final entry in _currentState.cgCharacters.entries) {
+      final displayKey = entry.key;
+      final state = entry.value;
+      final pose = state.pose ?? 'pose1';
+      final expression = state.expression ?? 'happy';
+      await CompositeCgRenderer.initializeDisplayedCg(
+        displayKey: displayKey,
+        resourceId: state.resourceId,
+        pose: pose,
+        expression: expression,
+      );
+    }
+
     if (kDebugMode) {
       //print('[GameManager] 存档恢复后：cgCharacters数量 = ${_currentState.cgCharacters.length}');
       //print('[GameManager] 存档恢复后：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
