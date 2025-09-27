@@ -164,11 +164,6 @@ class CompositeCgRenderer {
     final characterState = entry.value;
     final displayKey = entry.key;
 
-    assert(() {
-      print('[CompositeCgRenderer] [CPU] 构建CG: key=$displayKey res=${characterState.resourceId} pose=${characterState.pose} exp=${characterState.expression} skip=$skipAnimations');
-      return true;
-    }());
-
     final widgetKey = 'composite_cg_$displayKey';
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
@@ -183,20 +178,10 @@ class CompositeCgRenderer {
     if (isFirstAppearance) {
       _markFadeUsed(displayKey);
     }
-    if (isFirstAppearance) {
-      _fadeTokens.update(displayKey, (value) => value + 1, ifAbsent: () => 1);
-    }
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
       _currentDisplayedImages[displayKey] = cacheKey;
-
-      assert(() {
-        if (currentImagePath == null) {
-          print('[CompositeCgRenderer] [CPU] 使用预加载图像首次显示 key=$displayKey cache=$cacheKey');
-        }
-        return true;
-      }());
 
       return _FirstCgFadeWrapper(
         fadeKey: displayKey,
@@ -215,13 +200,6 @@ class CompositeCgRenderer {
     if (_completedPaths.containsKey(cacheKey)) {
       final compositeImagePath = _completedPaths[cacheKey]!;
       _currentDisplayedImages[displayKey] = compositeImagePath;
-
-      assert(() {
-        if (currentImagePath == null) {
-          print('[CompositeCgRenderer] [CPU] 首次显示路径已缓存 key=$displayKey path=$compositeImagePath');
-        }
-        return true;
-      }());
 
         return _FirstCgFadeWrapper(
           fadeKey: displayKey,
@@ -296,13 +274,6 @@ class CompositeCgRenderer {
         final compositeImagePath = snapshot.data!;
         _currentDisplayedImages[displayKey] = compositeImagePath;
 
-        assert(() {
-          if (currentImagePath == null) {
-            print('[CompositeCgRenderer] [CPU] Future首次完成 key=$displayKey path=$compositeImagePath');
-          }
-          return true;
-        }());
-
         return _FirstCgFadeWrapper(
           fadeKey: displayKey,
           enableFade: isFirstAppearance,
@@ -328,10 +299,6 @@ class CompositeCgRenderer {
     final characterState = entry.value;
     final displayKey = entry.key;
 
-    assert(() {
-      print('[CompositeCgRenderer] [GPU] 构建CG: key=$displayKey res=${characterState.resourceId} pose=${characterState.pose} exp=${characterState.expression} skip=$skipAnimations');
-      return true;
-    }());
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
     final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
@@ -350,13 +317,6 @@ class CompositeCgRenderer {
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
-
-      assert(() {
-        if (currentKey == null) {
-          print('[CompositeCgRenderer] [GPU] 使用预加载图像首次显示 key=$displayKey cache=$cacheKey');
-        }
-        return true;
-      }());
 
       return _FirstCgFadeWrapper(
         fadeKey: 'gpu_$displayKey',
@@ -395,10 +355,6 @@ class CompositeCgRenderer {
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
       if (currentResult == null && !skipAnimations) {
-        assert(() {
-          print('[CompositeCgRenderer] [GPU] 首次显示缓存结果，启用淡入 key=$displayKey cache=$cacheKey');
-          return true;
-        }());
         return _FirstCgFadeWrapper(
           fadeKey: 'gpu_$displayKey',
           enableFade: true,
@@ -412,13 +368,6 @@ class CompositeCgRenderer {
           ),
         );
       }
-
-      assert(() {
-        if (currentResult == null) {
-          print('[CompositeCgRenderer] [GPU] 首次显示但跳过淡入（skip=$skipAnimations） key=$displayKey cache=$cacheKey');
-        }
-        return true;
-      }());
 
       return _FirstCgFadeWrapper(
         fadeKey: 'gpu_$displayKey',
@@ -1084,10 +1033,6 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     );
 
     _currentImage = widget.image;
-    assert(() {
-      print('[DirectCgDisplay] init for ${widget.resourceId} enableFadeIn=${widget.enableFadeIn} skip=${widget.skipAnimation}');
-      return true;
-    }());
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_controller.isAnimating) {
         _previousImage = null;
@@ -1118,10 +1063,6 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     if (imageChanged) {
       _previousImage = _currentImage;
       _currentImage = widget.image;
-      assert(() {
-        print('[DirectCgDisplay] imageChanged for ${widget.resourceId} enableFadeIn=${widget.enableFadeIn}');
-        return true;
-      }());
       if (widget.skipAnimation) {
         _controller.value = 1.0;
         _previousImage = null;
@@ -1176,12 +1117,6 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
         } else {
           overallAlpha = 1.0;
         }
-        assert(() {
-          if (!_hasShownOnce && widget.enableFadeIn) {
-            print('[DirectCgDisplay] progress=${progressValue.toStringAsFixed(2)} alpha=${overallAlpha.toStringAsFixed(2)}');
-          }
-          return true;
-        }());
         if (widget.skipAnimation) {
           overallAlpha = widget.isFadingOut ? 0.0 : 1.0;
         }
@@ -1554,7 +1489,6 @@ class _FirstCgFadeWrapper extends StatefulWidget {
 
 class _FirstCgFadeWrapperState extends State<_FirstCgFadeWrapper>
     with SingleTickerProviderStateMixin {
-  static final Map<String, int> _fadeCounters = <String, int>{};
   late final AnimationController _controller;
   late final Animation<double> _opacity;
   late bool _shouldFade;
@@ -1599,7 +1533,6 @@ class _FirstCgFadeWrapperState extends State<_FirstCgFadeWrapper>
 
   @override
   void dispose() {
-    _fadeCounters.update(widget.fadeKey, (value) => value + 1, ifAbsent: () => 1);
     _controller.dispose();
     super.dispose();
   }
