@@ -5,13 +5,14 @@ uniform float progress;
 uniform vec2 uSize;
 uniform vec2 u_imageFrom_dimensions;
 uniform vec2 u_imageTo_dimensions;
+uniform vec2 uOffset;
 uniform sampler2D imageFrom;
 uniform sampler2D imageTo;
 
 out vec4 fragColor;
 
 void main() {
-    vec2 uv = FlutterFragCoord().xy / uSize;
+    vec2 uv = (FlutterFragCoord().xy - uOffset) / uSize;
 
     // --- Bilinear filtering for imageFrom ---
     vec2 from_texSize = u_imageFrom_dimensions;

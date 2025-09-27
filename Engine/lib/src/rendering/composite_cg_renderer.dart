@@ -1399,7 +1399,9 @@ class _DissolveShaderPainter extends CustomPainter {
       ..setFloat(3, fromImage.width.toDouble())
       ..setFloat(4, fromImage.height.toDouble())
       ..setFloat(5, toImage.width.toDouble())
-      ..setFloat(6, toImage.height.toDouble());
+      ..setFloat(6, toImage.height.toDouble())
+      ..setFloat(7, targetRect.left)
+      ..setFloat(8, targetRect.top);
 
     shader
       ..setImageSampler(0, fromImage)
@@ -1407,10 +1409,7 @@ class _DissolveShaderPainter extends CustomPainter {
 
     final paint = ui.Paint()..shader = shader;
 
-    canvas.save();
-    canvas.translate(-targetRect.left, -targetRect.top);
     canvas.drawRect(targetRect, paint);
-    canvas.restore();
   }
 
   @override
