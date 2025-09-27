@@ -1274,30 +1274,31 @@ class GameManager {
             expression: newExpression,
             gpuEntry: gpuEntry,
           );
-        }
-
-        // CG显示命令：确保背景始终为当前CG图像
-        // 无论是首次显示还是差分切换，都设置背景为当前要显示的CG
-        String? backgroundImagePath = gpuEntry?.virtualPath;
-
-        if (backgroundImagePath == null) {
-          backgroundImagePath = await CgImageCompositor().getCompositeImagePath(
+        } else {
+          final compositePath = await CgImageCompositor().getCompositeImagePath(
             resourceId: resourceId,
             pose: newPose,
             expression: newExpression,
           );
+          if (compositePath != null) {
+            await CompositeCgRenderer.cachePrecomposedResult(
+              resourceId: resourceId,
+              pose: newPose,
+              expression: newExpression,
+              compositePath: compositePath,
+            );
+          }
         }
 
-        // 设置背景为当前CG图像；若合成失败则回退到现有背景，避免黑场
+        // 首次进入CG时保持背景不变，交由前景渲染器淡入
         final isFirstCgDisplay = _currentState.cgCharacters.isEmpty;
 
-        if (backgroundImagePath != null && isFirstCgDisplay) {
+        if (isFirstCgDisplay) {
           _currentState = _currentState.copyWith(
-            background: backgroundImagePath,
+            everShownCharacters: _everShownCharacters,
             clearSceneFilter: true,
             clearSceneLayers: true,
             clearSceneAnimation: true,
-            everShownCharacters: _everShownCharacters,
           );
         } else {
           _currentState = _currentState.copyWith(

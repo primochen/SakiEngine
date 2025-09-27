@@ -148,6 +148,11 @@ class CompositeCgRenderer {
     final characterState = entry.value;
     final displayKey = entry.key;
 
+    assert(() {
+      print('[CompositeCgRenderer] [CPU] 构建CG: key=$displayKey res=${characterState.resourceId} pose=${characterState.pose} exp=${characterState.expression} skip=$skipAnimations');
+      return true;
+    }());
+
     final widgetKey = 'composite_cg_$displayKey';
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
@@ -158,17 +163,30 @@ class CompositeCgRenderer {
     }
 
     final currentImagePath = _currentDisplayedImages[displayKey];
+    final bool isFirstAppearance = currentImagePath == null && !skipAnimations;
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
       _currentDisplayedImages[displayKey] = cacheKey;
 
-      return DirectCgDisplay(
-        key: ValueKey('direct_display_$displayKey'),
-        image: preloadedImage,
-        resourceId: characterState.resourceId,
-        isFadingOut: characterState.isFadingOut,
-        skipAnimation: skipAnimations,
+      assert(() {
+        if (currentImagePath == null) {
+          print('[CompositeCgRenderer] [CPU] 使用预加载图像首次显示 key=$displayKey cache=$cacheKey');
+        }
+        return true;
+      }());
+
+      return _FirstCgFadeWrapper(
+        fadeKey: displayKey,
+        enableFade: isFirstAppearance,
+        child: DirectCgDisplay(
+          key: ValueKey('direct_display_$displayKey'),
+          image: preloadedImage,
+          resourceId: characterState.resourceId,
+          isFadingOut: characterState.isFadingOut,
+          enableFadeIn: !skipAnimations && currentImagePath == null,
+          skipAnimation: skipAnimations,
+        ),
       );
     }
 
@@ -176,15 +194,26 @@ class CompositeCgRenderer {
       final compositeImagePath = _completedPaths[cacheKey]!;
       _currentDisplayedImages[displayKey] = compositeImagePath;
 
-      return SeamlessCgDisplay(
-        key: ValueKey('seamless_display_$displayKey'),
-        newImagePath: compositeImagePath,
-        currentImagePath: currentImagePath,
-        resourceId: characterState.resourceId,
-        dissolveProgram: _dissolveProgram,
-        isFadingOut: characterState.isFadingOut,
-        skipAnimation: skipAnimations,
-      );
+      assert(() {
+        if (currentImagePath == null) {
+          print('[CompositeCgRenderer] [CPU] 首次显示路径已缓存 key=$displayKey path=$compositeImagePath');
+        }
+        return true;
+      }());
+
+        return _FirstCgFadeWrapper(
+          fadeKey: displayKey,
+          enableFade: isFirstAppearance,
+          child: SeamlessCgDisplay(
+            key: ValueKey('seamless_display_$displayKey'),
+            newImagePath: compositeImagePath,
+            currentImagePath: currentImagePath,
+            resourceId: characterState.resourceId,
+            dissolveProgram: _dissolveProgram,
+            isFadingOut: characterState.isFadingOut,
+            skipAnimation: skipAnimations,
+          ),
+        );
     }
 
     if (!_futureCache.containsKey(cacheKey)) {
@@ -245,14 +274,25 @@ class CompositeCgRenderer {
         final compositeImagePath = snapshot.data!;
         _currentDisplayedImages[displayKey] = compositeImagePath;
 
-        return SeamlessCgDisplay(
-          key: ValueKey('seamless_display_$displayKey'),
-          newImagePath: compositeImagePath,
-          currentImagePath: currentImagePath,
-          resourceId: characterState.resourceId,
-          dissolveProgram: _dissolveProgram,
-          isFadingOut: characterState.isFadingOut,
-          skipAnimation: skipAnimations,
+        assert(() {
+          if (currentImagePath == null) {
+            print('[CompositeCgRenderer] [CPU] Future首次完成 key=$displayKey path=$compositeImagePath');
+          }
+          return true;
+        }());
+
+        return _FirstCgFadeWrapper(
+          fadeKey: displayKey,
+          enableFade: isFirstAppearance,
+          child: SeamlessCgDisplay(
+            key: ValueKey('seamless_display_$displayKey'),
+            newImagePath: compositeImagePath,
+            currentImagePath: currentImagePath,
+            resourceId: characterState.resourceId,
+            dissolveProgram: _dissolveProgram,
+            isFadingOut: characterState.isFadingOut,
+            skipAnimation: skipAnimations,
+          ),
         );
       },
     );
@@ -265,6 +305,11 @@ class CompositeCgRenderer {
   }) {
     final characterState = entry.value;
     final displayKey = entry.key;
+
+    assert(() {
+      print('[CompositeCgRenderer] [GPU] 构建CG: key=$displayKey res=${characterState.resourceId} pose=${characterState.pose} exp=${characterState.expression} skip=$skipAnimations');
+      return true;
+    }());
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
     final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
@@ -275,17 +320,30 @@ class CompositeCgRenderer {
 
     final currentKey = _currentDisplayedGpuKeys[displayKey];
     final currentResult = _resolveGpuResult(currentKey);
+    final bool isFirstAppearance = currentKey == null && !skipAnimations;
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
-      return DirectCgDisplay(
-        key: ValueKey('direct_display_gpu_$displayKey'),
-        image: preloadedImage,
-        resourceId: characterState.resourceId,
-        isFadingOut: characterState.isFadingOut,
-        skipAnimation: skipAnimations,
+      assert(() {
+        if (currentKey == null) {
+          print('[CompositeCgRenderer] [GPU] 使用预加载图像首次显示 key=$displayKey cache=$cacheKey');
+        }
+        return true;
+      }());
+
+      return _FirstCgFadeWrapper(
+        fadeKey: 'gpu_$displayKey',
+        enableFade: isFirstAppearance,
+        child: DirectCgDisplay(
+          key: ValueKey('direct_display_gpu_$displayKey'),
+          image: preloadedImage,
+          resourceId: characterState.resourceId,
+          isFadingOut: characterState.isFadingOut,
+          enableFadeIn: !skipAnimations && currentKey == null,
+          skipAnimation: skipAnimations,
+        ),
       );
     }
 
@@ -293,12 +351,17 @@ class CompositeCgRenderer {
       final preloadedResult = _gpuPreloadedResults[cacheKey]!;
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
-      return GpuDirectCgDisplay(
-        key: ValueKey('gpu_direct_$displayKey'),
-        result: preloadedResult,
-        resourceId: characterState.resourceId,
-        isFadingOut: characterState.isFadingOut,
-        skipAnimation: skipAnimations,
+      return _FirstCgFadeWrapper(
+        fadeKey: 'gpu_$displayKey',
+        enableFade: isFirstAppearance,
+        child: GpuDirectCgDisplay(
+          key: ValueKey('gpu_direct_$displayKey'),
+          result: preloadedResult,
+          resourceId: characterState.resourceId,
+          isFadingOut: characterState.isFadingOut,
+          skipAnimation: skipAnimations,
+          enableFadeIn: !skipAnimations && currentKey == null,
+        ),
       );
     }
 
@@ -306,13 +369,43 @@ class CompositeCgRenderer {
       final completedResult = _gpuCompletedResults[cacheKey]!;
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
-      return GpuSeamlessCgDisplay(
-        key: ValueKey('gpu_seamless_$displayKey'),
-        newResult: completedResult,
-        currentResult: currentResult,
-        resourceId: characterState.resourceId,
-        isFadingOut: characterState.isFadingOut,
-        skipAnimation: skipAnimations,
+      if (currentResult == null && !skipAnimations) {
+        assert(() {
+          print('[CompositeCgRenderer] [GPU] 首次显示缓存结果，启用淡入 key=$displayKey cache=$cacheKey');
+          return true;
+        }());
+        return _FirstCgFadeWrapper(
+          fadeKey: 'gpu_$displayKey',
+          enableFade: true,
+          child: GpuDirectCgDisplay(
+            key: ValueKey('gpu_direct_initial_$displayKey'),
+            result: completedResult,
+            resourceId: characterState.resourceId,
+            isFadingOut: characterState.isFadingOut,
+            skipAnimation: skipAnimations,
+            enableFadeIn: true,
+          ),
+        );
+      }
+
+      assert(() {
+        if (currentResult == null) {
+          print('[CompositeCgRenderer] [GPU] 首次显示但跳过淡入（skip=$skipAnimations） key=$displayKey cache=$cacheKey');
+        }
+        return true;
+      }());
+
+      return _FirstCgFadeWrapper(
+        fadeKey: 'gpu_$displayKey',
+        enableFade: isFirstAppearance,
+        child: GpuSeamlessCgDisplay(
+          key: ValueKey('gpu_seamless_$displayKey'),
+          newResult: completedResult,
+          currentResult: currentResult,
+          resourceId: characterState.resourceId,
+          isFadingOut: characterState.isFadingOut,
+          skipAnimation: skipAnimations,
+        ),
       );
     }
 
@@ -584,6 +677,7 @@ class GpuDirectCgDisplay extends StatefulWidget {
   final String resourceId;
   final bool isFadingOut;
   final bool skipAnimation;
+  final bool enableFadeIn;
 
   const GpuDirectCgDisplay({
     super.key,
@@ -591,6 +685,7 @@ class GpuDirectCgDisplay extends StatefulWidget {
     required this.resourceId,
     this.isFadingOut = false,
     this.skipAnimation = false,
+    this.enableFadeIn = false,
   });
 
   @override
@@ -605,10 +700,11 @@ class _GpuDirectCgDisplayState extends State<GpuDirectCgDisplay>
   @override
   void initState() {
     super.initState();
+    final bool shouldFadeIn = widget.enableFadeIn && !widget.isFadingOut && !widget.skipAnimation;
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
-      value: widget.isFadingOut ? 0.0 : 1.0,
+      value: widget.isFadingOut ? 0.0 : (shouldFadeIn ? 0.0 : 1.0),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
@@ -616,7 +712,11 @@ class _GpuDirectCgDisplayState extends State<GpuDirectCgDisplay>
     );
 
     if (!widget.isFadingOut && !widget.skipAnimation) {
-      _fadeController.forward();
+      if (shouldFadeIn) {
+        _fadeController.forward();
+      } else if (_fadeController.value < 1.0) {
+        _fadeController.forward();
+      }
     }
   }
 
@@ -628,7 +728,8 @@ class _GpuDirectCgDisplayState extends State<GpuDirectCgDisplay>
       if (widget.skipAnimation) {
         _fadeController.value = widget.isFadingOut ? 0.0 : 1.0;
       } else {
-        _fadeController.forward(from: 0.0);
+        final bool shouldFadeIn = widget.enableFadeIn && !widget.isFadingOut;
+        _fadeController.forward(from: shouldFadeIn ? 0.0 : 0.0);
       }
     }
 
@@ -958,6 +1059,10 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     );
 
     _currentImage = widget.image;
+    assert(() {
+      print('[DirectCgDisplay] init for ${widget.resourceId} enableFadeIn=${widget.enableFadeIn} skip=${widget.skipAnimation}');
+      return true;
+    }());
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_controller.isAnimating) {
         _previousImage = null;
@@ -988,6 +1093,10 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     if (imageChanged) {
       _previousImage = _currentImage;
       _currentImage = widget.image;
+      assert(() {
+        print('[DirectCgDisplay] imageChanged for ${widget.resourceId} enableFadeIn=${widget.enableFadeIn}');
+        return true;
+      }());
       if (widget.skipAnimation) {
         _controller.value = 1.0;
         _previousImage = null;
@@ -1042,6 +1151,12 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
         } else {
           overallAlpha = 1.0;
         }
+        assert(() {
+          if (!_hasShownOnce && widget.enableFadeIn) {
+            print('[DirectCgDisplay] progress=${progressValue.toStringAsFixed(2)} alpha=${overallAlpha.toStringAsFixed(2)}');
+          }
+          return true;
+        }());
         if (widget.skipAnimation) {
           overallAlpha = widget.isFadingOut ? 0.0 : 1.0;
         }
@@ -1394,6 +1509,84 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
     if (status == AnimationStatus.completed) {
       _previousImage = null;
     }
+  }
+}
+
+class _FirstCgFadeWrapper extends StatefulWidget {
+  final String fadeKey;
+  final Widget child;
+  final bool enableFade;
+
+  const _FirstCgFadeWrapper({
+    required this.fadeKey,
+    required this.child,
+    required this.enableFade,
+  });
+
+  @override
+  State<_FirstCgFadeWrapper> createState() => _FirstCgFadeWrapperState();
+}
+
+class _FirstCgFadeWrapperState extends State<_FirstCgFadeWrapper>
+    with SingleTickerProviderStateMixin {
+  static final Set<String> _fadedKeys = <String>{};
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late bool _shouldFade;
+
+  @override
+  void initState() {
+    super.initState();
+    _shouldFade = widget.enableFade && !_fadedKeys.contains(widget.fadeKey);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+      value: _shouldFade ? 0.0 : 1.0,
+    );
+    _opacity = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+
+    if (_shouldFade) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _FirstCgFadeWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fadeKey != widget.fadeKey) {
+      final bool shouldFadeNow = widget.enableFade && !_fadedKeys.contains(widget.fadeKey);
+      if (shouldFadeNow) {
+        _controller.value = 0.0;
+        _controller.forward();
+        _shouldFade = true;
+      } else {
+        _controller.value = 1.0;
+        _shouldFade = false;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_shouldFade) {
+      _fadedKeys.add(widget.fadeKey);
+    }
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shouldFade) {
+      return widget.child;
+    }
+    return FadeTransition(
+      opacity: _opacity,
+      child: widget.child,
+    );
   }
 }
 
