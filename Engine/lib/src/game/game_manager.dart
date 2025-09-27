@@ -1313,9 +1313,15 @@ class GameManager {
         final newCgCharacters = Map.of(_currentState.cgCharacters);
 
         final currentCharacterState = _currentState.cgCharacters[finalCharacterKey];
+        final bool isNewSlot = currentCharacterState == null;
+        final bool resourceChanged = currentCharacterState != null && currentCharacterState.resourceId != resourceId;
+        if (isNewSlot || resourceChanged) {
+          CompositeCgRenderer.resetFadeToken(finalCharacterKey);
+        }
+
         CharacterState updatedState;
 
-        if (currentCharacterState != null && currentCharacterState.resourceId != resourceId) {
+        if (resourceChanged) {
           // 切换到了全新的CG资源，创建全新的状态以触发完整渐变
           updatedState = CharacterState(
             resourceId: resourceId,
@@ -1350,8 +1356,6 @@ class GameManager {
           everShownCharacters: _everShownCharacters
         );
         _gameStateController.add(_currentState);
-
-        CompositeCgRenderer.resetFadeToken(finalCharacterKey);
 
         if (kDebugMode) {
           //print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
