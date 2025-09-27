@@ -121,10 +121,24 @@ class ReadTextSkipManager {
         stopSkipping();
         return;
       }
+    } else if (currentState.nvlDialogues.isNotEmpty) {
+      // NVL模式：检查所有NVL对话是否已读
+      final allRead = currentState.nvlDialogues.every((dialogue) {
+        return readTextTracker.isRead(
+          dialogue.speaker ?? currentState.speaker,
+          dialogue.dialogue,
+          gameManager.currentScriptIndex,
+        );
+      });
+
+      if (!allRead) {
+        stopSkipping();
+        return;
+      }
+      // 所有NVL文本已读，允许推进
     } else {
       // 如果当前没有对话内容，稍等片刻让对话加载
-      ////print('📖 [DEBUG] 当前没有对话内容，稍等片刻让对话加载');
-      Future.delayed(Duration(milliseconds: 50), () {
+      Future.delayed(const Duration(milliseconds: 50), () {
         if (_isSkipping) {
           _performSkipStep();
         }

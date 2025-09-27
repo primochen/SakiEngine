@@ -49,12 +49,24 @@ class DialogueProgressionManager {
   void _markCurrentDialogueAsRead() {
     final currentState = gameManager.currentState;
     if (currentState.dialogue != null && currentState.dialogue!.trim().isNotEmpty) {
-      //print('📖 标记为已读: "${currentState.dialogue!.length > 20 ? currentState.dialogue!.substring(0, 20) + '...' : currentState.dialogue!}" (脚本索引: ${gameManager.currentScriptIndex})');
       ReadTextTracker.instance.markAsRead(
         currentState.speaker,
         currentState.dialogue!,
         gameManager.currentScriptIndex,
       );
+      return;
+    }
+
+    if (currentState.isNvlMode || currentState.isNvlMovieMode || currentState.isNvlnMode) {
+      if (currentState.nvlDialogues.isNotEmpty) {
+        for (final nvlDialogue in currentState.nvlDialogues) {
+          ReadTextTracker.instance.markAsRead(
+            nvlDialogue.speaker ?? currentState.speaker,
+            nvlDialogue.dialogue,
+            gameManager.currentScriptIndex,
+          );
+        }
+      }
     }
   }
   
