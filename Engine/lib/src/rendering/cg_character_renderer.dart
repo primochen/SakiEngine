@@ -32,11 +32,10 @@ class CgCharacterRenderer {
       final characterId = entry.key;
       final characterState = entry.value;
 
-      // 使用resourceId作为key，确保唯一性
-      final widgetKey = 'cg_${characterState.resourceId}';
+      final widgetKey = 'cg_$characterId';
       
       return FutureBuilder<List<CharacterLayerInfo>>(
-        key: ValueKey(widgetKey), // 使用resourceId作为key
+        key: ValueKey(widgetKey),
         future: CharacterLayerParser.parseCharacterLayers(
           resourceId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
@@ -51,7 +50,7 @@ class CgCharacterRenderer {
 
           // 使用同步CG显示组件来处理首次显示的同步问题
           return SynchronizedCgDisplay(
-            key: ValueKey('sync_cg_${characterState.resourceId}'),
+            key: ValueKey('sync_cg_$characterId'),
             layerInfos: layerInfos,
             resourceId: characterState.resourceId,
             isFadingOut: characterState.isFadingOut,

@@ -98,6 +98,7 @@ class GameManager {
   BuildContext? _context;
   TickerProvider? _tickerProvider;
   final Set<String> _everShownCharacters = {};
+  static const String _globalCgCharacterKey = '__global_cg__';
   
   // 快进状态
   bool _isFastForwardMode = false;
@@ -1238,7 +1239,7 @@ class GameManager {
         final characterConfig = _characterConfigs[node.character];
         String resourceId;
         String positionId;
-        String finalCharacterKey; // 最终使用的角色key
+        const String finalCharacterKey = _globalCgCharacterKey; // 统一使用全局key以复用渲染组件
         
         if (characterConfig != null) {
           if (kDebugMode) {
@@ -1246,14 +1247,12 @@ class GameManager {
           }
           resourceId = characterConfig.resourceId;
           positionId = characterConfig.defaultPoseId ?? 'pose';
-          finalCharacterKey = resourceId; // 使用resourceId作为key
         } else {
           if (kDebugMode) {
             //print('[GameManager] 直接使用资源ID: ${node.character}');
           }
           resourceId = node.character;
           positionId = node.position ?? 'pose';
-          finalCharacterKey = node.character; // 使用原始名称作为key
         }
 
         // 确保pose和expression的值被正确设置
@@ -1308,23 +1307,41 @@ class GameManager {
 
         // 跟踪角色是否曾经显示过
         _everShownCharacters.add(finalCharacterKey);
+        _everShownCharacters.add(resourceId);
 
         final newCgCharacters = Map.of(_currentState.cgCharacters);
-        
-        final currentCharacterState = _currentState.cgCharacters[finalCharacterKey] ?? CharacterState(
-          resourceId: resourceId,
-          positionId: positionId,
-        );
-        
+
+        final currentCharacterState = _currentState.cgCharacters[finalCharacterKey];
+        CharacterState updatedState;
+
+        if (currentCharacterState != null && currentCharacterState.resourceId != resourceId) {
+          // 切换到了全新的CG资源，创建全新的状态以触发完整渐变
+          updatedState = CharacterState(
+            resourceId: resourceId,
+            pose: newPose,
+            expression: newExpression,
+            positionId: positionId,
+          );
+        } else if (currentCharacterState != null) {
+          updatedState = currentCharacterState.copyWith(
+            pose: newPose,
+            expression: newExpression,
+            clearAnimationProperties: false,
+          );
+        } else {
+          updatedState = CharacterState(
+            resourceId: resourceId,
+            pose: newPose,
+            expression: newExpression,
+            positionId: positionId,
+          );
+        }
+
         if (kDebugMode) {
           //print('[GameManager] CG更新前: cgCharacters数量=${_currentState.cgCharacters.length}');
         }
 
-        newCgCharacters[finalCharacterKey] = currentCharacterState.copyWith(
-          pose: newPose,
-          expression: newExpression,
-          clearAnimationProperties: false,
-        );
+        newCgCharacters[finalCharacterKey] = updatedState;
         
         _currentState = _currentState.copyWith(
           cgCharacters: newCgCharacters, 

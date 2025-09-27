@@ -45,22 +45,21 @@ class LayeredCgRenderer {
     final stopwatch = Stopwatch()..start();
     
     // 按resourceId分组，保留最新状态
-    final Map<String, MapEntry<String, CharacterState>> charactersByResourceId = {};
+    final Map<String, MapEntry<String, CharacterState>> charactersBySlot = {};
     
     for (final entry in cgCharacters.entries) {
-      final resourceId = entry.value.resourceId;
-      charactersByResourceId[resourceId] = entry;
+      charactersBySlot[entry.key] = entry;
     }
     
     // 清理不再使用的渲染状态
-    _cleanupUnusedStates(charactersByResourceId.keys.toSet());
+    _cleanupUnusedStates(charactersBySlot.keys.toSet());
     
-    final widgets = charactersByResourceId.values.map((entry) {
+    final widgets = charactersBySlot.values.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
       
       return _buildCharacterWidget(
-        key: 'layered_cg_${characterState.resourceId}',
+        key: 'layered_cg_$characterId',
         characterId: characterId,
         characterState: characterState,
         gameManager: gameManager,
@@ -89,14 +88,14 @@ class LayeredCgRenderer {
     
     // 检查渲染状态变化
     final stateKey = '${resourceId}_${pose}_$expression';
-    final lastState = _renderStates[resourceId];
+    final lastState = _renderStates[characterId];
     final hasChanged = lastState == null || 
                        lastState.pose != pose || 
                        lastState.expression != expression ||
                        lastState.isFadingOut != characterState.isFadingOut;
     
     // 更新渲染状态
-    _renderStates[resourceId] = _CgRenderState(
+    _renderStates[characterId] = _CgRenderState(
       resourceId: resourceId,
       pose: pose,
       expression: expression,
@@ -148,9 +147,9 @@ class LayeredCgRenderer {
   }
 
   /// 清理未使用的渲染状态
-  static void _cleanupUnusedStates(Set<String> activeResourceIds) {
+  static void _cleanupUnusedStates(Set<String> activeCharacterIds) {
     final keysToRemove = _renderStates.keys
-        .where((key) => !activeResourceIds.contains(key))
+        .where((key) => !activeCharacterIds.contains(key))
         .toList();
     
     for (final key in keysToRemove) {

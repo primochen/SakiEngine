@@ -146,8 +146,9 @@ class CompositeCgRenderer {
     required bool skipAnimations,
   }) {
     final characterState = entry.value;
+    final displayKey = entry.key;
 
-    final widgetKey = 'composite_cg_${characterState.resourceId}';
+    final widgetKey = 'composite_cg_$displayKey';
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
     final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
@@ -156,14 +157,14 @@ class CompositeCgRenderer {
       _preDisplayCommonVariations(characterState.resourceId, characterState.pose ?? 'pose1');
     }
 
-    final currentImagePath = _currentDisplayedImages[characterState.resourceId];
+    final currentImagePath = _currentDisplayedImages[displayKey];
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
-      _currentDisplayedImages[characterState.resourceId] = cacheKey;
+      _currentDisplayedImages[displayKey] = cacheKey;
 
       return DirectCgDisplay(
-        key: ValueKey('direct_display_${characterState.resourceId}'),
+        key: ValueKey('direct_display_$displayKey'),
         image: preloadedImage,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
@@ -173,10 +174,10 @@ class CompositeCgRenderer {
 
     if (_completedPaths.containsKey(cacheKey)) {
       final compositeImagePath = _completedPaths[cacheKey]!;
-      _currentDisplayedImages[characterState.resourceId] = compositeImagePath;
+      _currentDisplayedImages[displayKey] = compositeImagePath;
 
       return SeamlessCgDisplay(
-        key: ValueKey('seamless_display_${characterState.resourceId}'),
+        key: ValueKey('seamless_display_$displayKey'),
         newImagePath: compositeImagePath,
         currentImagePath: currentImagePath,
         resourceId: characterState.resourceId,
@@ -192,6 +193,7 @@ class CompositeCgRenderer {
         pose: characterState.pose ?? 'pose1',
         expression: characterState.expression ?? 'happy',
         cacheKey: cacheKey,
+        displayKey: displayKey,
       );
     }
 
@@ -205,7 +207,7 @@ class CompositeCgRenderer {
         if (snapshot.connectionState == ConnectionState.waiting) {
           if (shouldShowCurrent) {
             return SeamlessCgDisplay(
-              key: ValueKey('seamless_display_${characterState.resourceId}'),
+              key: ValueKey('seamless_display_$displayKey'),
               newImagePath: null,
               currentImagePath: currentImagePath,
               resourceId: characterState.resourceId,
@@ -215,7 +217,7 @@ class CompositeCgRenderer {
             );
           }
           return Container(
-            key: ValueKey('loading_placeholder_${characterState.resourceId}'),
+            key: ValueKey('loading_placeholder_$displayKey'),
             width: double.infinity,
             height: double.infinity,
           );
@@ -224,7 +226,7 @@ class CompositeCgRenderer {
         if (!hasNewImage) {
           if (shouldShowCurrent) {
             return SeamlessCgDisplay(
-              key: ValueKey('seamless_display_${characterState.resourceId}'),
+              key: ValueKey('seamless_display_$displayKey'),
               newImagePath: null,
               currentImagePath: currentImagePath,
               resourceId: characterState.resourceId,
@@ -234,17 +236,17 @@ class CompositeCgRenderer {
             );
           }
           return Container(
-            key: ValueKey('error_placeholder_${characterState.resourceId}'),
+            key: ValueKey('error_placeholder_$displayKey'),
             width: double.infinity,
             height: double.infinity,
           );
         }
 
         final compositeImagePath = snapshot.data!;
-        _currentDisplayedImages[characterState.resourceId] = compositeImagePath;
+        _currentDisplayedImages[displayKey] = compositeImagePath;
 
         return SeamlessCgDisplay(
-          key: ValueKey('seamless_display_${characterState.resourceId}'),
+          key: ValueKey('seamless_display_$displayKey'),
           newImagePath: compositeImagePath,
           currentImagePath: currentImagePath,
           resourceId: characterState.resourceId,
@@ -262,6 +264,7 @@ class CompositeCgRenderer {
     required bool skipAnimations,
   }) {
     final characterState = entry.value;
+    final displayKey = entry.key;
     final cacheKey = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}_${characterState.expression ?? 'happy'}';
 
     final resourceBaseId = '${characterState.resourceId}_${characterState.pose ?? 'pose1'}';
@@ -270,15 +273,15 @@ class CompositeCgRenderer {
       _preDisplayCommonVariations(characterState.resourceId, characterState.pose ?? 'pose1');
     }
 
-    final currentKey = _currentDisplayedGpuKeys[characterState.resourceId];
+    final currentKey = _currentDisplayedGpuKeys[displayKey];
     final currentResult = _resolveGpuResult(currentKey);
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
-      _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+      _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
       return DirectCgDisplay(
-        key: ValueKey('direct_display_gpu_${characterState.resourceId}'),
+        key: ValueKey('direct_display_gpu_$displayKey'),
         image: preloadedImage,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
@@ -288,10 +291,10 @@ class CompositeCgRenderer {
 
     if (_gpuPreloadedResults.containsKey(cacheKey)) {
       final preloadedResult = _gpuPreloadedResults[cacheKey]!;
-      _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+      _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
       return GpuDirectCgDisplay(
-        key: ValueKey('gpu_direct_${characterState.resourceId}'),
+        key: ValueKey('gpu_direct_$displayKey'),
         result: preloadedResult,
         resourceId: characterState.resourceId,
         isFadingOut: characterState.isFadingOut,
@@ -301,10 +304,10 @@ class CompositeCgRenderer {
 
     if (_gpuCompletedResults.containsKey(cacheKey)) {
       final completedResult = _gpuCompletedResults[cacheKey]!;
-      _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+      _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
       return GpuSeamlessCgDisplay(
-        key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+        key: ValueKey('gpu_seamless_$displayKey'),
         newResult: completedResult,
         currentResult: currentResult,
         resourceId: characterState.resourceId,
@@ -330,7 +333,7 @@ class CompositeCgRenderer {
     }
 
     return FutureBuilder<GpuCompositeEntry?>(
-      key: ValueKey('gpu_future_${characterState.resourceId}'),
+      key: ValueKey('gpu_future_$displayKey'),
       future: _gpuFutureCache[cacheKey],
       builder: (context, snapshot) {
         final entryData = snapshot.data;
@@ -341,7 +344,7 @@ class CompositeCgRenderer {
         if (snapshot.connectionState == ConnectionState.waiting) {
           if (currentResult != null) {
             return GpuSeamlessCgDisplay(
-              key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+              key: ValueKey('gpu_seamless_$displayKey'),
               newResult: null,
               currentResult: currentResult,
               resourceId: characterState.resourceId,
@@ -350,7 +353,7 @@ class CompositeCgRenderer {
             );
           }
           return Container(
-            key: ValueKey('gpu_loading_${characterState.resourceId}'),
+            key: ValueKey('gpu_loading_$displayKey'),
             width: double.infinity,
             height: double.infinity,
           );
@@ -376,10 +379,10 @@ class CompositeCgRenderer {
 
         _gpuCompletedResults[cacheKey] = newResult;
         _gpuPreloadedResults[cacheKey] = newResult;
-        _currentDisplayedGpuKeys[characterState.resourceId] = cacheKey;
+        _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
         return GpuSeamlessCgDisplay(
-          key: ValueKey('gpu_seamless_${characterState.resourceId}'),
+          key: ValueKey('gpu_seamless_$displayKey'),
           newResult: newResult,
           currentResult: currentResult,
           resourceId: characterState.resourceId,
@@ -438,6 +441,7 @@ class CompositeCgRenderer {
     required String pose,
     required String expression,
     required String cacheKey,
+    required String displayKey,
   }) async {
     try {
       print('[CompositeCgRenderer] 开始加载: $cacheKey');
@@ -488,7 +492,7 @@ class CompositeCgRenderer {
         }
         
         // 更新当前显示的图像
-        _currentDisplayedImages[resourceId] = compositeImagePath;
+        _currentDisplayedImages[displayKey] = compositeImagePath;
       } else {
         print('[CompositeCgRenderer] 合成失败: $cacheKey');
       }
