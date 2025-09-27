@@ -1343,14 +1343,16 @@ class GameManager {
         }
 
         newCgCharacters[finalCharacterKey] = updatedState;
-        
+
         _currentState = _currentState.copyWith(
           cgCharacters: newCgCharacters, 
           clearDialogueAndSpeaker: true, 
           everShownCharacters: _everShownCharacters
         );
         _gameStateController.add(_currentState);
-        
+
+        CompositeCgRenderer.resetFadeToken(finalCharacterKey);
+
         if (kDebugMode) {
           //print('[GameManager] CG状态已更新，当前CG角色数量: ${_currentState.cgCharacters.length}');
           //print('[GameManager] CG角色列表: ${_currentState.cgCharacters.keys.toList()}');

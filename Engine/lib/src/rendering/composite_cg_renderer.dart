@@ -14,6 +14,18 @@ import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 /// 
 /// 替代原有的多层实时渲染方式，直接使用预合成的单张图像
 class CompositeCgRenderer {
+  static final Map<String, int> _fadeTokens = <String, int>{};
+
+  static bool _isFreshFade(String key) => (_fadeTokens[key] ?? 0) < 1;
+
+  static void _markFadeUsed(String key) {
+    _fadeTokens[key] = (_fadeTokens[key] ?? 0) + 1;
+  }
+
+  static void resetFadeToken(String key) {
+    _fadeTokens.remove(key);
+    _fadeTokens.remove('gpu_$key');
+  }
   // GPU加速合成器实例
   static final GpuImageCompositor _gpuCompositor = GpuImageCompositor();
   static final CgImageCompositor _legacyCompositor = CgImageCompositor();
@@ -114,15 +126,19 @@ class CompositeCgRenderer {
     }
     
     if (cgCharacters.isEmpty) return [];
-    
+
     // 按resourceId分组，保留最新的角色状态
     final Map<String, MapEntry<String, CharacterState>> charactersByResourceId = {};
-    
+
     for (final entry in cgCharacters.entries) {
       final resourceId = entry.value.resourceId;
       charactersByResourceId[resourceId] = entry;
     }
-    
+
+    final Set<String> activeCpuKeys = charactersByResourceId.values.map((entry) => entry.key).toSet();
+    final Set<String> activeGpuKeys = activeCpuKeys.map((key) => 'gpu_$key').toSet();
+    _fadeTokens.removeWhere((key, value) => !activeCpuKeys.contains(key) && !activeGpuKeys.contains(key));
+
     return charactersByResourceId.values.map<Widget>((entry) {
       if (_useGpuAcceleration) {
         return _buildGpuCharacterWidget(
@@ -163,7 +179,13 @@ class CompositeCgRenderer {
     }
 
     final currentImagePath = _currentDisplayedImages[displayKey];
-    final bool isFirstAppearance = currentImagePath == null && !skipAnimations;
+    final bool isFirstAppearance = !skipAnimations && (currentImagePath == null || _isFreshFade(displayKey));
+    if (isFirstAppearance) {
+      _markFadeUsed(displayKey);
+    }
+    if (isFirstAppearance) {
+      _fadeTokens.update(displayKey, (value) => value + 1, ifAbsent: () => 1);
+    }
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
@@ -320,7 +342,10 @@ class CompositeCgRenderer {
 
     final currentKey = _currentDisplayedGpuKeys[displayKey];
     final currentResult = _resolveGpuResult(currentKey);
-    final bool isFirstAppearance = currentKey == null && !skipAnimations;
+    final bool isFirstAppearance = !skipAnimations && (currentKey == null || _isFreshFade('gpu_$displayKey'));
+    if (isFirstAppearance) {
+      _markFadeUsed('gpu_$displayKey');
+    }
 
     if (_preloadedImages.containsKey(cacheKey)) {
       final preloadedImage = _preloadedImages[cacheKey]!;
@@ -1529,7 +1554,7 @@ class _FirstCgFadeWrapper extends StatefulWidget {
 
 class _FirstCgFadeWrapperState extends State<_FirstCgFadeWrapper>
     with SingleTickerProviderStateMixin {
-  static final Set<String> _fadedKeys = <String>{};
+  static final Map<String, int> _fadeCounters = <String, int>{};
   late final AnimationController _controller;
   late final Animation<double> _opacity;
   late bool _shouldFade;
@@ -1537,10 +1562,10 @@ class _FirstCgFadeWrapperState extends State<_FirstCgFadeWrapper>
   @override
   void initState() {
     super.initState();
-    _shouldFade = widget.enableFade && !_fadedKeys.contains(widget.fadeKey);
+    _shouldFade = widget.enableFade;
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 320),
       value: _shouldFade ? 0.0 : 1.0,
     );
     _opacity = CurvedAnimation(
@@ -1557,23 +1582,24 @@ class _FirstCgFadeWrapperState extends State<_FirstCgFadeWrapper>
   void didUpdateWidget(covariant _FirstCgFadeWrapper oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.fadeKey != widget.fadeKey) {
-      final bool shouldFadeNow = widget.enableFade && !_fadedKeys.contains(widget.fadeKey);
-      if (shouldFadeNow) {
-        _controller.value = 0.0;
+      _shouldFade = widget.enableFade;
+      _controller.value = _shouldFade ? 0.0 : 1.0;
+      if (_shouldFade) {
         _controller.forward();
-        _shouldFade = true;
-      } else {
-        _controller.value = 1.0;
-        _shouldFade = false;
       }
+      return;
+    }
+
+    if (widget.enableFade && !_shouldFade) {
+      _shouldFade = true;
+      _controller.value = 0.0;
+      _controller.forward();
     }
   }
 
   @override
   void dispose() {
-    if (_shouldFade) {
-      _fadedKeys.add(widget.fadeKey);
-    }
+    _fadeCounters.update(widget.fadeKey, (value) => value + 1, ifAbsent: () => 1);
     _controller.dispose();
     super.dispose();
   }
