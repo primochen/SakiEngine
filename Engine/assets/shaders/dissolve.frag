@@ -8,6 +8,7 @@ uniform vec2 u_imageTo_dimensions;
 uniform vec2 uOffset;
 uniform sampler2D imageFrom;
 uniform sampler2D imageTo;
+uniform float overallAlpha;
 
 out vec4 fragColor;
 
@@ -42,5 +43,5 @@ void main() {
     vec4 to_interpX2 = mix(to_t01, to_t11, to_f.x);
     vec4 to_color = mix(to_interpX1, to_interpX2, to_f.y);
 
-    fragColor = mix(from_color, to_color, progress);
-} 
+    fragColor = mix(from_color, to_color, progress) * overallAlpha;
+}

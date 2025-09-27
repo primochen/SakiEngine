@@ -950,19 +950,31 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
       animation: _progress,
       builder: (context, child) {
         final dissolveProgram = CompositeCgRenderer._dissolveProgram;
-        final canUseShader = !widget.isFadingOut &&
-            _previousImage != null &&
-            dissolveProgram != null;
-        if (canUseShader) {
+        final bool shaderAvailable = dissolveProgram != null;
+        final bool hasPrevious = _previousImage != null && !widget.isFadingOut;
+        final progressValue = _progress.value.clamp(0.0, 1.0);
+        double overallAlpha;
+        if (widget.isFadingOut) {
+          overallAlpha = 1.0 - progressValue;
+        } else if (widget.enableFadeIn && !_hasShownOnce) {
+          overallAlpha = progressValue;
+        } else {
+          overallAlpha = 1.0;
+        }
+        overallAlpha = overallAlpha.clamp(0.0, 1.0);
+        final ui.Image fromImage = hasPrevious ? _previousImage! : image;
+        final double dissolveProgress = hasPrevious ? progressValue : 1.0;
+        if (shaderAvailable) {
           return LayoutBuilder(
             builder: (context, constraints) {
               return CustomPaint(
                 size: Size(constraints.maxWidth, constraints.maxHeight),
                 painter: _DissolveShaderPainter(
                   program: dissolveProgram!,
-                  progress: _progress.value,
-                  fromImage: _previousImage!,
+                  progress: dissolveProgress,
+                  fromImage: fromImage,
                   toImage: image,
+                  opacity: overallAlpha,
                 ),
               );
             },
@@ -975,7 +987,7 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
               painter: DirectCgPainter(
                 currentImage: image,
                 previousImage: _previousImage,
-                progress: _progress.value,
+                progress: progressValue,
                 isFadingOut: widget.isFadingOut,
                 enableFadeIn: widget.enableFadeIn && !_hasShownOnce,
               ),
@@ -1211,12 +1223,14 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
 
     final dissolveProgram =
         widget.dissolveProgram ?? CompositeCgRenderer._dissolveProgram;
-    final canUseShader =
-        !widget.isFadingOut &&
-        dissolveProgram != null &&
-        _previousImage != null;
+    final bool shaderAvailable = dissolveProgram != null;
+    final bool hasPrevious = _previousImage != null && !widget.isFadingOut;
+    final double animationValue = _fadeAnimation.value.clamp(0.0, 1.0);
+    final double overallAlpha = widget.isFadingOut ? 1.0 - animationValue : 1.0;
+    final ui.Image fromImage = hasPrevious ? _previousImage! : _currentImage!;
+    final double dissolveProgress = hasPrevious ? animationValue : 1.0;
 
-    if (canUseShader) {
+    if (shaderAvailable) {
       return AnimatedBuilder(
         animation: _fadeAnimation,
         builder: (context, child) {
@@ -1226,9 +1240,10 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
                 size: Size(constraints.maxWidth, constraints.maxHeight),
                 painter: _DissolveShaderPainter(
                   program: dissolveProgram!,
-                  progress: _fadeAnimation.value,
-                  fromImage: _previousImage!,
+                  progress: dissolveProgress,
+                  fromImage: fromImage,
                   toImage: _currentImage!,
+                  opacity: overallAlpha,
                 ),
               );
             },
@@ -1377,12 +1392,14 @@ class _DissolveShaderPainter extends CustomPainter {
   final double progress;
   final ui.Image fromImage;
   final ui.Image toImage;
+  final double opacity;
 
   _DissolveShaderPainter({
     required this.program,
     required this.progress,
     required this.fromImage,
     required this.toImage,
+    required this.opacity,
   });
 
   @override
@@ -1401,7 +1418,8 @@ class _DissolveShaderPainter extends CustomPainter {
       ..setFloat(5, toImage.width.toDouble())
       ..setFloat(6, toImage.height.toDouble())
       ..setFloat(7, targetRect.left)
-      ..setFloat(8, targetRect.top);
+      ..setFloat(8, targetRect.top)
+      ..setFloat(9, opacity.clamp(0.0, 1.0));
 
     shader
       ..setImageSampler(0, fromImage)
@@ -1417,7 +1435,8 @@ class _DissolveShaderPainter extends CustomPainter {
     return progress != oldDelegate.progress ||
         fromImage != oldDelegate.fromImage ||
         toImage != oldDelegate.toImage ||
-        program != oldDelegate.program;
+        program != oldDelegate.program ||
+        opacity != oldDelegate.opacity;
   }
 }
 
