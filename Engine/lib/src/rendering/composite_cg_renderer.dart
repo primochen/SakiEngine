@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -41,6 +42,20 @@ class CompositeCgRenderer {
   static final Map<String, String> _currentDisplayedGpuKeys = {};
 
   static final Map<String, Future<ui.Image?>> _gpuFlattenTasks = {};
+
+  // 着色器支持
+  static ui.FragmentProgram? _dissolveProgram;
+  static Future<void> _ensureDissolveProgram() async {
+    if (_dissolveProgram != null) return;
+    try {
+      final program = await ui.FragmentProgram.fromAsset('assets/shaders/dissolve.frag');
+      _dissolveProgram = program;
+    } catch (e) {
+      if (kDebugMode) {
+        print('[CompositeCgRenderer] Failed to load dissolve shader: $e');
+      }
+    }
+  }
 
   /// 供后台预合成逻辑注册缓存结果，避免首次切换差分时重新加载
   static Future<void> cachePrecomposedResult({
@@ -89,6 +104,7 @@ class CompositeCgRenderer {
     Map<String, CharacterState> cgCharacters,
     GameManager gameManager,
   ) {
+    _ensureDissolveProgram();
     // 确保预热已开始（只执行一次）
     if (!_preWarmingStarted) {
       _preWarmingStarted = true;
@@ -159,6 +175,7 @@ class CompositeCgRenderer {
         newImagePath: compositeImagePath,
         currentImagePath: currentImagePath,
         resourceId: characterState.resourceId,
+        dissolveProgram: _dissolveProgram,
         isFadingOut: characterState.isFadingOut,
       );
     }
@@ -186,6 +203,7 @@ class CompositeCgRenderer {
               newImagePath: null,
               currentImagePath: currentImagePath,
               resourceId: characterState.resourceId,
+              dissolveProgram: _dissolveProgram,
               isFadingOut: characterState.isFadingOut,
             );
           }
@@ -203,6 +221,7 @@ class CompositeCgRenderer {
               newImagePath: null,
               currentImagePath: currentImagePath,
               resourceId: characterState.resourceId,
+              dissolveProgram: _dissolveProgram,
               isFadingOut: characterState.isFadingOut,
             );
           }
@@ -221,6 +240,7 @@ class CompositeCgRenderer {
           newImagePath: compositeImagePath,
           currentImagePath: currentImagePath,
           resourceId: characterState.resourceId,
+          dissolveProgram: _dissolveProgram,
           isFadingOut: characterState.isFadingOut,
         );
       },
@@ -886,6 +906,11 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     });
 
     _controller.forward();
+    CompositeCgRenderer._ensureDissolveProgram().then((_) {
+      if (mounted && CompositeCgRenderer._dissolveProgram != null) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -924,6 +949,25 @@ class _DirectCgDisplayState extends State<DirectCgDisplay>
     return AnimatedBuilder(
       animation: _progress,
       builder: (context, child) {
+        final dissolveProgram = CompositeCgRenderer._dissolveProgram;
+        final canUseShader = !widget.isFadingOut &&
+            _previousImage != null &&
+            dissolveProgram != null;
+        if (canUseShader) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return CustomPaint(
+                size: Size(constraints.maxWidth, constraints.maxHeight),
+                painter: _DissolveShaderPainter(
+                  program: dissolveProgram!,
+                  progress: _progress.value,
+                  fromImage: _previousImage!,
+                  toImage: image,
+                ),
+              );
+            },
+          );
+        }
         return LayoutBuilder(
           builder: (context, constraints) {
             return CustomPaint(
@@ -1030,6 +1074,7 @@ class SeamlessCgDisplay extends StatefulWidget {
   final String? newImagePath;
   final String? currentImagePath;
   final String resourceId;
+  final ui.FragmentProgram? dissolveProgram;
   final bool isFadingOut;
   
   const SeamlessCgDisplay({
@@ -1037,6 +1082,7 @@ class SeamlessCgDisplay extends StatefulWidget {
     this.newImagePath,
     this.currentImagePath,
     required this.resourceId,
+    this.dissolveProgram,
     this.isFadingOut = false,
   });
 
@@ -1046,7 +1092,8 @@ class SeamlessCgDisplay extends StatefulWidget {
 
 class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
     with TickerProviderStateMixin {
-  ui.Image? _displayedImage; // 当前显示的图像（永远不为空一旦有图像）
+  ui.Image? _currentImage;
+  ui.Image? _previousImage;
   
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -1069,6 +1116,15 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
     final imageToLoad = widget.newImagePath ?? widget.currentImagePath;
     if (imageToLoad != null) {
       _loadAndSetImage(imageToLoad);
+    }
+
+    _fadeController.addStatusListener(_handleFadeStatus);
+    if (widget.dissolveProgram == null) {
+      CompositeCgRenderer._ensureDissolveProgram().then((_) {
+        if (mounted && CompositeCgRenderer._dissolveProgram != null) {
+          setState(() {});
+        }
+      });
     }
   }
 
@@ -1099,18 +1155,14 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
         final frame = await codec.getNextFrame();
         
         if (mounted) {
-          // 关键修复：只有在成功加载新图像后才替换显示的图像
-          final oldImage = _displayedImage;
+          final oldImage = _currentImage;
           
           setState(() {
-            _displayedImage = frame.image;
+            _previousImage = oldImage;
+            _currentImage = frame.image;
           });
           
-          // 开始淡入动画
-          _fadeController.forward();
-          
-          // 释放旧图像
-          oldImage?.dispose();
+          _fadeController.forward(from: 0.0);
         }
         return;
       }
@@ -1124,18 +1176,14 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
       final frame = await codec.getNextFrame();
       
       if (mounted) {
-        // 关键修复：只有在成功加载新图像后才替换显示的图像
-        final oldImage = _displayedImage;
+        final oldImage = _currentImage;
         
         setState(() {
-          _displayedImage = frame.image;
+          _previousImage = oldImage;
+          _currentImage = frame.image;
         });
         
-        // 开始淡入动画
-        _fadeController.forward();
-        
-        // 释放旧图像
-        oldImage?.dispose();
+        _fadeController.forward(from: 0.0);
       }
     } catch (e) {
       // 加载失败时保持当前显示的图像不变
@@ -1144,19 +1192,48 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
 
   @override
   void dispose() {
+    _fadeController.removeStatusListener(_handleFadeStatus);
     _fadeController.dispose();
-    _displayedImage?.dispose();
+    _previousImage = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     // 关键：如果没有图像可显示，返回透明容器而不是空白
-    if (_displayedImage == null) {
+    if (_currentImage == null) {
       return Container(
         width: double.infinity,
         height: double.infinity,
         color: Colors.transparent,
+      );
+    }
+
+    final dissolveProgram =
+        widget.dissolveProgram ?? CompositeCgRenderer._dissolveProgram;
+    final canUseShader =
+        !widget.isFadingOut &&
+        dissolveProgram != null &&
+        _previousImage != null;
+
+    if (canUseShader) {
+      return AnimatedBuilder(
+        animation: _fadeAnimation,
+        builder: (context, child) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return CustomPaint(
+                size: Size(constraints.maxWidth, constraints.maxHeight),
+                painter: _DissolveShaderPainter(
+                  program: dissolveProgram!,
+                  progress: _fadeAnimation.value,
+                  fromImage: _previousImage!,
+                  toImage: _currentImage!,
+                ),
+              );
+            },
+          );
+        },
       );
     }
 
@@ -1168,8 +1245,8 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
             return CustomPaint(
               size: Size(constraints.maxWidth, constraints.maxHeight),
               painter: SeamlessCgPainter(
-                currentImage: _displayedImage,
-                newImage: null, // 简化：直接切换图像，不需要双图像混合
+                currentImage: _currentImage,
+                newImage: null,
                 fadeOpacity: _fadeAnimation.value,
                 transitionOpacity: 0.0,
               ),
@@ -1178,6 +1255,12 @@ class _SeamlessCgDisplayState extends State<SeamlessCgDisplay>
         );
       },
     );
+  }
+
+  void _handleFadeStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _previousImage = null;
+    }
   }
 }
 
@@ -1286,6 +1369,56 @@ class _CompositeCgDisplayState extends State<CompositeCgDisplay>
         );
       },
     );
+  }
+}
+
+class _DissolveShaderPainter extends CustomPainter {
+  final ui.FragmentProgram program;
+  final double progress;
+  final ui.Image fromImage;
+  final ui.Image toImage;
+
+  _DissolveShaderPainter({
+    required this.program,
+    required this.progress,
+    required this.fromImage,
+    required this.toImage,
+  });
+
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    if (size.isEmpty) return;
+
+    final targetRect = _calculateCoverRect(size, toImage.width, toImage.height);
+
+    final shader = program.fragmentShader();
+    shader
+      ..setFloat(0, progress.clamp(0.0, 1.0))
+      ..setFloat(1, targetRect.width)
+      ..setFloat(2, targetRect.height)
+      ..setFloat(3, fromImage.width.toDouble())
+      ..setFloat(4, fromImage.height.toDouble())
+      ..setFloat(5, toImage.width.toDouble())
+      ..setFloat(6, toImage.height.toDouble());
+
+    shader
+      ..setImageSampler(0, fromImage)
+      ..setImageSampler(1, toImage);
+
+    final paint = ui.Paint()..shader = shader;
+
+    canvas.save();
+    canvas.translate(-targetRect.left, -targetRect.top);
+    canvas.drawRect(targetRect, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _DissolveShaderPainter oldDelegate) {
+    return progress != oldDelegate.progress ||
+        fromImage != oldDelegate.fromImage ||
+        toImage != oldDelegate.toImage ||
+        program != oldDelegate.program;
   }
 }
 
