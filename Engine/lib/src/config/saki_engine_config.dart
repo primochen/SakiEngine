@@ -51,6 +51,43 @@ class ThemeColors {
       onSurfaceVariant: HSLColor.fromAHSL(1.0, hsl.hue, hsl.saturation * 0.4, 0.7).toColor(), // 亮色变体
     );
   }
+  
+  // 色温调整方法
+  ThemeColors adjustColorTemperature({bool cooler = false}) {
+    if (!cooler) return this;
+    
+    return ThemeColors(
+      primary: _adjustColorTemperature(primary),
+      primaryDark: _adjustColorTemperature(primaryDark),
+      primaryLight: _adjustColorTemperature(primaryLight),
+      background: _adjustColorTemperature(background),
+      surface: _adjustColorTemperature(surface),
+      onSurface: _adjustColorTemperature(onSurface),
+      onSurfaceVariant: _adjustColorTemperature(onSurfaceVariant),
+    );
+  }
+  
+  // 单个颜色的色温调整（偏向冷色调）
+  Color _adjustColorTemperature(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    
+    // 调整色相，让暖色调偏向冷色调
+    double newHue = hsl.hue;
+    if (hsl.hue >= 0 && hsl.hue <= 60) {
+      // 红-黄区域，向蓝色方向偏移
+      newHue = (hsl.hue + 180) % 360;
+    } else if (hsl.hue >= 300 && hsl.hue <= 360) {
+      // 红-紫区域，向蓝绿色方向偏移
+      newHue = (hsl.hue + 120) % 360;
+    }
+    
+    return HSLColor.fromAHSL(
+      hsl.alpha,
+      newHue,
+      hsl.saturation * 0.8, // 稍微降低饱和度
+      hsl.lightness,
+    ).toColor();
+  }
 }
 
 
@@ -128,10 +165,16 @@ class SakiEngineConfig {
     final isDarkMode = SettingsManager().currentDarkMode;
     final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);
     
+    print('[SakiEngineConfig] updateThemeForDarkMode: isDarkMode=$isDarkMode');
+    
     if (isDarkMode) {
-      themeColors = ThemeColors.fromPrimaryDark(baseColor);
+      // 夜间模式：深色主题 + 色温调整
+      themeColors = ThemeColors.fromPrimaryDark(baseColor)
+          .adjustColorTemperature(cooler: true);
+      print('[SakiEngineConfig] 应用深色主题 + 冷色调色温');
     } else {
       themeColors = ThemeColors.fromPrimary(baseColor);
+      print('[SakiEngineConfig] 应用浅色主题 + 正常色温');
     }
   }
 
