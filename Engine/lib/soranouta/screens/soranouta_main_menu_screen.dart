@@ -197,6 +197,10 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                       final newDarkMode = !isDarkMode;
                       await SettingsManager().setDarkMode(newDarkMode);
                       config.updateThemeForDarkMode();
+                      // 触发重建以更新图标
+                      if (mounted) {
+                        setState(() {});
+                      }
                     },
                     child: Icon(
                       isDarkMode ? Icons.dark_mode : Icons.light_mode,
