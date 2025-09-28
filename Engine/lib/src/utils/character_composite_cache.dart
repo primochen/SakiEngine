@@ -22,19 +22,27 @@ class CharacterCompositeCache {
 
   Future<ui.Image?> preload(String resourceId, String pose, String expression) {
     final key = _buildKey(resourceId, pose, expression);
+    //print('[CharacterCompositeCache] preload调用 - key: $key');
+    
     final cached = _imageCache[key];
     if (cached != null) {
+      //print('[CharacterCompositeCache] 使用缓存图像 - key: $key');
       return SynchronousFuture(cached);
     }
 
     final pending = _pendingTasks[key];
     if (pending != null) {
+      //print('[CharacterCompositeCache] 等待进行中的任务 - key: $key');
       return pending;
     }
 
+    //print('[CharacterCompositeCache] 启动新的合成任务 - key: $key');
     final task = _compose(resourceId, pose, expression).then((image) {
       if (image != null) {
+        //print('[CharacterCompositeCache] 合成成功，缓存图像 - key: $key');
         _imageCache[key] = image;
+      } else {
+        //print('[CharacterCompositeCache] 合成失败 - key: $key');
       }
       _pendingTasks.remove(key);
       return image;
@@ -46,13 +54,18 @@ class CharacterCompositeCache {
 
   Future<ui.Image?> _compose(String resourceId, String pose, String expression) async {
     try {
+      //print('[CharacterCompositeCache] 开始合成角色 - resourceId: $resourceId, pose: $pose, expression: $expression');
+      
       final layerInfos = await CharacterLayerParser.parseCharacterLayers(
         resourceId: resourceId,
         pose: pose,
         expression: expression,
       );
 
+      //print('[CharacterCompositeCache] 图层解析完成 - 图层数量: ${layerInfos.length}');
+      
       if (layerInfos.isEmpty) {
+        //print('[CharacterCompositeCache] 没有图层信息，返回null');
         return null;
       }
 
@@ -60,14 +73,21 @@ class CharacterCompositeCache {
       ui.Image? baseImage;
 
       for (final info in layerInfos) {
+        //print('[CharacterCompositeCache] 处理图层: ${info.layerType}, 资源名: ${info.assetName}');
+        
         final assetPath = await AssetManager().findAsset(info.assetName);
         if (assetPath == null) {
+          //print('[CharacterCompositeCache] 找不到资源: ${info.assetName}');
           continue;
         }
+        
         final image = await ImageLoader.loadImage(assetPath);
         if (image == null) {
+          //print('[CharacterCompositeCache] 图像加载失败: $assetPath');
           continue;
         }
+
+        //print('[CharacterCompositeCache] 图像加载成功: $assetPath');
 
         final (xOffset, yOffset, alpha, scale) =
             ExpressionOffsetManager().getExpressionOffset(
@@ -89,9 +109,12 @@ class CharacterCompositeCache {
 
       final base = baseImage;
       if (base == null) {
+        //print('[CharacterCompositeCache] 没有基础图像，返回null');
         return null;
       }
 
+      //print('[CharacterCompositeCache] 开始Canvas合成 - 基础尺寸: ${base.width}x${base.height}');
+      
       final recorder = ui.PictureRecorder();
       final canvas = ui.Canvas(recorder);
       final paint = ui.Paint()
@@ -100,6 +123,10 @@ class CharacterCompositeCache {
 
       final width = base.width.toDouble();
       final height = base.height.toDouble();
+      
+      // 保存基础图像的尺寸，用于后续的toImage调用
+      final baseWidth = base.width;
+      final baseHeight = base.height;
 
       for (final layer in images) {
         canvas.save();
@@ -117,14 +144,24 @@ class CharacterCompositeCache {
         );
         canvas.drawImage(layer.image, ui.Offset.zero, paint);
         canvas.restore();
-        layer.image.dispose();
       }
 
+      //print('[CharacterCompositeCache] Canvas绘制完成，开始转换为图像');
+      
       final picture = recorder.endRecording();
-      final composed = await picture.toImage(base.width, base.height);
+      final composed = await picture.toImage(baseWidth, baseHeight);
       picture.dispose();
+      
+      // 现在安全地释放所有图层图像
+      for (final layer in images) {
+        layer.image.dispose();
+      }
+      
+      //print('[CharacterCompositeCache] 图像合成成功');
       return composed;
-    } catch (_) {
+    } catch (e, stackTrace) {
+      //print('[CharacterCompositeCache] 合成失败: $e');
+      //print('[CharacterCompositeCache] 错误堆栈: $stackTrace');
       return null;
     }
   }

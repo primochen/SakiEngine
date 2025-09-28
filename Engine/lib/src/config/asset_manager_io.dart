@@ -163,7 +163,6 @@ class AssetManager {
     final fileNameToCheck = targetFileName.toLowerCase();
     final isCgRelated = nameToCheck.contains('cg') || fileNameToCheck.contains('cg');
 
-    print("Searching for asset: name='$name', fileName='$targetFileName', path='$targetPath', isCgRelated='$isCgRelated'");
 
     // 如果检测到cg关键词，优先在cg路径下搜索（支持递归子文件夹）
     if (isCgRelated) {
@@ -200,13 +199,13 @@ class AssetManager {
           if (keyPath.contains('/${targetPath.toLowerCase()}/') || 
               keyPath.contains('${targetPath.toLowerCase()}/')) {
             _imageCache[name] = key;
-            print("Found asset in bundle (path + name match): $name -> $key");
+            //print("Found asset in bundle (path + name match): $name -> $key");
             return key;
           }
         } else {
           // 没有路径要求，直接匹配文件名
           _imageCache[name] = key;
-          print("Found asset in bundle (name match): $name -> $key");
+          //print("Found asset in bundle (name match): $name -> $key");
           return key;
         }
       }
@@ -220,12 +219,11 @@ class AssetManager {
       
       if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
         _imageCache[name] = key;
-        print("Found asset in bundle (fallback name match): $name -> $key");
+        //print("Found asset in bundle (fallback name match): $name -> $key");
         return key;
       }
     }
 
-    print("Asset not found in bundle: $name");
     print("Available assets: ${_assetManifest!.keys.take(10).join(', ')}...");
     return null;
   }

@@ -70,7 +70,6 @@ class ImageLoader {
           return externalImage;
         }
         // 如果外部文件加载失败，回退到assets加载
-        print('外部图像加载失败，回退到assets: $assetPath');
       }
       
       // 统一使用AVIF加载器，它内部有完整的回退机制：AVIF → WebP → PNG
@@ -89,23 +88,23 @@ class ImageLoader {
   /// 从内存缓存加载图像
   static Future<ui.Image?> _loadMemoryCacheImage(String assetPath) async {
     try {
-      print('[ImageLoader] 🐛 尝试从内存缓存加载: $assetPath');
+      //print('[ImageLoader] 🐛 尝试从内存缓存加载: $assetPath');
       
       final imageBytes = CgImageCompositor().getImageBytes(assetPath);
       if (imageBytes == null) {
-        print('[ImageLoader] ❌ 内存缓存中未找到图像: $assetPath');
+        //print('[ImageLoader] ❌ 内存缓存中未找到图像: $assetPath');
         return null;
       }
       
-      print('[ImageLoader] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
+      //print('[ImageLoader] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
       
       final codec = await ui.instantiateImageCodec(imageBytes);
       final frame = await codec.getNextFrame();
       
-      print('[ImageLoader] ✅ 成功解码图像: ${frame.image.width}x${frame.image.height}');
+      //print('[ImageLoader] ✅ 成功解码图像: ${frame.image.width}x${frame.image.height}');
       return frame.image;
     } catch (e) {
-      print('[ImageLoader] ❌ 从内存缓存加载图像失败 $assetPath: $e');
+      //print('[ImageLoader] ❌ 从内存缓存加载图像失败 $assetPath: $e');
       return null;
     }
   }
@@ -123,20 +122,20 @@ class ImageLoader {
 
   /// 加载AVIF图像并提供回退机制
   static Future<ui.Image?> _loadAvifImageWithFallback(String assetPath) async {
-    print('[ImageLoader] 尝试加载图片: $assetPath');
+    //print('[ImageLoader] 尝试加载图片: $assetPath');
     
     final config = SakiEngineConfig();
     
     // 首先尝试原始路径（无论什么格式）
     try {
-      print('[ImageLoader] 尝试原始路径: $assetPath');
+      //print('[ImageLoader] 尝试原始路径: $assetPath');
       final originalImage = await _loadImageByFormat(assetPath);
       if (originalImage != null) {
-        print('[ImageLoader] 原始路径加载成功: $assetPath');
+        //print('[ImageLoader] 原始路径加载成功: $assetPath');
         return originalImage;
       }
     } catch (e) {
-      print('[ImageLoader] 原始路径加载失败: $assetPath, 错误: $e');
+      //print('[ImageLoader] 原始路径加载失败: $assetPath, 错误: $e');
     }
     
     // 如果原始路径失败，尝试回退格式（仅当原始是AVIF时）
@@ -145,33 +144,33 @@ class ImageLoader {
       if (config.preferWebpOverAvif) {
         final webpPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.webp');
         try {
-          print('[ImageLoader] 尝试WebP回退: $webpPath');
+          //print('[ImageLoader] 尝试WebP回退: $webpPath');
           final webpImage = await _loadStandardImage(webpPath);
           if (webpImage != null) {
-            print('[ImageLoader] WebP回退成功: $webpPath');
+            //print('[ImageLoader] WebP回退成功: $webpPath');
             return webpImage;
           }
         } catch (e) {
-          print('[ImageLoader] WebP回退失败: $webpPath, 错误: $e');
+          //print('[ImageLoader] WebP回退失败: $webpPath, 错误: $e');
         }
       }
       
       if (config.preferPngOverAvif) {
         final pngPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.png');
         try {
-          print('[ImageLoader] 尝试PNG回退: $pngPath');
+          //print('[ImageLoader] 尝试PNG回退: $pngPath');
           final pngImage = await _loadStandardImage(pngPath);
           if (pngImage != null) {
-            print('[ImageLoader] PNG回退成功: $pngPath');
+            //print('[ImageLoader] PNG回退成功: $pngPath');
             return pngImage;
           }
         } catch (e) {
-          print('[ImageLoader] PNG回退失败: $pngPath, 错误: $e');
+          //print('[ImageLoader] PNG回退失败: $pngPath, 错误: $e');
         }
       }
     }
     
-    print('[ImageLoader] 所有尝试都失败，返回null: $assetPath');
+    //print('[ImageLoader] 所有尝试都失败，返回null: $assetPath');
     return null;
   }
 

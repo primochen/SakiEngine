@@ -1255,8 +1255,13 @@ class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
   }
 
   Future<void> _loadComposite() async {
+    //print('[_CompositeCharacterWidget] 开始加载合成图像 - 角色: ${widget.characterKey}, resourceId: ${widget.resourceId}, pose: ${widget.pose}, expression: ${widget.expression}');
+    
     final image = await CharacterCompositeCache.instance
         .preload(widget.resourceId, widget.pose, widget.expression);
+    
+    //print('[_CompositeCharacterWidget] 合成图像加载完成 - 角色: ${widget.characterKey}, 结果: ${image != null ? "成功" : "失败"}');
+    
     if (!mounted) return;
     setState(() {
       _currentImage = image;
@@ -1266,7 +1271,10 @@ class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
   @override
   Widget build(BuildContext context) {
     final image = _currentImage;
+    //print('[_CompositeCharacterWidget] build调用 - 角色: ${widget.characterKey}, image: ${image != null ? "已加载" : "null"}');
+    
     if (image == null) {
+      //print('[_CompositeCharacterWidget] 图像为null，返回空组件 - 角色: ${widget.characterKey}');
       return const SizedBox.shrink();
     }
 
@@ -1278,18 +1286,19 @@ class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
     final aspectRatio = image.width / image.height;
     final targetWidth = targetHeight * aspectRatio;
 
-      return SizedBox(
-        width: targetWidth,
-        height: targetHeight,
-        child: DirectCgDisplay(
-          key: ValueKey('direct_${widget.characterKey}'),
-          image: image,
-          resourceId: widget.characterKey,
-          isFadingOut: widget.isFadingOut,
-          enableFadeIn: !widget.isFadingOut,
-          skipAnimation: widget.skipAnimation,
-        ),
-      );
+    //print('[_CompositeCharacterWidget] 渲染角色: ${widget.characterKey}, 尺寸: ${targetWidth}x${targetHeight}');
+    return SizedBox(
+      width: targetWidth,
+      height: targetHeight,
+      child: DirectCgDisplay(
+        key: ValueKey('direct_${widget.characterKey}'),
+        image: image,
+        resourceId: widget.characterKey,
+        isFadingOut: widget.isFadingOut,
+        enableFadeIn: !widget.isFadingOut,
+        skipAnimation: widget.skipAnimation,
+      ),
+    );
   }
 }
 
