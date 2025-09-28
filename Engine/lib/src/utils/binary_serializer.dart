@@ -5,17 +5,17 @@ import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
 class BinarySerializer {
-  static const int _version = 5; // 增加版本号以支持isNvlnMode字段
+  static const int _version = 6; // 增加版本号以支持NVL遮罩可见性字段
   static const String _magicNumber = 'SAKI';
 
   /// 将SaveSlot序列化为二进制数据
   static Uint8List serializeSaveSlot(SaveSlot saveSlot) {
     final buffer = <int>[];
-    
+
     // 写入魔法数字和版本号
     buffer.addAll(_magicNumber.codeUnits);
     buffer.addAll(_writeInt32(_version));
-    
+
     // 写入基本信息
     buffer.addAll(_writeInt64(saveSlot.id));
     buffer.addAll(_writeInt64(saveSlot.saveTime.millisecondsSinceEpoch));
@@ -23,36 +23,38 @@ class BinarySerializer {
     buffer.addAll(_writeString(saveSlot.dialoguePreview));
     buffer.addAll(_writeNullableBytes(saveSlot.screenshotData));
     buffer.add(saveSlot.isLocked ? 1 : 0); // 写入锁定状态
-    
+
     // 写入游戏状态快照
     buffer.addAll(_serializeGameStateSnapshot(saveSlot.snapshot));
-    
+
     return Uint8List.fromList(buffer);
   }
 
   /// 从二进制数据反序列化SaveSlot
   static SaveSlot deserializeSaveSlot(Uint8List data) {
     //print('Debug: 开始反序列化存档，数据长度: ${data.length}');
-    
+
     final reader = _BinaryReader(data);
-    
+
     // 读取并验证魔法数字和版本号
     //print('Debug: 读取魔法数字...');
     final magic = String.fromCharCodes(reader.readBytes(4));
     //print('Debug: 魔法数字: "$magic" (期望: "$_magicNumber")');
-    
+
     if (magic != _magicNumber) {
-      throw FormatException('Invalid file format: expected $_magicNumber, got $magic');
+      throw FormatException(
+          'Invalid file format: expected $_magicNumber, got $magic');
     }
-    
+
     //print('Debug: 读取版本号...');
     final version = reader.readInt32();
     //print('Debug: 版本号: $version (当前支持: $_version)');
-    
+
     if (version < 1 || version > _version) {
-      throw FormatException('Unsupported version: $version (supported: 1-$_version)');
+      throw FormatException(
+          'Unsupported version: $version (supported: 1-$_version)');
     }
-    
+
     // 读取基本信息
     //print('Debug: 读取基本信息...');
     final int id;
@@ -67,11 +69,11 @@ class BinarySerializer {
     final currentScript = reader.readString();
     final dialoguePreview = reader.readNullableString();
     final screenshotData = reader.readNullableBytes();
-    
+
     //print('Debug: ID=$id, 时间=$saveTime, 脚本=$currentScript');
     //print('Debug: 对话预览=${dialoguePreview != null ? (dialoguePreview.length > 50 ? dialoguePreview.substring(0, 50) + "..." : dialoguePreview) : "null"}');
     //print('Debug: 截图数据长度=${screenshotData?.length ?? 0}');
-    
+
     // 读取锁定状态（向后兼容旧版本存档）
     bool isLocked = false;
     if (reader.hasMoreData()) {
@@ -83,11 +85,11 @@ class BinarySerializer {
         isLocked = false;
       }
     }
-    
+
     // 读取游戏状态快照
     //print('Debug: 读取游戏状态快照...');
     final snapshot = _deserializeGameStateSnapshot(reader, version);
-    
+
     //print('Debug: 存档反序列化完成');
     return SaveSlot(
       id: id,
@@ -103,58 +105,68 @@ class BinarySerializer {
   /// 序列化GameStateSnapshot
   static Uint8List _serializeGameStateSnapshot(GameStateSnapshot snapshot) {
     final buffer = <int>[];
-    
+
     buffer.addAll(_writeInt32(snapshot.scriptIndex));
     buffer.addAll(_serializeGameState(snapshot.currentState));
-    
+
     // 序列化对话历史
     buffer.addAll(_writeInt32(snapshot.dialogueHistory.length));
     for (final entry in snapshot.dialogueHistory) {
       buffer.addAll(_serializeDialogueHistoryEntry(entry));
     }
-    
+
     // 序列化 NVL 状态
     buffer.add(snapshot.isNvlMode ? 1 : 0);
-    buffer.add(snapshot.isNvlMovieMode ? 1 : 0);  // 添加电影模式状态
-    buffer.add(snapshot.isNvlnMode ? 1 : 0);  // 添加无遮罩NVL模式状态
+    buffer.add(snapshot.isNvlMovieMode ? 1 : 0); // 添加电影模式状态
+    buffer.add(snapshot.isNvlnMode ? 1 : 0); // 添加无遮罩NVL模式状态
+    buffer.add(snapshot.isNvlOverlayVisible ? 1 : 0); // 添加NVL遮罩可见性
     buffer.addAll(_writeInt32(snapshot.nvlDialogues.length));
     for (final nvlDialogue in snapshot.nvlDialogues) {
       buffer.addAll(_serializeNvlDialogue(nvlDialogue));
     }
-    
+
     return Uint8List.fromList(buffer);
   }
 
   /// 反序列化GameStateSnapshot
-  static GameStateSnapshot _deserializeGameStateSnapshot(_BinaryReader reader, [int? version]) {
+  static GameStateSnapshot _deserializeGameStateSnapshot(_BinaryReader reader,
+      [int? version]) {
     final scriptIndex = reader.readInt32();
     final currentState = _deserializeGameState(reader, version);
-    
+
     // 反序列化对话历史
     final historyLength = reader.readInt32();
     final dialogueHistory = <DialogueHistoryEntry>[];
     for (int i = 0; i < historyLength; i++) {
       dialogueHistory.add(_deserializeDialogueHistoryEntry(reader, version));
     }
-    
+
     // 反序列化 NVL 状态
     final isNvlMode = reader.readByte() == 1;
-    final isNvlMovieMode = reader.readByte() == 1;  // 添加电影模式状态
+    final isNvlMovieMode = reader.readByte() == 1; // 添加电影模式状态
     // 版本5及以上才有isNvlnMode字段
-    final isNvlnMode = (version != null && version >= 5) ? reader.readByte() == 1 : false;
+    final bool isNvlnMode;
+    if (version != null && version >= 5) {
+      isNvlnMode = reader.readByte() == 1;
+    } else {
+      isNvlnMode = false;
+    }
+    final bool isNvlOverlayVisible =
+        (version != null && version >= 6) ? reader.readByte() == 1 : isNvlMode;
     final nvlDialoguesLength = reader.readInt32();
     final nvlDialogues = <NvlDialogue>[];
     for (int i = 0; i < nvlDialoguesLength; i++) {
       nvlDialogues.add(_deserializeNvlDialogue(reader));
     }
-    
+
     return GameStateSnapshot(
       scriptIndex: scriptIndex,
       currentState: currentState,
       dialogueHistory: dialogueHistory,
       isNvlMode: isNvlMode,
-      isNvlMovieMode: isNvlMovieMode,  // 添加电影模式状态
-      isNvlnMode: isNvlnMode,  // 添加无遮罩NVL模式状态
+      isNvlMovieMode: isNvlMovieMode, // 添加电影模式状态
+      isNvlnMode: isNvlnMode, // 添加无遮罩NVL模式状态
+      isNvlOverlayVisible: isNvlOverlayVisible, // 添加NVL遮罩可见性
       nvlDialogues: nvlDialogues,
     );
   }
@@ -162,42 +174,43 @@ class BinarySerializer {
   /// 序列化GameState
   static Uint8List _serializeGameState(GameState state) {
     final buffer = <int>[];
-    
+
     buffer.addAll(_writeNullableString(state.background));
     buffer.addAll(_writeNullableString(state.movieFile)); // 新增：序列化视频文件
     buffer.addAll(_writeNullableString(state.dialogue));
     buffer.addAll(_writeNullableString(state.speaker));
-    
+
     // 序列化角色状态
     buffer.addAll(_writeInt32(state.characters.length));
     for (final entry in state.characters.entries) {
       buffer.addAll(_writeString(entry.key));
       buffer.addAll(_serializeCharacterState(entry.value));
     }
-    
+
     // 序列化CG角色状态（版本4新增）
     buffer.addAll(_writeInt32(state.cgCharacters.length));
     for (final entry in state.cgCharacters.entries) {
       buffer.addAll(_writeString(entry.key));
       buffer.addAll(_serializeCharacterState(entry.value));
     }
-    
+
     // 序列化 NVL 状态
     buffer.add(state.isNvlMode ? 1 : 0);
     buffer.add(state.isNvlMovieMode ? 1 : 0);
-    buffer.add(state.isNvlnMode ? 1 : 0);  // 添加无遮罩NVL模式状态
+    buffer.add(state.isNvlnMode ? 1 : 0); // 添加无遮罩NVL模式状态
+    buffer.add(state.isNvlOverlayVisible ? 1 : 0); // 添加NVL遮罩可见性
     buffer.addAll(_writeInt32(state.nvlDialogues.length));
     for (final nvlDialogue in state.nvlDialogues) {
       buffer.addAll(_serializeNvlDialogue(nvlDialogue));
     }
-    
+
     return Uint8List.fromList(buffer);
   }
 
   /// 反序列化GameState
   static GameState _deserializeGameState(_BinaryReader reader, [int? version]) {
     final background = reader.readNullableString();
-    
+
     // 只在版本3及以上读取movieFile字段
     String? movieFile;
     if (version != null && version >= 3) {
@@ -205,10 +218,10 @@ class BinarySerializer {
     } else {
       movieFile = null; // 旧版本存档没有movieFile字段
     }
-    
+
     final dialogue = reader.readNullableString();
     final speaker = reader.readNullableString();
-    
+
     // 反序列化角色状态
     final charactersLength = reader.readInt32();
     final characters = <String, CharacterState>{};
@@ -217,7 +230,7 @@ class BinarySerializer {
       final value = _deserializeCharacterState(reader);
       characters[key] = value;
     }
-    
+
     // 反序列化CG角色状态（版本4新增）
     Map<String, CharacterState> cgCharacters = <String, CharacterState>{};
     if (version != null && version >= 4) {
@@ -228,18 +241,25 @@ class BinarySerializer {
         cgCharacters[key] = value;
       }
     }
-    
+
     // 反序列化 NVL 状态
     final isNvlMode = reader.readByte() == 1;
     final isNvlMovieMode = reader.readByte() == 1;
     // 版本5及以上才有isNvlnMode字段
-    final isNvlnMode = (version != null && version >= 5) ? reader.readByte() == 1 : false;
+    final bool isNvlnMode;
+    if (version != null && version >= 5) {
+      isNvlnMode = reader.readByte() == 1;
+    } else {
+      isNvlnMode = false;
+    }
+    final bool isNvlOverlayVisible =
+        (version != null && version >= 6) ? reader.readByte() == 1 : isNvlMode;
     final nvlDialoguesLength = reader.readInt32();
     final nvlDialogues = <NvlDialogue>[];
     for (int i = 0; i < nvlDialoguesLength; i++) {
       nvlDialogues.add(_deserializeNvlDialogue(reader));
     }
-    
+
     return GameState(
       background: background,
       movieFile: movieFile, // 新增：视频文件参数
@@ -249,7 +269,8 @@ class BinarySerializer {
       cgCharacters: cgCharacters, // 新增：CG角色状态
       isNvlMode: isNvlMode,
       isNvlMovieMode: isNvlMovieMode,
-      isNvlnMode: isNvlnMode,  // 添加无遮罩NVL模式状态
+      isNvlnMode: isNvlnMode, // 添加无遮罩NVL模式状态
+      isNvlOverlayVisible: isNvlOverlayVisible,
       nvlDialogues: nvlDialogues,
     );
   }
@@ -257,12 +278,12 @@ class BinarySerializer {
   /// 序列化CharacterState
   static Uint8List _serializeCharacterState(CharacterState state) {
     final buffer = <int>[];
-    
+
     buffer.addAll(_writeString(state.resourceId));
     buffer.addAll(_writeNullableString(state.pose));
     buffer.addAll(_writeNullableString(state.expression));
     buffer.addAll(_writeNullableString(state.positionId));
-    
+
     return Uint8List.fromList(buffer);
   }
 
@@ -272,7 +293,7 @@ class BinarySerializer {
     final pose = reader.readNullableString();
     final expression = reader.readNullableString();
     final positionId = reader.readNullableString();
-    
+
     return CharacterState(
       resourceId: resourceId,
       pose: pose,
@@ -284,24 +305,27 @@ class BinarySerializer {
   /// 序列化DialogueHistoryEntry
   static Uint8List _serializeDialogueHistoryEntry(DialogueHistoryEntry entry) {
     final buffer = <int>[];
-    
+
     buffer.addAll(_writeNullableString(entry.speaker));
     buffer.addAll(_writeString(entry.dialogue));
     buffer.addAll(_writeInt64(entry.timestamp.millisecondsSinceEpoch));
     buffer.addAll(_writeInt32(entry.scriptIndex));
     buffer.addAll(_serializeGameStateSnapshot(entry.stateSnapshot));
-    
+
     return Uint8List.fromList(buffer);
   }
 
   /// 反序列化DialogueHistoryEntry
-  static DialogueHistoryEntry _deserializeDialogueHistoryEntry(_BinaryReader reader, [int? version]) {
+  static DialogueHistoryEntry _deserializeDialogueHistoryEntry(
+      _BinaryReader reader,
+      [int? version]) {
     final speaker = reader.readNullableString();
     final dialogue = reader.readString();
     final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
     final scriptIndex = reader.readInt32();
-    final stateSnapshot = _deserializeGameStateSnapshot(reader, version); // 传递版本号
-    
+    final stateSnapshot =
+        _deserializeGameStateSnapshot(reader, version); // 传递版本号
+
     return DialogueHistoryEntry(
       speaker: speaker,
       dialogue: dialogue,
@@ -363,7 +387,7 @@ class BinarySerializer {
     final speaker = reader.readNullableString();
     final dialogue = reader.readString();
     final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
-    
+
     return NvlDialogue(
       speaker: speaker,
       dialogue: dialogue,

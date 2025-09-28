@@ -29,7 +29,7 @@ class GameUILayer extends StatefulWidget {
   final DialogueProgressionManager dialogueProgressionManager;
   final String currentScript;
   final GlobalKey nvlScreenKey;
-  
+
   // 状态管理
   final bool showReviewOverlay;
   final bool showSaveOverlay;
@@ -39,7 +39,7 @@ class GameUILayer extends StatefulWidget {
   final bool showDebugPanel;
   final bool showExpressionSelector;
   final bool isShowingMenu;
-  
+
   // 回调函数
   final VoidCallback onToggleReview;
   final VoidCallback onToggleSave;
@@ -56,12 +56,18 @@ class GameUILayer extends StatefulWidget {
   final Function(DialogueHistoryEntry) onJumpToHistoryEntry;
   final Function(SaveSlot)? onLoadGame;
   final VoidCallback onProgressDialogue;
-  
+
   // 表情选择器管理器
   final ExpressionSelectorManager? expressionSelectorManager;
-  
+
   // 对话框创建函数
-  final Widget Function({Key? key, String? speaker, String? speakerAlias, required String dialogue, required bool isFastForwarding, required int scriptIndex}) createDialogueBox;
+  final Widget Function(
+      {Key? key,
+      String? speaker,
+      String? speakerAlias,
+      required String dialogue,
+      required bool isFastForwarding,
+      required int scriptIndex}) createDialogueBox;
 
   const GameUILayer({
     super.key,
@@ -124,7 +130,7 @@ class GameUILayerState extends State<GameUILayer> {
         // 对话框 - 使用 AnimatedSwitcher 为对话框切换添加过渡动画
         HideableUI(
           child: AnimatedSwitcher(
-            duration: widget.gameState.isFastForwarding 
+            duration: widget.gameState.isFastForwarding
                 ? Duration.zero // 快进模式下跳过动画
                 : const Duration(milliseconds: 300),
             transitionBuilder: (Widget child, Animation<double> animation) {
@@ -132,7 +138,7 @@ class GameUILayerState extends State<GameUILayer> {
               if (widget.gameState.isFastForwarding) {
                 return child;
               }
-              
+
               return FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
@@ -147,19 +153,22 @@ class GameUILayerState extends State<GameUILayer> {
                 ),
               );
             },
-            child: widget.gameState.dialogue != null && !widget.gameState.isNvlMode
-                ? widget.createDialogueBox(
-                    key: const ValueKey('normal_dialogue'),
-                    speaker: widget.gameState.speaker,
-                    speakerAlias: widget.gameState.speakerAlias, // 传递角色简写
-                    dialogue: widget.gameState.dialogue!,
-                    isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
-                    scriptIndex: widget.gameManager.currentScriptIndex, // 传递脚本索引
-                  )
-                : const SizedBox.shrink(key: ValueKey('no_dialogue')),
+            child:
+                widget.gameState.dialogue != null && !widget.gameState.isNvlMode
+                    ? widget.createDialogueBox(
+                        key: const ValueKey('normal_dialogue'),
+                        speaker: widget.gameState.speaker,
+                        speakerAlias: widget.gameState.speakerAlias, // 传递角色简写
+                        dialogue: widget.gameState.dialogue!,
+                        isFastForwarding:
+                            widget.gameState.isFastForwarding, // 传递快进状态
+                        scriptIndex:
+                            widget.gameManager.currentScriptIndex, // 传递脚本索引
+                      )
+                    : const SizedBox.shrink(key: ValueKey('no_dialogue')),
           ),
         ),
-        
+
         // 选择菜单
         if (widget.gameState.currentNode is MenuNode)
           HideableUI(
@@ -171,11 +180,11 @@ class GameUILayerState extends State<GameUILayer> {
               isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
             ),
           ),
-        
+
         // NVL 模式覆盖层 - 使用 AnimatedSwitcher 添加过渡动画
         HideableUI(
           child: AnimatedSwitcher(
-            duration: widget.gameState.isFastForwarding 
+            duration: widget.gameState.isFastForwarding
                 ? Duration.zero // 快进模式下跳过动画
                 : const Duration(milliseconds: 400),
             transitionBuilder: (Widget child, Animation<double> animation) {
@@ -183,27 +192,29 @@ class GameUILayerState extends State<GameUILayer> {
               if (widget.gameState.isFastForwarding) {
                 return child;
               }
-              
+
               return FadeTransition(
                 opacity: animation,
                 child: child,
               );
             },
-            child: (widget.gameState.isNvlMode || widget.gameState.isNvlMovieMode)
+            child: widget.gameState.isNvlOverlayVisible
                 ? NvlScreen(
                     key: widget.nvlScreenKey,
                     nvlDialogues: widget.gameState.nvlDialogues,
                     isMovieMode: widget.gameState.isNvlMovieMode,
                     progressionManager: widget.dialogueProgressionManager,
-                    isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
+                    isFastForwarding:
+                        widget.gameState.isFastForwarding, // 传递快进状态
                     isNoMask: widget.gameState.isNvlnMode, // 新增：传递无遮罩状态
                   )
                 : const SizedBox.shrink(key: ValueKey('no_nvl')),
           ),
         ),
-        
+
         // 快捷菜单 - 在播放视频或章节场景时隐藏
-        if (widget.gameState.movieFile == null && !widget.gameManager.isCurrentSceneChapter)
+        if (widget.gameState.movieFile == null &&
+            !widget.gameManager.isCurrentSceneChapter)
           HideableUI(
             child: QuickMenu(
               onSave: widget.onToggleSave,
@@ -219,7 +230,7 @@ class GameUILayerState extends State<GameUILayer> {
               onThemeToggle: widget.onThemeToggle, // 新增：传递主题切换回调
             ),
           ),
-        
+
         // 快进指示器 - 顶部显示
         if (widget.gameState.isFastForwarding)
           Positioned(
@@ -233,7 +244,7 @@ class GameUILayerState extends State<GameUILayer> {
               ),
             ),
           ),
-          
+
         // 自动播放指示器 - 顶部显示
         if (widget.gameState.isAutoPlaying)
           Positioned(
@@ -247,7 +258,7 @@ class GameUILayerState extends State<GameUILayer> {
               ),
             ),
           ),
-        
+
         // 回顾界面
         if (widget.showReviewOverlay)
           HideableUI(
@@ -257,7 +268,7 @@ class GameUILayerState extends State<GameUILayer> {
               onJumpToEntry: widget.onJumpToHistoryEntry,
             ),
           ),
-        
+
         // 存档界面
         if (widget.showSaveOverlay)
           HideableUI(
@@ -267,25 +278,27 @@ class GameUILayerState extends State<GameUILayer> {
               onClose: widget.onToggleSave,
             ),
           ),
-        
+
         // 读档界面
         if (widget.showLoadOverlay)
           HideableUI(
             child: SaveLoadScreen(
               mode: SaveLoadMode.load,
               onClose: widget.onToggleLoad,
-              onLoadSlot: widget.onLoadGame ?? (saveSlot) {
-                // 如果没有回调，使用传统的导航方式（兼容性）
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => GamePlayScreen(saveSlotToLoad: saveSlot),
-                  ),
-                  (route) => false,
-                );
-              },
+              onLoadSlot: widget.onLoadGame ??
+                  (saveSlot) {
+                    // 如果没有回调，使用传统的导航方式（兼容性）
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            GamePlayScreen(saveSlotToLoad: saveSlot),
+                      ),
+                      (route) => false,
+                    );
+                  },
             ),
           ),
-        
+
         // 设置界面
         if (widget.showSettings)
           HideableUI(
@@ -293,17 +306,18 @@ class GameUILayerState extends State<GameUILayer> {
               onClose: widget.onToggleSettings,
             ),
           ),
-        
+
         // 开发者面板 (仅Debug模式)
         if (kDebugMode && widget.showDeveloperPanel)
           HideableUI(
             child: DeveloperPanel(
               onClose: widget.onToggleDeveloperPanel,
               gameManager: widget.gameManager,
-              onReload: () => widget.gameManager.hotReload(widget.currentScript),
+              onReload: () =>
+                  widget.gameManager.hotReload(widget.currentScript),
             ),
           ),
-        
+
         // 调试面板 (发行版也可用，方便玩家复制日志)
         if (widget.showDebugPanel)
           HideableUI(
@@ -311,13 +325,14 @@ class GameUILayerState extends State<GameUILayer> {
               onClose: widget.onToggleDebugPanel,
             ),
           ),
-        
+
         // 表情选择器 (仅Debug模式)
         if (kDebugMode && widget.showExpressionSelector)
           HideableUI(
             child: Builder(
               builder: (context) {
-                final speakerInfo = widget.expressionSelectorManager?.getCurrentSpeakerInfo();
+                final speakerInfo =
+                    widget.expressionSelectorManager?.getCurrentSpeakerInfo();
                 if (speakerInfo == null) {
                   return const SizedBox.shrink();
                 }
@@ -328,7 +343,8 @@ class GameUILayerState extends State<GameUILayer> {
                   currentExpression: speakerInfo.currentExpression,
                   currentDialogue: widget.gameManager.currentDialogueText,
                   onSelectionChanged: (pose, expression) {
-                    widget.expressionSelectorManager?.handleExpressionSelectionChanged(
+                    widget.expressionSelectorManager
+                        ?.handleExpressionSelectionChanged(
                       speakerInfo.characterId,
                       pose,
                       expression,
@@ -339,7 +355,7 @@ class GameUILayerState extends State<GameUILayer> {
               },
             ),
           ),
-        
+
         // 通知覆盖层
         HideableUI(
           child: NotificationOverlay(
