@@ -40,6 +40,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
   String _fastForwardMode = SettingsManager.defaultFastForwardMode;
   
+  // 预览文本（在设置界面生命周期内固定）
+  late final String _previewText;
+  
   // 音频设置
   bool _musicEnabled = true;
   double _musicVolume = 0.8;
@@ -51,6 +54,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    // 在设置界面初始化时选择一次随机文本
+    _previewText = TypewriterPreview.getRandomPreviewText();
     _loadSettings();
   }
 
@@ -946,6 +951,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             skipPunctuationDelay: _skipPunctuationDelay,
             config: config,
             scale: scale,
+            previewText: _previewText, // 传入预选的文本
           ),
         ],
       ),
