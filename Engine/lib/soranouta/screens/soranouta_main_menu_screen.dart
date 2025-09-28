@@ -11,6 +11,7 @@ import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/widgets/common/game_title_widget.dart';
 import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
+import 'package:sakiengine/soranouta/widgets/firefly_animation.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -95,6 +96,17 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
           GameBackgroundWidget.withCustomBackground(
             config: config,
             backgroundName: 'main', // soranouta 直接传递 'main'
+          ),
+          
+          // 萤火虫动画层 - 在背景之上，其他UI之下
+          const Positioned.fill(
+            child: FireflyAnimation(
+              fireflyCount: 8, // 减少数量：苍蝇变萤火虫
+              maxRadius: 3.5, // 增大最大尺寸
+              minRadius: 1.0, // 减小最小尺寸，增加变化范围
+              maxSpeed: 0.15, // 大幅降低速度
+              minSpeed: 0.08,
+            ),
           ),
           
           // 模块化标题组件
