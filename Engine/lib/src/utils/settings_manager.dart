@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'platform_window_manager_io.dart' if (dart.library.html) 'platform_window_manager_web.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
@@ -106,11 +107,13 @@ class SettingsManager extends ChangeNotifier {
     _currentIsFullscreen = isFullscreen;
     await _prefs?.setBool(_isFullscreenKey, isFullscreen);
     
-    // 应用全屏设置
-    if (isFullscreen) {
-      await windowManager.setFullScreen(true);
-    } else {
-      await windowManager.setFullScreen(false);
+    // 应用全屏设置（非Web平台）
+    if (!kIsWeb) {
+      if (isFullscreen) {
+        await PlatformWindowManager.setFullScreen(true);
+      } else {
+        await PlatformWindowManager.setFullScreen(false);
+      }
     }
     
     notifyListeners(); // 通知所有监听者
@@ -259,8 +262,10 @@ class SettingsManager extends ChangeNotifier {
     await _prefs?.setString(_menuDisplayModeKey, projectDefaultMenuDisplayMode);
     await _prefs?.setString(_fastForwardModeKey, defaultFastForwardMode);
     
-    // 应用默认全屏设置
-    await windowManager.setFullScreen(defaultIsFullscreen);
+    // 应用默认全屏设置（非Web平台）
+    if (!kIsWeb) {
+      await PlatformWindowManager.setFullScreen(defaultIsFullscreen);
+    }
     
     notifyListeners(); // 通知所有监听者
   }

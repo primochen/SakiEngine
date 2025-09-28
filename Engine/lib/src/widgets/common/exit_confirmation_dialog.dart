@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import '../../utils/platform_window_manager_io.dart' if (dart.library.html) '../../utils/platform_window_manager_web.dart';
 
 class ExitConfirmationDialog {
   static const String title = '退出游戏';
@@ -37,7 +37,7 @@ class ExitConfirmationDialog {
     if (shouldExit == true) {
       // 修复Windows关闭游戏的bug：直接销毁窗口，避免重复触发onWindowClose
       try {
-        await windowManager.destroy();
+        await PlatformWindowManager.destroy();
       } catch (e) {
         // 如果销毁失败，使用系统退出
         SystemNavigator.pop();

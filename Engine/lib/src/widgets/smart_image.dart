@@ -1,11 +1,12 @@
-import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:sakiengine/src/widgets/animated_webp_image.dart';
 import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/utils/cg_pre_warm_manager.dart';
+import '../utils/smart_image_io.dart' if (dart.library.html) '../utils/smart_image_web.dart';
 
 /// 智能图像小部件 - 自动处理AVIF、WebP和其他格式
 /// 
@@ -62,15 +63,27 @@ class SmartImage extends StatelessWidget {
         onAnimationComplete: onAnimationComplete, // 传递动画完成回调
       );
     } else {
-      if (isFilePath) {
-        return Image.file(
-          File(assetPath),
+      // Web平台总是使用asset方式
+      if (kIsWeb) {
+        return Image.asset(
+          assetPath,
           fit: fit ?? BoxFit.contain,
           width: width,
           height: height,
           errorBuilder: errorWidget != null 
             ? (context, error, stackTrace) => errorWidget!
             : null,
+        );
+      }
+      
+      // 检查是否为文件路径且非Web平台
+      if (!kIsWeb && isFilePath) {
+        return buildImageFile(
+          assetPath,
+          fit: fit,
+          width: width,
+          height: height,
+          errorWidget: errorWidget,
         );
       } else {
         return Image.asset(
@@ -117,16 +130,27 @@ class SmartImage extends StatelessWidget {
               onAnimationComplete: onAnimationComplete,
             );
           } else {
-            // 使用标准Image组件
-            if (isBestPathFile) {
-              return Image.file(
-                File(bestPath),
+            // Web平台总是使用asset方式
+            if (kIsWeb) {
+              return Image.asset(
+                bestPath,
                 fit: fit ?? BoxFit.contain,
                 width: width,
                 height: height,
                 errorBuilder: errorWidget != null 
                   ? (context, error, stackTrace) => errorWidget!
                   : null,
+              );
+            }
+            
+            // 检查是否为文件路径且非Web平台
+            if (!kIsWeb && isBestPathFile) {
+              return buildImageFile(
+                bestPath,
+                fit: fit,
+                width: width,
+                height: height,
+                errorWidget: errorWidget,
               );
             } else {
               return Image.asset(
@@ -150,16 +174,8 @@ class SmartImage extends StatelessWidget {
           decoration: const BoxDecoration(
             color: Colors.transparent,
           ),
-          child: isOriginalFile ? 
-            AvifImage.file(
-              File(assetPath),
-              fit: fit ?? BoxFit.contain,
-              isAntiAlias: true,
-              filterQuality: FilterQuality.high,
-              errorBuilder: errorWidget != null 
-                ? (context, error, stackTrace) => errorWidget!
-                : null,
-            ) :
+          child: kIsWeb ? 
+            // Web平台总是使用asset方式
             AvifImage.asset(
               assetPath,
               fit: fit ?? BoxFit.contain,
@@ -168,7 +184,25 @@ class SmartImage extends StatelessWidget {
               errorBuilder: errorWidget != null 
                 ? (context, error, stackTrace) => errorWidget!
                 : null,
-            ),
+            ) :
+            // 非Web平台：检查是否为文件路径
+            (!kIsWeb && isOriginalFile ? 
+              buildAvifFile(
+                assetPath,
+                fit: fit,
+                width: width,
+                height: height,
+                errorWidget: errorWidget,
+              ) :
+              AvifImage.asset(
+                assetPath,
+                fit: fit ?? BoxFit.contain,
+                isAntiAlias: true,
+                filterQuality: FilterQuality.high,
+                errorBuilder: errorWidget != null 
+                  ? (context, error, stackTrace) => errorWidget!
+                  : null,
+              )),
         );
       },
     );
@@ -323,11 +357,18 @@ class SmartImage extends StatelessWidget {
   /// 检查资源文件是否存在
   Future<bool> _assetExists(String assetPath) async {
     try {
-      if (_isFileSystemPath(assetPath)) {
-        // 文件系统路径，检查文件是否存在
-        return await File(assetPath).exists();
+      // Web平台总是检查bundle资源
+      if (kIsWeb) {
+        await rootBundle.load(assetPath);
+        return true;
+      }
+      
+      // 检查文件是否存在
+      if (!kIsWeb && _isFileSystemPath(assetPath)) {
+        // 非Web平台且为文件系统路径
+        return await checkFileExists(assetPath);
       } else {
-        // Bundle资源路径
+        // Bundle资源路径或Web平台
         await rootBundle.load(assetPath);
         return true;
       }

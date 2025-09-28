@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'dart:typed_data';
-import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/utils/webp_preload_cache.dart';
+
+// 平台特定导入
+import 'animated_webp_image_io.dart' if (dart.library.html) 'animated_webp_image_web.dart';
 
 /// WebP动图播放组件
 /// 支持WebP动画的播放和控制
@@ -19,7 +20,7 @@ class AnimatedWebPImage extends StatefulWidget {
   final bool autoPlay;
   final bool loop;
   final Duration? frameDuration;
-  final VoidCallback? onAnimationComplete; // 新增：动画完成回调
+  final ui.VoidCallback? onAnimationComplete;
 
   const AnimatedWebPImage.asset(
     this.assetPath, {
@@ -31,7 +32,7 @@ class AnimatedWebPImage extends StatefulWidget {
     this.autoPlay = true,
     this.loop = true,
     this.frameDuration,
-    this.onAnimationComplete, // 新增
+    this.onAnimationComplete,
   });
 
   @override
@@ -40,7 +41,7 @@ class AnimatedWebPImage extends StatefulWidget {
 
 class _AnimatedWebPImageState extends State<AnimatedWebPImage>
     with TickerProviderStateMixin {
-  late AnimationController _animationController;
+  AnimationController? _animationController;
   List<ImageInfo> _frames = [];
   bool _isLoading = true;
   String? _error;
@@ -53,7 +54,11 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    // 先停止动画，再销毁控制器
+    _animationController?.stop();
+    _animationController?.dispose();
+    _animationController = null;
+    
     // 不清理图像资源，因为它们来自全局预加载缓存
     // 缓存的图像资源由WebPPreloadCache统一管理生命周期
     super.dispose();
@@ -64,14 +69,22 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
     const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
     if (fromDefine.isNotEmpty) return fromDefine;
     
-    final fromEnv = Platform.environment['SAKI_GAME_PATH'];
-    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    // Web平台不支持环境变量访问
+    if (kIsWeb) {
+      return '';
+    }
     
-    return '';
+    // 使用平台特定实现
+    return getPlatformEnvironment('SAKI_GAME_PATH');
   }
 
   /// 获取游戏路径，优先使用环境变量，如果没有则从assets读取default_game.txt
   Future<String> _getGamePath() async {
+    // Web平台直接返回空，不使用外部文件系统
+    if (kIsWeb) {
+      return '';
+    }
+    
     // 如果环境变量已设置，直接使用
     if (_debugRoot.isNotEmpty) {
       return _debugRoot;
@@ -86,7 +99,7 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
         throw Exception('default_game.txt is empty');
       }
       
-      final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
+      final gamePath = p.join(getCurrentDirectoryPath(), 'Game', defaultGame);
       return gamePath;
     } catch (e) {
       return '';
@@ -96,19 +109,29 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
   /// 加载WebP字节数据，支持外部文件系统
   Future<Uint8List?> _loadWebPBytes() async {
     try {
+      // Web平台直接从assets加载
+      if (kIsWeb) {
+        final data = await rootBundle.load(widget.assetPath);
+        return data.buffer.asUint8List();
+      }
+      
       // 在debug模式下，优先从外部文件系统加载
-      if (kDebugMode) {
+      if (kDebugMode && !kIsWeb) {
         final gamePath = await _getGamePath();
         if (gamePath.isNotEmpty) {
           final relativePath = widget.assetPath.startsWith('assets/')
               ? widget.assetPath.substring('assets/'.length)
               : widget.assetPath;
           final fileSystemPath = p.normalize(p.join(gamePath, relativePath));
-          final file = File(fileSystemPath);
+          final file = createFile(fileSystemPath);
           
-          if (await file.exists()) {
-            //print('[AnimatedWebPImage] 从外部文件加载WebP: $fileSystemPath');
-            return await file.readAsBytes();
+          try {
+            if (await file?.exists() == true) {
+              //print('[AnimatedWebPImage] 从外部文件加载WebP: $fileSystemPath');
+              return await file!.readAsBytes();
+            }
+          } catch (e) {
+            // 忽略文件访问错误
           }
         }
         // 如果外部文件不存在，回退到assets加载
@@ -148,30 +171,38 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
         
         // 创建动画控制器
         if (_frames.length > 1) {
-          _animationController = AnimationController(
-            duration: widget.frameDuration ?? cachedDuration,
-            vsync: this,
-          );
-          
-          // 添加动画完成监听
-          _animationController.addStatusListener((status) {
-            if (status == AnimationStatus.completed && !widget.loop) {
-              widget.onAnimationComplete?.call();
-            }
-          });
-          
-          if (widget.autoPlay) {
-            if (widget.loop) {
-              _animationController.repeat();
-            } else {
-              _animationController.forward();
+          if (mounted) {
+            _animationController = AnimationController(
+              duration: widget.frameDuration ?? cachedDuration,
+              vsync: this,
+            );
+            
+            // 添加动画完成监听
+            _animationController?.addStatusListener((status) {
+              if (mounted && status == AnimationStatus.completed && !widget.loop) {
+                widget.onAnimationComplete?.call();
+              }
+            });
+            
+            if (widget.autoPlay && mounted) {
+              try {
+                if (widget.loop) {
+                  _animationController?.repeat();
+                } else {
+                  _animationController?.forward();
+                }
+              } catch (e) {
+                // 忽略自动播放错误
+              }
             }
           }
         } else {
-          _animationController = AnimationController(
-            duration: const Duration(milliseconds: 100),
-            vsync: this,
-          );
+          if (mounted) {
+            _animationController = AnimationController(
+              duration: const Duration(milliseconds: 100),
+              vsync: this,
+            );
+          }
         }
         
         if (mounted) {
@@ -206,23 +237,29 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
         }
         
         // 创建动画控制器
-        _animationController = AnimationController(
-          duration: widget.frameDuration ?? totalDuration,
-          vsync: this,
-        );
-        
-        // 添加动画完成监听
-        _animationController.addStatusListener((status) {
-          if (status == AnimationStatus.completed && !widget.loop) {
-            widget.onAnimationComplete?.call();
-          }
-        });
-        
-        if (widget.autoPlay) {
-          if (widget.loop) {
-            _animationController.repeat();
-          } else {
-            _animationController.forward();
+        if (mounted) {
+          _animationController = AnimationController(
+            duration: widget.frameDuration ?? totalDuration,
+            vsync: this,
+          );
+          
+          // 添加动画完成监听
+          _animationController?.addStatusListener((status) {
+            if (mounted && status == AnimationStatus.completed && !widget.loop) {
+              widget.onAnimationComplete?.call();
+            }
+          });
+          
+          if (widget.autoPlay && mounted) {
+            try {
+              if (widget.loop) {
+                _animationController?.repeat();
+              } else {
+                _animationController?.forward();
+              }
+            } catch (e) {
+              // 忽略自动播放错误
+            }
           }
         }
       } else {
@@ -230,10 +267,12 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
         final frame = await codec.getNextFrame();
         _frames = [ImageInfo(image: frame.image)];
         
-        _animationController = AnimationController(
-          duration: const Duration(milliseconds: 100),
-          vsync: this,
-        );
+        if (mounted) {
+          _animationController = AnimationController(
+            duration: const Duration(milliseconds: 100),
+            vsync: this,
+          );
+        }
       }
       
       if (mounted) {
@@ -312,43 +351,79 @@ class _AnimatedWebPImageState extends State<AnimatedWebPImage>
     return SizedBox(
       width: widget.width,
       height: widget.height,
-      child: AnimatedBuilder(
-        animation: _animationController,
+      child: _animationController != null ? AnimatedBuilder(
+        animation: _animationController!,
         builder: (context, child) {
-          final frameIndex = (_animationController.value * _frames.length).floor() % _frames.length;
-          return RawImage(
-            image: _frames[frameIndex].image,
-            fit: widget.fit ?? BoxFit.contain,
-            width: widget.width,
-            height: widget.height,
-          );
+          // 添加安全检查
+          if (!mounted || _frames.isEmpty) {
+            return Container();
+          }
+          
+          try {
+            final frameIndex = (_animationController!.value * _frames.length).floor() % _frames.length;
+            if (frameIndex < 0 || frameIndex >= _frames.length) {
+              return Container();
+            }
+            
+            return RawImage(
+              image: _frames[frameIndex].image,
+              fit: widget.fit ?? BoxFit.contain,
+              width: widget.width,
+              height: widget.height,
+            );
+          } catch (e) {
+            // 如果动画渲染出错，显示第一帧
+            return RawImage(
+              image: _frames.isNotEmpty ? _frames.first.image : null,
+              fit: widget.fit ?? BoxFit.contain,
+              width: widget.width,
+              height: widget.height,
+            );
+          }
         },
+      ) : RawImage(
+        image: _frames.isNotEmpty ? _frames.first.image : null,
+        fit: widget.fit ?? BoxFit.contain,
+        width: widget.width,
+        height: widget.height,
       ),
     );
   }
 
   /// 播放动画
   void play() {
-    if (!_isLoading && _frames.length > 1) {
-      if (widget.loop) {
-        _animationController.repeat();
-      } else {
-        _animationController.forward();
+    if (!_isLoading && _frames.length > 1 && _animationController != null && mounted) {
+      try {
+        if (widget.loop) {
+          _animationController!.repeat();
+        } else {
+          _animationController!.forward();
+        }
+      } catch (e) {
+        // 忽略动画控制错误
       }
     }
   }
 
   /// 暂停动画
   void pause() {
-    if (!_isLoading) {
-      _animationController.stop();
+    if (!_isLoading && _animationController != null && mounted) {
+      try {
+        _animationController!.stop();
+      } catch (e) {
+        // 忽略动画控制错误
+      }
     }
   }
 
   /// 重置动画
   void reset() {
-    if (!_isLoading) {
-      _animationController.reset();
+    if (!_isLoading && _animationController != null && mounted) {
+      try {
+        _animationController!.reset();
+      } catch (e) {
+        // 忽略动画控制错误
+      }
     }
   }
 }

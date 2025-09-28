@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/config_models.dart';
@@ -15,6 +15,7 @@ import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
+import 'src/utils/platform_window_manager_io.dart' if (dart.library.html) 'src/utils/platform_window_manager_web.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -33,12 +34,12 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
+    PlatformWindowManager.addListener(this);
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    PlatformWindowManager.removeListener(this);
     super.dispose();
   }
 
@@ -48,7 +49,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
     if (shouldClose) {
       // 修复Windows关闭游戏的bug：直接销毁窗口，避免重复触发onWindowClose
       try {
-        await windowManager.destroy();
+        await PlatformWindowManager.destroy();
       } catch (e) {
         // 如果销毁失败，使用系统退出
         SystemNavigator.pop();
@@ -153,15 +154,19 @@ void main() async {
       }
     });
 
-    // 初始化窗口管理器
-    await windowManager.ensureInitialized();
-    await windowManager.setPreventClose(true);
-    
-    // 设置窗口默认最大化
-    await windowManager.maximize();
+    // 初始化窗口管理器（非Web平台）
+    if (!kIsWeb) {
+      await PlatformWindowManager.ensureInitialized();
+      await PlatformWindowManager.setPreventClose(true);
+      
+      // 设置窗口默认最大化
+      await PlatformWindowManager.maximize();
+    }
 
     // 初始化系统热键，清理之前的注册（用于热重载）
-    await hotKeyManager.unregisterAll();
+    if (!kIsWeb) {
+      await hotKeyManager.unregisterAll();
+    }
 
     // 加载引擎配置
     await SakiEngineConfig().loadConfig();
@@ -237,7 +242,7 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
 
                 // 设置窗口标题
                 if (titleSnapshot.hasData) {
-                  windowManager.setTitle(appTitle);
+                  PlatformWindowManager.setTitle(appTitle);
                 }
 
                 return MaterialApp(
