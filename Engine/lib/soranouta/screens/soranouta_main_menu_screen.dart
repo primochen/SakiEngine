@@ -39,6 +39,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
   bool _showSettings = false;
+  bool _isDarkModeButtonHovered = false;
   late String _copyrightText;
 
   @override
@@ -176,12 +177,30 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
               Positioned(
                 left: 20,
                 bottom: 20,
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                  child: Icon(
-                    isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                    size: 48 * textScale,
-                    color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                child: AnimatedScale(
+                  scale: _isDarkModeButtonHovered ? 1.15 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (Widget child, Animation<double> animation) {
+                        return RotationTransition(
+                          turns: animation,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Icon(
+                        isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                        key: ValueKey(isDarkMode ? 'dark' : 'light'),
+                        size: 48 * textScale,
+                        color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -190,22 +209,42 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
               Positioned(
                 left: 20,
                 bottom: 20,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () async {
-                      final newDarkMode = !isDarkMode;
-                      await SettingsManager().setDarkMode(newDarkMode);
-                      config.updateThemeForDarkMode();
-                      // 触发重建以更新图标
-                      if (mounted) {
-                        setState(() {});
-                      }
-                    },
-                    child: Icon(
-                      isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                      size: 48 * textScale,
-                      color: isDarkMode ? Colors.black : Colors.white,
+                child: AnimatedScale(
+                  scale: _isDarkModeButtonHovered ? 1.15 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => setState(() => _isDarkModeButtonHovered = true),
+                    onExit: (_) => setState(() => _isDarkModeButtonHovered = false),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final newDarkMode = !isDarkMode;
+                        await SettingsManager().setDarkMode(newDarkMode);
+                        config.updateThemeForDarkMode();
+                        // 触发重建以更新图标
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      },
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        transitionBuilder: (Widget child, Animation<double> animation) {
+                          return RotationTransition(
+                            turns: animation,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Icon(
+                          isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                          key: ValueKey(isDarkMode ? 'dark' : 'light'),
+                          size: 48 * textScale,
+                          color: isDarkMode ? Colors.black : Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),
