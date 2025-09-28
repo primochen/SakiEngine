@@ -1,6 +1,7 @@
 import 'dart:convert' show utf8;
 import 'dart:typed_data';
 import 'dart:math' show min;
+import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
@@ -17,8 +18,13 @@ class BinarySerializer {
     buffer.addAll(_writeInt32(_version));
 
     // 写入基本信息
-    buffer.addAll(_writeInt64(saveSlot.id));
-    buffer.addAll(_writeInt64(saveSlot.saveTime.millisecondsSinceEpoch));
+    buffer.addAll(_writeInt32(saveSlot.id));
+    // Web平台使用Int32存储时间戳（秒级精度），桌面平台使用Int64（毫秒级精度）
+    if (kIsWeb) {
+      buffer.addAll(_writeInt32((saveSlot.saveTime.millisecondsSinceEpoch ~/ 1000)));
+    } else {
+      buffer.addAll(_writeInt64(saveSlot.saveTime.millisecondsSinceEpoch));
+    }
     buffer.addAll(_writeString(saveSlot.currentScript));
     buffer.addAll(_writeString(saveSlot.dialoguePreview));
     buffer.addAll(_writeNullableBytes(saveSlot.screenshotData));
@@ -61,11 +67,22 @@ class BinarySerializer {
     if (version == 1) {
       // 向后兼容：版本1使用32位ID
       id = reader.readInt32();
+    } else if (kIsWeb) {
+      // Web平台使用32位ID
+      id = reader.readInt32();
     } else {
-      // 版本2及以上使用64位ID
+      // 桌面平台版本2及以上使用64位ID
       id = reader.readInt64();
     }
-    final saveTime = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    
+    // 读取时间戳
+    final DateTime saveTime;
+    if (kIsWeb) {
+      final timestamp = reader.readInt32() * 1000; // 秒转毫秒
+      saveTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    } else {
+      saveTime = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    }
     final currentScript = reader.readString();
     final dialoguePreview = reader.readNullableString();
     final screenshotData = reader.readNullableBytes();
@@ -308,7 +325,12 @@ class BinarySerializer {
 
     buffer.addAll(_writeNullableString(entry.speaker));
     buffer.addAll(_writeString(entry.dialogue));
-    buffer.addAll(_writeInt64(entry.timestamp.millisecondsSinceEpoch));
+    // Web平台使用Int32存储时间戳（秒级精度）
+    if (kIsWeb) {
+      buffer.addAll(_writeInt32((entry.timestamp.millisecondsSinceEpoch ~/ 1000)));
+    } else {
+      buffer.addAll(_writeInt64(entry.timestamp.millisecondsSinceEpoch));
+    }
     buffer.addAll(_writeInt32(entry.scriptIndex));
     buffer.addAll(_serializeGameStateSnapshot(entry.stateSnapshot));
 
@@ -321,7 +343,14 @@ class BinarySerializer {
       [int? version]) {
     final speaker = reader.readNullableString();
     final dialogue = reader.readString();
-    final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    // 读取时间戳
+    final DateTime timestamp;
+    if (kIsWeb) {
+      final ts = reader.readInt32() * 1000; // 秒转毫秒
+      timestamp = DateTime.fromMillisecondsSinceEpoch(ts);
+    } else {
+      timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    }
     final scriptIndex = reader.readInt32();
     final stateSnapshot =
         _deserializeGameStateSnapshot(reader, version); // 传递版本号
@@ -341,6 +370,10 @@ class BinarySerializer {
   }
 
   static Uint8List _writeInt64(int value) {
+    // 这个方法只在非Web平台使用
+    if (kIsWeb) {
+      throw UnsupportedError('Int64 not supported on web platform');
+    }
     return Uint8List(8)..buffer.asByteData().setInt64(0, value, Endian.little);
   }
 
@@ -378,7 +411,12 @@ class BinarySerializer {
     final buffer = <int>[];
     buffer.addAll(_writeNullableString(nvlDialogue.speaker));
     buffer.addAll(_writeString(nvlDialogue.dialogue));
-    buffer.addAll(_writeInt64(nvlDialogue.timestamp.millisecondsSinceEpoch));
+    // Web平台使用Int32存储时间戳（秒级精度）
+    if (kIsWeb) {
+      buffer.addAll(_writeInt32((nvlDialogue.timestamp.millisecondsSinceEpoch ~/ 1000)));
+    } else {
+      buffer.addAll(_writeInt64(nvlDialogue.timestamp.millisecondsSinceEpoch));
+    }
     return Uint8List.fromList(buffer);
   }
 
@@ -386,7 +424,14 @@ class BinarySerializer {
   static NvlDialogue _deserializeNvlDialogue(_BinaryReader reader) {
     final speaker = reader.readNullableString();
     final dialogue = reader.readString();
-    final timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    // 读取时间戳
+    final DateTime timestamp;
+    if (kIsWeb) {
+      final ts = reader.readInt32() * 1000; // 秒转毫秒
+      timestamp = DateTime.fromMillisecondsSinceEpoch(ts);
+    } else {
+      timestamp = DateTime.fromMillisecondsSinceEpoch(reader.readInt64());
+    }
 
     return NvlDialogue(
       speaker: speaker,
@@ -421,16 +466,20 @@ class _BinaryReader {
     return bytes.buffer.asByteData().getInt32(0, Endian.little);
   }
 
+  int readInt64() {
+    // 这个方法只在非Web平台使用
+    if (kIsWeb) {
+      throw UnsupportedError('Int64 not supported on web platform');
+    }
+    final bytes = readBytes(8);
+    return bytes.buffer.asByteData().getInt64(0, Endian.little);
+  }
+
   int readByte() {
     if (_position >= _data.length) {
       throw RangeError('Not enough data to read 1 byte');
     }
     return _data[_position++];
-  }
-
-  int readInt64() {
-    final bytes = readBytes(8);
-    return bytes.buffer.asByteData().getInt64(0, Endian.little);
   }
 
   String readString() {
