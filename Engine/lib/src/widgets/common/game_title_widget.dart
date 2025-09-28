@@ -20,6 +20,9 @@ class GameTitleWidget extends StatefulWidget {
 
 class _GameTitleWidgetState extends State<GameTitleWidget> {
   String _appTitle = 'SakiEngine';
+  Widget? _cachedLightImage;
+  Widget? _cachedDarkImage;
+  String? _cachedImagePath;
 
   @override
   void initState() {
@@ -40,26 +43,81 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
     }
   }
 
+  void _preloadImages() {
+    if (widget.config.mainMenuTitle.isNotEmpty && _cachedImagePath != widget.config.mainMenuTitle) {
+      _cachedImagePath = widget.config.mainMenuTitle;
+      
+      // 预载入浅色模式图片（原图）
+      _cachedLightImage = SmartAssetImage(
+        assetName: widget.config.mainMenuTitle,
+        height: widget.config.mainMenuTitleSize * widget.textScale,
+        errorWidget: Container(), // 使用空容器避免闪烁
+      );
+      
+      // 预载入深色模式图片
+      String darkImagePath = widget.config.mainMenuTitle;
+      final pathParts = darkImagePath.split('.');
+      if (pathParts.length > 1) {
+        final extension = pathParts.last;
+        final nameWithoutExtension = pathParts.sublist(0, pathParts.length - 1).join('.');
+        darkImagePath = '${nameWithoutExtension.replaceAll(RegExp(r'main[^/]*$'), 'main_yoru')}.$extension';
+      }
+      
+      _cachedDarkImage = SmartAssetImage(
+        assetName: darkImagePath,
+        height: widget.config.mainMenuTitleSize * widget.textScale,
+        errorWidget: Container(), // 使用空容器避免闪烁
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isDarkMode = SettingsManager().currentDarkMode;
+    
+    // 预载入图片
+    _preloadImages();
   
-    // 根据主题模式选择图片文件
-    String titleImagePath = widget.config.mainMenuTitle;
-    if (isDarkMode && titleImagePath.isNotEmpty) {
-      // 深色模式下使用 main_yoru.png
-      final pathParts = titleImagePath.split('.');
-      if (pathParts.length > 1) {
-        final extension = pathParts.last;
-        final nameWithoutExtension = pathParts.sublist(0, pathParts.length - 1).join('.');
-        titleImagePath = '${nameWithoutExtension.replaceAll(RegExp(r'main[^/]*$'), 'main_yoru')}.$extension';
+    Widget titleImage;
+    
+    if (widget.config.mainMenuTitle.isNotEmpty) {
+      if (isDarkMode && _cachedDarkImage != null) {
+        // 深色模式使用深色图片
+        titleImage = _cachedDarkImage!;
+      } else if (!isDarkMode && _cachedLightImage != null) {
+        // 浅色模式使用浅色图片，并应用反色滤镜
+        titleImage = ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            -1.0, 0, 0, 0, 255,
+            0, -1.0, 0, 0, 255,
+            0, 0, -1.0, 0, 255,
+            0, 0, 0, 1.0, 0,
+          ]),
+          child: _cachedLightImage!,
+        );
+      } else {
+        // fallback：如果缓存还没准备好，显示文字
+        titleImage = Text(
+          _appTitle,
+          style: TextStyle(
+            fontFamily: 'SourceHanSansCN',
+            fontSize: widget.config.mainMenuTitleSize * widget.textScale,
+            color: widget.config.themeColors.background,
+            letterSpacing: 4,
+            shadows: [
+              Shadow(
+                blurRadius: 10.0,
+                color: widget.config.themeColors.primaryDark,
+                offset: const Offset(2, 2),
+              ),
+            ],
+          ),
+        );
       }
-    }
-    Widget titleImage = SmartAssetImage(
-      assetName: titleImagePath,
-      height: widget.config.mainMenuTitleSize * widget.textScale,
-      errorWidget: Text(
+    } else {
+      // 没有配置图片时显示文字
+      titleImage = Text(
         _appTitle,
         style: TextStyle(
           fontFamily: 'SourceHanSansCN',
@@ -74,19 +132,6 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
             ),
           ],
         ),
-      ),
-    );
-    
-    // 在浅色模式下对原始图片应用反色滤镜
-    if (!isDarkMode) {
-      titleImage = ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          -1.0, 0, 0, 0, 255,
-          0, -1.0, 0, 0, 255,
-          0, 0, -1.0, 0, 255,
-          0, 0, 0, 1.0, 0,
-        ]),
-        child: titleImage,
       );
     }
     
@@ -95,24 +140,7 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
       bottom: widget.config.hasBottom ? screenSize.height * widget.config.mainMenuTitleBottom : null,
       left: widget.config.hasLeft ? screenSize.width * widget.config.mainMenuTitleLeft : null,
       right: widget.config.hasLeft ? null : screenSize.width * widget.config.mainMenuTitleRight,
-      child: widget.config.mainMenuTitle.isNotEmpty
-          ? titleImage
-          : Text(
-              _appTitle,
-              style: TextStyle(
-                fontFamily: 'SourceHanSansCN',
-                fontSize: widget.config.mainMenuTitleSize * widget.textScale,
-                color: widget.config.themeColors.background,
-                letterSpacing: 4,
-                shadows: [
-                  Shadow(
-                    blurRadius: 10.0,
-                    color: widget.config.themeColors.primaryDark,
-                    offset: const Offset(2, 2),
-                  ),
-                ],
-              ),
-            ),
+      child: titleImage,
     );
   }
 }
