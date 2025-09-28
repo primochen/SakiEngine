@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
@@ -134,30 +135,90 @@ class _MoviePlayerState extends State<MoviePlayer> {
       
       final position = _controller!.value.position;
       final duration = _controller!.value.duration;
+      final isPlaying = _controller!.value.isPlaying;
       
-      // 检查视频是否播放完成（位置达到或超过总时长且不是循环播放）
-      if (position >= duration && !widget.looping && duration > Duration.zero) {
+      // 检查视频是否播放完成
+      bool isCompleted = false;
+      if (kIsWeb) {
+        // Web平台：使用更严格的完成检测，避免误判
+        // 只有当视频真正停止播放且位置接近结尾时才认为完成
+        final threshold = Duration(milliseconds: 100); // 缩小阈值
+        final nearEnd = position >= duration - threshold;
+        final reallyAtEnd = position >= duration;
+        
+        // Web平台需要同时满足：位置接近结尾 AND 视频已停止播放
+        isCompleted = duration > Duration.zero && 
+                     !isPlaying && 
+                     (nearEnd || reallyAtEnd) &&
+                     position.inMilliseconds > 0; // 确保视频确实播放过
+        
+        // 调试信息 - 临时启用
+        if (nearEnd || reallyAtEnd) {
+          print('[MoviePlayer Web Debug] position=${position.inSeconds}s, duration=${duration.inSeconds}s, isPlaying=$isPlaying, completed=$isCompleted, count=$_currentPlayCount');
+        }
+      } else {
+        // 桌面平台：使用精确的完成检测
+        isCompleted = position >= duration && duration > Duration.zero;
+      }
+      
+      // 检查视频是否播放完成
+      if (isCompleted) {
         _currentPlayCount++;
-        //print('[MoviePlayer] 视频播放完成第${_currentPlayCount}次: position=$position, duration=$duration');
+        print('[MoviePlayer] 视频播放完成第${_currentPlayCount}次 (Web: $kIsWeb): position=$position, duration=$duration, isPlaying=$isPlaying');
         
-        // 检查是否需要重复播放
-        final targetRepeatCount = widget.repeatCount ?? 1; // 如果没有设置repeatCount，默认播放1次
-        
-        if (_currentPlayCount < targetRepeatCount) {
-          // 还需要继续播放，重置视频到开始位置
-          //print('[MoviePlayer] 开始第${_currentPlayCount + 1}次播放，总共需要播放${targetRepeatCount}次');
+        // 检查是否设置了looping（优先级最高）
+        if (widget.looping) {
+          // 如果设置了looping，永远循环播放，不调用结束回调
+          print('[MoviePlayer] 无限循环播放，重新开始');
           _controller!.seekTo(Duration.zero).then((_) {
             _controller!.play();
           });
+          return;
+        }
+        
+        // 检查是否需要重复播放
+        final targetRepeatCount = widget.repeatCount ?? 1; // 如果没有设置repeatCount，默认播放1次
+        print('[MoviePlayer] 当前播放次数: $_currentPlayCount, 目标次数: $targetRepeatCount');
+        
+        if (_currentPlayCount < targetRepeatCount) {
+          // 还需要继续播放，重置视频到开始位置
+          print('[MoviePlayer] 开始第${_currentPlayCount + 1}次播放，总共需要播放${targetRepeatCount}次');
+          
+          // Web平台需要稍微延迟再重新播放，避免状态冲突
+          if (kIsWeb) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (_controller != null && mounted) {
+                _controller!.seekTo(Duration.zero).then((_) {
+                  if (_controller != null && mounted) {
+                    _controller!.play();
+                  }
+                });
+              }
+            });
+          } else {
+            _controller!.seekTo(Duration.zero).then((_) {
+              _controller!.play();
+            });
+          }
         } else {
           // 播放完成所有重复次数
-          //print('[MoviePlayer] 所有重复播放完成，共播放${_currentPlayCount}次');
+          print('[MoviePlayer] 所有重复播放完成，共播放${_currentPlayCount}次，调用结束回调');
           
           // 设置标志防止重复调用
           _hasCalledOnEnd = true;
           
-          // 调用结束回调
-          widget.onVideoEnd?.call();
+          // Web平台延迟调用回调，确保视频状态稳定
+          if (kIsWeb) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (widget.onVideoEnd != null) {
+                print('[MoviePlayer Web] 延迟调用视频结束回调');
+                widget.onVideoEnd!();
+              }
+            });
+          } else {
+            // 调用结束回调
+            widget.onVideoEnd?.call();
+          }
         }
       }
     }

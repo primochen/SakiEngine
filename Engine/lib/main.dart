@@ -213,6 +213,8 @@ class SakiEngineApp extends StatefulWidget {
 }
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
+  String? _lastSetTitle; // 添加状态追踪
+  
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -240,9 +242,20 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
                 final appTitle = titleSnapshot.data ?? 'SakiEngine';
                 final customTheme = gameModule.createTheme();
 
-                // 设置窗口标题
-                if (titleSnapshot.hasData) {
-                  PlatformWindowManager.setTitle(appTitle);
+                // 只在标题真正改变时设置窗口标题，Web平台增加额外的延迟
+                if (titleSnapshot.hasData && _lastSetTitle != appTitle) {
+                  _lastSetTitle = appTitle;
+                  // 使用addPostFrameCallback避免在build期间调用
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // Web平台延迟更长时间，确保DOM完全稳定
+                    if (kIsWeb) {
+                      Timer(const Duration(milliseconds: 500), () {
+                        PlatformWindowManager.setTitle(appTitle);
+                      });
+                    } else {
+                      PlatformWindowManager.setTitle(appTitle);
+                    }
+                  });
                 }
 
                 return MaterialApp(
@@ -306,11 +319,14 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
   Future<void> _startMaskAndPrewarm() async {
     if (mounted) {
       try {
-        // 等待1秒保持黑屏，然后预热
-        await Future.delayed(const Duration(milliseconds: 1000));
+        // Web平台使用更长的启动延迟，确保渲染稳定
+        final delay = kIsWeb ? 1500 : 1000;
+        await Future.delayed(Duration(milliseconds: delay));
 
-        // 在后台预热
-        await TransitionPrewarmingManager.instance.prewarm(context);
+        // 在后台预热，Web平台使用更保守的预热策略
+        if (mounted) {
+          await TransitionPrewarmingManager.instance.prewarm(context);
+        }
 
         if (mounted) {
           _prewarmingComplete = true;

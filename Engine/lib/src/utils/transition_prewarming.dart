@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
@@ -25,11 +26,16 @@ class TransitionPrewarmingManager {
     //print('[TransitionPrewarming] 开始转场预热');
     
     try {
-      // 预热dissolve着色器
-      await _prewarmDissolveShader();
-      
-      // 预热图片加载流程
-      await _prewarmImageLoading();
+      // Web平台采用更保守的预热策略，避免在渲染阶段访问上下文
+      if (kIsWeb) {
+        await _prewarmWeb();
+      } else {
+        // 预热dissolve着色器
+        await _prewarmDissolveShader();
+        
+        // 预热图片加载流程
+        await _prewarmImageLoading();
+      }
       
       _isPrewarmed = true;
       //print('[TransitionPrewarming] 转场预热完成');
@@ -73,6 +79,22 @@ class TransitionPrewarmingManager {
       }
     } catch (e) {
       //print('[TransitionPrewarming] 图片加载预热失败: $e');
+    }
+  }
+  
+  /// Web平台专用预热方法 - 更保守的策略
+  Future<void> _prewarmWeb() async {
+    try {
+      //print('[TransitionPrewarming] Web平台预热');
+      
+      // Web平台只预热着色器，不进行图片加载预热
+      // 避免在启动阶段进行复杂的资产搜索
+      await _prewarmDissolveShader();
+      
+      // Web平台跳过图片加载预热，因为AssetManager查询可能触发不当的上下文访问
+      //print('[TransitionPrewarming] Web平台预热完成，跳过图片预热');
+    } catch (e) {
+      //print('[TransitionPrewarming] Web平台预热失败: $e');
     }
   }
   
