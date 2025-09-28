@@ -14,7 +14,8 @@
       "Read(//Users/dfsteve/Documents/SakiEngine/**)",
       "Bash(sed:*)",
       "WebFetch(domain:www.renpy.org)",
-      "Read(//Library/Afolder/AYEngine/**)"
+      "Read(//Library/Afolder/AYEngine/**)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
