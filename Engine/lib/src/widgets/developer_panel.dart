@@ -8,6 +8,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
+import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
 
@@ -817,10 +818,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
                                   child: Opacity(
                                     opacity: config.baseWindowBackgroundAlpha * 0.5,
                                     child: ColorFiltered(
-                                      colorFilter: ColorFilter.mode(
-                                        Colors.transparent,
-                                        config.baseWindowBackgroundBlendMode,
-                                      ),
+                                      colorFilter: SvgColorFilterUtils.getSvgColorTemperatureFilter(config),
                                       child: Container(color: Colors.blue), // 临时替换 SmartAssetImage
                                     ),
                                   ),

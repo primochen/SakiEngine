@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
+import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 
 class ConfirmDialog extends StatefulWidget {
   final String title;
@@ -137,10 +138,7 @@ class _ConfirmDialogState extends State<ConfirmDialog>
                                     child: Opacity(
                                       opacity: config.baseWindowBackgroundAlpha,
                                       child: ColorFiltered(
-                                        colorFilter: ColorFilter.mode(
-                                          Colors.transparent,
-                                          config.baseWindowBackgroundBlendMode,
-                                        ),
+                                        colorFilter: SvgColorFilterUtils.getSvgColorTemperatureFilter(config),
                                         child: Align(
                                           alignment: Alignment(
                                             (config.baseWindowXAlign - 0.5) * 2,
