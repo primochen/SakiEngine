@@ -163,18 +163,13 @@ class SakiEngineConfig {
 
   void updateThemeForDarkMode() {
     final isDarkMode = SettingsManager().currentDarkMode;
-    final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);
-    
-    print('[SakiEngineConfig] updateThemeForDarkMode: isDarkMode=$isDarkMode');
-    
+    final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);    
     if (isDarkMode) {
       // 夜间模式：深色主题 + 色温调整
       themeColors = ThemeColors.fromPrimaryDark(baseColor)
           .adjustColorTemperature(cooler: true);
-      print('[SakiEngineConfig] 应用深色主题 + 冷色调色温');
     } else {
       themeColors = ThemeColors.fromPrimary(baseColor);
-      print('[SakiEngineConfig] 应用浅色主题 + 正常色温');
     }
   }
 

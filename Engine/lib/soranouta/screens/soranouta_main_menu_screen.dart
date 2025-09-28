@@ -172,6 +172,41 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 ),
               ),
               
+              // 深色模式切换按钮阴影层
+              Positioned(
+                left: 20,
+                bottom: 20,
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                  child: Icon(
+                    isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                    size: 48 * textScale,
+                    color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                  ),
+                ),
+              ),
+              
+              // 深色模式切换按钮
+              Positioned(
+                left: 20,
+                bottom: 20,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () async {
+                      final newDarkMode = !isDarkMode;
+                      await SettingsManager().setDarkMode(newDarkMode);
+                      config.updateThemeForDarkMode();
+                    },
+                    child: Icon(
+                      isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                      size: 48 * textScale,
+                      color: isDarkMode ? Colors.black : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              
               // 覆盖层
               if (_showLoadOverlay)
                 SaveLoadScreen(

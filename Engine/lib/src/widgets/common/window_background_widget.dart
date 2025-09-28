@@ -16,17 +16,14 @@ class WindowBackgroundWidget extends StatelessWidget {
   // 获取SVG色温调整滤镜
   ColorFilter? _getSvgColorTemperatureFilter() {
     final isDarkMode = SettingsManager().currentDarkMode;
-    print('[WindowBackgroundWidget] isDarkMode: $isDarkMode, assetName: ${config.baseWindowBackground}');
     
     if (!isDarkMode) {
-      print('[WindowBackgroundWidget] 浅色模式，使用默认滤镜');
       return config.baseWindowBackgroundBlendMode == BlendMode.multiply 
           ? ColorFilter.mode(Colors.transparent, config.baseWindowBackgroundBlendMode)
           : null;
     }
     
     // 夜间模式下应用色温调整（冷色调）
-    print('[WindowBackgroundWidget] 深色模式，应用冷色调矩阵滤镜');
     // 为SVG背景图案应用色温矩阵
     return const ColorFilter.matrix([
       // R  G  B  A  Offset  
@@ -40,12 +37,8 @@ class WindowBackgroundWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (config.baseWindowBackground == null || config.baseWindowBackground!.isEmpty) {
-      print('[WindowBackgroundWidget] 没有背景图片，返回child');
       return child;
     }
-
-    print('[WindowBackgroundWidget] 构建背景组件，背景: ${config.baseWindowBackground}');
-    print('[WindowBackgroundWidget] Alpha: ${config.baseWindowBackgroundAlpha}, BlendMode: ${config.baseWindowBackgroundBlendMode}');
 
     return ClipRect(
       child: Stack(

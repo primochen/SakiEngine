@@ -26,20 +26,16 @@ class SmartAssetImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('[SmartAssetImage] 构建资源图片: $assetName');
     return FutureBuilder<String?>(
       future: AssetManager().findAsset(assetName),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
           final assetPath = snapshot.data!;
-          print('[SmartAssetImage] 找到资源路径: $assetPath');
           
           if (assetPath.toLowerCase().endsWith('.svg')) {
-            print('[SmartAssetImage] 检测到SVG文件，准备渲染');
             // 检查是否是绝对路径（Debug模式）
             if (assetPath.startsWith('/') || assetPath.contains(':')) {
               // 绝对路径：使用SvgPicture.file
-              print('[SmartAssetImage] 使用绝对路径加载SVG: $assetPath');
               return SvgPicture.file(
                 File(assetPath),
                 fit: fit ?? BoxFit.contain,
@@ -53,7 +49,6 @@ class SmartAssetImage extends StatelessWidget {
               );
             } else {
               // 相对路径：使用SvgPicture.asset
-              print('[SmartAssetImage] 使用相对路径加载SVG: $assetPath');
               return SvgPicture.asset(
                 assetPath,
                 fit: fit ?? BoxFit.contain,
@@ -67,7 +62,6 @@ class SmartAssetImage extends StatelessWidget {
               );
             }
           } else {
-            print('[SmartAssetImage] 非SVG文件，使用SmartImage: $assetPath');
             return SmartImage.asset(
               assetPath,
               fit: fit,
@@ -83,7 +77,6 @@ class SmartAssetImage extends StatelessWidget {
           return errorWidget ?? Container();
         }
         
-        print('[SmartAssetImage] 资源未找到或加载中: $assetName');
         return errorWidget ?? Container();
       },
     );

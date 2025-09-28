@@ -312,9 +312,7 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
           // 开始淡出动画
           _fadeController.forward();
         }
-        print('[StartupMask] 启动遮罩和预热完成，开始淡出');
       } catch (e) {
-        print('[StartupMask] 启动遮罩和预热失败: $e');
         // 即使失败也要开始淡出，避免永远黑屏
         if (mounted) {
           _prewarmingComplete = true;

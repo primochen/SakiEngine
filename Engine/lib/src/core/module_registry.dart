@@ -15,10 +15,8 @@ void initializeProjectModules() {
   // 显示扫描结果（用于开发调试）
   final availableModules = AutoModuleRegistry.scanForAvailableModules();
   if (availableModules.isNotEmpty) {
-    print('[ModuleRegistry] 🔍 文件系统中发现的模块: ${availableModules.join(', ')}');
   }
   
-  print('[ModuleRegistry] 🚀 模块系统初始化完成 - 使用自动生成注册表');
 }
 
 /// 创建项目特定模块的助手函数

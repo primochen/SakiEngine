@@ -44,10 +44,7 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isDarkMode = SettingsManager().currentDarkMode;
-    
-    print('[GameTitleWidget] isDarkMode: $isDarkMode');
-    print('[GameTitleWidget] 原始标题: ${widget.config.mainMenuTitle}');
-    
+  
     // 根据主题模式选择图片文件
     String titleImagePath = widget.config.mainMenuTitle;
     if (isDarkMode && titleImagePath.isNotEmpty) {
@@ -59,10 +56,6 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
         titleImagePath = '${nameWithoutExtension.replaceAll(RegExp(r'main[^/]*$'), 'main_yoru')}.$extension';
       }
     }
-    
-    print('[GameTitleWidget] 最终标题路径: $titleImagePath');
-    print('[GameTitleWidget] 是否应用反色滤镜: ${!isDarkMode}');
-    
     Widget titleImage = SmartAssetImage(
       assetName: titleImagePath,
       height: widget.config.mainMenuTitleSize * widget.textScale,

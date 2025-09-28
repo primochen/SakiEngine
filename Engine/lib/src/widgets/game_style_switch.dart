@@ -102,6 +102,16 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
   @override
   void didUpdateWidget(GameStyleSwitch oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    // 重新初始化颜色动画以响应主题变化
+    _colorAnimation = ColorTween(
+      begin: widget.config.themeColors.onSurfaceVariant.withOpacity(0.3),
+      end: widget.config.themeColors.primary.withOpacity(0.8),
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+    
     if (oldWidget.value != widget.value) {
       if (widget.value) {
         _animationController.forward();

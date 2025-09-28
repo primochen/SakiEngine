@@ -7,14 +7,11 @@ class SvgColorFilterUtils {
   /// 在深色模式下应用冷色调效果，浅色模式下使用默认滤镜
   static ColorFilter getSvgColorTemperatureFilter(SakiEngineConfig config) {
     final isDarkMode = SettingsManager().currentDarkMode;
-    print('[SvgColorFilterUtils] SVG色温滤镜 - isDarkMode: $isDarkMode');
     
     if (!isDarkMode) {
-      print('[SvgColorFilterUtils] 浅色模式，使用默认透明滤镜');
       return ColorFilter.mode(Colors.transparent, config.baseWindowBackgroundBlendMode);
     }
     
-    print('[SvgColorFilterUtils] 深色模式，应用冷色调矩阵滤镜');
     // 夜间模式下应用色温调整（冷色调）
     return const ColorFilter.matrix([
       // R  G  B  A  Offset  

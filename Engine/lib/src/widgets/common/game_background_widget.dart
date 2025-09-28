@@ -25,11 +25,6 @@ class GameBackgroundWidget extends StatelessWidget {
     
     // 使用自定义背景名称或配置文件中的背景
     String originalBackground = customBackgroundName ?? config.mainMenuBackground;
-    
-    print('[GameBackgroundWidget] isDarkMode: $isDarkMode');
-    print('[GameBackgroundWidget] 使用自定义背景: ${customBackgroundName != null}');
-    print('[GameBackgroundWidget] 原始背景: $originalBackground');
-    
     // 根据主题模式选择背景图片
     String backgroundPath = originalBackground;
     if (isDarkMode && backgroundPath.isNotEmpty) {
@@ -52,10 +47,7 @@ class GameBackgroundWidget extends StatelessWidget {
           }
         }
       }
-    }
-    
-    print('[GameBackgroundWidget] 最终背景路径: backgrounds/$backgroundPath');
-    
+    }    
     return SmartAssetImage(
       assetName: 'backgrounds/$backgroundPath',
       fit: BoxFit.cover,

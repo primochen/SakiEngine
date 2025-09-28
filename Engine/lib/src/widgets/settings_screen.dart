@@ -103,6 +103,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateDarkMode(bool value) async {
     setState(() => _darkMode = value);
     await _settingsManager.setDarkMode(value);
+    // 确保主题配置立即更新
+    SakiEngineConfig().updateThemeForDarkMode();
+    // 强制重建当前设置屏幕
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _updateTypewriterCharsPerSecond(double value) async {
@@ -175,11 +181,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return OverlayScaffold(
-      title: '游戏设置',
-      content: _isLoading ? _buildLoadingContent() : _buildSettingsContent(),
-      footer: _isLoading ? null : _buildFooter(),
-      onClose: widget.onClose,
+    return AnimatedBuilder(
+      animation: SettingsManager(), // 监听设置变化
+      builder: (context, child) {
+        // 当设置变化时，重新更新主题配置
+        SakiEngineConfig().updateThemeForDarkMode();
+        
+        return OverlayScaffold(
+          title: '游戏设置',
+          content: _isLoading ? _buildLoadingContent() : _buildSettingsContent(),
+          footer: _isLoading ? null : _buildFooter(),
+          onClose: widget.onClose,
+        );
+      },
     );
   }
 

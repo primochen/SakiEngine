@@ -121,6 +121,20 @@ class _GameStyleSliderState extends State<GameStyleSlider> with TickerProviderSt
   }
 
   @override
+  void didUpdateWidget(GameStyleSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 重新初始化颜色动画以响应主题变化
+    _trackColorAnimation = ColorTween(
+      begin: widget.config.themeColors.onSurfaceVariant.withOpacity(0.3),
+      end: widget.config.themeColors.primary.withOpacity(0.6),
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
   void dispose() {
     _animationController.dispose();
     _pulseController.dispose();

@@ -17,7 +17,7 @@ class AutoModuleRegistry {
     final loader = ProjectModuleLoader();
     
     if (kDebugMode) {
-      print('[AutoModuleRegistry] 🚀 开始真正的自动模块发现（无硬编码）');
+      //print('[AutoModuleRegistry] 🚀 开始真正的自动模块发现（无硬编码）');
     }
     
     // 扫描并注册所有发现的模块
@@ -25,9 +25,9 @@ class AutoModuleRegistry {
     
     final registeredCount = loader.getRegisteredModules().length;
     if (kDebugMode) {
-      print('[AutoModuleRegistry] ✅ 自动模块注册完成，已注册 $registeredCount 个项目模块');
+      //print('[AutoModuleRegistry] ✅ 自动模块注册完成，已注册 $registeredCount 个项目模块');
       if (registeredCount > 0) {
-        print('[AutoModuleRegistry] 已注册的模块: ${loader.getRegisteredModules().join(', ')}');
+        //print('[AutoModuleRegistry] 已注册的模块: ${loader.getRegisteredModules().join(', ')}');
       }
     }
   }
@@ -37,7 +37,7 @@ class AutoModuleRegistry {
     final availableModules = scanForAvailableModules();
     
     if (kDebugMode) {
-      print('[AutoModuleRegistry] 🔍 扫描发现 ${availableModules.length} 个潜在模块: ${availableModules.join(', ')}');
+      //print('[AutoModuleRegistry] 🔍 扫描发现 ${availableModules.length} 个潜在模块: ${availableModules.join(', ')}');
     }
     
     for (final moduleName in availableModules) {
@@ -45,16 +45,16 @@ class AutoModuleRegistry {
         // 尝试通过预设映射表注册模块
         if (_tryRegisterKnownModule(loader, moduleName)) {
           if (kDebugMode) {
-            print('[AutoModuleRegistry] ✅ 成功注册模块: $moduleName');
+            //print('[AutoModuleRegistry] ✅ 成功注册模块: $moduleName');
           }
         } else {
           if (kDebugMode) {
-            print('[AutoModuleRegistry] ⚠️ 跳过未知模块: $moduleName (需要添加到映射表)');
+            //print('[AutoModuleRegistry] ⚠️ 跳过未知模块: $moduleName (需要添加到映射表)');
           }
         }
       } catch (e) {
         if (kDebugMode) {
-          print('[AutoModuleRegistry] ❌ 注册模块 $moduleName 失败: $e');
+          //print('[AutoModuleRegistry] ❌ 注册模块 $moduleName 失败: $e');
         }
       }
     }
@@ -89,13 +89,13 @@ class AutoModuleRegistry {
       final libDir = Directory('lib');
       if (!libDir.existsSync()) {
         if (kDebugMode) {
-          print('[AutoModuleRegistry] lib 目录不存在');
+          //print('[AutoModuleRegistry] lib 目录不存在');
         }
         return availableModules;
       }
       
       if (kDebugMode) {
-        print('[AutoModuleRegistry] 开始扫描 lib 目录: ${libDir.path}');
+        //print('[AutoModuleRegistry] 开始扫描 lib 目录: ${libDir.path}');
       }
       
       for (final entity in libDir.listSync()) {
@@ -106,7 +106,7 @@ class AutoModuleRegistry {
           if (dirName == 'src' || dirName.startsWith('.')) continue;
           
           if (kDebugMode) {
-            print('[AutoModuleRegistry] 检查目录: $dirName');
+            //print('[AutoModuleRegistry] 检查目录: $dirName');
           }
           
           // 检查是否有对应的模块文件
@@ -114,18 +114,18 @@ class AutoModuleRegistry {
           if (moduleFile.existsSync()) {
             availableModules.add(dirName);
             if (kDebugMode) {
-              print('[AutoModuleRegistry] 🎯 发现项目模块: $dirName (${moduleFile.path})');
+              //print('[AutoModuleRegistry] 🎯 发现项目模块: $dirName (${moduleFile.path})');
             }
           } else {
             if (kDebugMode) {
-              print('[AutoModuleRegistry] 跳过目录 $dirName (无模块文件: ${moduleFile.path})');
+              //print('[AutoModuleRegistry] 跳过目录 $dirName (无模块文件: ${moduleFile.path})');
             }
           }
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[AutoModuleRegistry] ⚠️ 扫描模块时出错: $e');
+        //print('[AutoModuleRegistry] ⚠️ 扫描模块时出错: $e');
       }
     }
     
