@@ -394,8 +394,8 @@ nvlm
 "直到这天的夕阳染红天空。"
 "蝉们也不知疲倦地喳喳叫着的时分。"
 endnvlm
-scene sky yuu with diss
 nvlm
+scene sky yuu with diss
 ////背景切到家的拐角
 ////结束nvl模式
 "......"
@@ -409,17 +409,17 @@ play sound car1
 "绝对是出了什么事情。"
 "我抱着担忧的心情，快速地跑出门。"
 endnvlm
+nvlm
 stop sound
 scene bl
 play sound kakeru
 ////侧滑的方式快速切换到快黑的夕阳的家(使用with moveinleft 从左侧划入 详情参考https://doc.renpy.cn/zh-CN/transitions.html)
 stop music
-nvlm
 "映入我眼帘的却是......"
 "我曾经预料到过的......"
 "最坏的那个结果......"
 endnvlm
-nvlmR
+nvlm
 "......"
 endnvlm
 // persistent.music_023unlock = True
