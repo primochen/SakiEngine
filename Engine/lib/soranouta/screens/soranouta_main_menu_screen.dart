@@ -88,103 +88,111 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     final textScale = context.scaleFor(ComponentType.text);
     final isDarkMode = SettingsManager().currentDarkMode;
 
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 模块化背景组件 - soranouta 直接控制背景
-          GameBackgroundWidget.withCustomBackground(
-            config: config,
-            backgroundName: 'main', // soranouta 直接传递 'main'
-          ),
-          
-          // 萤火虫动画层 - 在背景之上，其他UI之下
-          const Positioned.fill(
-            child: FireflyAnimation(
-              fireflyCount: 8, // 减少数量：苍蝇变萤火虫
-              maxRadius: 3.5, // 增大最大尺寸
-              minRadius: 1.0, // 减小最小尺寸，增加变化范围
-              maxSpeed: 0.15, // 大幅降低速度
-              minSpeed: 0.08,
-            ),
-          ),
-          
-          // 模块化标题组件
-          GameTitleWidget(
-            config: config,
-            textScale: textScale,
-          ),
-          
-          // 按钮区域的白色模糊阴影层 - 独立层
-          SoranoutaMenuButtons.createShadowWidget(
-            config: config,
-            scale: menuScale,
-            screenSize: screenSize,
-          ),
-          
-          // SoraNoUta 专用按钮
-          SoranoutaMenuButtons.createButtonsWidget(
-            onNewGame: widget.onNewGame,
-            onLoadGame: () => setState(() => _showLoadOverlay = true),
-            onSettings: () => setState(() => _showSettings = true),
-            onExit: () => _showExitConfirmation(context),
-            config: config,
-            scale: menuScale,
-            screenSize: screenSize,
-          ),
-          
-          // 版权信息阴影层
-          Positioned(
-            right: 20,
-            bottom: 20,
-            child: ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-              child: Text(
-                _copyrightText,
-                style: TextStyle(
-                  fontFamily: 'ChillJinshuSongPro_Soft',
-                  fontSize: 40 * textScale,
-                  color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
-                  fontWeight: FontWeight.normal,
+    return AnimatedBuilder(
+      animation: SettingsManager(), // 监听设置变化
+      builder: (context, child) {
+        // 当设置变化时，重新更新主题配置
+        config.updateThemeForDarkMode();
+        
+        return Scaffold(
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 模块化背景组件 - soranouta 直接控制背景
+              GameBackgroundWidget.withCustomBackground(
+                config: config,
+                backgroundName: 'main', // soranouta 直接传递 'main'
+              ),
+              
+              // 萤火虫动画层 - 在背景之上，其他UI之下
+              const Positioned.fill(
+                child: FireflyAnimation(
+                  fireflyCount: 8, // 减少数量：苍蝇变萤火虫
+                  maxRadius: 3.5, // 增大最大尺寸
+                  minRadius: 1.0, // 减小最小尺寸，增加变化范围
+                  maxSpeed: 0.15, // 大幅降低速度
+                  minSpeed: 0.08,
                 ),
               ),
-            ),
-          ),
-          
-          // 版权信息文本
-          Positioned(
-            right: 20,
-            bottom: 20,
-            child: Text(
-              _copyrightText,
-              style: TextStyle(
-                fontFamily: 'ChillJinshuSongPro_Soft',
-                fontSize: 40 * textScale,
-                color: isDarkMode ? Colors.black : Colors.white,
-                fontWeight: FontWeight.normal,
+              
+              // 模块化标题组件
+              GameTitleWidget(
+                config: config,
+                textScale: textScale,
               ),
-            ),
+              
+              // 按钮区域的白色模糊阴影层 - 独立层
+              SoranoutaMenuButtons.createShadowWidget(
+                config: config,
+                scale: menuScale,
+                screenSize: screenSize,
+              ),
+              
+              // SoraNoUta 专用按钮
+              SoranoutaMenuButtons.createButtonsWidget(
+                onNewGame: widget.onNewGame,
+                onLoadGame: () => setState(() => _showLoadOverlay = true),
+                onSettings: () => setState(() => _showSettings = true),
+                onExit: () => _showExitConfirmation(context),
+                config: config,
+                scale: menuScale,
+                screenSize: screenSize,
+              ),
+              
+              // 版权信息阴影层
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                  child: Text(
+                    _copyrightText,
+                    style: TextStyle(
+                      fontFamily: 'ChillJinshuSongPro_Soft',
+                      fontSize: 40 * textScale,
+                      color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // 版权信息文本
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: Text(
+                  _copyrightText,
+                  style: TextStyle(
+                    fontFamily: 'ChillJinshuSongPro_Soft',
+                    fontSize: 40 * textScale,
+                    color: isDarkMode ? Colors.black : Colors.white,
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ),
+              
+              // 覆盖层
+              if (_showLoadOverlay)
+                SaveLoadScreen(
+                  mode: SaveLoadMode.load,
+                  onClose: () => setState(() => _showLoadOverlay = false),
+                  onLoadSlot: widget.onLoadGameWithSave,
+                ),
+                
+              if (_showSettings)
+                SettingsScreen(
+                  onClose: () => setState(() => _showSettings = false),
+                ),
+                
+              if (_showDebugPanel)
+                DebugPanelDialog(
+                  onClose: () => setState(() => _showDebugPanel = false),
+                ),
+            ],
           ),
-          
-          // 覆盖层
-          if (_showLoadOverlay)
-            SaveLoadScreen(
-              mode: SaveLoadMode.load,
-              onClose: () => setState(() => _showLoadOverlay = false),
-              onLoadSlot: widget.onLoadGameWithSave,
-            ),
-            
-          if (_showSettings)
-            SettingsScreen(
-              onClose: () => setState(() => _showSettings = false),
-            ),
-            
-          if (_showDebugPanel)
-            DebugPanelDialog(
-              onClose: () => setState(() => _showDebugPanel = false),
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
