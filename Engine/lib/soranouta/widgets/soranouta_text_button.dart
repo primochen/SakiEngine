@@ -26,6 +26,8 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
     final normalColor = isDarkMode ? Colors.black : Colors.white;
     final hoverColor = isDarkMode ? Colors.white : Colors.black;
     
+    print('[SoranoutaTextButton] ${widget.text} - isDarkMode: $isDarkMode, normalColor: $normalColor, hoverColor: $hoverColor');
+    
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
