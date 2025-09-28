@@ -91,8 +91,11 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 模块化背景组件
-          GameBackgroundWidget(config: config),
+          // 模块化背景组件 - soranouta 直接控制背景
+          GameBackgroundWidget.withCustomBackground(
+            config: config,
+            backgroundName: 'main', // soranouta 直接传递 'main'
+          ),
           
           // 模块化标题组件
           GameTitleWidget(

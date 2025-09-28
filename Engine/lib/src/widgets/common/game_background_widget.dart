@@ -5,21 +5,33 @@ import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class GameBackgroundWidget extends StatelessWidget {
   final SakiEngineConfig config;
+  final String? customBackgroundName; // 新增：自定义背景名称
 
   const GameBackgroundWidget({
     super.key,
     required this.config,
-  });
+  }) : customBackgroundName = null;
+
+  // 新增：支持自定义背景名称的构造函数
+  const GameBackgroundWidget.withCustomBackground({
+    super.key,
+    required this.config,
+    required String backgroundName,
+  }) : customBackgroundName = backgroundName;
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = SettingsManager().currentDarkMode;
     
+    // 使用自定义背景名称或配置文件中的背景
+    String originalBackground = customBackgroundName ?? config.mainMenuBackground;
+    
     print('[GameBackgroundWidget] isDarkMode: $isDarkMode');
-    print('[GameBackgroundWidget] 原始背景: ${config.mainMenuBackground}');
+    print('[GameBackgroundWidget] 使用自定义背景: ${customBackgroundName != null}');
+    print('[GameBackgroundWidget] 原始背景: $originalBackground');
     
     // 根据主题模式选择背景图片
-    String backgroundPath = config.mainMenuBackground;
+    String backgroundPath = originalBackground;
     if (isDarkMode && backgroundPath.isNotEmpty) {
       // 深色模式下使用 _yoru 版本
       if (backgroundPath == 'main') {
