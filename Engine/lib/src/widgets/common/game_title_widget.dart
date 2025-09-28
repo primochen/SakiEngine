@@ -23,6 +23,7 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
   Widget? _cachedLightImage;
   Widget? _cachedDarkImage;
   String? _cachedImagePath;
+  double? _cachedScale; // 添加缓存的缩放值
 
   @override
   void initState() {
@@ -44,8 +45,11 @@ class _GameTitleWidgetState extends State<GameTitleWidget> {
   }
 
   void _preloadImages() {
-    if (widget.config.mainMenuTitle.isNotEmpty && _cachedImagePath != widget.config.mainMenuTitle) {
+    // 当路径或缩放值变化时，重新生成缓存
+    if (widget.config.mainMenuTitle.isNotEmpty && 
+        (_cachedImagePath != widget.config.mainMenuTitle || _cachedScale != widget.textScale)) {
       _cachedImagePath = widget.config.mainMenuTitle;
+      _cachedScale = widget.textScale;
       
       // 预载入浅色模式图片（原图）
       _cachedLightImage = SmartAssetImage(

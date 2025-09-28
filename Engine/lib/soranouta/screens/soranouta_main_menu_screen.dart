@@ -119,7 +119,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
               // 模块化标题组件
               GameTitleWidget(
                 config: config,
-                textScale: textScale,
+                textScale: menuScale, // 使用菜单缩放系数而不是文本缩放系数
               ),
               
               // 按钮区域的白色模糊阴影层 - 独立层
