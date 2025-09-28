@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 
 class SoranoutaTextButton extends StatefulWidget {
   final String text;
@@ -21,6 +22,10 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = SettingsManager().currentDarkMode;
+    final normalColor = isDarkMode ? Colors.black : Colors.white;
+    final hoverColor = isDarkMode ? Colors.white : Colors.black;
+    
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -34,7 +39,7 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
             style: TextStyle(
               fontFamily: 'ChillJinshuSongPro_Soft',
               fontSize: 55 * widget.scale,
-              color: _isHovered ? Colors.white : Colors.black,
+              color: _isHovered ? hoverColor : normalColor,
               fontWeight: FontWeight.normal,
               letterSpacing: 3,
             ),

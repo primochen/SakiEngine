@@ -14,7 +14,7 @@ play music himitsukichi
 "吃完饭散散步也有助于消化。"
 "看到了她们三个。"
 l "今天来玩什么？"
-show xiayo1 unhappy at xiayo1pose an topin
+show xiayo1 pose1 unhappy at xiayo1pose an topin
 play sound haneru
 ////弹出夏悠立绘 unhappy
 "我走到夏悠旁边问到。"
@@ -354,6 +354,7 @@ nvlm
 "如果察觉到母亲快回来了，我会在听到动静后马上关掉电视，然后拿起书阅读。"
 endnvlm
 ////音乐停止
+nvlm
 scene sky
 ////黑场切到白天的天空
 //pause 2.0
@@ -366,7 +367,6 @@ scene home yuu
 //////pause1.5秒以后渐变到白天的家
 //////pause1秒以后1.5的diss渐变到夕阳的家
 ////⬆这里的两个白天切换到夕阳，意思是表示时间流逝了几个小时，一丢丢镜头语言（应该算吧）
-nvlm
  "......"
 ////nvl模式 音乐 omoide
 "我终于察觉到了有什么问题。"
@@ -394,8 +394,8 @@ nvlm
 "直到这天的夕阳染红天空。"
 "蝉们也不知疲倦地喳喳叫着的时分。"
 endnvlm
-scene sky yuu with diss
 nvlm
+scene sky yuu with diss
 ////背景切到家的拐角
 ////结束nvl模式
 "......"
@@ -409,12 +409,12 @@ play sound car1
 "绝对是出了什么事情。"
 "我抱着担忧的心情，快速地跑出门。"
 endnvlm
+nvlm
 stop sound
 scene bl
 play sound kakeru
 ////侧滑的方式快速切换到快黑的夕阳的家(使用with moveinleft 从左侧划入 详情参考https://doc.renpy.cn/zh-CN/transitions.html)
 stop music
-nvlm
 "映入我眼帘的却是......"
 "我曾经预料到过的......"
 "最坏的那个结果......"
@@ -428,11 +428,10 @@ play music yomi
 ////夏悠cg2 naku和warui（调用的图像id是cg xiayo2，后面有三个接的 happy naku naku2 ，还有一个warui参数 会让cg变成黑脸）
 ////cg的动画是先放大cg到视野中心是受伤的部位 然后再缩小到cg的原始大小
 // persistent.cg021 = True
-cg cg_cp1_1 naku
-nvlm
+cg cg_cp1_1 naku an cg1_4
+shake
 "夏悠躺坐在三轮车上面，痛苦地捂着自己的大腿。"
 "旁边则是夏悠的母亲。"
-endnvlm
 l "这？这是怎么回事？"
 nvlm
 "我发出了疑问。"
@@ -449,6 +448,7 @@ scene bl
 "手搭在三轮车的护栏上，看着夏悠的伤势。"
 // persistent.cg022 = True
 cg cg_cp1_1 naku2
+shake
 ////cg渐变到naku2
 x "林澄..."
 // persistent.cg023 = True

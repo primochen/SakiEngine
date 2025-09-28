@@ -4,6 +4,7 @@ import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
@@ -11,6 +12,7 @@ import 'package:sakiengine/src/widgets/common/game_title_widget.dart';
 import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 /// SoraNoUta 项目的自定义主菜单屏幕
 /// 使用模块化标题组件 + 专用按钮
@@ -83,6 +85,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     final screenSize = MediaQuery.of(context).size;
     final menuScale = context.scaleFor(ComponentType.menu);
     final textScale = context.scaleFor(ComponentType.text);
+    final isDarkMode = SettingsManager().currentDarkMode;
 
     return Scaffold(
       body: Stack(
@@ -97,6 +100,13 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
             textScale: textScale,
           ),
           
+          // 按钮区域的白色模糊阴影层 - 独立层
+          SoranoutaMenuButtons.createShadowWidget(
+            config: config,
+            scale: menuScale,
+            screenSize: screenSize,
+          ),
+          
           // SoraNoUta 专用按钮
           SoranoutaMenuButtons.createButtonsWidget(
             onNewGame: widget.onNewGame,
@@ -108,6 +118,24 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
             screenSize: screenSize,
           ),
           
+          // 版权信息阴影层
+          Positioned(
+            right: 20,
+            bottom: 20,
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+              child: Text(
+                _copyrightText,
+                style: TextStyle(
+                  fontFamily: 'ChillJinshuSongPro_Soft',
+                  fontSize: 40 * textScale,
+                  color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ),
+          ),
+          
           // 版权信息文本
           Positioned(
             right: 20,
@@ -117,7 +145,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
               style: TextStyle(
                 fontFamily: 'ChillJinshuSongPro_Soft',
                 fontSize: 40 * textScale,
-                color: Colors.black,
+                color: isDarkMode ? Colors.black : Colors.white,
                 fontWeight: FontWeight.normal,
               ),
             ),
