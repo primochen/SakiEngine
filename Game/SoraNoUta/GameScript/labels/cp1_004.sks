@@ -428,7 +428,7 @@ play music yomi
 ////夏悠cg2 naku和warui（调用的图像id是cg xiayo2，后面有三个接的 happy naku naku2 ，还有一个warui参数 会让cg变成黑脸）
 ////cg的动画是先放大cg到视野中心是受伤的部位 然后再缩小到cg的原始大小
 // persistent.cg021 = True
-cg cg_cp1_1 naku
+cg cg_cp1_1 naku an cg1_4
 shake
 "夏悠躺坐在三轮车上面，痛苦地捂着自己的大腿。"
 "旁边则是夏悠的母亲。"

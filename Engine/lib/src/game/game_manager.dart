@@ -2933,8 +2933,16 @@ class GameManager {
   /// 播放角色动画
   Future<void> _playCharacterAnimation(String characterId, String animationName,
       {int? repeatCount}) async {
-    final characterState = _currentState.characters[characterId];
-    if (characterState == null) return;
+    CharacterState? characterState = _currentState.characters[characterId];
+    bool isCgCharacter = false;
+
+    if (characterState == null) {
+      characterState = _currentState.cgCharacters[characterId];
+      if (characterState == null) {
+        return;
+      }
+      isCgCharacter = true;
+    }
 
     // 检查该角色是否已经有动画在播放
     final existingAnimController = _activeCharacterAnimations[characterId];
@@ -2952,63 +2960,107 @@ class GameManager {
       }
     }
 
-    // 应用自动分布逻辑，获取实际的分布后位置
-    final characterOrder = _currentState.characters.keys.toList();
-    final distributedPoseConfigs =
-        CharacterAutoDistribution.calculateAutoDistribution(
-      _currentState.characters,
-      _poseConfigs,
-      characterOrder,
-    );
+    Map<String, double> baseProperties;
 
-    // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
-    final autoDistributedPoseId = '${characterId}_auto_distributed';
-    final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ??
-        distributedPoseConfigs[characterState.positionId] ??
-        _poseConfigs[characterState.positionId];
-    if (poseConfig == null) return;
+    if (!isCgCharacter) {
+      // 应用自动分布逻辑，获取实际的分布后位置
+      final characterOrder = _currentState.characters.keys.toList();
+      final distributedPoseConfigs =
+          CharacterAutoDistribution.calculateAutoDistribution(
+        _currentState.characters,
+        _poseConfigs,
+        characterOrder,
+      );
 
-    // 获取基础属性（使用自动站位后的实际位置）
-    final baseProperties = {
-      'xcenter': poseConfig.xcenter,
-      'ycenter': poseConfig.ycenter,
-      'scale': poseConfig.scale,
-      'alpha': 1.0,
-    };
+      // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
+      final autoDistributedPoseId = '${characterId}_auto_distributed';
+      final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ??
+          distributedPoseConfigs[characterState.positionId] ??
+          _poseConfigs[characterState.positionId];
+      if (poseConfig == null) return;
+
+      baseProperties = {
+        'xcenter': poseConfig.xcenter,
+        'ycenter': poseConfig.ycenter,
+        'scale': poseConfig.scale,
+        'alpha': 1.0,
+        'rotation': characterState.animationProperties?['rotation'] ?? 0.0,
+      };
+    } else {
+      baseProperties = {
+        'xcenter': characterState.animationProperties?['xcenter'] ?? 0.0,
+        'ycenter': characterState.animationProperties?['ycenter'] ?? 0.0,
+        'scale': characterState.animationProperties?['scale'] ?? 1.0,
+        'alpha': characterState.animationProperties?['alpha'] ?? 1.0,
+        'rotation': characterState.animationProperties?['rotation'] ?? 0.0,
+      };
+    }
+
+    final existingProperties = characterState.animationProperties;
+    if (existingProperties != null && existingProperties.isNotEmpty) {
+      baseProperties.addAll(existingProperties);
+    }
 
     // 创建动画控制器
     final animController = CharacterAnimationController(
       characterId: characterId,
       onAnimationUpdate: (properties) {
-        // 实时更新角色状态
-        final newCharacters = Map.of(_currentState.characters);
-        final currentCharacterState = newCharacters[characterId];
-        if (currentCharacterState != null) {
-          newCharacters[characterId] = currentCharacterState.copyWith(
-            animationProperties: properties,
-          );
-          _currentState = _currentState.copyWith(
-            characters: newCharacters,
-            everShownCharacters: _everShownCharacters,
-          );
-          _gameStateController.add(_currentState);
+        if (isCgCharacter) {
+          final newCgCharacters = Map.of(_currentState.cgCharacters);
+          final currentCgState = newCgCharacters[characterId];
+          if (currentCgState != null) {
+            newCgCharacters[characterId] = currentCgState.copyWith(
+              animationProperties: properties,
+            );
+            _currentState = _currentState.copyWith(
+              cgCharacters: newCgCharacters,
+              everShownCharacters: _everShownCharacters,
+            );
+            _gameStateController.add(_currentState);
+          }
+        } else {
+          final newCharacters = Map.of(_currentState.characters);
+          final currentCharacterState = newCharacters[characterId];
+          if (currentCharacterState != null) {
+            newCharacters[characterId] = currentCharacterState.copyWith(
+              animationProperties: properties,
+            );
+            _currentState = _currentState.copyWith(
+              characters: newCharacters,
+              everShownCharacters: _everShownCharacters,
+            );
+            _gameStateController.add(_currentState);
+          }
         }
       },
       onComplete: () {
         //print('[GameManager] 角色 $characterId 动画 $animationName 播放完成');
-        // 动画完成后，清除动画属性，让角色回到原本的位置
-        // 不修改原始的pose配置，避免影响其他使用相同positionId的角色
-        final newCharacters = Map.of(_currentState.characters);
-        final currentCharacterState = newCharacters[characterId];
-        if (currentCharacterState != null) {
-          newCharacters[characterId] = currentCharacterState.copyWith(
-            animationProperties: null, // 清除动画属性，回到基础位置
-          );
-          _currentState = _currentState.copyWith(
-            characters: newCharacters,
-            everShownCharacters: _everShownCharacters,
-          );
-          _gameStateController.add(_currentState);
+        if (isCgCharacter) {
+          final newCgCharacters = Map.of(_currentState.cgCharacters);
+          final currentCgState = newCgCharacters[characterId];
+          if (currentCgState != null) {
+            newCgCharacters[characterId] = currentCgState.copyWith(
+              clearAnimationProperties: true,
+            );
+            _currentState = _currentState.copyWith(
+              cgCharacters: newCgCharacters,
+              everShownCharacters: _everShownCharacters,
+            );
+            _gameStateController.add(_currentState);
+          }
+        } else {
+          final newCharacters = Map.of(_currentState.characters);
+          final currentCharacterState = newCharacters[characterId];
+          if (currentCharacterState != null) {
+            newCharacters[characterId] = currentCharacterState.copyWith(
+              clearAnimationProperties: true,
+            );
+            _currentState = _currentState.copyWith(
+              characters: newCharacters,
+              everShownCharacters: _everShownCharacters,
+            );
+            _gameStateController.add(_currentState);
+          }
         }
         // 从活跃动画列表中移除
         _activeCharacterAnimations.remove(characterId);
