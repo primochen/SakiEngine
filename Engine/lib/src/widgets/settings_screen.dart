@@ -10,6 +10,8 @@ import 'package:sakiengine/src/widgets/game_style_slider.dart';
 import 'package:sakiengine/src/widgets/game_style_scrollbar.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_preview.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
+import 'package:sakiengine/src/widgets/game_style_dropdown.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -49,13 +51,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _soundVolume = 0.8;
   
   int _selectedTabIndex = 0;
-  final List<String> _tabTitles = ['画面设置', '音频设置', '玩法设置', '操控设置'];
+  static const List<String> _tabTitleKeys = [
+    'settings.tabs.video',
+    'settings.tabs.audio',
+    'settings.tabs.gameplay',
+    'settings.tabs.control',
+  ];
+
+  late SupportedLanguage _selectedLanguage;
+  late final Listenable _combinedListenable;
 
   @override
   void initState() {
     super.initState();
     // 在设置界面初始化时选择一次随机文本
     _previewText = TypewriterPreview.getRandomPreviewText();
+    _selectedLanguage = LocalizationManager().currentLanguage;
+    _combinedListenable = Listenable.merge([
+      SettingsManager(),
+      LocalizationManager(),
+    ]);
     _loadSettings();
   }
 
@@ -88,6 +103,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _musicEnabled = _musicManager.isMusicEnabled;
       _musicVolume = _musicManager.musicVolume;
       _soundVolume = _musicManager.soundVolume;
+
+      _selectedLanguage = LocalizationManager().currentLanguage;
       
       setState(() => _isLoading = false);
     } catch (e) {
@@ -165,6 +182,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _musicManager.setSoundVolume(value);
   }
 
+  Future<void> _updateLanguage(SupportedLanguage language) async {
+    if (_selectedLanguage == language) {
+      return;
+    }
+    setState(() => _selectedLanguage = language);
+    await LocalizationManager().switchLanguage(language);
+  }
+
   Future<void> _resetToDefault() async {
     final shouldReset = await showDialog<bool>(
       context: context,
@@ -187,13 +212,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: SettingsManager(), // 监听设置变化
+      animation: _combinedListenable,
       builder: (context, child) {
         // 当设置变化时，重新更新主题配置
         SakiEngineConfig().updateThemeForDarkMode();
+        final localization = LocalizationManager();
         
         return OverlayScaffold(
-          title: '游戏设置',
+          title: localization.t('settings.title'),
           content: _isLoading ? _buildLoadingContent() : _buildSettingsContent(),
           footer: _isLoading ? null : _buildFooter(),
           onClose: widget.onClose,
@@ -223,6 +249,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildTabBar(SakiEngineConfig config, double scale) {
+    final localization = LocalizationManager();
+    final tabTitles = _tabTitleKeys.map(localization.t).toList();
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 8 * scale),
       decoration: BoxDecoration(
@@ -235,9 +264,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       child: Row(
-        children: List.generate(_tabTitles.length, (index) {
+        children: List.generate(tabTitles.length, (index) {
           return _SettingsTab(
-            title: _tabTitles[index],
+            title: tabTitles[index],
             isSelected: _selectedTabIndex == index,
             onTap: () => setState(() => _selectedTabIndex = index),
             config: config,
@@ -285,6 +314,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildLanguageSelector(config, scale),
+            SizedBox(height: 40 * scale),
             _buildOpacitySlider(config, scale),
             SizedBox(height: 40 * scale),
             _buildMenuDisplayModeToggle(config, scale),
@@ -353,6 +384,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildLanguageSelector(config, scale),
+                      SizedBox(height: 40 * scale),
                       _buildMenuDisplayModeToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildFullscreenToggle(config, scale),
@@ -1209,6 +1242,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
             config: config,
             trueText: '铺满',
             falseText: '窗口',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageSelector(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
+    final languages = localization.loadedLanguages;
+
+    if (languages.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final selectedLanguage = languages.contains(_selectedLanguage)
+        ? _selectedLanguage
+        : languages.first;
+
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.language,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localization.t('settings.language.title'),
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  localization.t('settings.language.description'),
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleDropdown<SupportedLanguage>(
+            items: languages
+                .map(
+                  (language) => GameStyleDropdownItem<SupportedLanguage>(
+                    value: language,
+                    label: localization.displayName(language),
+                  ),
+                )
+                .toList(),
+            value: selectedLanguage,
+            onChanged: _updateLanguage,
+            scale: scale,
+            textScale: textScale,
+            config: config,
+            width: 200 * scale,
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class ConfirmDialog extends StatefulWidget {
   final String title;
@@ -87,6 +88,9 @@ class _ConfirmDialogState extends State<ConfirmDialog>
     final config = SakiEngineConfig();
     final uiScale = context.scaleFor(ComponentType.ui);
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
+    final cancelText = localization.t('dialog.action.cancel');
+    final confirmText = localization.t('dialog.action.confirm');
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -191,8 +195,8 @@ class _ConfirmDialogState extends State<ConfirmDialog>
                                         mainAxisAlignment: MainAxisAlignment.start,
                                         children: [
                                           _buildButton(
-                                            context, 
-                                            '取消', 
+                                            context,
+                                            cancelText,
                                             Icons.close_rounded,
                                             () {
                                               _handleClose(widget.cancelResult);
@@ -205,8 +209,8 @@ class _ConfirmDialogState extends State<ConfirmDialog>
                                           ),
                                           SizedBox(width: 16 * uiScale),
                                           _buildButton(
-                                            context, 
-                                            '确定', 
+                                            context,
+                                            confirmText,
                                             Icons.check_rounded,
                                             () {
                                               _handleClose(widget.confirmResult);

@@ -4,6 +4,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_text_button.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'dart:ui' as ui;
 
 class SoranoutaMenuButtons {
@@ -19,20 +20,21 @@ class SoranoutaMenuButtons {
   }) {
     final isDarkMode = SettingsManager().currentDarkMode;
     final lineColor = isDarkMode ? Colors.black : Colors.white;
+    final localization = LocalizationManager();
     
     final List<Widget> buttons = [
       SoranoutaTextButton(
-        text: '新游戏',
+        text: localization.t('menu.newGame'),
         onPressed: onNewGame,
         scale: scale,
       ),
       SoranoutaTextButton(
-        text: '读取存档',
+        text: localization.t('menu.loadGame'),
         onPressed: onLoadGame,
         scale: scale,
       ),
       SoranoutaTextButton(
-        text: '设置',
+        text: localization.t('menu.settings'),
         onPressed: onSettings,
         scale: scale,
       ),
@@ -41,7 +43,7 @@ class SoranoutaMenuButtons {
     if (!kIsWeb) {
       buttons.add(
         SoranoutaTextButton(
-          text: '退出',
+          text: localization.t('menu.exit'),
           onPressed: onExit,
           scale: scale,
         ),
@@ -96,11 +98,12 @@ class SoranoutaMenuButtons {
     required double scale,
     required Size screenSize,
   }) {
+    final localization = LocalizationManager();
     final List<String> buttonTexts = [
-      '新游戏',
-      '读取存档',
-      '设置',
-      if (!kIsWeb) '退出',
+      localization.t('menu.newGame'),
+      localization.t('menu.loadGame'),
+      localization.t('menu.settings'),
+      if (!kIsWeb) localization.t('menu.exit'),
     ];
     final isDarkMode = SettingsManager().currentDarkMode;
     final shadowColor = isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9);

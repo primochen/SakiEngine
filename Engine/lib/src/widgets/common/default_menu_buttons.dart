@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class DefaultMenuButtons {
   static List<MenuButtonConfig> createDefaultConfigs({
@@ -12,9 +13,11 @@ class DefaultMenuButtons {
     required SakiEngineConfig config,
     required double scale,
   }) {
+    final localization = LocalizationManager();
+
     final buttons = <MenuButtonConfig>[
       MenuButtonConfig(
-        text: '新游戏',
+        text: localization.t('menu.newGame'),
         onPressed: onNewGame,
         backgroundColor: config.themeColors.background.withValues(alpha: 0.9),
         textColor: config.themeColors.primary,
@@ -33,7 +36,7 @@ class DefaultMenuButtons {
         ),
       ),
       MenuButtonConfig(
-        text: '继续游戏',
+        text: localization.t('menu.continue'),
         onPressed: onLoadGame,
         backgroundColor: config.themeColors.background.withValues(alpha: 0.9),
         textColor: config.themeColors.primary,
@@ -52,7 +55,7 @@ class DefaultMenuButtons {
         ),
       ),
       MenuButtonConfig(
-        text: '设置',
+        text: localization.t('menu.settings'),
         onPressed: onSettings,
         backgroundColor: config.themeColors.background.withValues(alpha: 0.9),
         textColor: config.themeColors.primary,
@@ -75,7 +78,7 @@ class DefaultMenuButtons {
     if (!kIsWeb) {
       buttons.add(
         MenuButtonConfig(
-          text: '退出游戏',
+          text: localization.t('menu.exitGame'),
           onPressed: onExit,
           backgroundColor: config.themeColors.background.withValues(alpha: 0.9),
           textColor: config.themeColors.primary,

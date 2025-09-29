@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # Add flutter_animate dependency (using specific version constraint)
   flutter_animate: ^4.5.0 # Use a specific constraint like ^4.0.0 or newer
@@ -82,6 +84,7 @@ flutter:
     - assets/GameScript/
     - assets/GameScript/labels/
     - assets/GameScript/configs/
+    - assets/i18n/
     - assets/Assets/
     - assets/Assets/music/
     - assets/Assets/images/

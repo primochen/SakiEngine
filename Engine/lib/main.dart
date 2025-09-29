@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'package:sakiengine/src/config/saki_engine_config.dart';
@@ -12,6 +13,7 @@ import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
@@ -174,6 +176,9 @@ void main() async {
     // 初始化设置管理器
     await SettingsManager().init();
 
+    // 初始化多语言管理器
+    await LocalizationManager().init();
+
     // 初始化全局变量管理器并打印变量状态
     await GlobalVariableManager().init();
     final allVars = GlobalVariableManager().getAllVariables();
@@ -214,11 +219,23 @@ class SakiEngineApp extends StatefulWidget {
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
   String? _lastSetTitle; // 添加状态追踪
+  late final Listenable _settingsAppListenable;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsAppListenable = Listenable.merge([
+      SettingsManager(),
+      LocalizationManager(),
+    ]);
+  }
   
   @override
   Widget build(BuildContext context) {
+    final localization = LocalizationManager();
+
     return AnimatedBuilder(
-      animation: SettingsManager(),
+      animation: _settingsAppListenable,
       builder: (context, child) {
         return FutureBuilder(
           future: moduleLoader.getCurrentModule(),
@@ -226,6 +243,13 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
             if (!snapshot.hasData) {
               return MaterialApp(
                 debugShowCheckedModeBanner: false,
+                locale: localization.currentLocale,
+                supportedLocales: localization.supportedLocales,
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
                 home: Scaffold(
                   body: Center(
                     child: Container(color: Colors.black),
@@ -261,6 +285,13 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
                 return MaterialApp(
                   title: appTitle,
                   debugShowCheckedModeBanner: false,
+                  locale: localization.currentLocale,
+                  supportedLocales: localization.supportedLocales,
+                  localizationsDelegates: const [
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
                   theme: customTheme ??
                       ThemeData(
                         primarySwatch: Colors.blue,

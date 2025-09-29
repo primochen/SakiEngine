@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import '../../utils/platform_window_manager_io.dart' if (dart.library.html) '../../utils/platform_window_manager_web.dart';
 
 class ExitConfirmationDialog {
-  static const String title = '退出游戏';
-  static const String contentWithProgress = '确定要退出游戏吗？未保存的游戏进度将会丢失。';
-  static const String contentSimple = '确定要退出游戏吗？';
-
   static Future<bool> showExitConfirmation(BuildContext context, {bool hasProgress = true}) async {
+    final localization = LocalizationManager();
+    final title = localization.t('dialog.exit.title');
+    final content = hasProgress
+        ? localization.t('dialog.exit.contentWithProgress')
+        : localization.t('dialog.exit.contentSimple');
+
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
           title: title,
-          content: hasProgress ? contentWithProgress : contentSimple,
+          content: content,
           onConfirm: () => Navigator.of(context).pop(true),
         );
       },
@@ -23,12 +26,16 @@ class ExitConfirmationDialog {
   }
 
   static Future<void> showExitConfirmationAndDestroy(BuildContext context) async {
+    final localization = LocalizationManager();
+    final title = localization.t('dialog.exit.title');
+    final content = localization.t('dialog.exit.contentSimple');
+
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
           title: title,
-          content: contentSimple,
+          content: content,
           onConfirm: () => Navigator.of(context).pop(true),
         );
       },

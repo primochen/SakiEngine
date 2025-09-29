@@ -14,6 +14,7 @@ import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/src/widgets/common/default_menu_buttons.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -97,11 +98,20 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _showDebugPanel = false;
   bool _showSettings = false;
   String _appTitle = 'SakiEngine';
+  late final LocalizationManager _localizationManager;
 
   @override
   void initState() {
     super.initState();
+    _localizationManager = LocalizationManager();
+    _localizationManager.addListener(_handleLocalizationChanged);
     _loadAppTitle();
+  }
+
+  void _handleLocalizationChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadAppTitle() async {
@@ -120,6 +130,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
   void _handleNewGame() {
     widget.onNewGame();
+  }
+
+  @override
+  void dispose() {
+    _localizationManager.removeListener(_handleLocalizationChanged);
+    super.dispose();
   }
 
   Future<void> _showExitConfirmation(BuildContext context) async {

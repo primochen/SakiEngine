@@ -14,6 +14,7 @@ import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'package:sakiengine/soranouta/widgets/firefly_animation.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 /// SoraNoUta 项目的自定义主菜单屏幕
 /// 使用模块化标题组件 + 专用按钮
@@ -41,12 +42,21 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showSettings = false;
   bool _isDarkModeButtonHovered = false;
   late String _copyrightText;
+  late final LocalizationManager _localizationManager;
 
   @override
   void initState() {
     super.initState();
+    _localizationManager = LocalizationManager();
+    _localizationManager.addListener(_handleLocalizationChanged);
     _generateCopyrightText();
     _startBackgroundMusic();
+  }
+
+  void _handleLocalizationChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
   
   void _generateCopyrightText() {
@@ -62,6 +72,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
 
   @override
   void dispose() {
+    _localizationManager.removeListener(_handleLocalizationChanged);
     super.dispose();
   }
 
