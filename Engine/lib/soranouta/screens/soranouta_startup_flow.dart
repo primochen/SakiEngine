@@ -37,7 +37,6 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
   late final AnimationController _fadeController;
-  late final Animation<double> _fadeAnimation;
   late _SplashPhase _phase;
 
   @override
@@ -52,10 +51,6 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
           setState(() => _phase = _SplashPhase.done);
         }
       });
-
-    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
 
     if (widget.skipIntro) {
       _phase = _SplashPhase.done;
@@ -100,17 +95,28 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
               child: AnimatedBuilder(
                 animation: _fadeController,
                 builder: (context, child) {
-                  final opacity = switch (_phase) {
-                    _SplashPhase.logo => 1.0,
-                    _SplashPhase.fadeOut => 1.0,
-                    _SplashPhase.done => 0.0,
-                  };
-                  final logoVisible = _phase == _SplashPhase.logo;
+                  final t = _fadeController.value.clamp(0.0, 1.0);
+                  double logoOpacity = 1.0;
+                  double overlayOpacity = 1.0;
+
+                  if (_phase == _SplashPhase.fadeOut) {
+                    if (t < 0.5) {
+                      // 先让 Logo 在黑幕中淡出
+                      final progress = t / 0.5;
+                      logoOpacity = 1.0 - progress;
+                      overlayOpacity = 1.0;
+                    } else {
+                      // Logo 已消失，开始让黑幕本身淡出
+                      logoOpacity = 0.0;
+                      final progress = (t - 0.5) / 0.5;
+                      overlayOpacity = 1.0 - progress;
+                    }
+                  }
+
                   return _SplashOverlay(
                     assetName: widget.logoAsset,
-                    showLogo: logoVisible,
-                    overlayOpacity: opacity,
-                    fadeOpacity: _fadeAnimation.value,
+                    logoOpacity: logoOpacity,
+                    overlayOpacity: overlayOpacity,
                   );
                 },
               ),
@@ -124,30 +130,32 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
 class _SplashOverlay extends StatelessWidget {
   const _SplashOverlay({
     required this.assetName,
-    required this.showLogo,
+    required this.logoOpacity,
     required this.overlayOpacity,
-    required this.fadeOpacity,
   });
 
   final String assetName;
-  final bool showLogo;
-  final double overlayOpacity; // LOGO 阶段全不透明
-  final double fadeOpacity; // 淡出阶段黑幕透明度
+  final double logoOpacity;
+  final double overlayOpacity;
 
   @override
   Widget build(BuildContext context) {
+    final clampedOverlay = overlayOpacity.clamp(0.0, 1.0);
+    final clampedLogo = logoOpacity.clamp(0.0, 1.0);
+
     return ColoredBox(
-      color: Colors.black.withOpacity(
-        showLogo ? overlayOpacity : fadeOpacity,
-      ),
+      color: Colors.black.withOpacity(clampedOverlay),
       child: Center(
-        child: showLogo
-            ? FractionallySizedBox(
-                widthFactor: 0.8,
-                heightFactor: 0.8,
-                child: SmartAssetImage(
-                  assetName: assetName,
-                  fit: BoxFit.contain,
+        child: clampedLogo > 0
+            ? Opacity(
+                opacity: clampedLogo,
+                child: FractionallySizedBox(
+                  widthFactor: 0.8,
+                  heightFactor: 0.8,
+                  child: SmartAssetImage(
+                    assetName: assetName,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               )
             : null,
