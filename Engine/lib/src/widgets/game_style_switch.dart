@@ -206,71 +206,67 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                       ),
                     ),
                     // 滑动的指示器 - 使用弹性动画
-                    Positioned.fill(
-                      child: Padding(
-                        padding: EdgeInsets.all(padding),
-                        child: AnimatedBuilder(
-                          animation: _slideAnimation,
-                          builder: (context, child) {
-                            return Align(
-                              alignment: Alignment(-1.0 + 2.0 * _slideAnimation.value, 0.0),
-                              child: Transform.scale(
-                                scale: 1.0 + 0.1 * _scaleAnimation.value,
-                                child: Container(
-                                  width: knobSize,
-                                  height: knobSize,
-                                  decoration: BoxDecoration(
-                                    color: widget.config.themeColors.background,
-                                    border: Border.all(
-                                      color: widget.config.themeColors.primary.withOpacity(0.8),
-                                      width: 2 * widget.scale,
+                    AnimatedBuilder(
+                      animation: _slideAnimation,
+                      builder: (context, child) {
+                        return Positioned(
+                          left: padding + (switchWidth - knobSize - 2 * padding) * _slideAnimation.value,
+                          top: padding + (switchHeight - 2 * padding - knobSize) / 2,
+                          child: Transform.scale(
+                            scale: 1.0 + 0.1 * _scaleAnimation.value,
+                            child: Container(
+                              width: knobSize,
+                              height: knobSize,
+                              decoration: BoxDecoration(
+                                color: widget.config.themeColors.background,
+                                border: Border.all(
+                                  color: widget.config.themeColors.primary.withOpacity(0.8),
+                                  width: 2 * widget.scale,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4 * widget.scale,
+                                    offset: Offset(0, 2 * widget.scale),
+                                  ),
+                                  if (widget.value && _isHovered)
+                                    BoxShadow(
+                                      color: widget.config.themeColors.primary.withOpacity(0.4 * _pulseAnimation.value),
+                                      blurRadius: 8 * widget.scale * _pulseAnimation.value,
+                                      offset: Offset(0, 0),
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 4 * widget.scale,
-                                        offset: Offset(0, 2 * widget.scale),
-                                      ),
-                                      if (widget.value && _isHovered)
-                                        BoxShadow(
-                                          color: widget.config.themeColors.primary.withOpacity(0.4 * _pulseAnimation.value),
-                                          blurRadius: 8 * widget.scale * _pulseAnimation.value,
-                                          offset: Offset(0, 0),
+                                ],
+                              ),
+                              child: Center(
+                                child: AnimatedBuilder(
+                                  animation: _pulseController,
+                                  builder: (context, child) {
+                                    return Transform.scale(
+                                      scale: widget.value && _isHovered ? _pulseAnimation.value : 1.0,
+                                      child: Container(
+                                        width: knobSize * 0.45,
+                                        height: knobSize * 0.45,
+                                        decoration: BoxDecoration(
+                                          color: _colorAnimation.value,
+                                          boxShadow: widget.value && _isHovered
+                                              ? [
+                                                  BoxShadow(
+                                                    color: _colorAnimation.value!.withOpacity(0.6),
+                                                    blurRadius: 4 * widget.scale,
+                                                    offset: Offset(0, 0),
+                                                  ),
+                                                ]
+                                              : null,
                                         ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: AnimatedBuilder(
-                                      animation: _pulseController,
-                                      builder: (context, child) {
-                                        return Transform.scale(
-                                          scale: widget.value && _isHovered ? _pulseAnimation.value : 1.0,
-                                          child: Container(
-                                            width: knobSize * 0.45,
-                                            height: knobSize * 0.45,
-                                            decoration: BoxDecoration(
-                                              color: _colorAnimation.value,
-                                              boxShadow: widget.value && _isHovered
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: _colorAnimation.value!.withOpacity(0.6),
-                                                        blurRadius: 4 * widget.scale,
-                                                        offset: Offset(0, 0),
-                                                      ),
-                                                    ]
-                                                  : null,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
