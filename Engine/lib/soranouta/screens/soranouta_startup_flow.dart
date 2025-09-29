@@ -4,7 +4,7 @@ import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
 
-/// soraの歌启动流程：先播放Logo再进入主菜单
+/// soraの歌启动流程：先展示 Logo，再以纯黑淡出进入主菜单
 class SoraNoutaStartupFlow extends StatefulWidget {
   const SoraNoutaStartupFlow({
     super.key,
@@ -31,11 +31,14 @@ class SoraNoutaStartupFlow extends StatefulWidget {
   State<SoraNoutaStartupFlow> createState() => _SoraNoutaStartupFlowState();
 }
 
+enum _SplashPhase { logo, fadeOut, done }
+
 class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
+  late _SplashPhase _phase;
 
   @override
   void initState() {
@@ -44,14 +47,21 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
     _fadeController = AnimationController(
       vsync: this,
       duration: widget.fadeOutDuration,
-    );
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          setState(() => _phase = _SplashPhase.done);
+        }
+      });
+
     _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
 
     if (widget.skipIntro) {
-      _fadeController.value = 1.0; // 直接跳过闪屏
+      _phase = _SplashPhase.done;
+      _fadeController.value = 1.0;
     } else {
+      _phase = _SplashPhase.logo;
       _timer = Timer(widget.splashDuration, _startFadeOut);
     }
   }
@@ -64,12 +74,13 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
   }
 
   void _startFadeOut() {
-    if (!_fadeController.isAnimating && mounted) {
-      _fadeController.forward();
+    if (_phase == _SplashPhase.logo && mounted) {
+      setState(() => _phase = _SplashPhase.fadeOut);
+      _fadeController.forward(from: 0.0);
     }
   }
 
-  bool get _overlayVisible => _fadeController.value < 1.0;
+  bool get _overlayVisible => _phase != _SplashPhase.done;
 
   @override
   Widget build(BuildContext context) {
@@ -86,9 +97,22 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
           ),
           if (_overlayVisible)
             IgnorePointer(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: _SplashOverlay(assetName: widget.logoAsset),
+              child: AnimatedBuilder(
+                animation: _fadeController,
+                builder: (context, child) {
+                  final opacity = switch (_phase) {
+                    _SplashPhase.logo => 1.0,
+                    _SplashPhase.fadeOut => 1.0,
+                    _SplashPhase.done => 0.0,
+                  };
+                  final logoVisible = _phase == _SplashPhase.logo;
+                  return _SplashOverlay(
+                    assetName: widget.logoAsset,
+                    showLogo: logoVisible,
+                    overlayOpacity: opacity,
+                    fadeOpacity: _fadeAnimation.value,
+                  );
+                },
               ),
             ),
         ],
@@ -98,23 +122,35 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
 }
 
 class _SplashOverlay extends StatelessWidget {
-  const _SplashOverlay({required this.assetName});
+  const _SplashOverlay({
+    required this.assetName,
+    required this.showLogo,
+    required this.overlayOpacity,
+    required this.fadeOpacity,
+  });
 
   final String assetName;
+  final bool showLogo;
+  final double overlayOpacity; // LOGO 阶段全不透明
+  final double fadeOpacity; // 淡出阶段黑幕透明度
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Colors.black,
+      color: Colors.black.withOpacity(
+        showLogo ? overlayOpacity : fadeOpacity,
+      ),
       child: Center(
-        child: FractionallySizedBox(
-          widthFactor: 0.8,
-          heightFactor: 0.8,
-          child: SmartAssetImage(
-            assetName: assetName,
-            fit: BoxFit.contain,
-          ),
-        ),
+        child: showLogo
+            ? FractionallySizedBox(
+                widthFactor: 0.8,
+                heightFactor: 0.8,
+                child: SmartAssetImage(
+                  assetName: assetName,
+                  fit: BoxFit.contain,
+                ),
+              )
+            : null,
       ),
     );
   }
