@@ -166,21 +166,7 @@ class _LayeredImageWidgetState extends State<LayeredImageWidget>
     _fadeController.dispose();
     _scaleController.dispose();
     _stopStatsMonitoring();
-    
-    // 安全释放纹理资源
-    for (final texture in _layerTextures) {
-      try {
-        if (!texture.debugDisposed) {
-          texture.dispose();
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('[LayeredImageWidget] Error disposing texture in dispose: $e');
-        }
-      }
-    }
-    _layerTextures.clear();
-    
+    _layerTextures = [];
     super.dispose();
   }
 
@@ -190,8 +176,10 @@ class _LayeredImageWidgetState extends State<LayeredImageWidget>
     
     final stopwatch = Stopwatch()..start();
     
+    final bool hadTextures = _layerTextures.isNotEmpty && _currentState != null;
+
     setState(() {
-      _isLoading = true;
+      _isLoading = !hadTextures;
       _hasError = false;
       _errorMessage = null;
     });
@@ -224,32 +212,11 @@ class _LayeredImageWidgetState extends State<LayeredImageWidget>
       
       // 加载纹理
       final newTextures = await _renderer.getLayerTextures(newState);
-      
+
       if (!mounted) {
-        // 如果组件已经销毁，释放新加载的纹理并返回
-        for (final texture in newTextures) {
-          try {
-            texture.dispose();
-          } catch (e) {
-            // 静默处理释放错误
-          }
-        }
         return;
       }
-      
-      // 安全释放旧纹理
-      for (final texture in _layerTextures) {
-        try {
-          if (!texture.debugDisposed) {
-            texture.dispose();
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print('[LayeredImageWidget] Error disposing texture: $e');
-          }
-        }
-      }
-      
+
       setState(() {
         _currentState = newState;
         _layerTextures = newTextures;
@@ -302,18 +269,18 @@ class _LayeredImageWidgetState extends State<LayeredImageWidget>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return _buildLoadingWidget();
-    }
-    
-    if (_hasError) {
-      return _buildErrorWidget();
-    }
-    
-    if (_layerTextures.isEmpty || _currentState == null) {
+    final bool hasTextures = _layerTextures.isNotEmpty && _currentState != null;
+
+    if (!hasTextures) {
+      if (_hasError) {
+        return _buildErrorWidget();
+      }
+      if (_isLoading) {
+        return kIsWeb ? const SizedBox.expand() : _buildLoadingWidget();
+      }
       return const SizedBox.shrink();
     }
-    
+
     return AnimatedBuilder(
       animation: Listenable.merge([_fadeAnimation, _scaleAnimation]),
       builder: (context, child) {

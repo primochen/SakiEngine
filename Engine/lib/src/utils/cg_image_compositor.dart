@@ -86,6 +86,12 @@ class CgImageCompositor {
   /// 执行实际的图像合成
   Future<String?> _performComposition(String resourceId, String pose, String expression, String cacheKey) async {
     try {
+      if (kIsWeb) {
+        if (kDebugMode) {
+          print('[CgImageCompositor] Skip CPU composition on Web for $cacheKey');
+        }
+        return null;
+      }
       // 检查内存缓存
       if (_imageCache.containsKey(cacheKey)) {
         final virtualPath = _generateVirtualPath(cacheKey);

@@ -23,6 +23,9 @@ import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 class ImageLoader {
   /// 获取游戏路径，从dart-define或环境变量获取
   static String get _debugRoot {
+    if (kIsWeb) {
+      return '';
+    }
     const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
     if (fromDefine.isNotEmpty) return fromDefine;
     
@@ -34,6 +37,9 @@ class ImageLoader {
 
   /// 获取游戏路径，优先使用环境变量，如果没有则从assets读取default_game.txt
   static Future<String> _getGamePath() async {
+    if (kIsWeb) {
+      return '';
+    }
     // 如果环境变量已设置，直接使用
     if (_debugRoot.isNotEmpty) {
       return _debugRoot;
@@ -64,7 +70,7 @@ class ImageLoader {
       }
       
       // 在debug模式下，优先从外部文件系统加载
-      if (kDebugMode) {
+      if (kDebugMode && !kIsWeb) {
         final externalImage = await _loadExternalImage(assetPath);
         if (externalImage != null) {
           return externalImage;
@@ -180,7 +186,7 @@ class ImageLoader {
       Uint8List bytes;
       
       // 在debug模式下，优先从外部文件系统获取数据
-      if (kDebugMode) {
+      if (kDebugMode && !kIsWeb) {
         final gamePath = await _getGamePath();
         if (gamePath.isNotEmpty) {
           final relativePath = assetPath.startsWith('assets/')
@@ -232,6 +238,10 @@ class ImageLoader {
   /// 从外部文件系统加载图像（debug模式）
   static Future<ui.Image?> _loadExternalImage(String assetPath) async {
     try {
+      if (kIsWeb) {
+        return null;
+      }
+
       final gamePath = await _getGamePath();
       if (gamePath.isEmpty) {
         return null;

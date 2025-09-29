@@ -31,7 +31,8 @@ class RenderingSystemManager {
   RenderingSystemManager._internal();
 
   /// 当前使用的渲染系统
-  RenderingSystemType _currentSystem = RenderingSystemType.composite; // 暂时默认使用稳定的预合成系统
+  RenderingSystemType _currentSystem =
+      kIsWeb ? RenderingSystemType.layered : RenderingSystemType.composite; // Web默认使用层叠渲染系统
   
   /// 是否启用性能监控
   bool _performanceMonitoringEnabled = kDebugMode;
@@ -172,6 +173,10 @@ class RenderingSystemManager {
 
   /// 获取实际使用的系统类型
   RenderingSystemType _getEffectiveSystem(int characterCount) {
+    if (kIsWeb) {
+      return RenderingSystemType.layered;
+    }
+
     if (_currentSystem != RenderingSystemType.auto) {
       return _currentSystem;
     }

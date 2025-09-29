@@ -11,6 +11,7 @@ import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
+import 'package:sakiengine/soranouta/screens/soranouta_startup_flow.dart';
 
 /// SoraNoUta 项目的自定义模块
 /// 这个示例展示了如何为特定项目创建自定义模块
@@ -24,11 +25,12 @@ class SoranoutaModule extends DefaultGameModule {
     bool skipMusicDelay = false,
   }) {
     // 使用专门的 SoraNoUta 主菜单，继承标题但使用专用按钮
-    return SoraNoutaMainMenuScreen(
+    return SoraNoutaStartupFlow(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
       skipMusicDelay: skipMusicDelay,
+      skipIntro: skipMusicDelay,
     );
   }
 

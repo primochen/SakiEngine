@@ -1323,31 +1323,33 @@ class GameManager {
         if (kDebugMode) {
           //print('[GameManager] CG参数: resourceId=$resourceId, pose=$newPose, expression=$newExpression, finalKey=$finalCharacterKey');
         }
-        final gpuEntry = await GpuImageCompositor().getCompositeEntry(
-          resourceId: resourceId,
-          pose: newPose,
-          expression: newExpression,
-        );
-        if (gpuEntry != null) {
-          await CompositeCgRenderer.cachePrecomposedResult(
-            resourceId: resourceId,
-            pose: newPose,
-            expression: newExpression,
-            gpuEntry: gpuEntry,
-          );
-        } else {
-          final compositePath = await CgImageCompositor().getCompositeImagePath(
+        if (!kIsWeb) {
+          final gpuEntry = await GpuImageCompositor().getCompositeEntry(
             resourceId: resourceId,
             pose: newPose,
             expression: newExpression,
           );
-          if (compositePath != null) {
+          if (gpuEntry != null) {
             await CompositeCgRenderer.cachePrecomposedResult(
               resourceId: resourceId,
               pose: newPose,
               expression: newExpression,
-              compositePath: compositePath,
+              gpuEntry: gpuEntry,
             );
+          } else {
+            final compositePath = await CgImageCompositor().getCompositeImagePath(
+              resourceId: resourceId,
+              pose: newPose,
+              expression: newExpression,
+            );
+            if (compositePath != null) {
+              await CompositeCgRenderer.cachePrecomposedResult(
+                resourceId: resourceId,
+                pose: newPose,
+                expression: newExpression,
+                compositePath: compositePath,
+              );
+            }
           }
         }
 

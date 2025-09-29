@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
@@ -35,12 +36,17 @@ class SoranoutaMenuButtons {
         onPressed: onSettings,
         scale: scale,
       ),
-      SoranoutaTextButton(
-        text: '退出',
-        onPressed: onExit,
-        scale: scale,
-      ),
     ];
+
+    if (!kIsWeb) {
+      buttons.add(
+        SoranoutaTextButton(
+          text: '退出',
+          onPressed: onExit,
+          scale: scale,
+        ),
+      );
+    }
 
     final List<Widget> widgetsWithSeparators = [];
     for (int i = 0; i < buttons.length; i++) {
@@ -90,7 +96,12 @@ class SoranoutaMenuButtons {
     required double scale,
     required Size screenSize,
   }) {
-    final List<String> buttonTexts = ['新游戏', '读取存档', '设置', '退出'];
+    final List<String> buttonTexts = [
+      '新游戏',
+      '读取存档',
+      '设置',
+      if (!kIsWeb) '退出',
+    ];
     final isDarkMode = SettingsManager().currentDarkMode;
     final shadowColor = isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9);
     

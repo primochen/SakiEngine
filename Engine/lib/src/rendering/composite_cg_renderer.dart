@@ -132,17 +132,19 @@ class CompositeCgRenderer {
       _completedPaths[cacheKey] = virtualPath;
       _futureCache[cacheKey] = Future.value(virtualPath);
 
-      final flattenTask = _gpuFlattenTasks[cacheKey] ??=
-          _flattenGpuResultToImage(gpuEntry.result);
-      final flattenedImage = await flattenTask;
-      if (flattenedImage != null) {
-        final previous = _preloadedImages[cacheKey];
-        if (previous != null && previous != flattenedImage) {
-          previous.dispose();
+      if (!kIsWeb) {
+        final flattenTask = _gpuFlattenTasks[cacheKey] ??=
+            _flattenGpuResultToImage(gpuEntry.result);
+        final flattenedImage = await flattenTask;
+        if (flattenedImage != null) {
+          final previous = _preloadedImages[cacheKey];
+          if (previous != null && previous != flattenedImage) {
+            previous.dispose();
+          }
+          _preloadedImages[cacheKey] = flattenedImage;
+        } else {
+          _gpuFlattenTasks.remove(cacheKey);
         }
-        _preloadedImages[cacheKey] = flattenedImage;
-      } else {
-        _gpuFlattenTasks.remove(cacheKey);
       }
     }
 
