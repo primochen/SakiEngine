@@ -5,8 +5,6 @@ class GameStyleSwitch extends StatefulWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final double scale;
-  final String trueText;
-  final String falseText;
   final SakiEngineConfig config;
 
   const GameStyleSwitch({
@@ -15,8 +13,6 @@ class GameStyleSwitch extends StatefulWidget {
     required this.onChanged,
     required this.scale,
     required this.config,
-    this.trueText = '开',
-    this.falseText = '关',
   });
 
   @override
@@ -136,12 +132,10 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final switchWidth = 82 * widget.scale;
-    final switchHeight = 38 * widget.scale;
-    final knobSize = 28 * widget.scale;
-    final padding = 5 * widget.scale;
-    final knobTravel = switchWidth - knobSize - 2 * padding;
-    final knobBaseTop = padding + (switchHeight - 2 * padding - knobSize) / 2;
+    final switchWidth = 120 * widget.scale;
+    final switchHeight = 48 * widget.scale;
+    final knobSize = 36 * widget.scale;
+    final padding = 6 * widget.scale;
     
     return MouseRegion(
       onEnter: (_) {
@@ -203,78 +197,80 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            _colorAnimation.value!.withOpacity(widget.value ? 0.3 : 0.08),
-                            _colorAnimation.value!.withOpacity(widget.value ? 0.5 : 0.15),
+                            _colorAnimation.value!.withOpacity(0.1),
+                            _colorAnimation.value!.withOpacity(0.3 * _glowAnimation.value),
                           ],
-                          stops: const [0.0, 1.0],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
                       ),
                     ),
                     // 滑动的指示器 - 使用弹性动画
-                    AnimatedBuilder(
-                      animation: _slideAnimation,
-                      builder: (context, child) {
-                        return Positioned(
-                          left: padding + knobTravel * _slideAnimation.value,
-                          top: knobBaseTop,
-                          child: Transform.scale(
-                            scale: 1.0 + 0.1 * _scaleAnimation.value,
-                            child: Container(
-                              width: knobSize,
-                              height: knobSize,
-                              decoration: BoxDecoration(
-                                color: widget.config.themeColors.background,
-                                border: Border.all(
-                                  color: widget.config.themeColors.primary.withOpacity(0.8),
-                                  width: 2 * widget.scale,
-                                ),
-                                boxShadow: [
-                                  // 基础阴影
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 4 * widget.scale,
-                                    offset: Offset(0, 2 * widget.scale),
-                                  ),
-                                  // 激活且悬浮时的脉冲发光
-                                  if (widget.value && _isHovered)
-                                    BoxShadow(
-                                      color: widget.config.themeColors.primary.withOpacity(0.4 * _pulseAnimation.value),
-                                      blurRadius: 8 * widget.scale * _pulseAnimation.value,
-                                      offset: Offset(0, 0),
+                    Positioned.fill(
+                      child: Padding(
+                        padding: EdgeInsets.all(padding),
+                        child: AnimatedBuilder(
+                          animation: _slideAnimation,
+                          builder: (context, child) {
+                            return Align(
+                              alignment: Alignment(-1.0 + 2.0 * _slideAnimation.value, 0.0),
+                              child: Transform.scale(
+                                scale: 1.0 + 0.1 * _scaleAnimation.value,
+                                child: Container(
+                                  width: knobSize,
+                                  height: knobSize,
+                                  decoration: BoxDecoration(
+                                    color: widget.config.themeColors.background,
+                                    border: Border.all(
+                                      color: widget.config.themeColors.primary.withOpacity(0.8),
+                                      width: 2 * widget.scale,
                                     ),
-                                ],
-                              ),
-                              child: Center(
-                                child: AnimatedBuilder(
-                                  animation: _pulseController,
-                                  builder: (context, child) {
-                                    return Transform.scale(
-                                      scale: widget.value && _isHovered ? _pulseAnimation.value : 1.0,
-                                      child: Container(
-                                        width: knobSize * 0.4,
-                                        height: knobSize * 0.4,
-                                        decoration: BoxDecoration(
-                                          color: _colorAnimation.value,
-                                          shape: BoxShape.circle,
-                                          boxShadow: widget.value && _isHovered ? [
-                                            BoxShadow(
-                                              color: _colorAnimation.value!.withOpacity(0.6),
-                                              blurRadius: 4 * widget.scale,
-                                              offset: Offset(0, 0),
-                                            ),
-                                          ] : null,
-                                        ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 4 * widget.scale,
+                                        offset: Offset(0, 2 * widget.scale),
                                       ),
-                                    );
-                                  },
+                                      if (widget.value && _isHovered)
+                                        BoxShadow(
+                                          color: widget.config.themeColors.primary.withOpacity(0.4 * _pulseAnimation.value),
+                                          blurRadius: 8 * widget.scale * _pulseAnimation.value,
+                                          offset: Offset(0, 0),
+                                        ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: AnimatedBuilder(
+                                      animation: _pulseController,
+                                      builder: (context, child) {
+                                        return Transform.scale(
+                                          scale: widget.value && _isHovered ? _pulseAnimation.value : 1.0,
+                                          child: Container(
+                                            width: knobSize * 0.45,
+                                            height: knobSize * 0.45,
+                                            decoration: BoxDecoration(
+                                              color: _colorAnimation.value,
+                                              boxShadow: widget.value && _isHovered
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: _colorAnimation.value!.withOpacity(0.6),
+                                                        blurRadius: 4 * widget.scale,
+                                                        offset: Offset(0, 0),
+                                                      ),
+                                                    ]
+                                                  : null,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        );
-                      },
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
