@@ -136,6 +136,8 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
     final switchHeight = 48 * widget.scale;
     final knobSize = 36 * widget.scale;
     final padding = 6 * widget.scale;
+    final knobTravel = switchWidth - knobSize - padding * 2;
+    final knobBaseTop = (switchHeight - knobSize) / 2 - 2 * widget.scale;
     
     return MouseRegion(
       onEnter: (_) {
@@ -210,8 +212,8 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                       animation: _slideAnimation,
                       builder: (context, child) {
                         return Positioned(
-                          left: padding + (switchWidth - knobSize - 2 * padding) * _slideAnimation.value,
-                          top: padding + (switchHeight - 2 * padding - knobSize) / 2,
+                          left: padding + knobTravel * _slideAnimation.value,
+                          top: knobBaseTop,
                           child: Transform.scale(
                             scale: 1.0 + 0.1 * _scaleAnimation.value,
                             child: Container(
