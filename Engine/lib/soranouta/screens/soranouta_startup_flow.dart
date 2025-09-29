@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
 
@@ -142,9 +143,11 @@ class _SplashOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final clampedOverlay = overlayOpacity.clamp(0.0, 1.0);
     final clampedLogo = logoOpacity.clamp(0.0, 1.0);
+    final isDarkMode = SettingsManager().currentDarkMode;
+    final baseColor = isDarkMode ? Colors.black : Colors.white;
 
     return ColoredBox(
-      color: Colors.black.withOpacity(clampedOverlay),
+      color: baseColor.withOpacity(clampedOverlay),
       child: Center(
         child: clampedLogo > 0
             ? Opacity(
@@ -152,10 +155,23 @@ class _SplashOverlay extends StatelessWidget {
                 child: FractionallySizedBox(
                   widthFactor: 0.8,
                   heightFactor: 0.8,
-                  child: SmartAssetImage(
-                    assetName: assetName,
-                    fit: BoxFit.contain,
-                  ),
+                  child: isDarkMode
+                      ? SmartAssetImage(
+                          assetName: assetName,
+                          fit: BoxFit.contain,
+                        )
+                      : ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            -1, 0, 0, 0, 255,
+                            0, -1, 0, 0, 255,
+                            0, 0, -1, 0, 255,
+                            0, 0, 0, 1, 0,
+                          ]),
+                          child: SmartAssetImage(
+                            assetName: assetName,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                 ),
               )
             : null,

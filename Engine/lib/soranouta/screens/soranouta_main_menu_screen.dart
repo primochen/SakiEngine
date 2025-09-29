@@ -68,8 +68,9 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   Future<void> _startBackgroundMusic() async {
     try {
       if (!widget.skipMusicDelay) {
-        // 延时等待启动遮罩完成 (1.3秒：1秒黑屏 + 0.3秒淡出)
-        await Future.delayed(const Duration(milliseconds: 1300));
+        // 延时等待启动遮罩完成 (Logo展示 + 黑幕淡出)
+        const splashTotal = Duration(milliseconds: 3600);
+        await Future.delayed(splashTotal);
       }
       await MusicManager().playBackgroundMusic('Assets/music/dream.mp3');
     } catch (e) {
