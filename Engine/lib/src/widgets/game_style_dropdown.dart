@@ -142,7 +142,8 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
     final selectedItem = _selectedItem;
 
     final baseOpacity = _isOpen ? 0.96 : (_isHovered ? 0.88 : 0.82);
-    final secondaryOpacity = (baseOpacity - 0.12).clamp(0.0, 1.0) as double;
+    final double secondaryOpacity =
+        ((baseOpacity - 0.12).clamp(0.0, 1.0) as num).toDouble();
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -245,27 +246,25 @@ class _DropdownOverlay<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: onDismiss,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              color: Colors.transparent,
-            ),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: onDismiss,
+            child: const SizedBox.expand(),
           ),
-          CompositedTransformFollower(
-            link: link,
-            offset: Offset(0, 52 * scale),
-            showWhenUnlinked: false,
-            child: FadeTransition(
-              opacity: animation,
-              child: _buildDropdown(context),
-            ),
+        ),
+        CompositedTransformFollower(
+          link: link,
+          offset: Offset(0, 52 * scale),
+          showWhenUnlinked: false,
+          child: FadeTransition(
+            opacity: animation,
+            child: _buildDropdown(context),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

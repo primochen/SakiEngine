@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'dart:math';
 
 class TypewriterPreview extends StatefulWidget {
@@ -23,21 +24,27 @@ class TypewriterPreview extends StatefulWidget {
   State<TypewriterPreview> createState() => _TypewriterPreviewState();
   
   // 静态方法：获取随机文本，供外部使用
+  static final Random _randomGenerator = Random();
+
   static String getRandomPreviewText() {
-    final random = Random();
-    return _previewTexts[random.nextInt(_previewTexts.length)];
+    if (_previewTextKeys.isEmpty) {
+      return '';
+    }
+    final localization = LocalizationManager();
+    final key = _previewTextKeys[_randomGenerator.nextInt(_previewTextKeys.length)];
+    return localization.t(key);
   }
   
   // 预设的示例文本列表
-  static const List<String> _previewTexts = [
-    "平凡的天才展现自己的才能，真正的天才让人忘记才能。",
-    "人什么的，大半都是幻影一般的东西，真正重要的人和物只有一点点。所以，我只相信重要的东西。",
-    "对于真正空虚的人来说，幸福圆满的故事只会沉重得让人窒息。",
-    "决定绘画价值的不是作者，而是观众。",
-    "努力不会辜负人。说到底，努力的总量就和命运的恩惠没有任何关系。",
-    "几乎所有人都会意识到自己并不是什么特别的存在。",
-    "高喊着虚无缥缈的口号行动，只能迎来虚妄的结局。",
-    "世上能够将美视为纯粹的“美”去爱的人非常少见，这世间满是瞎眼的废物。",
+  static const List<String> _previewTextKeys = [
+    'quotes.preview.1',
+    'quotes.preview.2',
+    'quotes.preview.3',
+    'quotes.preview.4',
+    'quotes.preview.5',
+    'quotes.preview.6',
+    'quotes.preview.7',
+    'quotes.preview.8',
   ];
 }
 
@@ -96,10 +103,25 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
   void didUpdateWidget(TypewriterPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
     
+    bool shouldRestart = false;
+    String? updatedText;
+
+    if (oldWidget.previewText != widget.previewText) {
+      updatedText = widget.previewText ?? TypewriterPreview.getRandomPreviewText();
+      shouldRestart = true;
+    }
+
     if (oldWidget.charsPerSecond != widget.charsPerSecond ||
         oldWidget.skipPunctuationDelay != widget.skipPunctuationDelay) {
+      shouldRestart = true;
+    }
+
+    if (shouldRestart) {
       _animationController.dispose();
-      _initAnimation(); // 使用当前已选择的文本重新初始化
+      if (updatedText != null) {
+        _currentPreviewText = updatedText;
+      }
+      _initAnimation();
       _startAnimation();
     }
   }
@@ -131,6 +153,7 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
   @override
   Widget build(BuildContext context) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(12 * widget.scale),
@@ -155,7 +178,7 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
               ),
               SizedBox(width: 8 * widget.scale),
               Text(
-                '实时预览',
+                localization.t('settings.typewriterPreview.title'),
                 style: widget.config.dialogueTextStyle.copyWith(
                   fontSize: widget.config.dialogueTextStyle.fontSize! * textScale * 0.55,
                   color: widget.config.themeColors.primary.withOpacity(0.7),

@@ -105,6 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _soundVolume = _musicManager.soundVolume;
 
       _selectedLanguage = LocalizationManager().currentLanguage;
+      _previewText = TypewriterPreview.getRandomPreviewText();
       
       setState(() => _isLoading = false);
     } catch (e) {
@@ -186,8 +187,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_selectedLanguage == language) {
       return;
     }
-    setState(() => _selectedLanguage = language);
     await LocalizationManager().switchLanguage(language);
+    if (!mounted) return;
+    setState(() {
+      _selectedLanguage = language;
+      _previewText = TypewriterPreview.getRandomPreviewText();
+    });
   }
 
   Future<void> _resetToDefault() async {
@@ -992,7 +997,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: config.themeColors.primary.withOpacity(0.6),
             ),
           ),
-          // 添加实时预览
+          // Add live preview widget
           TypewriterPreview(
             charsPerSecond: _typewriterCharsPerSecond,
             skipPunctuationDelay: _skipPunctuationDelay,
