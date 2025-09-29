@@ -191,12 +191,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _resetToDefault() async {
+    final localization = LocalizationManager();
     final shouldReset = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
-        return const ConfirmDialog(
-          title: '恢复默认设置',
-          content: '确定要恢复所有设置到默认值吗？此操作无法撤销。',
+        return ConfirmDialog(
+          title: localization.t('settings.reset.title'),
+          content: localization.t('settings.reset.content'),
           confirmResult: true,
           cancelResult: false,
         );
@@ -572,9 +573,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildControlSettings(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     return Center(
       child: Text(
-        '操控设置功能开发中...',
+        localization.t('settings.controls.placeholder'),
         style: config.reviewTitleTextStyle.copyWith(
           fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.8,
           color: config.themeColors.primary.withOpacity(0.6),
@@ -585,6 +587,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildOpacitySlider(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -611,7 +614,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '对话框不透明度',
+                      localization.t('settings.opacity.title'),
                       style: config.reviewTitleTextStyle.copyWith(
                         fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                         color: config.themeColors.primary,
@@ -619,7 +622,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      '调整对话框的透明度',
+                      localization.t('settings.opacity.description'),
                       style: config.dialogueTextStyle.copyWith(
                         fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                         color: config.themeColors.primary.withOpacity(0.6),
@@ -643,7 +646,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 8 * scale),
           Text(
-            '当前透明度: ${(_dialogOpacity * 100).round()}%',
+            localization.t('settings.opacity.current', params: {
+              'value': (_dialogOpacity * 100).round().toString(),
+            }),
             style: config.dialogueTextStyle.copyWith(
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.8),
@@ -656,7 +661,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildFullscreenToggle(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
-    
+    final localization = LocalizationManager();
+
     return Container(
       padding: EdgeInsets.all(16 * scale),
       decoration: BoxDecoration(
@@ -679,7 +685,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '全屏模式',
+                  localization.t('settings.fullscreen.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -688,7 +694,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  '切换全屏或窗口模式显示游戏',
+                  localization.t('settings.fullscreen.description'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -703,8 +709,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: _updateFullscreen,
             scale: scale,
             config: config,
-            trueText: '全屏',
-            falseText: '窗口',
+            trueText: localization.t('settings.fullscreen.on'),
+            falseText: localization.t('settings.fullscreen.off'),
           ),
         ],
       ),
@@ -713,7 +719,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildDarkModeToggle(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
-    
+    final localization = LocalizationManager();
+
     return Container(
       padding: EdgeInsets.all(16 * scale),
       decoration: BoxDecoration(
@@ -736,7 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '深色模式',
+                  localization.t('settings.darkMode.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -745,7 +752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  '切换游戏界面的深色或浅色主题',
+                  localization.t('settings.darkMode.description'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -760,8 +767,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: _updateDarkMode,
             scale: scale,
             config: config,
-            trueText: '深色',
-            falseText: '浅色',
+            trueText: localization.t('settings.darkMode.dark'),
+            falseText: localization.t('settings.darkMode.light'),
           ),
         ],
       ),
@@ -770,6 +777,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSpeakerAnimationToggle(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -793,7 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '说话人动画',
+                  localization.t('settings.speakerAnimation.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -802,7 +810,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  '说话人名字的从左到右擦除显示动画',
+                  localization.t('settings.speakerAnimation.description'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -817,8 +825,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: _updateSpeakerAnimation,
             scale: scale,
             config: config,
-            trueText: '开启',
-            falseText: '关闭',
+            trueText: localization.t('settings.toggle.on'),
+            falseText: localization.t('settings.toggle.off'),
           ),
         ],
       ),
@@ -827,6 +835,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAutoHideQuickMenuSetting(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -850,7 +859,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '自动隐藏快捷菜单',
+                  localization.t('settings.autoHideQuickMenu.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -859,7 +868,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  '无交互时自动将快捷菜单收缩到屏幕边缘',
+                  localization.t('settings.autoHideQuickMenu.description'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -874,8 +883,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: _updateAutoHideQuickMenu,
             scale: scale,
             config: config,
-            trueText: '开启',
-            falseText: '关闭',
+            trueText: localization.t('settings.toggle.on'),
+            falseText: localization.t('settings.toggle.off'),
           ),
         ],
       ),
@@ -884,6 +893,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildTypewriterSpeedSlider(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -910,7 +920,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '文字显示速度',
+                      localization.t('settings.typewriterSpeed.title'),
                       style: config.reviewTitleTextStyle.copyWith(
                         fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                         color: config.themeColors.primary,
@@ -918,7 +928,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      '控制打字机动画的文字出现速度',
+                      localization.t('settings.typewriterSpeed.description'),
                       style: config.dialogueTextStyle.copyWith(
                         fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                         color: config.themeColors.primary.withOpacity(0.6),
@@ -943,8 +953,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(height: 8 * scale),
           Text(
             _typewriterCharsPerSecond >= 200.0 
-              ? '当前速度: 瞬间' 
-              : '当前速度: ${_typewriterCharsPerSecond.round()} 字符/秒',
+              ? localization.t('settings.typewriterSpeed.instant')
+              : localization.t('settings.typewriterSpeed.current', params: {
+                  'value': _typewriterCharsPerSecond.round().toString(),
+                }),
             style: config.dialogueTextStyle.copyWith(
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.8),
@@ -956,7 +968,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Expanded(
                 child: Text(
-                  '标点符号停顿',
+                  localization.t('settings.punctuationPause.title'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary,
@@ -968,11 +980,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onChanged: (value) => _updateSkipPunctuationDelay(!value),
                 config: config,
                 scale: scale * 0.8,
+                trueText: localization.t('settings.toggle.on'),
+                falseText: localization.t('settings.toggle.off'),
               ),
             ],
           ),
           Text(
-            '启用后，标点符号处会有短暂停顿，增强阅读体验',
+            localization.t('settings.punctuationPause.description'),
             style: config.dialogueTextStyle.copyWith(
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.6),
@@ -993,6 +1007,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildMusicEnabledToggle(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -1016,7 +1031,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '背景音乐',
+                  localization.t('settings.musicEnabled.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -1025,7 +1040,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  '开启或关闭游戏背景音乐',
+                  localization.t('settings.musicEnabled.description'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -1040,8 +1055,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: _updateMusicEnabled,
             scale: scale,
             config: config,
-            trueText: '开启',
-            falseText: '关闭',
+            trueText: localization.t('settings.toggle.on'),
+            falseText: localization.t('settings.toggle.off'),
           ),
         ],
       ),
@@ -1050,6 +1065,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildMusicVolumeSlider(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -1076,7 +1092,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '音乐音量',
+                      localization.t('settings.musicVolume.title'),
                       style: config.reviewTitleTextStyle.copyWith(
                         fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                         color: config.themeColors.primary,
@@ -1084,7 +1100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      '调整背景音乐的音量大小',
+                      localization.t('settings.musicVolume.description'),
                       style: config.dialogueTextStyle.copyWith(
                         fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                         color: config.themeColors.primary.withOpacity(0.6),
@@ -1108,7 +1124,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 8 * scale),
           Text(
-            '当前音量: ${(_musicVolume * 100).round()}%',
+            localization.t('settings.common.currentVolume', params: {
+              'value': (_musicVolume * 100).round().toString(),
+            }),
             style: config.dialogueTextStyle.copyWith(
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.8),
@@ -1121,6 +1139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSoundVolumeSlider(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -1147,7 +1166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '音效音量',
+                      localization.t('settings.soundVolume.title'),
                       style: config.reviewTitleTextStyle.copyWith(
                         fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                         color: config.themeColors.primary,
@@ -1155,7 +1174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      '调整游戏音效的音量大小',
+                      localization.t('settings.soundVolume.description'),
                       style: config.dialogueTextStyle.copyWith(
                         fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                         color: config.themeColors.primary.withOpacity(0.6),
@@ -1179,7 +1198,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           SizedBox(height: 8 * scale),
           Text(
-            '当前音量: ${(_soundVolume * 100).round()}%',
+            localization.t('settings.common.currentVolume', params: {
+              'value': (_soundVolume * 100).round().toString(),
+            }),
             style: config.dialogueTextStyle.copyWith(
               fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
               color: config.themeColors.primary.withOpacity(0.8),
@@ -1193,6 +1214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildMenuDisplayModeToggle(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
     final isFullscreenMode = _menuDisplayMode == 'fullscreen';
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -1216,7 +1238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '菜单页面显示',
+                  localization.t('settings.menuDisplay.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -1225,7 +1247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  '控制菜单页面的显示范围模式',
+                  localization.t('settings.menuDisplay.description'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -1240,8 +1262,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => _updateMenuDisplayMode(value ? 'fullscreen' : 'windowed'),
             scale: scale,
             config: config,
-            trueText: '铺满',
-            falseText: '窗口',
+            trueText: localization.t('settings.menuDisplay.fill'),
+            falseText: localization.t('settings.menuDisplay.window'),
           ),
         ],
       ),
@@ -1326,6 +1348,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildFastForwardModeToggle(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
     final isForceMode = _fastForwardMode == 'force';
+    final localization = LocalizationManager();
     
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -1349,7 +1372,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '快进按钮模式',
+                  localization.t('settings.fastForward.title'),
                   style: config.reviewTitleTextStyle.copyWith(
                     fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
                     color: config.themeColors.primary,
@@ -1358,9 +1381,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  isForceMode 
-                    ? '强制快进：跳过所有内容（等同按住Ctrl键）'
-                    : '快进已读：只跳过已经阅读过的文本内容',
+                  isForceMode
+                      ? localization.t('settings.fastForward.descriptionForce')
+                      : localization.t('settings.fastForward.descriptionRead'),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -1375,8 +1398,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => _updateFastForwardMode(value ? 'force' : 'read_only'),
             scale: scale,
             config: config,
-            trueText: '强制',
-            falseText: '已读',
+            trueText: localization.t('settings.fastForward.force'),
+            falseText: localization.t('settings.fastForward.read'),
           ),
         ],
       ),
@@ -1386,6 +1409,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildFooter() {
     final config = SakiEngineConfig();
     final scale = context.scaleFor(ComponentType.ui);
+    final localization = LocalizationManager();
 
     return Container(
       padding: EdgeInsets.all(24 * scale),
@@ -1402,7 +1426,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _SettingsButton(
-            text: '恢复默认',
+            text: localization.t('settings.action.reset'),
             icon: Icons.restore,
             onPressed: _resetToDefault,
             scale: scale,
@@ -1410,7 +1434,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: _SettingsButtonStyle.secondary,
           ),
           _SettingsButton(
-            text: '确定',
+            text: localization.t('settings.action.apply'),
             icon: Icons.check,
             onPressed: widget.onClose,
             scale: scale,
