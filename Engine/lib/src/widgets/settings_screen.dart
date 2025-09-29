@@ -43,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _fastForwardMode = SettingsManager.defaultFastForwardMode;
   
   // 预览文本（在设置界面生命周期内固定）
-  late final String _previewText;
+  late String _previewText;
   
   // 音频设置
   bool _musicEnabled = true;
