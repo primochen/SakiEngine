@@ -136,10 +136,12 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final switchWidth = 120 * widget.scale;
-    final switchHeight = 48 * widget.scale;
-    final knobSize = 36 * widget.scale;
-    final padding = 6 * widget.scale;
+    final switchWidth = 82 * widget.scale;
+    final switchHeight = 38 * widget.scale;
+    final knobSize = 28 * widget.scale;
+    final padding = 5 * widget.scale;
+    final knobTravel = switchWidth - knobSize - 2 * padding;
+    final knobBaseTop = padding + (switchHeight - 2 * padding - knobSize) / 2;
     
     return MouseRegion(
       onEnter: (_) {
@@ -201,8 +203,8 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            _colorAnimation.value!.withOpacity(0.1),
-                            _colorAnimation.value!.withOpacity(0.3 * _glowAnimation.value),
+                            _colorAnimation.value!.withOpacity(widget.value ? 0.3 : 0.08),
+                            _colorAnimation.value!.withOpacity(widget.value ? 0.5 : 0.15),
                           ],
                           stops: const [0.0, 1.0],
                           begin: Alignment.centerLeft,
@@ -210,64 +212,13 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
                         ),
                       ),
                     ),
-                    
-                    // 左侧文本 (关/窗口)
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 200),
-                      left: padding,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: widget.config.dialogueTextStyle.copyWith(
-                            fontSize: widget.config.dialogueTextStyle.fontSize! * widget.scale * 0.7,
-                            color: widget.value 
-                              ? widget.config.themeColors.onSurfaceVariant.withOpacity(0.5)
-                              : widget.config.themeColors.primary,
-                            fontWeight: widget.value ? FontWeight.normal : FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                          child: Transform.scale(
-                            scale: widget.value ? 1.0 : (1.0 + 0.1 * _scaleAnimation.value),
-                            child: Text(widget.falseText),
-                          ),
-                        ),
-                      ),
-                    ),
-                    
-                    // 右侧文本 (开/全屏)
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 200),
-                      right: padding,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: widget.config.dialogueTextStyle.copyWith(
-                            fontSize: widget.config.dialogueTextStyle.fontSize! * widget.scale * 0.7,
-                            color: widget.value 
-                              ? widget.config.themeColors.primary
-                              : widget.config.themeColors.onSurfaceVariant.withOpacity(0.5),
-                            fontWeight: widget.value ? FontWeight.bold : FontWeight.normal,
-                            letterSpacing: 1,
-                          ),
-                          child: Transform.scale(
-                            scale: widget.value && _isHovered ? (1.0 + 0.1 * _scaleAnimation.value * _pulseAnimation.value) : 1.0,
-                            child: Text(widget.trueText),
-                          ),
-                        ),
-                      ),
-                    ),
-                    
                     // 滑动的指示器 - 使用弹性动画
                     AnimatedBuilder(
                       animation: _slideAnimation,
                       builder: (context, child) {
                         return Positioned(
-                          left: padding + (switchWidth - knobSize - 2 * padding) * _slideAnimation.value,
-                          top: (switchHeight - knobSize) / 3, // 精确垂直居中
+                          left: padding + knobTravel * _slideAnimation.value,
+                          top: knobBaseTop,
                           child: Transform.scale(
                             scale: 1.0 + 0.1 * _scaleAnimation.value,
                             child: Container(
