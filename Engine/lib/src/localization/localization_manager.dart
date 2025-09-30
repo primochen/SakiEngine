@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
@@ -97,10 +98,91 @@ class LocalizationManager extends ChangeNotifier {
     final saved = supportedLanguageFromCode(savedCode);
 
     if (saved != null && _translations.containsKey(saved)) {
+      // 有保存的语言设置，使用保存的语言
       _currentLanguage = saved;
+    } else {
+      // 第一次启动，根据系统语言自动设置
+      _currentLanguage = _detectSystemLanguage();
+      // 保存自动检测的语言
+      await _dataManager.setStringVariable('sakiengine.language', _currentLanguage.code, _projectName!);
     }
 
     _initialized = true;
+  }
+
+  /// 根据系统语言自动检测并返回最匹配的支持语言
+  SupportedLanguage _detectSystemLanguage() {
+    // 获取系统语言列表
+    final systemLocales = ui.PlatformDispatcher.instance.locales;
+
+    // 遍历系统语言列表，找到第一个匹配的语言
+    for (final locale in systemLocales) {
+      final languageCode = locale.languageCode.toLowerCase();
+      final scriptCode = locale.scriptCode?.toLowerCase();
+      final countryCode = locale.countryCode?.toLowerCase();
+
+      // 匹配中文（简体）
+      if (languageCode == 'zh') {
+        // 优先根据 scriptCode 判断
+        if (scriptCode == 'hans' || scriptCode == 'cn') {
+          if (_translations.containsKey(SupportedLanguage.zhHans)) {
+            return SupportedLanguage.zhHans;
+          }
+        } else if (scriptCode == 'hant' || scriptCode == 'tw' || scriptCode == 'hk') {
+          if (_translations.containsKey(SupportedLanguage.zhHant)) {
+            return SupportedLanguage.zhHant;
+          }
+        }
+
+        // 根据 countryCode 判断
+        if (countryCode == 'cn' || countryCode == 'sg') {
+          if (_translations.containsKey(SupportedLanguage.zhHans)) {
+            return SupportedLanguage.zhHans;
+          }
+        } else if (countryCode == 'tw' || countryCode == 'hk' || countryCode == 'mo') {
+          if (_translations.containsKey(SupportedLanguage.zhHant)) {
+            return SupportedLanguage.zhHant;
+          }
+        }
+
+        // 默认简体中文
+        if (_translations.containsKey(SupportedLanguage.zhHans)) {
+          return SupportedLanguage.zhHans;
+        }
+      }
+
+      // 匹配英语
+      if (languageCode == 'en') {
+        if (_translations.containsKey(SupportedLanguage.en)) {
+          return SupportedLanguage.en;
+        }
+      }
+
+      // 匹配日语
+      if (languageCode == 'ja') {
+        if (_translations.containsKey(SupportedLanguage.ja)) {
+          return SupportedLanguage.ja;
+        }
+      }
+    }
+
+    // 如果没有匹配到，使用默认语言（英语）
+    if (_translations.containsKey(SupportedLanguage.en)) {
+      return SupportedLanguage.en;
+    }
+
+    // 如果英语也不可用，尝试简体中文
+    if (_translations.containsKey(SupportedLanguage.zhHans)) {
+      return SupportedLanguage.zhHans;
+    }
+
+    // 最后返回第一个可用的语言
+    if (_translations.isNotEmpty) {
+      return _translations.keys.first;
+    }
+
+    // 最后的后备选项（理论上不会到达这里）
+    return SupportedLanguage.en;
   }
 
   Future<void> _loadTranslations() async {
