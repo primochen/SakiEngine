@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -38,7 +39,7 @@ class CompositeCgRenderer {
     _markFadeUsed(displayKey);
     _markFadeUsed('gpu_$displayKey');
 
-    if (!_preloadedImages.containsKey(cacheKey) && !_completedPaths.containsKey(cacheKey)) {
+    if (!_completedPaths.containsKey(cacheKey)) {
       final compositePath = await _legacyCompositor.getCompositeImagePath(
         resourceId: resourceId,
         pose: pose,
@@ -54,19 +55,15 @@ class CompositeCgRenderer {
         expression: expression,
       );
       if (gpuEntry != null) {
-        _gpuCompletedResults[cacheKey] = gpuEntry.result;
-        _gpuPreloadedResults[cacheKey] = gpuEntry.result;
+        _cacheGpuResult(cacheKey, gpuEntry.result, markAsPreloaded: true);
       }
     }
 
-    if (_preloadedImages.containsKey(cacheKey)) {
-      _currentDisplayedImages[displayKey] = cacheKey;
-    } else if (_completedPaths.containsKey(cacheKey)) {
+    if (_completedPaths.containsKey(cacheKey)) {
       _currentDisplayedImages[displayKey] = _completedPaths[cacheKey]!;
     }
 
-    if (_gpuCompletedResults.containsKey(cacheKey) ||
-        _gpuPreloadedResults.containsKey(cacheKey)) {
+    if (_gpuResultCache.containsKey(cacheKey)) {
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
     }
   }
@@ -87,14 +84,16 @@ class CompositeCgRenderer {
   
   // 当前显示的图像状态缓存（用于无缝切换）
   static final Map<String, String> _currentDisplayedImages = {};
-  
-  // 预加载完成的图像缓存（关键：确保没有"第一次加载"）
-  static final Map<String, ui.Image> _preloadedImages = {};
 
+  // 预加载完成的图像缓存（仅保留少量以支持首帧渐变）
+  static final LinkedHashMap<String, ui.Image> _preloadedImages = LinkedHashMap();
+  static const int _maxPreloadedImages = 4;
+  
   // GPU 纹理缓存与状态
   static final Map<String, Future<GpuCompositeEntry?>> _gpuFutureCache = {};
-  static final Map<String, GpuCompositeResult> _gpuCompletedResults = {};
-  static final Map<String, GpuCompositeResult> _gpuPreloadedResults = {};
+  static final LinkedHashMap<String, GpuCompositeResult> _gpuResultCache = LinkedHashMap();
+  static final Set<String> _gpuPreloadedKeys = <String>{};
+  static const int _maxGpuResultEntries = 12;
   static final Map<String, String> _currentDisplayedGpuKeys = {};
 
   static final Map<String, Future<ui.Image?>> _gpuFlattenTasks = {};
@@ -124,8 +123,7 @@ class CompositeCgRenderer {
     final cacheKey = '${resourceId}_${pose}_${expression}';
 
     if (gpuEntry != null) {
-      _gpuCompletedResults[cacheKey] = gpuEntry.result;
-      _gpuPreloadedResults[cacheKey] = gpuEntry.result;
+      _cacheGpuResult(cacheKey, gpuEntry.result, markAsPreloaded: true);
       _gpuFutureCache[cacheKey] = Future.value(gpuEntry);
 
       final virtualPath = gpuEntry.virtualPath;
@@ -137,14 +135,9 @@ class CompositeCgRenderer {
             _flattenGpuResultToImage(gpuEntry.result);
         final flattenedImage = await flattenTask;
         if (flattenedImage != null) {
-          final previous = _preloadedImages[cacheKey];
-          if (previous != null && previous != flattenedImage) {
-            previous.dispose();
-          }
-          _preloadedImages[cacheKey] = flattenedImage;
-        } else {
-          _gpuFlattenTasks.remove(cacheKey);
+          _storePreloadedImage(cacheKey, flattenedImage);
         }
+        _gpuFlattenTasks.remove(cacheKey);
       }
     }
 
@@ -225,8 +218,8 @@ class CompositeCgRenderer {
       _markFadeUsed(displayKey);
     }
 
-    if (_preloadedImages.containsKey(cacheKey)) {
-      final preloadedImage = _preloadedImages[cacheKey]!;
+    final preloadedImage = _getPreloadedImage(cacheKey);
+    if (preloadedImage != null) {
       _currentDisplayedImages[displayKey] = cacheKey;
 
       return _FirstCgFadeWrapper(
@@ -354,14 +347,14 @@ class CompositeCgRenderer {
     }
 
     final currentKey = _currentDisplayedGpuKeys[displayKey];
-    final currentResult = _resolveGpuResult(currentKey);
+    final currentResult = _peekGpuResult(currentKey);
     final bool isFirstAppearance = !skipAnimations && (currentKey == null || _isFreshFade('gpu_$displayKey'));
     if (isFirstAppearance) {
       _markFadeUsed('gpu_$displayKey');
     }
 
-    if (_preloadedImages.containsKey(cacheKey)) {
-      final preloadedImage = _preloadedImages[cacheKey]!;
+    final preloadedImage = _getPreloadedImage(cacheKey);
+    if (preloadedImage != null) {
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
       return _FirstCgFadeWrapper(
@@ -378,27 +371,25 @@ class CompositeCgRenderer {
       );
     }
 
-    if (_gpuPreloadedResults.containsKey(cacheKey)) {
-      final preloadedResult = _gpuPreloadedResults[cacheKey]!;
+    final cachedResult = _peekGpuResult(cacheKey);
+    if (cachedResult != null) {
+      final bool wasPreloaded = _gpuPreloadedKeys.remove(cacheKey);
       _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
-      return _FirstCgFadeWrapper(
-        fadeKey: 'gpu_$displayKey',
-        enableFade: isFirstAppearance,
-        child: GpuDirectCgDisplay(
-          key: ValueKey('gpu_direct_$displayKey'),
-          result: preloadedResult,
-          resourceId: characterState.resourceId,
-          isFadingOut: characterState.isFadingOut,
-          skipAnimation: skipAnimations,
-          enableFadeIn: !skipAnimations && currentKey == null,
-        ),
-      );
-    }
-
-    if (_gpuCompletedResults.containsKey(cacheKey)) {
-      final completedResult = _gpuCompletedResults[cacheKey]!;
-      _currentDisplayedGpuKeys[displayKey] = cacheKey;
+      if (wasPreloaded) {
+        return _FirstCgFadeWrapper(
+          fadeKey: 'gpu_$displayKey',
+          enableFade: isFirstAppearance,
+          child: GpuDirectCgDisplay(
+            key: ValueKey('gpu_direct_$displayKey'),
+            result: cachedResult,
+            resourceId: characterState.resourceId,
+            isFadingOut: characterState.isFadingOut,
+            skipAnimation: skipAnimations,
+            enableFadeIn: !skipAnimations && currentKey == null,
+          ),
+        );
+      }
 
       if (currentResult == null && !skipAnimations) {
         return _FirstCgFadeWrapper(
@@ -406,7 +397,7 @@ class CompositeCgRenderer {
           enableFade: true,
           child: GpuDirectCgDisplay(
             key: ValueKey('gpu_direct_initial_$displayKey'),
-            result: completedResult,
+            result: cachedResult,
             resourceId: characterState.resourceId,
             isFadingOut: characterState.isFadingOut,
             skipAnimation: skipAnimations,
@@ -420,7 +411,7 @@ class CompositeCgRenderer {
         enableFade: isFirstAppearance,
         child: GpuSeamlessCgDisplay(
           key: ValueKey('gpu_seamless_$displayKey'),
-          newResult: completedResult,
+          newResult: cachedResult,
           currentResult: currentResult,
           resourceId: characterState.resourceId,
           isFadingOut: characterState.isFadingOut,
@@ -438,8 +429,7 @@ class CompositeCgRenderer {
       )
           .then((entry) {
         if (entry != null) {
-          _gpuCompletedResults[cacheKey] = entry.result;
-          _gpuPreloadedResults[cacheKey] = entry.result;
+          _cacheGpuResult(cacheKey, entry.result, markAsPreloaded: true);
         }
         return entry;
       });
@@ -451,7 +441,6 @@ class CompositeCgRenderer {
       builder: (context, snapshot) {
         final entryData = snapshot.data;
         final newResult = entryData?.result;
-
         final hasNewResult = snapshot.hasData && newResult != null;
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -490,8 +479,7 @@ class CompositeCgRenderer {
           );
         }
 
-        _gpuCompletedResults[cacheKey] = newResult;
-        _gpuPreloadedResults[cacheKey] = newResult;
+        _cacheGpuResult(cacheKey, newResult!, markAsPreloaded: true);
         _currentDisplayedGpuKeys[displayKey] = cacheKey;
 
         return GpuSeamlessCgDisplay(
@@ -504,13 +492,6 @@ class CompositeCgRenderer {
         );
       },
     );
-  }
-
-  static GpuCompositeResult? _resolveGpuResult(String? cacheKey) {
-    if (cacheKey == null) return null;
-    return _gpuCompletedResults[cacheKey] ??
-        _gpuPreloadedResults[cacheKey] ??
-        _gpuCompositor.getCachedResult(cacheKey);
   }
 
   static Future<ui.Image?> _flattenGpuResultToImage(
@@ -547,6 +528,130 @@ class CompositeCgRenderer {
       return null;
     }
   }
+
+  static ui.Image? _getPreloadedImage(String cacheKey) {
+    return _preloadedImages.remove(cacheKey);
+  }
+
+  static void _storePreloadedImage(String cacheKey, ui.Image image) {
+    final previous = _preloadedImages.remove(cacheKey);
+    if (previous != null && !identical(previous, image)) {
+      try {
+        previous.dispose();
+      } catch (_) {}
+    }
+
+    _preloadedImages[cacheKey] = image;
+    _evictPreloadedImages();
+  }
+
+  static void _evictPreloadedImages() {
+    if (_preloadedImages.length <= _maxPreloadedImages) {
+      return;
+    }
+
+    final protected = _collectActivePreloadedKeys();
+    final keysToRemove = <String>[];
+    for (final key in _preloadedImages.keys) {
+      if (_preloadedImages.length - keysToRemove.length <= _maxPreloadedImages) {
+        break;
+      }
+      if (protected.contains(key)) {
+        continue;
+      }
+      keysToRemove.add(key);
+    }
+
+    if (keysToRemove.isEmpty) {
+      keysToRemove.add(_preloadedImages.keys.first);
+    }
+
+    for (final key in keysToRemove) {
+      final removed = _preloadedImages.remove(key);
+      try {
+        removed?.dispose();
+      } catch (_) {}
+    }
+  }
+
+  static Set<String> _collectActivePreloadedKeys() {
+    final active = <String>{};
+    for (final path in _currentDisplayedImages.values) {
+      if (path != null && _preloadedImages.containsKey(path)) {
+        active.add(path);
+      }
+    }
+    for (final key in _currentDisplayedGpuKeys.values) {
+      if (_preloadedImages.containsKey(key)) {
+        active.add(key);
+      }
+    }
+    return active;
+  }
+
+  static GpuCompositeResult? _peekGpuResult(String? cacheKey) {
+    if (cacheKey == null) {
+      return null;
+    }
+    final cached = _gpuResultCache.remove(cacheKey);
+    if (cached != null) {
+      _gpuResultCache[cacheKey] = cached;
+    }
+    return cached;
+  }
+
+  static void _cacheGpuResult(
+    String cacheKey,
+    GpuCompositeResult result, {
+    bool markAsPreloaded = false,
+  }) {
+    _gpuResultCache.remove(cacheKey);
+
+    _gpuResultCache[cacheKey] = result;
+    if (markAsPreloaded) {
+      _gpuPreloadedKeys.add(cacheKey);
+    } else {
+      _gpuPreloadedKeys.remove(cacheKey);
+    }
+
+    _enforceGpuCacheLimit();
+  }
+
+  static void _enforceGpuCacheLimit() {
+    if (_gpuResultCache.length <= _maxGpuResultEntries) {
+      return;
+    }
+
+    final protectedKeys = _collectActiveGpuKeys();
+    final keysToRemove = <String>[];
+    for (final key in _gpuResultCache.keys) {
+      if (_gpuResultCache.length - keysToRemove.length <= _maxGpuResultEntries) {
+        break;
+      }
+      if (protectedKeys.contains(key)) {
+        continue;
+      }
+      keysToRemove.add(key);
+    }
+
+    if (keysToRemove.isEmpty) {
+      return;
+    }
+
+    for (final key in keysToRemove) {
+      final removed = _gpuResultCache.remove(key);
+      if (removed != null) {
+        _gpuPreloadedKeys.remove(key);
+        try {
+          removed.dispose();
+        } catch (_) {}
+      }
+    }
+  }
+
+  static Set<String> _collectActiveGpuKeys() {
+    return _currentDisplayedGpuKeys.values.toSet();
+  }
   
   /// 加载并缓存图像到内存（关键方法）
   static Future<String?> _loadAndCacheImage({
@@ -571,8 +676,7 @@ class CompositeCgRenderer {
           return null;
         }
 
-        _gpuCompletedResults[cacheKey] = entry.result;
-        _gpuPreloadedResults[cacheKey] = entry.result;
+        _cacheGpuResult(cacheKey, entry.result, markAsPreloaded: true);
         return entry.virtualPath;
       }
 
@@ -593,13 +697,11 @@ class CompositeCgRenderer {
         print('[CompositeCgRenderer] 内存缓存存在: ${imageBytes != null}');
         
         if (imageBytes != null) {
-          // 将字节数据转换为ui.Image
+          // 将字节数据转换为ui.Image 并缓存少量首帧，用于渐变
           final codec = await ui.instantiateImageCodec(imageBytes);
           final frame = await codec.getNextFrame();
-          
-          // 缓存到内存，确保下次访问时没有"第一次加载"
-          _preloadedImages[cacheKey] = frame.image;
-          print('[CompositeCgRenderer] 成功缓存到内存: $cacheKey, 总缓存数: ${_preloadedImages.length}');
+          codec.dispose();
+          _storePreloadedImage(cacheKey, frame.image);
         } else {
           print('[CompositeCgRenderer] 内存缓存中无数据: $compositeImagePath');
         }
@@ -658,18 +760,20 @@ class CompositeCgRenderer {
     _preDisplayedCgs.clear();
     _currentDisplayedImages.clear();
     _gpuFutureCache.clear();
-    _gpuCompletedResults.clear();
-    _gpuPreloadedResults.clear();
+    for (final result in _gpuResultCache.values) {
+      try {
+        result.dispose();
+      } catch (_) {}
+    }
+    _gpuResultCache.clear();
+    _gpuPreloadedKeys.clear();
     _currentDisplayedGpuKeys.clear();
     _gpuFlattenTasks.clear();
-    
-    // 释放预加载的图像内存
+
     for (final image in _preloadedImages.values) {
       try {
         image.dispose();
-      } catch (e) {
-        // 静默处理
-      }
+      } catch (_) {}
     }
     _preloadedImages.clear();
     

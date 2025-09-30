@@ -19,7 +19,8 @@
       "Bash(/dev/null)",
       "Bash(cat:*)",
       "Bash(pod install:*)",
-      "Bash(flutter:*)"
+      "Bash(flutter:*)",
+      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)"
     ],
     "deny": [],
     "ask": []

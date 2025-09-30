@@ -96,9 +96,6 @@ class CgPreWarmManager {
   /// 预热状态追踪：cacheKey -> 状态
   final Map<String, PreWarmStatus> _warmStatus = {};
   
-  /// 预热的ui.Image缓存：cacheKey -> 预热后的Image对象
-  final Map<String, ui.Image> _preWarmCache = {};
-  
   /// 正在执行的预热任务
   final Set<String> _processingTasks = {};
   
@@ -108,9 +105,6 @@ class CgPreWarmManager {
   /// 最大并发预热任务数量
   static const int _maxConcurrentTasks = 2;
   
-  /// 预热缓存最大数量（防止内存泄漏）
-  static const int _maxCacheSize = 10;
-
   /// 启动预热管理器
   void start() {
     if (!_isWorkerRunning) {
@@ -127,7 +121,6 @@ class CgPreWarmManager {
   void stop() {
     _isWorkerRunning = false;
     _clearAllTasks();
-    _clearPreWarmCache();
     
     if (kDebugMode) {
       //print('[CgPreWarmManager] 🔥 预热管理器已停止');
@@ -231,8 +224,7 @@ class CgPreWarmManager {
 
   /// 获取预热的图像（如果有）
   ui.Image? getPreWarmedImage(String resourceId, String pose, String expression) {
-    final cacheKey = '${resourceId}_${pose}_$expression';
-    return _preWarmCache[cacheKey];
+    return null;
   }
 
   /// 预热工作器：后台处理预热队列
@@ -327,30 +319,14 @@ class CgPreWarmManager {
 
   /// 执行 CPU 合成路径的预热操作
   Future<void> _performCpuPreWarm(String cacheKey, Uint8List imageBytes) async {
-    // 解码图像
-    final codec = await ui.instantiateImageCodec(imageBytes);
-    final frame = await codec.getNextFrame();
-    final preWarmImage = frame.image;
-    
-    // 创建离屏Canvas进行预热绘制
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-    
-    // 绘制图像到离屏Canvas，触发Flutter的图像缓存和渲染管线
-    canvas.drawImage(preWarmImage, ui.Offset.zero, ui.Paint());
-    
-    // 完成绘制并生成Picture
-    final picture = recorder.endRecording();
-    
-    // 将Picture转换为Image，进一步预热GPU渲染管线
-    final preWarmRaster = await picture.toImage(preWarmImage.width, preWarmImage.height);
-    
-    // 清理中间资源
-    picture.dispose();
-    codec.dispose();
-    
-    // 缓存预热后的Image对象（可选，用于极致性能）
-    _cachePreWarmedImage(cacheKey, preWarmRaster);
+    try {
+      final codec = await ui.instantiateImageCodec(imageBytes);
+      final frame = await codec.getNextFrame();
+      frame.image.dispose();
+      codec.dispose();
+    } catch (_) {
+      // 解码失败时忽略，预热流程不应中断
+    }
   }
 
   /// 执行 GPU 图层的预热操作
@@ -390,24 +366,7 @@ class CgPreWarmManager {
     final picture = recorder.endRecording();
     final raster = await picture.toImage(result.width, result.height);
     picture.dispose();
-
-    _cachePreWarmedImage(cacheKey, raster);
-  }
-
-  /// 缓存预热后的图像
-  void _cachePreWarmedImage(String cacheKey, ui.Image image) {
-    // 控制缓存大小，避免内存泄漏
-    if (_preWarmCache.length >= _maxCacheSize) {
-      final oldestKey = _preWarmCache.keys.first;
-      final oldImage = _preWarmCache.remove(oldestKey);
-      oldImage?.dispose();
-      
-      if (kDebugMode) {
-        //print('[CgPreWarmManager] 🗑️ 清理旧预热缓存: $oldestKey');
-      }
-    }
-    
-    _preWarmCache[cacheKey] = image;
+    raster.dispose();
   }
 
   /// 等待指定CG的预热完成
@@ -427,14 +386,6 @@ class CgPreWarmManager {
     _processingTasks.clear();
   }
 
-  /// 清理预热缓存
-  void _clearPreWarmCache() {
-    for (final image in _preWarmCache.values) {
-      image.dispose();
-    }
-    _preWarmCache.clear();
-  }
-
   /// 设置GPU加速开关
   void setGpuAcceleration(bool enabled) {
     _useGpuAcceleration = enabled;
@@ -451,7 +402,6 @@ class CgPreWarmManager {
       'queue_size': _taskQueue.length,
       'processing_tasks': _processingTasks.length,
       'warmed_count': _warmStatus.values.where((s) => s == PreWarmStatus.warmed).length,
-      'cache_size': _preWarmCache.length,
       'warm_status': _warmStatus,
     };
   }

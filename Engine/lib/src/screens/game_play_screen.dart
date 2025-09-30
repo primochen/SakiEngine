@@ -38,6 +38,7 @@ import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
 import 'package:sakiengine/src/utils/character_composite_cache.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
@@ -1031,7 +1032,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         ////print('[_buildBackground] 识别为图片背景，开始处理图片路径');
         
         // 检查是否为内存缓存路径
-        if (background.startsWith('/memory_cache/cg_cache/')) {
+        if (CgImageCompositor().isCachePath(background)) {
           //print('[_buildBackground] 🐛 检测到内存缓存路径，使用SmartImage加载: $background');
           // 使用SmartImage处理内存缓存路径
           backgroundWidget = SmartImage.asset(

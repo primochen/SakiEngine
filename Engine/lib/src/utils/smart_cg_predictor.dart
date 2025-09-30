@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/utils/cg_script_pre_analyzer.dart';
 
@@ -23,6 +24,9 @@ class SmartCgPredictor {
   
   /// 预热范围（前后行数）
   static const int _predictionRange = 100;
+  static const int _maxCgCombos = 6;
+  static const int _maxExpressionsPerCombo = 3;
+  static const int _maxGlobalRange = 600;
   
   /// 智能预热：基于当前位置预热局部CG
   Future<void> smartPreWarm({
@@ -34,41 +38,101 @@ class SmartCgPredictor {
     _findCurrentLabelRange(scriptNodes, currentIndex, currentLabel);
     
     // 2. 计算预热范围（当前位置前后100行，但不超出标签范围）
-    var predictionStart = (currentIndex - _predictionRange).clamp(_currentLabelStart, _currentLabelEnd);
-    var predictionEnd = (currentIndex + _predictionRange).clamp(_currentLabelStart, _currentLabelEnd);
+    var predictionStart = _clampIndex(
+      currentIndex - _predictionRange,
+      _currentLabelStart,
+      _currentLabelEnd,
+    );
+    var predictionEnd = _clampIndex(
+      currentIndex + _predictionRange,
+      _currentLabelStart,
+      _currentLabelEnd,
+    );
     
     
     // 3. 收集范围内的CG组合
-    var cgCombinations = _collectCgInRange(scriptNodes, predictionStart, predictionEnd);
+    var cgCombinations = _collectCgInRange(
+      scriptNodes,
+      predictionStart,
+      predictionEnd,
+    );
     
     // 4. 如果没有找到CG组合，渐进式扩大搜索范围
     if (cgCombinations.isEmpty) {
       // 第一次扩展：扩大到当前标签范围
       if (predictionStart > _currentLabelStart || predictionEnd < _currentLabelEnd) {
-        predictionStart = _currentLabelStart;
-        predictionEnd = _currentLabelEnd;
-        cgCombinations = _collectCgInRange(scriptNodes, predictionStart, predictionEnd);
+        final limitedRange = _limitRange(
+          _currentLabelStart,
+          _currentLabelEnd,
+          currentIndex,
+          scriptNodes.length,
+        );
+        predictionStart = limitedRange[0];
+        predictionEnd = limitedRange[1];
+        cgCombinations = _collectCgInRange(
+          scriptNodes,
+          predictionStart,
+          predictionEnd,
+        );
         
       }
       
       // 第二次扩展：如果标签范围内仍然没有，适度向前后扩展
       if (cgCombinations.isEmpty) {
-        final moderateExpandStart = (currentIndex - _predictionRange * 2).clamp(0, scriptNodes.length - 1);
-        final moderateExpandEnd = (currentIndex + _predictionRange * 2).clamp(0, scriptNodes.length - 1);
-        
-        cgCombinations = _collectCgInRange(scriptNodes, moderateExpandStart, moderateExpandEnd);
-        predictionStart = moderateExpandStart;
-        predictionEnd = moderateExpandEnd;
+        final moderateExpandStart = _clampIndex(
+          currentIndex - _predictionRange * 2,
+          0,
+          scriptNodes.length - 1,
+        );
+        final moderateExpandEnd = _clampIndex(
+          currentIndex + _predictionRange * 2,
+          0,
+          scriptNodes.length - 1,
+        );
+
+        final limitedRange = _limitRange(
+          moderateExpandStart,
+          moderateExpandEnd,
+          currentIndex,
+          scriptNodes.length,
+        );
+
+        predictionStart = limitedRange[0];
+        predictionEnd = limitedRange[1];
+        cgCombinations = _collectCgInRange(
+          scriptNodes,
+          predictionStart,
+          predictionEnd,
+        );
         
         
         // 第三次扩展：仅在确实必要时才进一步扩大
         if (cgCombinations.isEmpty) {
-          final maxExpandStart = (currentIndex - _predictionRange * 5).clamp(0, scriptNodes.length - 1);
-          final maxExpandEnd = (currentIndex + _predictionRange * 5).clamp(0, scriptNodes.length - 1);
-          
-          cgCombinations = _collectCgInRange(scriptNodes, maxExpandStart, maxExpandEnd);
-          predictionStart = maxExpandStart;
-          predictionEnd = maxExpandEnd;
+          final maxExpandStart = _clampIndex(
+            currentIndex - _predictionRange * 5,
+            0,
+            scriptNodes.length - 1,
+          );
+          final maxExpandEnd = _clampIndex(
+            currentIndex + _predictionRange * 5,
+            0,
+            scriptNodes.length - 1,
+          );
+
+          final limitedRange = _limitRange(
+            maxExpandStart,
+            maxExpandEnd,
+            currentIndex,
+            scriptNodes.length,
+          );
+
+          predictionStart = limitedRange[0];
+          predictionEnd = limitedRange[1];
+          cgCombinations = _collectCgInRange(
+            scriptNodes,
+            predictionStart,
+            predictionEnd,
+          );
           
         }
       }
@@ -118,9 +182,13 @@ class SmartCgPredictor {
   }
   
   /// 收集指定范围内的CG组合
-  Map<String, Set<String>> _collectCgInRange(List<SksNode> scriptNodes, int start, int end) {
-    final combinations = <String, Set<String>>{};
-    
+  Map<String, Set<String>> _collectCgInRange(
+    List<SksNode> scriptNodes,
+    int start,
+    int end,
+  ) {
+    final combinations = LinkedHashMap<String, Set<String>>();
+
     for (int i = start; i <= end && i < scriptNodes.length; i++) {
       final node = scriptNodes[i];
       if (node is CgNode) {
@@ -129,10 +197,14 @@ class SmartCgPredictor {
         final expression = node.expression ?? 'happy';
         
         final key = '${resourceId}_$pose';
-        if (!combinations.containsKey(key)) {
-          combinations[key] = <String>{};
+        final expressions = combinations.putIfAbsent(key, () => <String>{});
+        if (expressions.length < _maxExpressionsPerCombo) {
+          expressions.add(expression);
         }
-        combinations[key]!.add(expression);
+
+        if (combinations.length >= _maxCgCombos) {
+          break;
+        }
       }
     }
     
@@ -152,6 +224,9 @@ class SmartCgPredictor {
       int totalPrewarmed = 0;
       
       for (final entry in combinations.entries) {
+        if (totalPrewarmed >= _maxCgCombos * _maxExpressionsPerCombo) {
+          break;
+        }
         final parts = entry.key.split('_');
         if (parts.length >= 2) { // 至少需要resourceId和pose
           // 重新构建resourceId和pose
@@ -161,6 +236,9 @@ class SmartCgPredictor {
           
           
           for (final expression in expressions) {
+            if (totalPrewarmed >= _maxCgCombos * _maxExpressionsPerCombo) {
+              break;
+            }
             try {
               await _preAnalyzer.precomposeCg(
                 resourceId: resourceId,
@@ -211,8 +289,16 @@ class SmartCgPredictor {
   Future<void> _preWarmLabelSurroundingsLite(List<SksNode> scriptNodes, String labelName, int baseIndex) async {
     
     // 仅轻度扩展搜索范围（当前位置前后150行）
-    final lightExtendStart = (baseIndex - _predictionRange * 1.5).clamp(0, scriptNodes.length - 1).round();
-    final lightExtendEnd = (baseIndex + _predictionRange * 1.5).clamp(0, scriptNodes.length - 1).round();
+    final lightExtendStart = _clampIndex(
+      (baseIndex - _predictionRange * 1.5).round(),
+      0,
+      scriptNodes.length - 1,
+    );
+    final lightExtendEnd = _clampIndex(
+      (baseIndex + _predictionRange * 1.5).round(),
+      0,
+      scriptNodes.length - 1,
+    );
     
     // 收集轻度扩展范围内的CG组合
     final lightCombinations = _collectCgInRange(scriptNodes, lightExtendStart, lightExtendEnd);
@@ -220,7 +306,6 @@ class SmartCgPredictor {
     // 过滤掉已经预热过的组合
     final newCombinations = <String, Set<String>>{};
     for (final entry in lightCombinations.entries) {
-      // 简化逻辑：只预热最多3个新组合，避免过度预热
       if (newCombinations.length >= 3) break;
       newCombinations[entry.key] = entry.value;
     }
@@ -246,12 +331,9 @@ class SmartCgPredictor {
         if (parts.length >= 3) {
           final resourceId = parts.sublist(0, parts.length - 1).join('_');
           final pose = parts.last;
-          final expressions = entry.value;
-          
-          // 限制每个组合最多预热3个表情，避免过度预热
-          final limitedExpressions = expressions.take(3);
-          
-          for (final expression in limitedExpressions) {
+          final expressions = entry.value.take(_maxExpressionsPerCombo);
+
+          for (final expression in expressions) {
             try {
               await _preAnalyzer.precomposeCg(
                 resourceId: resourceId,
@@ -310,5 +392,27 @@ class SmartCgPredictor {
     _currentPredictionStart = 0;
     _currentPredictionEnd = 0;
     
+  }
+
+  List<int> _limitRange(int start, int end, int currentIndex, int length) {
+    int limitedStart = start;
+    int limitedEnd = end;
+    if (limitedEnd < limitedStart) {
+      final tmp = limitedStart;
+      limitedStart = limitedEnd;
+      limitedEnd = tmp;
+    }
+    if (limitedEnd - limitedStart > _maxGlobalRange) {
+      final halfWindow = _maxGlobalRange ~/ 2;
+      limitedStart = _clampIndex(currentIndex - halfWindow, 0, length - 1);
+      limitedEnd = _clampIndex(currentIndex + halfWindow, 0, length - 1);
+    }
+    return [limitedStart, limitedEnd];
+  }
+
+  int _clampIndex(int value, int min, int max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
   }
 }

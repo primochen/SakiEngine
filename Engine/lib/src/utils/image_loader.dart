@@ -88,7 +88,7 @@ class ImageLoader {
   
   /// 判断是否为内存缓存路径
   static bool _isMemoryCachePath(String path) {
-    return path.startsWith('/memory_cache/cg_cache/');
+    return CgImageCompositor().isCachePath(path);
   }
   
   /// 从内存缓存加载图像
@@ -106,6 +106,7 @@ class ImageLoader {
       
       final codec = await ui.instantiateImageCodec(imageBytes);
       final frame = await codec.getNextFrame();
+      codec.dispose();
       
       //print('[ImageLoader] ✅ 成功解码图像: ${frame.image.width}x${frame.image.height}');
       return frame.image;

@@ -236,7 +236,7 @@ class SmartImage extends StatelessWidget {
   
   /// 判断是否为内存缓存路径
   bool _isMemoryCachePath(String path) {
-    return path.startsWith('/memory_cache/cg_cache/');
+    return CgImageCompositor().isCachePath(path);
   }
   
   /// 构建内存缓存图像（集成预热管理器）
@@ -245,7 +245,7 @@ class SmartImage extends StatelessWidget {
     
     // 提取缓存键信息
     String? cacheKey;
-    if (assetPath.startsWith('/memory_cache/cg_cache/')) {
+    if (_isMemoryCachePath(assetPath)) {
       final filename = assetPath.split('/').last;
       cacheKey = filename.replaceAll('.png', '');
     }

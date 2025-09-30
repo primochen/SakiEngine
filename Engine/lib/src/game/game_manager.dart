@@ -3511,7 +3511,7 @@ class GameManager {
   Map<String, String>? _extractCgInfoFromBackground(String backgroundPath) {
     try {
       // 检查是否为内存缓存路径格式：/memory_cache/cg_cache/resourceId_pose_expression.png
-      if (backgroundPath.startsWith('/memory_cache/cg_cache/')) {
+      if (CgImageCompositor().isCachePath(backgroundPath)) {
         final filename = backgroundPath.split('/').last;
         final cacheKey = filename.replaceAll('.png', '');
         final parts = cacheKey.split('_');

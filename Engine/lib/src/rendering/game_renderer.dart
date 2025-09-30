@@ -5,6 +5,7 @@ import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/utils/image_loader.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
@@ -40,7 +41,7 @@ class GameRenderer {
       String? backgroundPath;
       
       // 检查是否为内存缓存路径
-      if (backgroundName.startsWith('/memory_cache/cg_cache/')) {
+      if (CgImageCompositor().isCachePath(backgroundName)) {
         print('[GameRenderer] 🐛 检测到内存缓存背景路径: $backgroundName');
         backgroundPath = backgroundName; // 直接使用内存缓存路径
       } else {
