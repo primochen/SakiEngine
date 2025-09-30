@@ -49,11 +49,11 @@ class _MoviePlayerState extends State<MoviePlayer> {
 
   Future<void> _initializeVideo() async {
     try {
-      //print('[MoviePlayer] 开始初始化视频: ${widget.movieFile}');
+      ////print('[MoviePlayer] 开始初始化视频: ${widget.movieFile}');
       
       // 如果视频文件为空，直接返回
       if (widget.movieFile.isEmpty) {
-        //print('[MoviePlayer] 视频文件名为空，跳过初始化');
+        ////print('[MoviePlayer] 视频文件名为空，跳过初始化');
         setState(() {
           _hasError = true;
           _errorMessage = '视频文件名为空';
@@ -63,22 +63,22 @@ class _MoviePlayerState extends State<MoviePlayer> {
       
       // 使用AssetManager查找视频文件
       String? videoPath = await AssetManager().findAsset(widget.movieFile);
-      //print('[MoviePlayer] AssetManager查找结果: $videoPath');
+      ////print('[MoviePlayer] AssetManager查找结果: $videoPath');
       
       if (videoPath == null) {
         // 尝试在videos目录下查找
         videoPath = await AssetManager().findAsset('videos/${widget.movieFile}');
-        //print('[MoviePlayer] 在videos目录查找结果: $videoPath');
+        ////print('[MoviePlayer] 在videos目录查找结果: $videoPath');
       }
       
       if (videoPath == null) {
         // 尝试在movies目录下查找
         videoPath = await AssetManager().findAsset('movies/${widget.movieFile}');
-        //print('[MoviePlayer] 在movies目录查找结果: $videoPath');
+        ////print('[MoviePlayer] 在movies目录查找结果: $videoPath');
       }
       
       if (videoPath == null) {
-        //print('[MoviePlayer] 所有路径都未找到视频文件');
+        ////print('[MoviePlayer] 所有路径都未找到视频文件');
         setState(() {
           _hasError = true;
           _errorMessage = '找不到视频文件: ${widget.movieFile}';
@@ -86,23 +86,23 @@ class _MoviePlayerState extends State<MoviePlayer> {
         return;
       }
 
-      //print('[MoviePlayer] 最终使用的视频路径: $videoPath');
+      ////print('[MoviePlayer] 最终使用的视频路径: $videoPath');
 
       // 根据文件路径类型创建控制器
       if (videoPath.startsWith('assets/')) {
         // Assets中的视频文件
-        //print('[MoviePlayer] 使用AssetVideoController');
+        ////print('[MoviePlayer] 使用AssetVideoController');
         _controller = VideoPlayerController.asset(videoPath);
       } else {
         // 外部文件系统中的视频文件
-        //print('[MoviePlayer] 使用FileVideoController');
+        ////print('[MoviePlayer] 使用FileVideoController');
         _controller = VideoPlayerController.file(File(videoPath));
       }
 
       // 初始化控制器
-      //print('[MoviePlayer] 开始初始化控制器');
+      ////print('[MoviePlayer] 开始初始化控制器');
       await _controller!.initialize();
-      //print('[MoviePlayer] 控制器初始化完成');
+      ////print('[MoviePlayer] 控制器初始化完成');
       
       // 设置循环播放
       _controller!.setLooping(widget.looping);
@@ -120,7 +120,7 @@ class _MoviePlayerState extends State<MoviePlayer> {
       }
       
     } catch (e) {
-      //print('[MoviePlayer] 初始化视频失败: $e');
+      ////print('[MoviePlayer] 初始化视频失败: $e');
       setState(() {
         _hasError = true;
         _errorMessage = '视频初始化失败: $e';
@@ -164,12 +164,12 @@ class _MoviePlayerState extends State<MoviePlayer> {
       // 检查视频是否播放完成
       if (isCompleted) {
         _currentPlayCount++;
-        print('[MoviePlayer] 视频播放完成第${_currentPlayCount}次 (Web: $kIsWeb): position=$position, duration=$duration, isPlaying=$isPlaying');
+        //print('[MoviePlayer] 视频播放完成第${_currentPlayCount}次 (Web: $kIsWeb): position=$position, duration=$duration, isPlaying=$isPlaying');
         
         // 检查是否设置了looping（优先级最高）
         if (widget.looping) {
           // 如果设置了looping，永远循环播放，不调用结束回调
-          print('[MoviePlayer] 无限循环播放，重新开始');
+          //print('[MoviePlayer] 无限循环播放，重新开始');
           _controller!.seekTo(Duration.zero).then((_) {
             _controller!.play();
           });
@@ -178,11 +178,11 @@ class _MoviePlayerState extends State<MoviePlayer> {
         
         // 检查是否需要重复播放
         final targetRepeatCount = widget.repeatCount ?? 1; // 如果没有设置repeatCount，默认播放1次
-        print('[MoviePlayer] 当前播放次数: $_currentPlayCount, 目标次数: $targetRepeatCount');
+        //print('[MoviePlayer] 当前播放次数: $_currentPlayCount, 目标次数: $targetRepeatCount');
         
         if (_currentPlayCount < targetRepeatCount) {
           // 还需要继续播放，重置视频到开始位置
-          print('[MoviePlayer] 开始第${_currentPlayCount + 1}次播放，总共需要播放${targetRepeatCount}次');
+          //print('[MoviePlayer] 开始第${_currentPlayCount + 1}次播放，总共需要播放${targetRepeatCount}次');
           
           // Web平台需要稍微延迟再重新播放，避免状态冲突
           if (kIsWeb) {
@@ -202,7 +202,7 @@ class _MoviePlayerState extends State<MoviePlayer> {
           }
         } else {
           // 播放完成所有重复次数
-          print('[MoviePlayer] 所有重复播放完成，共播放${_currentPlayCount}次，调用结束回调');
+          //print('[MoviePlayer] 所有重复播放完成，共播放${_currentPlayCount}次，调用结束回调');
           
           // 设置标志防止重复调用
           _hasCalledOnEnd = true;

@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
@@ -51,6 +53,16 @@ class QuickMenu extends StatefulWidget {
   static void hideOnOverlayOpen() {
     _globalInstance?._hideOnOverlayOpen();
   }
+
+  /// 外部调用：显示快捷菜单（用于移动端触屏唤起）
+  static void showMenu() {
+    _globalInstance?._showMenu();
+  }
+
+  /// 外部调用：触发延迟隐藏（用于移动端触屏）
+  static void scheduleHide() {
+    _globalInstance?._scheduleHideMenu();
+  }
 }
 
 class _QuickMenuState extends State<QuickMenu>
@@ -79,32 +91,35 @@ class _QuickMenuState extends State<QuickMenu>
   @override
   void initState() {
     super.initState();
-    
+
     // 注册全局实例
     QuickMenu._globalInstance = this;
-    
+
     // 添加应用生命周期监听
     WidgetsBinding.instance.addObserver(this);
-    
+
+    // 检查是否为移动端
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+
     // 初始化滑动动画
     _slideController = AnimationController(
       duration: _animationDuration,
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(-0.8, 0), // 向左滑出80%
+      end: Offset(isMobile ? -1.2 : -0.8, 0), // 移动端滑出更多以完全隐藏
     ).animate(CurvedAnimation(
       parent: _slideController,
       curve: Curves.easeInOut,
     ));
-    
+
     // 加载设置并监听变化
-    _loadAutoHideSetting();
+    _loadAutoHideSetting(isMobile: isMobile);
     _loadThemeSetting(); // 新增：加载主题设置
     SettingsManager().addListener(_onSettingsChanged);
-    
+
     // 初始状态：如果开启自动隐藏，则隐藏菜单
     if (_isAutoHideEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -128,19 +143,19 @@ class _QuickMenuState extends State<QuickMenu>
     super.dispose();
   }
 
-  void _loadAutoHideSetting() async {
+  void _loadAutoHideSetting({bool isMobile = false}) async {
     final enabled = await SettingsManager().getAutoHideQuickMenu();
     if (mounted) {
       final wasEnabled = _isAutoHideEnabled;
       setState(() {
         _isAutoHideEnabled = enabled;
       });
-      
+
       // 设置变化时的处理
-      if (enabled && !wasEnabled) {
+      if (_isAutoHideEnabled && !wasEnabled) {
         // 刚开启自动隐藏
         _hideMenu();
-      } else if (!enabled && wasEnabled) {
+      } else if (!_isAutoHideEnabled && wasEnabled) {
         // 刚关闭自动隐藏
         if (_isMenuHidden) {
           _showMenu();
@@ -259,12 +274,17 @@ class _QuickMenuState extends State<QuickMenu>
     final config = SakiEngineConfig();
     final scale = context.scaleFor(ComponentType.menu);
     final screenSize = MediaQuery.of(context).size;
+    final mediaPadding = MediaQuery.of(context).padding;
+
+    // 移动端（iOS/Android）需要额外的左边距以避开刘海/灵动岛
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    final extraLeftPadding = isMobile ? mediaPadding.left : 0.0;
 
     return Stack(
       children: [
         // 触发区域 - 窗口高度的一半，放在最底层
         Positioned(
-          left: 0,
+          left: extraLeftPadding,
           top: 0,
           child: MouseRegion(
             onEnter: (_) => _onTriggerAreaEnter(),
@@ -277,10 +297,10 @@ class _QuickMenuState extends State<QuickMenu>
             ),
           ),
         ),
-        
+
         // 实际的快捷菜单 - 放在触发区域之上，但确保不完全遮挡触发区域
         Positioned(
-          left: 20 * scale,
+          left: 20 * scale + extraLeftPadding,
           top: 20 * scale,
           child: MouseRegion(
             onEnter: (_) {

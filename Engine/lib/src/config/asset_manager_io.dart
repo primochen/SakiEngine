@@ -251,7 +251,6 @@ class AssetManager {
               keyPath.startsWith('cg/') ||
               keyPath.contains('assets/images/cg/')) {
             _imageCache[name] = key;
-            print("Found CG asset in bundle (recursive): $name -> $key");
             return key;
           }
         }
@@ -296,8 +295,6 @@ class AssetManager {
         return key;
       }
     }
-
-    print("Available assets: ${_assetManifest!.keys.take(10).join(', ')}...");
     return null;
   }
 

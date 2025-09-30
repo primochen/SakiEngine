@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/config_models.dart';
@@ -21,6 +22,7 @@ import 'package:sakiengine/src/widgets/common/common_indicator.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
+import 'package:sakiengine/src/widgets/mobile_touch_controller.dart';
 
 /// 游戏UI层组件
 /// 包含所有游戏中的UI元素，支持右键隐藏
@@ -126,7 +128,12 @@ class GameUILayerState extends State<GameUILayer> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    final uiScale = context.scaleFor(ComponentType.menu);
+    final mediaPadding = MediaQuery.of(context).padding;
+    final quickMenuAreaWidth = 100.0 * uiScale + (isMobile ? mediaPadding.left : 0.0);
+
+    final stackContent = Stack(
       children: [
         // 对话框 - 使用 AnimatedSwitcher 为对话框切换添加过渡动画
         HideableUI(
@@ -366,6 +373,26 @@ class GameUILayerState extends State<GameUILayer> {
         ),
       ],
     );
+
+    // 移动端包装触屏控制器
+    if (isMobile) {
+      return MobileTouchController(
+        quickMenuAreaWidth: quickMenuAreaWidth,
+        onQuickMenuAreaTap: () {
+          // 点击快捷菜单区域，显示菜单
+          QuickMenu.showMenu();
+        },
+        onLongPress: () {
+          // 长按屏幕，切换UI显示/隐藏
+          final globalManager = GlobalRightClickUIManager();
+          globalManager.setUIHidden(!globalManager.isUIHidden);
+        },
+        child: stackContent,
+      );
+    }
+
+    // 桌面端直接返回 Stack
+    return stackContent;
   }
 
   /// 显示通知消息（公开给外部调用）
