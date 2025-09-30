@@ -9,6 +9,7 @@ import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class SaveLoadManager {
   static const String _storageKeyPrefix = 'saki_save_';
@@ -56,7 +57,8 @@ class SaveLoadManager {
     if (currentState.currentNode != null && currentState.currentNode is MenuNode) {
       final menuNode = currentState.currentNode as MenuNode;
       final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
-      dialoguePreview = '【选择支】\n${choiceTexts.join('\n')}';
+      final localization = LocalizationManager();
+      dialoguePreview = '${localization.t('saveLoad.choiceMenu')}\n${choiceTexts.join('\n')}';
     }
     // 优先检查 NVL 模式（包括普通nvl和无遮罩nvln模式）
     else if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {

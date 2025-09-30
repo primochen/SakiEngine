@@ -14,6 +14,7 @@ import 'package:sakiengine/src/config/config_parser.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class SaveLoadManager {
   // 缓存脚本和配置，避免重复加载
@@ -43,7 +44,8 @@ class SaveLoadManager {
       if (currentState.currentNode != null && currentState.currentNode is MenuNode) {
         final menuNode = currentState.currentNode as MenuNode;
         final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
-        return '【选择支】\n${choiceTexts.join('\n')}';
+        final localization = LocalizationManager();
+        return '${localization.t('saveLoad.choiceMenu')}\n${choiceTexts.join('\n')}';
       }
 
       // 确定要查询的scriptIndex
