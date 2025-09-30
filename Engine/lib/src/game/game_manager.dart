@@ -2254,16 +2254,53 @@ class GameManager {
       //print('[GameManager] 存档恢复：cgCharacters内容 = ${snapshot.currentState.cgCharacters.keys.toList()}');
     }
 
+    // 修复bug：从新脚本中获取当前对话文本，避免使用存档中的旧文本
+    String? freshDialogue;
+    String? freshSpeaker;
+    List<NvlDialogue>? freshNvlDialogues;
+
+    // 关键修复：当前对话应该从历史记录最后一条的位置获取，而不是从_scriptIndex获取
+    // 因为历史记录的最后一条就是当前显示的对话
+    final dialogueScriptIndex = snapshot.dialogueHistory.isNotEmpty
+        ? snapshot.dialogueHistory.last.scriptIndex
+        : _scriptIndex;
+
+    if (dialogueScriptIndex >= 0 && dialogueScriptIndex < _script.children.length) {
+      final currentNode = _script.children[dialogueScriptIndex];
+      if (currentNode is SayNode) {
+        freshDialogue = currentNode.dialogue;
+        if (currentNode.character != null) {
+          final characterConfig = _characterConfigs[currentNode.character];
+          freshSpeaker = characterConfig?.name;
+        }
+
+        // 如果是NVL模式，同时更新nvlDialogues中的最后一条对话
+        if (snapshot.isNvlMode && snapshot.nvlDialogues.isNotEmpty) {
+          freshNvlDialogues = List<NvlDialogue>.from(snapshot.nvlDialogues);
+          final lastDialogue = freshNvlDialogues.last;
+          freshNvlDialogues[freshNvlDialogues.length - 1] = NvlDialogue(
+            speaker: freshSpeaker,
+            speakerAlias: lastDialogue.speakerAlias,
+            dialogue: freshDialogue,
+            timestamp: lastDialogue.timestamp,
+          );
+        }
+      }
+    }
+
     _currentState = snapshot.currentState.copyWith(
       isNvlMode: snapshot.isNvlMode,
       isNvlMovieMode: snapshot.isNvlMovieMode,
       isNvlnMode: snapshot.isNvlnMode, // 新增：恢复无遮罩NVL模式状态
       isNvlOverlayVisible: snapshot.isNvlOverlayVisible,
-      nvlDialogues: snapshot.nvlDialogues,
+      nvlDialogues: freshNvlDialogues ?? snapshot.nvlDialogues,
       everShownCharacters: _everShownCharacters,
       isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
       // 明确恢复CG角色状态（修复CG存档恢复bug）
       cgCharacters: snapshot.currentState.cgCharacters,
+      // 修复bug：使用从新脚本获取的对话文本
+      dialogue: freshDialogue ?? snapshot.currentState.dialogue,
+      speaker: freshSpeaker ?? snapshot.currentState.speaker,
     );
 
     _activeNvlContext = snapshot.isNvlMode
@@ -2287,11 +2324,6 @@ class GameManager {
         pose: pose,
         expression: expression,
       );
-    }
-
-    if (kDebugMode) {
-      //print('[GameManager] 存档恢复后：cgCharacters数量 = ${_currentState.cgCharacters.length}');
-      //print('[GameManager] 存档恢复后：cgCharacters内容 = ${_currentState.cgCharacters.keys.toList()}');
     }
 
     if (snapshot.dialogueHistory.isNotEmpty) {
