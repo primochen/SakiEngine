@@ -3,7 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sakiengine/src/game/unified_game_data_manager.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
 
 enum SupportedLanguage { zhHans, zhHant, en, ja }
 
@@ -66,9 +67,10 @@ class LocalizationManager extends ChangeNotifier {
   LocalizationManager._internal();
 
   static const String _translationsAsset = 'assets/i18n/strings.json';
-  static const String _languagePreferenceKey = 'sakiengine.language';
 
   final Map<SupportedLanguage, Map<String, String>> _translations = {};
+  final _dataManager = UnifiedGameDataManager();
+  String? _projectName;
   SupportedLanguage _currentLanguage = SupportedLanguage.zhHans;
   SupportedLanguage _fallbackLanguage = SupportedLanguage.en;
   bool _initialized = false;
@@ -78,10 +80,21 @@ class LocalizationManager extends ChangeNotifier {
       return;
     }
 
+    // 获取项目名称
+    try {
+      _projectName = await ProjectInfoManager().getAppName();
+    } catch (e) {
+      _projectName = 'SakiEngine';
+    }
+
+    // 初始化数据管理器
+    await _dataManager.init(_projectName!);
+
     await _loadTranslations();
 
-    final prefs = await SharedPreferences.getInstance();
-    final saved = supportedLanguageFromCode(prefs.getString(_languagePreferenceKey));
+    // 从统一数据管理器读取语言设置
+    final savedCode = _dataManager.getStringVariable('sakiengine.language');
+    final saved = supportedLanguageFromCode(savedCode);
 
     if (saved != null && _translations.containsKey(saved)) {
       _currentLanguage = saved;
@@ -153,8 +166,7 @@ class LocalizationManager extends ChangeNotifier {
     }
 
     _currentLanguage = language;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_languagePreferenceKey, language.code);
+    await _dataManager.setStringVariable('sakiengine.language', language.code, _projectName!);
     notifyListeners();
   }
 

@@ -1,4 +1,4 @@
-//label// SoraNoUta 主标签脚本文件
+//label// ソラノウタ メインラベルスクリプト
 label start
 scene bl
 movie start repeat 8
@@ -6,20 +6,20 @@ movie start repeat 8
 scene bl with diss
 play sound kazekage loop
 nvlm
-// 旁白文本（移除了xp前缀）
-"风吹动着。"
-"什么东西嘈杂着。"
-"是什么？"
-"我缓缓睁开双眼，传入耳中的只有呼喊。"
-"我尝试着寻找着呼喊的源头。"
-"也尝试着理解呼喊的内容。"
-"但是所接触的事物，就像是从未学过的语言一样，无法理解。"
-"直到渐渐的，渐渐的。"
-"渐渐的理解了含义。"
-"这声音，原来是出自我那再熟悉不过的。"
+// ナレーションテキスト（xp前缀削除済み）
+"風が吹き抜ける。"
+"どこかでざわめきが起きている。"
+"何だろう。"
+"ゆっくりと目を開けると、耳に届くのは呼ぶ声だけ。"
+"私はその呼び声の主を探そうとする。"
+"そして、その言葉の意味を理解しようと試みる。"
+"けれど聞こえてくる音は、習ったことのない言語のようで掴めない。"
+"やがて、少しずつ。"
+"少しずつ、意味がほどけていく。"
+"その声は――私が誰よりも知っている、あの。"
 endnvlm
 nvlm
-"那是————"
+"それは――――"
 endnvlm
-scene [chapter0,title:bottom=0.0 left=0.0 zoom=0.3] timer 5.0 fx blur
+scene [chapter0,title_jp:bottom=0.0 left=0.0 zoom=0.3] timer 5.0 fx blur
 jump cp0_001
