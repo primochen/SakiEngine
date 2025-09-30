@@ -278,9 +278,15 @@ class _MoviePlayerState extends State<MoviePlayer> {
 
     return Container(
       color: Colors.black,
-      child: AspectRatio(
-        aspectRatio: _controller!.value.aspectRatio,
-        child: VideoPlayer(_controller!),
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
       ),
     );
   }

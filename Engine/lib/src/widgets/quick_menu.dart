@@ -109,7 +109,7 @@ class _QuickMenuState extends State<QuickMenu>
 
     _slideAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: Offset(isMobile ? -1.2 : -0.8, 0), // 移动端滑出更多以完全隐藏
+      end: Offset(isMobile ? -5.0 : -0.8, 0), // 移动端滑出更多以完全隐藏
     ).animate(CurvedAnimation(
       parent: _slideController,
       curve: Curves.easeInOut,
