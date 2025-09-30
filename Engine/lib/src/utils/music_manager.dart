@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sakiengine/src/game/unified_game_data_manager.dart';
+import 'package:sakiengine/src/config/project_info_manager.dart';
 
 /// 音频轨道类型枚举
 enum AudioTrackType {
@@ -48,82 +49,59 @@ class MusicManager extends ChangeNotifier {
     AudioTrackType.music: AudioPlayer(),
     AudioTrackType.sound: AudioPlayer(),
   };
-  
+
   // 音效可能需要多个播放器来支持重叠播放
   final List<AudioPlayer> _soundPlayers = [];
   int _soundPlayerIndex = 0;
-  
-  bool _isMusicEnabled = true;
-  bool _isSoundEnabled = true;
-  double _musicVolume = 0.8;
-  double _soundVolume = 0.8;
+
+  final _dataManager = UnifiedGameDataManager();
+  String? _projectName;
   String? _currentBackgroundMusic;
   String? _currentSound;
-  
+
   // 淡入淡出相关
   final Map<AudioTrackType, Timer?> _fadeTimers = {};
   final Map<AudioTrackType, bool> _isFading = {};
   final Map<AudioTrackType, double> _currentFadeVolume = {};
-  
-  bool get isMusicEnabled => _isMusicEnabled;
-  bool get isSoundEnabled => _isSoundEnabled;
-  double get musicVolume => _musicVolume;
-  double get soundVolume => _soundVolume;
+
+  bool get isMusicEnabled => _dataManager.isMusicEnabled;
+  bool get isSoundEnabled => _dataManager.isSoundEnabled;
+  double get musicVolume => _dataManager.musicVolume;
+  double get soundVolume => _dataManager.soundVolume;
   String? get currentBackgroundMusic => _currentBackgroundMusic;
   String? get currentSound => _currentSound;
 
   Future<void> initialize() async {
-    await _loadSettings();
-    
+    // 获取项目名称
+    try {
+      _projectName = await ProjectInfoManager().getAppName();
+    } catch (e) {
+      _projectName = 'SakiEngine';
+    }
+
+    // 初始化数据管理器
+    await _dataManager.init(_projectName!);
+
     // 设置音乐轨道为循环播放
     await _trackPlayers[AudioTrackType.music]!.setReleaseMode(ReleaseMode.loop);
-    
+
     // 设置音效轨道为单次播放
     await _trackPlayers[AudioTrackType.sound]!.setReleaseMode(ReleaseMode.release);
-    
+
     // 初始化多个音效播放器支持重叠播放
     for (int i = 0; i < 5; i++) { // 支持最多5个音效同时播放
       final player = AudioPlayer();
       await player.setReleaseMode(ReleaseMode.release);
       _soundPlayers.add(player);
     }
-    
+
     await _updateTrackVolume(AudioTrackType.music);
     await _updateTrackVolume(AudioTrackType.sound);
   }
 
-  Future<void> _loadSettings() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _isMusicEnabled = prefs.getBool('music_enabled') ?? true;
-      _isSoundEnabled = prefs.getBool('sound_enabled') ?? true;
-      _musicVolume = prefs.getDouble('music_volume') ?? 0.8;
-      _soundVolume = prefs.getDouble('sound_volume') ?? 0.8;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error loading audio settings: $e');
-      }
-    }
-  }
-
-  Future<void> _saveSettings() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('music_enabled', _isMusicEnabled);
-      await prefs.setBool('sound_enabled', _isSoundEnabled);
-      await prefs.setDouble('music_volume', _musicVolume);
-      await prefs.setDouble('sound_volume', _soundVolume);
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving audio settings: $e');
-      }
-    }
-  }
-
   Future<void> setMusicEnabled(bool enabled) async {
-    _isMusicEnabled = enabled;
-    await _saveSettings();
-    
+    await _dataManager.setMusicEnabled(enabled, _projectName!);
+
     if (!enabled) {
       _cancelTrackFade(AudioTrackType.music);
       await _trackPlayers[AudioTrackType.music]!.pause();
@@ -135,14 +113,13 @@ class MusicManager extends ChangeNotifier {
         fadeDuration: const Duration(milliseconds: 500),
       );
     }
-    
+
     notifyListeners();
   }
-  
+
   Future<void> setSoundEnabled(bool enabled) async {
-    _isSoundEnabled = enabled;
-    await _saveSettings();
-    
+    await _dataManager.setSoundEnabled(enabled, _projectName!);
+
     if (!enabled) {
       _cancelTrackFade(AudioTrackType.sound);
       await _trackPlayers[AudioTrackType.sound]!.pause();
@@ -151,20 +128,18 @@ class MusicManager extends ChangeNotifier {
         await player.pause();
       }
     }
-    
+
     notifyListeners();
   }
 
   Future<void> setMusicVolume(double volume) async {
-    _musicVolume = volume.clamp(0.0, 1.0);
-    await _saveSettings();
+    await _dataManager.setMusicVolume(volume, _projectName!);
     await _updateTrackVolume(AudioTrackType.music);
     notifyListeners();
   }
 
   Future<void> setSoundVolume(double volume) async {
-    _soundVolume = volume.clamp(0.0, 1.0);
-    await _saveSettings();
+    await _dataManager.setSoundVolume(volume, _projectName!);
     await _updateTrackVolume(AudioTrackType.sound);
     notifyListeners();
   }
@@ -173,15 +148,15 @@ class MusicManager extends ChangeNotifier {
   Future<void> _updateTrackVolume(AudioTrackType trackType) async {
     late bool isEnabled;
     late double baseVolume;
-    
+
     switch (trackType) {
       case AudioTrackType.music:
-        isEnabled = _isMusicEnabled;
-        baseVolume = _musicVolume;
+        isEnabled = _dataManager.isMusicEnabled;
+        baseVolume = _dataManager.musicVolume;
         break;
       case AudioTrackType.sound:
-        isEnabled = _isSoundEnabled;
-        baseVolume = _soundVolume;
+        isEnabled = _dataManager.isSoundEnabled;
+        baseVolume = _dataManager.soundVolume;
         break;
     }
     
@@ -210,13 +185,13 @@ class MusicManager extends ChangeNotifier {
     
     switch (trackType) {
       case AudioTrackType.music:
-        isEnabled = _isMusicEnabled;
-        baseVolume = _musicVolume;
+        isEnabled = _dataManager.isMusicEnabled;
+        baseVolume = _dataManager.musicVolume;
         currentTrack = _currentBackgroundMusic;
         break;
       case AudioTrackType.sound:
-        isEnabled = _isSoundEnabled;
-        baseVolume = _soundVolume;
+        isEnabled = _dataManager.isSoundEnabled;
+        baseVolume = _dataManager.soundVolume;
         currentTrack = _currentSound;
         break;
     }
@@ -262,13 +237,13 @@ class MusicManager extends ChangeNotifier {
     
     switch (trackType) {
       case AudioTrackType.music:
-        isEnabled = _isMusicEnabled;
-        baseVolume = _musicVolume;
+        isEnabled = _dataManager.isMusicEnabled;
+        baseVolume = _dataManager.musicVolume;
         currentTrack = _currentBackgroundMusic;
         break;
       case AudioTrackType.sound:
-        isEnabled = _isSoundEnabled;
-        baseVolume = _soundVolume;
+        isEnabled = _dataManager.isSoundEnabled;
+        baseVolume = _dataManager.soundVolume;
         currentTrack = _currentSound;
         break;
     }
@@ -373,7 +348,7 @@ class MusicManager extends ChangeNotifier {
       return;
     }
 
-    if (!_isMusicEnabled) {
+    if (!_dataManager.isMusicEnabled) {
       _currentBackgroundMusic = assetPath;
       return;
     }
@@ -418,7 +393,7 @@ class MusicManager extends ChangeNotifier {
     required Duration fadeDuration,
     required bool loop,
   }) async {
-    if (!_isSoundEnabled) {
+    if (!_dataManager.isSoundEnabled) {
       _currentSound = assetPath;
       return;
     }
@@ -471,7 +446,7 @@ class MusicManager extends ChangeNotifier {
     try {
       if (_currentSound == null) return;
       
-      if (fadeOut && _isSoundEnabled) {
+      if (fadeOut && _dataManager.isSoundEnabled) {
         if (kDebugMode) {
           //print('[AudioManager] 淡出停止音效: $_currentSound');
         }
@@ -509,7 +484,7 @@ class MusicManager extends ChangeNotifier {
     try {
       if (_currentBackgroundMusic == null) return;
       
-      if (fadeOut && _isMusicEnabled) {
+      if (fadeOut && _dataManager.isMusicEnabled) {
         if (kDebugMode) {
           //print('[AudioManager] 淡出停止音乐: $_currentBackgroundMusic');
         }
@@ -540,7 +515,7 @@ class MusicManager extends ChangeNotifier {
     try {
       if (_currentBackgroundMusic == null) return;
       
-      if (fadeOut && _isMusicEnabled) {
+      if (fadeOut && _dataManager.isMusicEnabled) {
         if (kDebugMode) {
           //print('[AudioManager] 淡出清除音乐: $_currentBackgroundMusic');
         }
@@ -579,7 +554,7 @@ class MusicManager extends ChangeNotifier {
     try {
       if (_currentBackgroundMusic == null) return;
       
-      if (fadeOut && _isMusicEnabled) {
+      if (fadeOut && _dataManager.isMusicEnabled) {
         if (kDebugMode) {
           //print('[AudioManager] 淡出强制停止音乐: $_currentBackgroundMusic');
         }
@@ -619,7 +594,7 @@ class MusicManager extends ChangeNotifier {
 
   Future<void> resumeBackgroundMusic() async {
     try {
-      if (_isMusicEnabled && _currentBackgroundMusic != null) {
+      if (_dataManager.isMusicEnabled && _currentBackgroundMusic != null) {
         await _trackPlayers[AudioTrackType.music]!.resume();
         // 恢复播放时淡入
         await _fadeIn(AudioTrackType.music, duration: const Duration(milliseconds: 500));
