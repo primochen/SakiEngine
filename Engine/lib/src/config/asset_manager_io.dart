@@ -170,15 +170,6 @@ class AssetManager {
         }
       }
     }
-
-    if (kDebugMode) {
-      final resolved = resolvedDirectories.isEmpty
-          ? 'none'
-          : resolvedDirectories.join(' -> ');
-      print(
-          'Found ${assets.length} assets via $resolved (requested: $directory) with extension $extension: ${assets.join(', ')}');
-    }
-
     return assets;
   }
 
