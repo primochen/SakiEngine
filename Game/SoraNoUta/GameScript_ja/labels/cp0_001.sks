@@ -649,7 +649,7 @@ x pose3 tameiki "啊...所以......所以你只是在想事情，并不是...并
 l "什么话？"
 "我明知故问。。"
 play sound poko
-x pose4 shy4 an fururu repeat 4 "笨蛋，没听到就算了。"////依旧脸红害羞，但是眼睛转了过去
+x pose4 shy4 an fururu repeat 4 "笨蛋，没听到就算了。～"////依旧脸红害羞，但是眼睛转了过去
 hide xiayo1
 "夏悠生气地扭头离开了。"
 "这个午饭真是蹭得累啊～"

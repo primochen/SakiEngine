@@ -2296,7 +2296,12 @@ class GameManager {
 
     if (snapshot.dialogueHistory.isNotEmpty) {
       _dialogueHistory = List.from(snapshot.dialogueHistory);
+      // 修复bug：从新脚本中重新获取对话文本，确保剧本修改后读档时显示最新内容
+      _refreshDialogueHistoryFromScript();
     }
+
+    // 修复bug：同时更新当前状态的对话文本
+    _refreshCurrentStateDialogue();
 
     // 检查恢复位置的音乐区间（强制检查）
     await _checkMusicRegionAtCurrentIndex(forceCheck: true);
@@ -2516,6 +2521,100 @@ class GameManager {
 
     if (_dialogueHistory.length > maxHistoryEntries) {
       _dialogueHistory.removeAt(0);
+    }
+  }
+
+  /// 从新脚本中刷新历史记录的对话文本
+  /// 用于修复剧本修改后读档时对话文本未更新的bug
+  void _refreshDialogueHistoryFromScript() {
+    final updatedHistory = <DialogueHistoryEntry>[];
+
+    for (final entry in _dialogueHistory) {
+      final scriptIndex = entry.scriptIndex;
+
+      // 检查索引是否有效
+      if (scriptIndex < 0 || scriptIndex >= _script.children.length) {
+        // 索引无效，保留原对话
+        updatedHistory.add(entry);
+        continue;
+      }
+
+      final node = _script.children[scriptIndex];
+      String? newDialogue;
+      String? newSpeaker;
+
+      // 根据节点类型提取最新的对话文本（只处理SayNode）
+      if (node is SayNode) {
+        newDialogue = node.dialogue;
+        if (node.character != null) {
+          final characterConfig = _characterConfigs[node.character];
+          newSpeaker = characterConfig?.name;
+        }
+      }
+
+      // 如果成功获取到新对话，则更新；否则保留原对话
+      if (newDialogue != null) {
+        final updatedEntry = DialogueHistoryEntry(
+          speaker: newSpeaker ?? entry.speaker,
+          dialogue: RichTextParser.cleanText(newDialogue),
+          timestamp: entry.timestamp,
+          scriptIndex: entry.scriptIndex,
+          stateSnapshot: entry.stateSnapshot,
+        );
+        updatedHistory.add(updatedEntry);
+      } else {
+        // 节点不包含对话或类型不匹配，保留原对话
+        updatedHistory.add(entry);
+      }
+    }
+
+    _dialogueHistory = updatedHistory;
+  }
+
+  /// 从新脚本中刷新当前状态的对话文本
+  /// 用于修复剧本修改后读档时当前对话文本未更新的bug
+  void _refreshCurrentStateDialogue() {
+    // 检查索引是否有效
+    if (_scriptIndex < 0 || _scriptIndex >= _script.children.length) {
+      return;
+    }
+
+    final node = _script.children[_scriptIndex];
+    String? newDialogue;
+    String? newSpeaker;
+
+    // 根据节点类型提取最新的对话文本（只处理SayNode）
+    if (node is SayNode) {
+      newDialogue = node.dialogue;
+      if (node.character != null) {
+        final characterConfig = _characterConfigs[node.character];
+        newSpeaker = characterConfig?.name;
+      }
+    }
+
+    // 如果成功获取到新对话，则更新当前状态
+    if (newDialogue != null) {
+      _currentState = _currentState.copyWith(
+        dialogue: newDialogue,
+        speaker: newSpeaker,
+        everShownCharacters: _everShownCharacters,
+      );
+
+      // 如果是NVL模式，同时更新nvlDialogues中的最后一条对话
+      if (_currentState.isNvlMode && _currentState.nvlDialogues.isNotEmpty) {
+        final updatedNvlDialogues = List<NvlDialogue>.from(_currentState.nvlDialogues);
+        final lastDialogue = updatedNvlDialogues.last;
+        updatedNvlDialogues[updatedNvlDialogues.length - 1] = NvlDialogue(
+          speaker: newSpeaker,
+          speakerAlias: lastDialogue.speakerAlias,
+          dialogue: newDialogue,
+          timestamp: lastDialogue.timestamp,
+        );
+        _currentState = _currentState.copyWith(
+          nvlDialogues: updatedNvlDialogues,
+          everShownCharacters: _everShownCharacters,
+        );
+      }
     }
   }
 
