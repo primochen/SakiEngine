@@ -3,10 +3,11 @@ import 'dart:typed_data';
 import 'dart:math' show min;
 import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 
 /// 二进制序列化工具类，用于将游戏数据序列化为二进制格式
 class BinarySerializer {
-  static const int _version = 6; // 增加版本号以支持NVL遮罩可见性字段
+  static const int _version = 7; // 增加版本号以支持 currentNode (MenuNode) 序列化
   static const String _magicNumber = 'SAKI';
 
   /// 将SaveSlot序列化为二进制数据
@@ -226,6 +227,9 @@ class BinarySerializer {
       buffer.addAll(_serializeNvlDialogue(nvlDialogue));
     }
 
+    // 序列化 currentNode（版本7新增）
+    buffer.addAll(_serializeCurrentNode(state.currentNode));
+
     return Uint8List.fromList(buffer);
   }
 
@@ -282,6 +286,9 @@ class BinarySerializer {
       nvlDialogues.add(_deserializeNvlDialogue(reader));
     }
 
+    // 反序列化 currentNode（版本7新增）
+    final currentNode = _deserializeCurrentNode(reader, version);
+
     return GameState(
       background: background,
       movieFile: movieFile, // 新增：视频文件参数
@@ -294,7 +301,58 @@ class BinarySerializer {
       isNvlnMode: isNvlnMode, // 添加无遮罩NVL模式状态
       isNvlOverlayVisible: isNvlOverlayVisible,
       nvlDialogues: nvlDialogues,
+      currentNode: currentNode, // 添加 currentNode
     );
+  }
+
+  /// 序列化 currentNode (MenuNode)
+  static Uint8List _serializeCurrentNode(SksNode? node) {
+    final buffer = <int>[];
+
+    if (node == null || node is! MenuNode) {
+      // 如果 currentNode 为 null 或不是 MenuNode，标记为无数据
+      buffer.add(0);
+    } else {
+      // 标记有 MenuNode 数据
+      buffer.add(1);
+
+      // 序列化选择项数量
+      buffer.addAll(_writeInt32(node.choices.length));
+
+      // 序列化每个选择项
+      for (final choice in node.choices) {
+        buffer.addAll(_writeString(choice.text));
+        buffer.addAll(_writeString(choice.targetLabel));
+      }
+    }
+
+    return Uint8List.fromList(buffer);
+  }
+
+  /// 反序列化 currentNode (MenuNode)
+  static SksNode? _deserializeCurrentNode(_BinaryReader reader, int? version) {
+    // 只在版本7及以上才读取 currentNode
+    if (version == null || version < 7) {
+      return null;
+    }
+
+    final hasNode = reader.readByte() == 1;
+    if (!hasNode) {
+      return null;
+    }
+
+    // 读取选择项数量
+    final choicesLength = reader.readInt32();
+    final choices = <ChoiceOptionNode>[];
+
+    // 读取每个选择项
+    for (int i = 0; i < choicesLength; i++) {
+      final text = reader.readString();
+      final targetLabel = reader.readString();
+      choices.add(ChoiceOptionNode(text, targetLabel));
+    }
+
+    return MenuNode(choices);
   }
 
   /// 序列化CharacterState
