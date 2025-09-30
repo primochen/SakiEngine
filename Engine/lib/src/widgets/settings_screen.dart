@@ -1007,6 +1007,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             config: config,
             scale: scale,
             previewText: _previewText, // 传入预选的文本
+            fontFamily: _dialogueFontFamily, // 传入选定的字体
           ),
         ],
       ),

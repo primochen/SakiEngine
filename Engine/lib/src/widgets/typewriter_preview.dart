@@ -10,6 +10,7 @@ class TypewriterPreview extends StatefulWidget {
   final SakiEngineConfig config;
   final double scale;
   final String? previewText; // 新增：预选的展示文本
+  final String? fontFamily; // 新增：字体
 
   const TypewriterPreview({
     super.key,
@@ -18,6 +19,7 @@ class TypewriterPreview extends StatefulWidget {
     required this.config,
     required this.scale,
     this.previewText, // 可选参数
+    this.fontFamily, // 可选参数
   });
 
   @override
@@ -102,7 +104,7 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
   @override
   void didUpdateWidget(TypewriterPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     bool shouldRestart = false;
     String? updatedText;
 
@@ -112,7 +114,8 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
     }
 
     if (oldWidget.charsPerSecond != widget.charsPerSecond ||
-        oldWidget.skipPunctuationDelay != widget.skipPunctuationDelay) {
+        oldWidget.skipPunctuationDelay != widget.skipPunctuationDelay ||
+        oldWidget.fontFamily != widget.fontFamily) {
       shouldRestart = true;
     }
 
@@ -211,6 +214,7 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
                           fontSize: widget.config.dialogueTextStyle.fontSize! * textScale * 0.5,
                           color: widget.config.themeColors.onSurface,
                           height: 1.4,
+                          fontFamily: widget.fontFamily ?? widget.config.dialogueFontFamily,
                         ),
                       ),
                       if (showCursor && widget.charsPerSecond < 200.0)
@@ -219,6 +223,7 @@ class _TypewriterPreviewState extends State<TypewriterPreview>
                           style: widget.config.dialogueTextStyle.copyWith(
                             fontSize: widget.config.dialogueTextStyle.fontSize! * textScale * 0.5,
                             color: widget.config.themeColors.primary,
+                            fontFamily: widget.fontFamily ?? widget.config.dialogueFontFamily,
                           ),
                         ),
                     ],
