@@ -18,7 +18,12 @@ class BinarySerializer {
     buffer.addAll(_writeInt32(_version));
 
     // 写入基本信息
-    buffer.addAll(_writeInt32(saveSlot.id));
+    // 桌面平台使用Int64存储ID，Web平台使用Int32
+    if (kIsWeb) {
+      buffer.addAll(_writeInt32(saveSlot.id));
+    } else {
+      buffer.addAll(_writeInt64(saveSlot.id));
+    }
     // Web平台使用Int32存储时间戳（秒级精度），桌面平台使用Int64（毫秒级精度）
     if (kIsWeb) {
       buffer.addAll(_writeInt32((saveSlot.saveTime.millisecondsSinceEpoch ~/ 1000)));
