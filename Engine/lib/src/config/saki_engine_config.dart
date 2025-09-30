@@ -155,6 +155,9 @@ class SakiEngineConfig {
   TextStyle reviewTitleTextStyle = const TextStyle(fontSize: 36, color: Color(0xFF5D4037), fontWeight: FontWeight.w300);
   TextStyle quickMenuTextStyle = const TextStyle(fontSize: 14, color: Colors.white);
 
+  // 对话文字字体
+  String dialogueFontFamily = 'SourceHanSansCN';
+
   // 全局主题系统
   String currentTheme = 'brown';
   ThemeColors themeColors = ThemeColors.fromPrimary(const Color(0xFF8B4513));
@@ -163,7 +166,11 @@ class SakiEngineConfig {
 
   void updateThemeForDarkMode() {
     final isDarkMode = SettingsManager().currentDarkMode;
-    final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);    
+    final baseColor = parseColor(currentTheme) ?? const Color(0xFF8B4513);
+
+    // 更新对话文字字体
+    dialogueFontFamily = SettingsManager().currentDialogueFontFamily;
+
     if (isDarkMode) {
       // 夜间模式：深色主题 + 色温调整
       themeColors = ThemeColors.fromPrimaryDark(baseColor)

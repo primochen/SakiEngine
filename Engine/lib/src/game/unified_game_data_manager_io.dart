@@ -24,6 +24,7 @@ class UnifiedGameDataManager {
   bool _autoHideQuickMenu = false;
   String _menuDisplayMode = 'windowed';
   String _fastForwardMode = 'read_only';
+  String _dialogueFontFamily = 'SourceHanSansCN'; // 对话文字字体
 
   // 音频设置
   bool _isMusicEnabled = true;
@@ -101,6 +102,7 @@ class UnifiedGameDataManager {
     buffer.add(_writeBool(_autoHideQuickMenu));
     buffer.add(_writeString(_menuDisplayMode));
     buffer.add(_writeString(_fastForwardMode));
+    buffer.add(_writeString(_dialogueFontFamily));
 
     // 写入音频设置
     buffer.add(_writeBool(_isMusicEnabled));
@@ -159,6 +161,7 @@ class UnifiedGameDataManager {
     _autoHideQuickMenu = reader.readBool();
     _menuDisplayMode = reader.readString();
     _fastForwardMode = reader.readString();
+    _dialogueFontFamily = reader.readString();
 
     // 读取音频设置
     _isMusicEnabled = reader.readBool();
@@ -279,6 +282,12 @@ class UnifiedGameDataManager {
   double get soundVolume => _soundVolume;
   Future<void> setSoundVolume(double value, String projectName) async {
     _soundVolume = value;
+    await save(projectName);
+  }
+
+  String get dialogueFontFamily => _dialogueFontFamily;
+  Future<void> setDialogueFontFamily(String value, String projectName) async {
+    _dialogueFontFamily = value;
     await save(projectName);
   }
 

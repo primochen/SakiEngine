@@ -41,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoHideQuickMenu = SettingsManager.defaultAutoHideQuickMenu;
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
   String _fastForwardMode = SettingsManager.defaultFastForwardMode;
+  String _dialogueFontFamily = SettingsManager.defaultDialogueFontFamily;
   
   // 预览文本（在设置界面生命周期内固定）
   late String _previewText;
@@ -98,6 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
       _menuDisplayMode = await SettingsManager().getMenuDisplayMode();
       _fastForwardMode = await SettingsManager().getFastForwardMode();
+      _dialogueFontFamily = await SettingsManager().getDialogueFontFamily();
       
       // 加载音频设置
       _musicEnabled = _musicManager.isMusicEnabled;
@@ -166,6 +168,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateFastForwardMode(String value) async {
     setState(() => _fastForwardMode = value);
     await _settingsManager.setFastForwardMode(value);
+  }
+
+  Future<void> _updateDialogueFontFamily(String value) async {
+    setState(() => _dialogueFontFamily = value);
+    await _settingsManager.setDialogueFontFamily(value);
+    // 更新config
+    SakiEngineConfig().updateThemeForDarkMode();
   }
 
   Future<void> _updateMusicEnabled(bool value) async {
@@ -322,6 +331,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _buildLanguageSelector(config, scale),
             SizedBox(height: 40 * scale),
+            _buildDialogueFontSelector(config, scale),
+            SizedBox(height: 40 * scale),
             _buildOpacitySlider(config, scale),
             SizedBox(height: 40 * scale),
             _buildMenuDisplayModeToggle(config, scale),
@@ -391,6 +402,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildLanguageSelector(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildDialogueFontSelector(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildMenuDisplayModeToggle(config, scale),
                       SizedBox(height: 40 * scale),
@@ -1340,7 +1353,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textScale = context.scaleFor(ComponentType.text);
     final isForceMode = _fastForwardMode == 'force';
     final localization = LocalizationManager();
-    
+
     return Container(
       padding: EdgeInsets.all(16 * scale),
       decoration: BoxDecoration(
@@ -1389,6 +1402,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => _updateFastForwardMode(value ? 'force' : 'read_only'),
             scale: scale,
             config: config,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogueFontSelector(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
+
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.font_download_outlined,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localization.t('settings.dialogueFont.title'),
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  localization.t('settings.dialogueFont.description'),
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleDropdown<String>(
+            items: [
+              GameStyleDropdownItem<String>(
+                value: 'SourceHanSansCN',
+                label: localization.t('settings.dialogueFont.sourceHanSans'),
+              ),
+              GameStyleDropdownItem<String>(
+                value: 'ChillJinshuSongPro_Soft',
+                label: localization.t('settings.dialogueFont.hanChanJinShu'),
+              ),
+            ],
+            value: _dialogueFontFamily,
+            onChanged: _updateDialogueFontFamily,
+            scale: scale,
+            textScale: textScale,
+            config: config,
+            width: 200 * scale,
           ),
         ],
       ),

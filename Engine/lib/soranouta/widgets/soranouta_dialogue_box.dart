@@ -301,7 +301,7 @@ class _SoranoUtaDialogueBoxState extends State<SoranoUtaDialogueBox>
       color: config.themeColors.onSurface,
       height: 1.6,
       letterSpacing: 0.3,
-      fontFamily: 'SourceHanSansCN',
+      fontFamily: config.dialogueFontFamily,
     );
 
     final speakerStyle = config.speakerTextStyle.copyWith(

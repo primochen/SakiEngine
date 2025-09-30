@@ -400,7 +400,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
         child: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center, // 垂直居中对齐
           children: [
-            isLastDialogue 
+            isLastDialogue
               ? TypewriterText(
                   text: displayText,
                   style: config.dialogueTextStyle.copyWith(
@@ -408,6 +408,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
                     color: Colors.white,
                     height: 1.6,
                     letterSpacing: 0.3,
+                    fontFamily: config.dialogueFontFamily,
                   ),
                   autoStart: true,
                   controller: _getOrCreateTypewriterController(index),
@@ -431,6 +432,7 @@ class _NvlScreenState extends State<NvlScreen> with TickerProviderStateMixin imp
                         color: Colors.white,
                         height: 1.6,
                         letterSpacing: 0.3,
+                        fontFamily: config.dialogueFontFamily,
                       ),
                     ),
                   ),

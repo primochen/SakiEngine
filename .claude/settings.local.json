@@ -16,7 +16,8 @@
       "WebFetch(domain:www.renpy.org)",
       "Read(//Library/Afolder/AYEngine/**)",
       "Bash(git checkout:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

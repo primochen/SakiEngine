@@ -22,6 +22,7 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultAutoHideQuickMenu = false;
   static const String defaultMenuDisplayMode = 'windowed'; // 'windowed' or 'fullscreen'
   static const String defaultFastForwardMode = 'read_only'; // 'read_only' or 'force'
+  static const String defaultDialogueFontFamily = 'SourceHanSansCN'; // 对话文字字体
 
   final _dataManager = UnifiedGameDataManager();
   String? _projectName;
@@ -179,6 +180,20 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 对话文字字体设置
+  Future<String> getDialogueFontFamily() async {
+    await init();
+    return _dataManager.dialogueFontFamily;
+  }
+
+  String get currentDialogueFontFamily => _dataManager.dialogueFontFamily;
+
+  Future<void> setDialogueFontFamily(String fontFamily) async {
+    await init();
+    await _dataManager.setDialogueFontFamily(fontFamily, _projectName!);
+    notifyListeners();
+  }
+
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
@@ -198,6 +213,7 @@ class SettingsManager extends ChangeNotifier {
     await _dataManager.setAutoHideQuickMenu(defaultAutoHideQuickMenu, _projectName!);
     await _dataManager.setMenuDisplayMode(projectDefaultMenuDisplayMode, _projectName!);
     await _dataManager.setFastForwardMode(defaultFastForwardMode, _projectName!);
+    await _dataManager.setDialogueFontFamily(defaultDialogueFontFamily, _projectName!);
 
     // 应用默认全屏设置（非Web平台）
     if (!kIsWeb) {
