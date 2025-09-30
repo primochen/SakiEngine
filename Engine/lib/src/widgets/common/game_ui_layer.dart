@@ -8,6 +8,7 @@ import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/utils/expression_selector_manager.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
@@ -240,7 +241,7 @@ class GameUILayerState extends State<GameUILayer> {
               child: CommonIndicator(
                 isVisible: widget.gameState.isFastForwarding,
                 icon: Icons.fast_forward_rounded, // 使用圆滑的图标
-                text: '正在快进......',
+                text: LocalizationManager().t('indicator.fastForwarding'),
               ),
             ),
           ),
@@ -254,7 +255,7 @@ class GameUILayerState extends State<GameUILayer> {
               child: CommonIndicator(
                 isVisible: widget.gameState.isAutoPlaying,
                 icon: Icons.play_arrow_rounded, // 使用圆滑的图标
-                text: '正在自动播放......',
+                text: LocalizationManager().t('indicator.autoPlaying'),
               ),
             ),
           ),

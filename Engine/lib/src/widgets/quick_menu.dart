@@ -429,7 +429,7 @@ class _QuickMenuState extends State<QuickMenu>
                         // 新增：主题切换按钮
                         if (widget.onThemeToggle != null) ...[
                           _QuickMenuButton(
-                            text: _isDarkMode ? '浅色' : '深色',
+                            text: _isDarkMode ? _localization.t('quickMenu.theme.light') : _localization.t('quickMenu.theme.dark'),
                             icon: _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                             onPressed: _toggleTheme,
                             scale: scale,
@@ -450,7 +450,7 @@ class _QuickMenuState extends State<QuickMenu>
                         ],
                         // 新增：自动隐藏切换按钮
                         _QuickMenuButton(
-                          text: _isAutoHideEnabled ? '固定' : '隐藏',
+                          text: _isAutoHideEnabled ? _localization.t('quickMenu.autoHide.pin') : _localization.t('quickMenu.autoHide.hide'),
                           icon: _isAutoHideEnabled ? Icons.push_pin_outlined : Icons.push_pin_sharp,
                           onPressed: _toggleAutoHide,
                           scale: scale,
