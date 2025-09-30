@@ -7,6 +7,7 @@ import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/effects/scene_transition_effects.dart';
@@ -93,6 +94,9 @@ class GameManager {
 
   // 脚本合并器
   final ScriptMerger _scriptMerger = ScriptMerger();
+  SupportedLanguage _activeLanguage = SupportedLanguage.zhHans;
+  bool _isLanguageReloading = false;
+  late final VoidCallback _languageListener;
 
   Map<String, CharacterConfig> _characterConfigs = {};
   Map<String, PoseConfig> _poseConfigs = {};
@@ -603,6 +607,38 @@ class GameManager {
 
   GameManager({this.onReturn}) {
     _currentState = GameState.initial(); // 提前初始化，避免late变量访问错误
+    _activeLanguage = LocalizationManager().currentLanguage;
+    _languageListener = _handleLanguageChange;
+    LocalizationManager().addListener(_languageListener);
+  }
+
+  void _handleLanguageChange() {
+    final newLanguage = LocalizationManager().currentLanguage;
+    if (newLanguage == _activeLanguage) {
+      return;
+    }
+    _activeLanguage = newLanguage;
+
+    if (!_isScriptInitialized() || _isLanguageReloading) {
+      return;
+    }
+
+    _isLanguageReloading = true;
+    final scriptName = currentScriptFile;
+
+    Future.microtask(() async {
+      try {
+        await hotReload(scriptName);
+      } catch (e, stack) {
+        if (kDebugMode) {
+          print(
+              '[GameManager] Failed to reload scripts after language change: $e');
+          print(stack);
+        }
+      } finally {
+        _isLanguageReloading = false;
+      }
+    });
   }
 
   /// 设置BuildContext用于转场效果
@@ -1337,7 +1373,8 @@ class GameManager {
               gpuEntry: gpuEntry,
             );
           } else {
-            final compositePath = await CgImageCompositor().getCompositeImagePath(
+            final compositePath =
+                await CgImageCompositor().getCompositeImagePath(
               resourceId: resourceId,
               pose: newPose,
               expression: newExpression,
@@ -3369,6 +3406,7 @@ class GameManager {
   }
 
   void dispose() {
+    LocalizationManager().removeListener(_languageListener);
     _currentTimer?.cancel(); // 取消活跃的计时器
     _sceneAnimationController?.dispose(); // 清理场景动画控制器
 

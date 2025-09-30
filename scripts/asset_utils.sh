@@ -49,9 +49,9 @@ link_game_assets() {
     local use_symlink="$4"  # 忽略此参数，总是使用复制模式
     
     echo -e "${YELLOW}正在清理旧的资源...${NC}"
-    # 删除 Engine/assets 目录下的 Assets 和 GameScript 目录
+    # 删除 Engine/assets 目录下的 Assets 和 GameScript* 目录
     rm -rf "$engine_dir/assets/Assets"
-    rm -rf "$engine_dir/assets/GameScript"
+    rm -rf "$engine_dir"/assets/GameScript*
     
     # 确保顶级 assets 目录存在
     mkdir -p "$engine_dir/assets"
@@ -59,7 +59,11 @@ link_game_assets() {
     echo -e "${YELLOW}正在复制游戏资源和脚本...${NC}"
     # 总是使用复制模式以确保跨平台兼容性
     cp -r "$game_dir/Assets" "$engine_dir/assets/"
-    cp -r "$game_dir/GameScript" "$engine_dir/assets/"
+    for script_dir in "$game_dir"/GameScript*; do
+        if [ -d "$script_dir" ]; then
+            cp -r "$script_dir" "$engine_dir/assets/"
+        fi
+    done
     
     # 复制 default_game.txt 到 assets 目录
     echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"

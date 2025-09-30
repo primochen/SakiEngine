@@ -41,9 +41,11 @@ set "project_root=%~3"
 set "use_symlink=%~4"
 
 echo [93m正在清理旧的资源...[0m
-REM 删除 Engine/assets 目录下的 Assets 和 GameScript 目录
+REM 删除 Engine/assets 目录下的 Assets 和 GameScript* 目录
 if exist "%engine_dir%\assets\Assets" rmdir /s /q "%engine_dir%\assets\Assets"
-if exist "%engine_dir%\assets\GameScript" rmdir /s /q "%engine_dir%\assets\GameScript"
+for /d %%G in ("%engine_dir%\assets\GameScript*") do (
+    if exist "%%G" rmdir /s /q "%%G"
+)
 
 REM 确保顶级 assets 目录存在
 if not exist "%engine_dir%\assets" mkdir "%engine_dir%\assets"
@@ -51,7 +53,10 @@ if not exist "%engine_dir%\assets" mkdir "%engine_dir%\assets"
 echo [93m正在复制游戏资源和脚本...[0m
 REM 总是使用复制模式以确保跨平台兼容性
 xcopy "%game_dir%\Assets" "%engine_dir%\assets\Assets\" /E /I /Y >nul 2>&1
-xcopy "%game_dir%\GameScript" "%engine_dir%\assets\GameScript\" /E /I /Y >nul 2>&1
+REM 复制 GameScript* 目录
+for /d %%G in ("%game_dir%\GameScript*") do (
+    if exist "%%G" xcopy "%%G" "%engine_dir%\assets\%%~nG\" /E /I /Y >nul 2>&1
+)
 
 REM 复制 default_game.txt 到 assets 目录
 echo [93m正在复制 default_game.txt 到 assets 目录...[0m

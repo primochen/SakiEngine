@@ -93,6 +93,25 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     await ExitConfirmationDialog.showExitConfirmationAndDestroy(context);
   }
 
+  String _resolveLocalizedTitleAsset() {
+    var assetName = 'title';
+    switch (_localizationManager.currentLanguage) {
+      case SupportedLanguage.zhHans:
+        assetName = 'title_chs';
+        break;
+      case SupportedLanguage.zhHant:
+        assetName = 'title_cht';
+        break;
+      case SupportedLanguage.en:
+        assetName = 'title_en';
+        break;
+      case SupportedLanguage.ja:
+        assetName = 'title_jp';
+        break;
+    }
+    return assetName;
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
@@ -100,6 +119,9 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     final menuScale = context.scaleFor(ComponentType.menu);
     final textScale = context.scaleFor(ComponentType.text);
     final isDarkMode = SettingsManager().currentDarkMode;
+
+    // 根据当前语言选择对应的标题资源
+    config.mainMenuTitle = _resolveLocalizedTitleAsset();
 
     return AnimatedBuilder(
       animation: SettingsManager(), // 监听设置变化

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
+import 'package:sakiengine/src/game/game_script_localization.dart';
 
 /// 按键序列检测器
 /// 用于检测特定按键序列，如连续按下 c-o-n-s-o-l-e
@@ -11,28 +12,29 @@ class KeySequenceDetector {
   final List<LogicalKeyboardKey> _targetSequence;
   final VoidCallback _onSequenceComplete;
   final Duration _sequenceTimeout;
-  
+
   bool _isListening = false;
   List<LogicalKeyboardKey> _currentSequence = [];
   Timer? _timeoutTimer;
-  
+
   KeySequenceDetector({
     required List<LogicalKeyboardKey> sequence,
     required VoidCallback onSequenceComplete,
     Duration sequenceTimeout = const Duration(seconds: 3),
-  }) : _targetSequence = sequence,
-       _onSequenceComplete = onSequenceComplete,
-       _sequenceTimeout = sequenceTimeout;
+  })  : _targetSequence = sequence,
+        _onSequenceComplete = onSequenceComplete,
+        _sequenceTimeout = sequenceTimeout;
 
   /// 开始监听键盘事件
   void startListening() {
     if (_isListening) return;
-    
+
     _isListening = true;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-    
+
     if (kDebugMode) {
-      final sequenceNames = _targetSequence.map((key) => key.debugName).join('-');
+      final sequenceNames =
+          _targetSequence.map((key) => key.debugName).join('-');
       print('按键序列检测器: 开始监听序列 $sequenceNames');
     }
   }
@@ -40,12 +42,12 @@ class KeySequenceDetector {
   /// 停止监听键盘事件
   void stopListening() {
     if (!_isListening) return;
-    
+
     _isListening = false;
     _cancelTimeoutTimer();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _currentSequence.clear();
-    
+
     if (kDebugMode) {
       print('按键序列检测器: 停止监听');
     }
@@ -53,21 +55,21 @@ class KeySequenceDetector {
 
   bool _handleKeyEvent(KeyEvent event) {
     if (!_isListening) return false;
-    
+
     if (event is KeyDownEvent) {
       final key = event.logicalKey;
-      
+
       // 检查是否是序列中的下一个键
       if (_currentSequence.length < _targetSequence.length &&
           key == _targetSequence[_currentSequence.length]) {
-        
         _currentSequence.add(key);
         _resetTimeout();
-        
+
         if (kDebugMode) {
-          print('按键序列检测器: 按键 ${key.debugName} 匹配，当前序列长度: ${_currentSequence.length}/${_targetSequence.length}');
+          print(
+              '按键序列检测器: 按键 ${key.debugName} 匹配，当前序列长度: ${_currentSequence.length}/${_targetSequence.length}');
         }
-        
+
         // 检查序列是否完成
         if (_currentSequence.length == _targetSequence.length) {
           if (kDebugMode) {
@@ -77,7 +79,7 @@ class KeySequenceDetector {
           _resetSequence();
           return true;
         }
-        
+
         return true;
       } else {
         // 按键不匹配，重置序列
@@ -89,7 +91,7 @@ class KeySequenceDetector {
         }
       }
     }
-    
+
     return false;
   }
 
@@ -124,26 +126,26 @@ class LongPressKeyDetector {
   final LogicalKeyboardKey _targetKey;
   final VoidCallback _onLongPress;
   final Duration _longPressDuration;
-  
+
   bool _isListening = false;
   bool _isKeyPressed = false;
   Timer? _longPressTimer;
-  
+
   LongPressKeyDetector({
     required LogicalKeyboardKey key,
     required VoidCallback onLongPress,
     Duration longPressDuration = const Duration(milliseconds: 800),
-  }) : _targetKey = key,
-       _onLongPress = onLongPress,
-       _longPressDuration = longPressDuration;
+  })  : _targetKey = key,
+        _onLongPress = onLongPress,
+        _longPressDuration = longPressDuration;
 
   /// 开始监听键盘事件
   void startListening() {
     if (_isListening) return;
-    
+
     _isListening = true;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-    
+
     if (kDebugMode) {
       print('长按键检测器: 开始监听 ${_targetKey.debugName} 长按事件');
     }
@@ -152,12 +154,12 @@ class LongPressKeyDetector {
   /// 停止监听键盘事件
   void stopListening() {
     if (!_isListening) return;
-    
+
     _isListening = false;
     _cancelLongPressTimer();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _isKeyPressed = false;
-    
+
     if (kDebugMode) {
       print('长按键检测器: 停止监听');
     }
@@ -165,14 +167,14 @@ class LongPressKeyDetector {
 
   bool _handleKeyEvent(KeyEvent event) {
     if (!_isListening) return false;
-    
+
     if (event.logicalKey == _targetKey) {
       if (event is KeyDownEvent) {
         // 按键按下
         if (!_isKeyPressed) {
           _isKeyPressed = true;
           _startLongPressTimer();
-          
+
           if (kDebugMode) {
             print('长按键检测器: ${_targetKey.debugName} 按下，开始计时');
           }
@@ -183,7 +185,7 @@ class LongPressKeyDetector {
         if (_isKeyPressed) {
           _isKeyPressed = false;
           _cancelLongPressTimer();
-          
+
           if (kDebugMode) {
             print('长按键检测器: ${_targetKey.debugName} 松开，取消计时');
           }
@@ -191,7 +193,7 @@ class LongPressKeyDetector {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -220,9 +222,8 @@ class LongPressKeyDetector {
 /// 脚本内容修改器
 /// 负责修改脚本文件中的对话行，添加或更新角色差分信息
 class ScriptContentModifier {
-  
   /// 修改脚本文件中的对话行，添加差分信息
-  /// 
+  ///
   /// [scriptFilePath] 脚本文件的完整路径
   /// [targetDialogue] 目标对话文本
   /// [characterId] 角色ID
@@ -248,14 +249,15 @@ class ScriptContentModifier {
 
       for (int i = 0; i < lines.length; i++) {
         final line = lines[i].trim();
-        
+
         // 检查是否是包含目标对话的行，同时验证角色ID
         if (_isTargetDialogueLine(line, targetDialogue, characterId)) {
-          final modifiedLine = _modifyDialogueLine(line, characterId, null, newExpression);
+          final modifiedLine =
+              _modifyDialogueLine(line, characterId, null, newExpression);
           if (modifiedLine != line) {
             lines[i] = lines[i].replaceAll(line, modifiedLine);
             modified = true;
-            
+
             if (kDebugMode) {
               print('脚本修改器: 修改对话行');
               print('原始行: $line');
@@ -269,7 +271,7 @@ class ScriptContentModifier {
       if (modified) {
         final modifiedContent = lines.join('\n');
         await _writeScriptFile(file, modifiedContent);
-        
+
         if (kDebugMode) {
           print('脚本修改器: 成功保存修改的脚本文件');
         }
@@ -280,7 +282,6 @@ class ScriptContentModifier {
         }
         return false;
       }
-      
     } catch (e) {
       if (kDebugMode) {
         print('脚本修改器: 修改脚本文件失败: $e');
@@ -290,67 +291,82 @@ class ScriptContentModifier {
   }
 
   /// 检查是否是目标对话行
-  static bool _isTargetDialogueLine(String line, String targetDialogue, [String? expectedCharacterId]) {
+  static bool _isTargetDialogueLine(String line, String targetDialogue,
+      [String? expectedCharacterId]) {
     // 去除前后空白
     final trimmedLine = line.trim();
     final trimmedDialogue = targetDialogue.trim();
-    
+
     if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
       print('ScriptModifier: 检查行匹配');
       print('ScriptModifier: 行内容: "$trimmedLine"');
       print('ScriptModifier: 目标对话: "$trimmedDialogue"');
       print('ScriptModifier: 期望角色ID: $expectedCharacterId');
     }
-    
+
     // 标准化对话文本 - 统一引号类型和去除引号
     String normalizeDialogue(String text) {
-      return text.replaceAll('"', '').replaceAll('「', '').replaceAll('」', '').trim();
+      return text
+          .replaceAll('"', '')
+          .replaceAll('「', '')
+          .replaceAll('」', '')
+          .trim();
     }
-    
+
     // 检查不同的对话格式
     // 格式1: "对话内容" - 只有在没有指定expectedCharacterId时才匹配
-    if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"') && expectedCharacterId == null) {
+    if (trimmedLine.startsWith('"') &&
+        trimmedLine.endsWith('"') &&
+        expectedCharacterId == null) {
       final dialogueContent = trimmedLine.substring(1, trimmedLine.length - 1);
-      if (normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)) {
+      if (normalizeDialogue(dialogueContent) ==
+          normalizeDialogue(trimmedDialogue)) {
         if (kDebugMode) {
           print('ScriptModifier: 匹配格式1（纯对话）');
         }
         return true;
       }
     }
-    
+
     // 格式2: character "对话内容"
     // 格式3: character expression "对话内容"
     if (trimmedLine.contains('"') && !trimmedLine.startsWith('"')) {
       final parts = trimmedLine.split(' ');
       if (parts.isNotEmpty) {
         final lineCharacterId = parts[0];
-        
+
         if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
           print('ScriptModifier: 行角色ID: "$lineCharacterId"');
         }
-        
+
         // 如果指定了expectedCharacterId，必须匹配
-        if (expectedCharacterId != null && lineCharacterId != expectedCharacterId) {
+        if (expectedCharacterId != null &&
+            lineCharacterId != expectedCharacterId) {
           if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
-            print('ScriptModifier: 角色ID不匹配: "$lineCharacterId" != "$expectedCharacterId"');
+            print(
+                'ScriptModifier: 角色ID不匹配: "$lineCharacterId" != "$expectedCharacterId"');
           }
           return false;
         }
-        
+
         final quoteStart = trimmedLine.indexOf('"');
         final quoteEnd = trimmedLine.lastIndexOf('"');
         if (quoteStart >= 0 && quoteEnd > quoteStart) {
-          final dialogueContent = trimmedLine.substring(quoteStart + 1, quoteEnd);
+          final dialogueContent =
+              trimmedLine.substring(quoteStart + 1, quoteEnd);
           if (kDebugMode && line.contains(targetDialogue.replaceAll('"', ''))) {
             print('ScriptModifier: 提取的对话内容: "$dialogueContent"');
-            print('ScriptModifier: 标准化后的对话内容: "${normalizeDialogue(dialogueContent)}"');
-            print('ScriptModifier: 标准化后的目标对话: "${normalizeDialogue(trimmedDialogue)}"');
-            print('ScriptModifier: 是否匹配: ${normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)}');
+            print(
+                'ScriptModifier: 标准化后的对话内容: "${normalizeDialogue(dialogueContent)}"');
+            print(
+                'ScriptModifier: 标准化后的目标对话: "${normalizeDialogue(trimmedDialogue)}"');
+            print(
+                'ScriptModifier: 是否匹配: ${normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)}');
           }
-          
+
           // 使用标准化后的文本进行比较
-          if (normalizeDialogue(dialogueContent) == normalizeDialogue(trimmedDialogue)) {
+          if (normalizeDialogue(dialogueContent) ==
+              normalizeDialogue(trimmedDialogue)) {
             if (kDebugMode) {
               print('ScriptModifier: 匹配格式2/3（角色+对话）');
             }
@@ -359,25 +375,30 @@ class ScriptContentModifier {
         }
       }
     }
-    
+
     return false;
   }
 
   /// 修改对话行，添加或更新pose和表情信息
-  static String _modifyDialogueLine(String line, String characterId, String? newPose, String? newExpression) {
+  static String _modifyDialogueLine(
+      String line, String characterId, String? newPose, String? newExpression) {
     final trimmedLine = line.trim();
-    
+
     // 如果已经包含该角色的信息，更新它
     if (trimmedLine.startsWith(characterId)) {
       final parts = trimmedLine.split(' ');
-      
+
       // 识别不同格式
-      if (parts.length >= 4 && parts[0] == characterId && parts[3].startsWith('"')) {
+      if (parts.length >= 4 &&
+          parts[0] == characterId &&
+          parts[3].startsWith('"')) {
         // 格式: character pose expression "dialogue"
         if (newPose != null) parts[1] = newPose;
         if (newExpression != null) parts[2] = newExpression;
         return parts.join(' ');
-      } else if (parts.length >= 3 && parts[0] == characterId && parts[2].startsWith('"')) {
+      } else if (parts.length >= 3 &&
+          parts[0] == characterId &&
+          parts[2].startsWith('"')) {
         // 格式: character expression "dialogue" 或 character pose "dialogue"
         // 需要扩展为三段式
         final dialoguePart = parts.sublist(2).join(' ');
@@ -392,14 +413,14 @@ class ScriptContentModifier {
         return '$characterId $pose $expression ${parts.sublist(1).join(' ')}';
       }
     }
-    
+
     // 如果是纯对话格式，添加角色、pose和表情信息
     if (trimmedLine.startsWith('"') && trimmedLine.endsWith('"')) {
       final pose = newPose ?? 'pose1';
       final expression = newExpression ?? 'normal';
       return '$characterId $pose $expression $trimmedLine';
     }
-    
+
     // 其他情况，尝试智能添加
     if (trimmedLine.contains('"')) {
       final quoteIndex = trimmedLine.indexOf('"');
@@ -407,7 +428,7 @@ class ScriptContentModifier {
       final expression = newExpression ?? 'normal';
       return '${trimmedLine.substring(0, quoteIndex)}$characterId $pose $expression ${trimmedLine.substring(quoteIndex)}';
     }
-    
+
     // 如果无法识别格式，返回原始行
     return line;
   }
@@ -449,24 +470,28 @@ class ScriptContentModifier {
 
       for (int i = 0; i < lines.length; i++) {
         final line = lines[i].trim();
-        
+
         // 检查是否包含对话的关键部分（不含引号和特殊符号）
-        final dialogueCore = targetDialogue.replaceAll('"', '').replaceAll('「', '').replaceAll('」', '');
+        final dialogueCore = targetDialogue
+            .replaceAll('"', '')
+            .replaceAll('「', '')
+            .replaceAll('」', '');
         if (kDebugMode && line.contains(dialogueCore)) {
           print('ScriptModifier: 找到包含关键词的行 $i: "$line"');
         }
-        
+
         // 检查是否是包含目标对话的行，同时验证角色ID
         if (_isTargetDialogueLine(line, targetDialogue, characterId)) {
           if (kDebugMode) {
             print('ScriptModifier: 确认匹配行 $i: "$line"');
           }
-          
-          final modifiedLine = _modifyDialogueLine(line, characterId, newPose, newExpression);
+
+          final modifiedLine =
+              _modifyDialogueLine(line, characterId, newPose, newExpression);
           if (modifiedLine != line) {
             lines[i] = lines[i].replaceAll(line, modifiedLine);
             modified = true;
-            
+
             if (kDebugMode) {
               print('ScriptModifier: 修改对话行（pose+expression）');
               print('ScriptModifier: 原始行: $line');
@@ -484,7 +509,7 @@ class ScriptContentModifier {
       if (modified) {
         final modifiedContent = lines.join('\n');
         await _writeScriptFile(file, modifiedContent);
-        
+
         if (kDebugMode) {
           print('ScriptModifier: 成功保存修改的脚本文件（pose+expression）');
         }
@@ -494,7 +519,7 @@ class ScriptContentModifier {
           print('ScriptModifier: 未找到匹配的对话行或无需修改');
         }
       }
-      
+
       return false;
     } catch (e) {
       if (kDebugMode) {
@@ -549,7 +574,7 @@ class ScriptContentModifier {
             .replaceAll('\\', '\\\\')
             .replaceAll('\$', '\\\$')
             .replaceAll('"', '\\"');
-        
+
         final result = await Process.run('sh', [
           '-c',
           'printf "%s" "\$1" > "\$2"',
@@ -557,7 +582,7 @@ class ScriptContentModifier {
           escapedContent,
           file.path,
         ]);
-        
+
         if (result.exitCode == 0) {
           writeSuccess = true;
           if (kDebugMode) {
@@ -582,19 +607,23 @@ class ScriptContentModifier {
       // 获取游戏路径
       final gamePath = await _getGamePathFromAssetManager();
       if (gamePath == null) return null;
-      
-      // 构建脚本文件路径
-      final scriptPath = p.join(gamePath, 'GameScript', 'labels', '$scriptName.sks');
-      final scriptFile = File(scriptPath);
-      
-      if (await scriptFile.exists()) {
-        return scriptPath;
-      } else {
-        if (kDebugMode) {
-          print('脚本修改器: 脚本文件不存在: $scriptPath');
+
+      final candidateDirs = GameScriptLocalization.candidateDirectories();
+      for (final dirName in candidateDirs) {
+        final scriptPath =
+            p.join(gamePath, dirName, 'labels', '$scriptName.sks');
+        final scriptFile = File(scriptPath);
+
+        if (await scriptFile.exists()) {
+          return scriptPath;
         }
-        return null;
       }
+
+      if (kDebugMode) {
+        print(
+            '脚本修改器: 未找到脚本文件 $scriptName.sks (尝试目录: ${candidateDirs.join(', ')})');
+      }
+      return null;
     } catch (e) {
       if (kDebugMode) {
         print('脚本修改器: 获取脚本文件路径失败: $e');
@@ -607,25 +636,27 @@ class ScriptContentModifier {
   static Future<String?> _getGamePathFromAssetManager() async {
     try {
       // 首先检查环境变量
-      const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+      const fromDefine =
+          String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
       if (fromDefine.isNotEmpty) return fromDefine;
-      
+
       final fromEnv = Platform.environment['SAKI_GAME_PATH'];
       if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
-      
+
       // 从assets读取default_game.txt
-      final assetContent = await AssetManager().loadString('assets/default_game.txt');
+      final assetContent =
+          await AssetManager().loadString('assets/default_game.txt');
       final defaultGame = assetContent.trim();
-      
+
       if (defaultGame.isEmpty) {
         throw Exception('default_game.txt is empty');
       }
-      
+
       final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
       if (kDebugMode) {
         print("脚本修改器: 从default_game.txt获取游戏路径: $gamePath");
       }
-      
+
       return gamePath;
     } catch (e) {
       if (kDebugMode) {

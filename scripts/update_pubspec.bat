@@ -23,10 +23,14 @@ REM 简单的资源更新逻辑
 echo   flutter:
 echo     assets:
 echo       - assets/default_game.txt
-if exist "%engine_dir%\assets\fonts" echo       - assets/fonts/
-if exist "%engine_dir%\assets\Assets" echo       - assets/Assets/
-if exist "%engine_dir%\assets\GameScript" echo       - assets/GameScript/
 ) > "%temp_file%"
+
+if exist "%engine_dir%\assets\fonts" echo       - assets/fonts/>>"%temp_file%"
+if exist "%engine_dir%\assets\Assets" echo       - assets/Assets/>>"%temp_file%"
+
+for /d %%G in ("%engine_dir%\assets\GameScript*") do (
+    if exist "%%G" echo       - assets/%%~nG/>>"%temp_file%"
+)
 
 REM 检查是否成功创建
 if exist "%temp_file%" (

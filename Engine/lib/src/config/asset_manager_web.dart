@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
+import 'package:sakiengine/src/game/game_script_localization.dart';
 
 class AssetManager {
   static final AssetManager _instance = AssetManager._internal();
@@ -16,7 +17,7 @@ class AssetManager {
 
   Map<String, dynamic>? _assetManifest;
   final Map<String, String> _imageCache = {};
-  
+
   // Web平台总是返回空字符串
   static String get _debugRoot => '';
 
@@ -24,8 +25,19 @@ class AssetManager {
   static Future<String> _getGamePath() async => '';
 
   Future<String> loadString(String path) async {
-    // Web平台总是使用bundle
-    return await rootBundle.loadString(path, cache: false);
+    final candidates = GameScriptLocalization.resolveAssetPaths(path);
+    Object? lastError;
+
+    for (final candidate in candidates) {
+      try {
+        return await rootBundle.loadString(candidate, cache: false);
+      } catch (e) {
+        lastError = e;
+      }
+    }
+
+    throw Exception(
+        'Failed to load asset from bundle. Tried: ${candidates.join(', ')}. Last error: $lastError');
   }
 
   Future<void> _loadManifest() async {
@@ -35,23 +47,43 @@ class AssetManager {
   }
 
   Future<List<String>> listAssets(String directory, String extension) async {
-    final assets = <String>[];
-    
-    // Web平台：从AssetManifest扫描
+    List<String> assets = <String>[];
+    final candidates =
+        GameScriptLocalization.resolveAssetDirectories(directory);
+    String resolvedDirectory =
+        candidates.isNotEmpty ? candidates.first : directory;
+
     await _loadManifest();
     if (_assetManifest != null) {
-      for (final assetPath in _assetManifest!.keys) {
-        if (assetPath.startsWith(directory) && assetPath.endsWith(extension)) {
-          final fileName = p.basename(assetPath);
-          assets.add(fileName);
+      for (var i = 0; i < candidates.length; i++) {
+        final candidate = candidates[i];
+        final currentAssets = <String>[];
+
+        for (final assetPath in _assetManifest!.keys) {
+          if (assetPath.startsWith(candidate) &&
+              assetPath.endsWith(extension)) {
+            currentAssets.add(p.basename(assetPath));
+          }
+        }
+
+        if (currentAssets.isNotEmpty) {
+          assets = currentAssets;
+          resolvedDirectory = candidate;
+          break;
+        }
+
+        if (i == candidates.length - 1) {
+          assets = currentAssets;
+          resolvedDirectory = candidate;
         }
       }
     }
-    
+
     if (kDebugMode) {
-      print("Found ${assets.length} assets in $directory with extension $extension: ${assets.join(', ')}");
+      print(
+          'Found ${assets.length} assets in $resolvedDirectory (requested: $directory) with extension $extension: ${assets.join(', ')}');
     }
-    
+
     return assets;
   }
 
@@ -71,22 +103,32 @@ class AssetManager {
       return null;
     }
 
-    final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.avif'];
+    final imageExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.avif'
+    ];
     final videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
     final supportedExtensions = [...imageExtensions, ...videoExtensions];
-    
+
     // 从查询名称中提取文件名，例如 "backgrounds/sky" -> "sky"
     final targetFileName = name.split('/').last;
-    
+
     // 提取路径部分，例如 "backgrounds/sky" -> "backgrounds"
     final pathParts = name.split('/');
-    final targetPath = pathParts.length > 1 ? pathParts.sublist(0, pathParts.length - 1).join('/') : '';
+    final targetPath = pathParts.length > 1
+        ? pathParts.sublist(0, pathParts.length - 1).join('/')
+        : '';
 
     // 检测是否包含cg关键词（不区分大小写）
     final nameToCheck = name.toLowerCase();
     final fileNameToCheck = targetFileName.toLowerCase();
-    final isCgRelated = nameToCheck.contains('cg') || fileNameToCheck.contains('cg');
-
+    final isCgRelated =
+        nameToCheck.contains('cg') || fileNameToCheck.contains('cg');
 
     // 如果检测到cg关键词，优先在cg路径下搜索（支持递归子文件夹）
     if (isCgRelated) {
@@ -94,12 +136,14 @@ class AssetManager {
         final keyParts = key.split('/');
         final keyFileName = keyParts.last;
         final keyFileNameWithoutExt = keyFileName.split('.').first;
-        
+
         // 检查文件名是否匹配且路径包含cg（支持cg的任意子文件夹）
-        if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
+        if (keyFileNameWithoutExt.toLowerCase() ==
+            targetFileName.toLowerCase()) {
           final keyPath = key.toLowerCase();
           // 更精确的cg路径检测：支持 /cg/ 或 /cg/任意子目录/
-          if (keyPath.contains('/cg/') || keyPath.startsWith('cg/') || 
+          if (keyPath.contains('/cg/') ||
+              keyPath.startsWith('cg/') ||
               keyPath.contains('assets/images/cg/')) {
             _imageCache[name] = key;
             print("Found CG asset in bundle (recursive): $name -> $key");
@@ -114,13 +158,13 @@ class AssetManager {
       final keyParts = key.split('/');
       final keyFileName = keyParts.last;
       final keyFileNameWithoutExt = keyFileName.split('.').first;
-      
+
       // 检查文件名是否匹配
       if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
         // 如果查询有路径要求，检查路径是否匹配
         if (targetPath.isNotEmpty) {
           final keyPath = key.toLowerCase();
-          if (keyPath.contains('/${targetPath.toLowerCase()}/') || 
+          if (keyPath.contains('/${targetPath.toLowerCase()}/') ||
               keyPath.contains('${targetPath.toLowerCase()}/')) {
             _imageCache[name] = key;
             //print("Found asset in bundle (path + name match): $name -> $key");
@@ -140,7 +184,7 @@ class AssetManager {
       final keyParts = key.split('/');
       final keyFileName = keyParts.last;
       final keyFileNameWithoutExt = keyFileName.split('.').first;
-      
+
       if (keyFileNameWithoutExt.toLowerCase() == targetFileName.toLowerCase()) {
         _imageCache[name] = key;
         //print("Found asset in bundle (fallback name match): $name -> $key");
@@ -152,17 +196,20 @@ class AssetManager {
   }
 
   /// Web平台返回空列表
-  static Future<List<String>> getAvailableCharacterLayersRecursive(String characterId) async {
+  static Future<List<String>> getAvailableCharacterLayersRecursive(
+      String characterId) async {
     return <String>[];
   }
 
   /// Web平台返回空列表
-  static Future<List<String>> getAvailableCharacterLayers(String characterId) async {
+  static Future<List<String>> getAvailableCharacterLayers(
+      String characterId) async {
     return <String>[];
   }
-  
+
   /// Web平台返回null
-  static Future<String?> getDefaultLayerForLevel(String characterId, int layerLevel) async {
+  static Future<String?> getDefaultLayerForLevel(
+      String characterId, int layerLevel) async {
     return null;
   }
-} 
+}

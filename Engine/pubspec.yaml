@@ -81,9 +81,18 @@ flutter:
   assets:
     - assets/default_game.txt
     - assets/fonts/
+    - assets/GameScript_en/
+    - assets/GameScript_en/labels/
+    - assets/GameScript_en/configs/
     - assets/GameScript/
     - assets/GameScript/labels/
     - assets/GameScript/configs/
+    - assets/GameScript_zh-Hant/
+    - assets/GameScript_zh-Hant/labels/
+    - assets/GameScript_zh-Hant/configs/
+    - assets/GameScript_ja/
+    - assets/GameScript_ja/labels/
+    - assets/GameScript_ja/configs/
     - assets/i18n/
     - assets/Assets/
     - assets/Assets/music/

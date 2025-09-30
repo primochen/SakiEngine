@@ -66,17 +66,20 @@ function validateGameDir(projectRoot, gameName) {
 function linkGameAssets(engineDir, gameDir, projectRoot) {
     colorLog('正在清理旧的资源...', 'yellow');
     
-    // 删除 Engine/assets 目录下的 Assets 和 GameScript 目录
+    // 删除 Engine/assets 目录下的 Assets 和 GameScript* 目录
     const assetsDir = path.join(engineDir, 'assets');
     const assetsAssetsDir = path.join(assetsDir, 'Assets');
-    const assetsGameScriptDir = path.join(assetsDir, 'GameScript');
     
     if (fs.existsSync(assetsAssetsDir)) {
         fs.rmSync(assetsAssetsDir, { recursive: true, force: true });
     }
     
-    if (fs.existsSync(assetsGameScriptDir)) {
-        fs.rmSync(assetsGameScriptDir, { recursive: true, force: true });
+    if (fs.existsSync(assetsDir)) {
+        for (const entry of fs.readdirSync(assetsDir, { withFileTypes: true })) {
+            if (entry.isDirectory() && entry.name.startsWith('GameScript')) {
+                fs.rmSync(path.join(assetsDir, entry.name), { recursive: true, force: true });
+            }
+        }
     }
     
     // 确保顶级 assets 目录存在
@@ -92,10 +95,15 @@ function linkGameAssets(engineDir, gameDir, projectRoot) {
         copyDirectory(gameAssetsDir, assetsAssetsDir);
     }
     
-    // 复制 GameScript 目录
-    const gameScriptDir = path.join(gameDir, 'GameScript');
-    if (fs.existsSync(gameScriptDir)) {
-        copyDirectory(gameScriptDir, assetsGameScriptDir);
+    // 复制 GameScript* 目录
+    if (fs.existsSync(gameDir)) {
+        for (const entry of fs.readdirSync(gameDir, { withFileTypes: true })) {
+            if (entry.isDirectory() && entry.name.startsWith('GameScript')) {
+                const srcDir = path.join(gameDir, entry.name);
+                const destDir = path.join(assetsDir, entry.name);
+                copyDirectory(srcDir, destDir);
+            }
+        }
     }
     
     // 复制 default_game.txt 到 assets 目录
