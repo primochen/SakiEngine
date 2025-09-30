@@ -51,6 +51,8 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
   @override
   void initState() {
     super.initState();
+    // 每次进入存档界面时清除缓存，确保语言切换后对话预览使用最新脚本
+    SaveLoadManager.clearCache();
     _initializeSaveSlots();
     _scrollController.addListener(_onScroll);
   }
@@ -814,19 +816,25 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
                 ),
               ),
               SizedBox(width: 8 * uiScale), // 减少间距
-              // 文本区域
+              // 文本区域 - 使用FutureBuilder实时查询对话预览
               Expanded(
                 flex: 13,
-                child: Text(
-                  RichTextParser.cleanText(widget.saveSlot!.dialoguePreview),
-                  maxLines: 3, // 减少行数从4到3
-                  overflow: TextOverflow.ellipsis,
-                  style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.36, // 稍微减小字体
-                    color: config.themeColors.onSurface.withOpacity(0.8 * opacity),
-                    fontWeight: FontWeight.normal,
-                    height: 1.2, // 减少行高从1.4到1.2
-                  ),
+                child: FutureBuilder<String>(
+                  future: SaveLoadManager.getDialoguePreview(widget.saveSlot!.snapshot),
+                  builder: (context, snapshot) {
+                    final dialogueText = snapshot.data ?? widget.saveSlot!.dialoguePreview;
+                    return Text(
+                      RichTextParser.cleanText(dialogueText),
+                      maxLines: 3, // 减少行数从4到3
+                      overflow: TextOverflow.ellipsis,
+                      style: config.reviewTitleTextStyle.copyWith(
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.36, // 稍微减小字体
+                        color: config.themeColors.onSurface.withOpacity(0.8 * opacity),
+                        fontWeight: FontWeight.normal,
+                        height: 1.2, // 减少行高从1.4到1.2
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

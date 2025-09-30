@@ -525,7 +525,7 @@ class SaveSlot {
   final int id;
   final DateTime saveTime;
   final String currentScript;
-  final String dialoguePreview;
+  final String dialoguePreview; // 已废弃，保留用于向后兼容
   final GameStateSnapshot snapshot;
   final Uint8List? screenshotData; // 内嵌的截图数据
   final bool isLocked; // 存档是否被锁定
@@ -568,5 +568,21 @@ class SaveSlot {
   /// 将SaveSlot转换为二进制数据
   Uint8List toBinary() {
     return BinarySerializer.serializeSaveSlot(this);
+  }
+
+  /// 获取实时对话预览（需要异步加载）
+  /// 此方法会根据scriptIndex从当前脚本中查询最新的对话内容
+  /// 使用方式：
+  /// ```dart
+  /// final preview = await saveSlot.getRealtimeDialoguePreview();
+  /// ```
+  Future<String> getRealtimeDialoguePreview() async {
+    // 导入需要延迟到运行时，避免循环依赖
+    // 这里通过调用SaveLoadManager的静态方法来实现
+    // 由于SaveLoadManager在save_load_manager_io.dart中定义，
+    // 我们需要在UI层调用时处理，而不是在这里直接调用
+    // 因此这个方法只是一个占位符，实际实现在SaveLoadManager中
+    throw UnimplementedError(
+        'Please use SaveLoadManager.getDialoguePreview(saveSlot.snapshot) instead');
   }
 }

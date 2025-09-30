@@ -7,6 +7,7 @@ import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/config/config_parser.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
@@ -2377,6 +2378,7 @@ class GameManager {
     // 清理缓存并重新合并脚本
     _scriptMerger.clearCache();
     AnimationManager.clearCache(); // 清除动画缓存
+    SaveLoadManager.clearCache(); // 清除存档管理器的脚本缓存，确保对话预览使用最新脚本
     await _loadConfigs();
     await GlobalVariableManager().init(); // 初始化全局变量管理器
     await AnimationManager.loadAnimations(); // 加载动画

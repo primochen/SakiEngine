@@ -10,9 +10,104 @@ import 'package:sakiengine/src/game/screenshot_generator.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/config/config_models.dart';
+import 'package:sakiengine/src/config/config_parser.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
+import 'package:sakiengine/src/game/script_merger.dart';
+import 'package:sakiengine/src/config/asset_manager.dart';
 
 class SaveLoadManager {
+  // 缓存脚本和配置，避免重复加载
+  static ScriptNode? _cachedScript;
+  static Map<String, CharacterConfig>? _cachedCharacterConfigs;
+
+  /// 实时查询存档的对话预览文本
+  /// 根据scriptIndex从当前脚本中查询对话内容
+  static Future<String> getDialoguePreview(GameStateSnapshot snapshot) async {
+    try {
+      // 加载脚本（如果未缓存）
+      if (_cachedScript == null) {
+        final scriptMerger = ScriptMerger();
+        _cachedScript = await scriptMerger.getMergedScript();
+      }
+
+      // 加载角色配置（如果未缓存）
+      if (_cachedCharacterConfigs == null) {
+        final charactersContent = await AssetManager()
+            .loadString('assets/GameScript/configs/characters.sks');
+        _cachedCharacterConfigs = ConfigParser().parseCharacters(charactersContent);
+      }
+
+      final currentState = snapshot.currentState;
+
+      // 检查是否是选择界面
+      if (currentState.currentNode != null && currentState.currentNode is MenuNode) {
+        final menuNode = currentState.currentNode as MenuNode;
+        final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
+        return '【选择支】\n${choiceTexts.join('\n')}';
+      }
+
+      // 确定要查询的scriptIndex
+      // 优先使用对话历史的最后一条，如果没有则使用当前scriptIndex
+      final int dialogueScriptIndex = snapshot.dialogueHistory.isNotEmpty
+          ? snapshot.dialogueHistory.last.scriptIndex
+          : snapshot.scriptIndex;
+
+      // 从脚本中查询对话
+      if (dialogueScriptIndex >= 0 &&
+          dialogueScriptIndex < _cachedScript!.children.length) {
+        final node = _cachedScript!.children[dialogueScriptIndex];
+
+        if (node is SayNode) {
+          final dialogue = node.dialogue;
+          String? speaker;
+
+          if (node.character != null) {
+            final characterConfig = _cachedCharacterConfigs![node.character];
+            speaker = characterConfig?.name;
+          }
+
+          if (speaker != null && speaker.isNotEmpty) {
+            return '【$speaker】${RichTextParser.cleanText(dialogue)}';
+          } else {
+            return RichTextParser.cleanText(dialogue);
+          }
+        }
+      }
+
+      // 如果无法从脚本查询，回退到NVL模式检查
+      if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
+        final latestNvlDialogue = currentState.nvlDialogues.last;
+        if (latestNvlDialogue.speaker != null && latestNvlDialogue.speaker!.isNotEmpty) {
+          return '【${latestNvlDialogue.speaker}】${RichTextParser.cleanText(latestNvlDialogue.dialogue)}';
+        } else {
+          return RichTextParser.cleanText(latestNvlDialogue.dialogue);
+        }
+      }
+
+      // 最后回退到当前状态的对话
+      if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
+        if (currentState.speaker != null && currentState.speaker!.isNotEmpty) {
+          return '【${currentState.speaker}】${RichTextParser.cleanText(currentState.dialogue!)}';
+        } else {
+          return RichTextParser.cleanText(currentState.dialogue!);
+        }
+      }
+
+      return '...';
+    } catch (e) {
+      if (kDebugMode) {
+        print('[SaveLoadManager] 实时查询对话预览失败: $e');
+      }
+      return '...';
+    }
+  }
+
+  /// 清除缓存（在脚本热重载时调用）
+  static void clearCache() {
+    _cachedScript = null;
+    _cachedCharacterConfigs = null;
+  }
+
   // 获取当前游戏项目名称
   Future<String> _getCurrentProjectName() async {
     try {
@@ -61,42 +156,19 @@ class SaveLoadManager {
     if (existingSlot?.isLocked == true) {
       throw Exception('存档已锁定，无法覆盖');
     }
-    
+
     final directory = await getSavesDirectory();
     final file = File('$directory/save_$slotId.sakisav');
-    
-    String dialoguePreview = '...';
-    final currentState = snapshot.currentState;
-    
-    // 检查是否是选择界面
-    if (currentState.currentNode != null && currentState.currentNode is MenuNode) {
-      final menuNode = currentState.currentNode as MenuNode;
-      final choiceTexts = menuNode.choices.map((choice) => '[${choice.text}]').toList();
-      dialoguePreview = '【选择支】\n${choiceTexts.join('\n')}';
-    }
-    // 优先检查 NVL 模式（包括普通nvl和无遮罩nvln模式）
-    else if (currentState.isNvlMode && currentState.nvlDialogues.isNotEmpty) {
-      // 使用最新的 NVL 对话作为预览
-      final latestNvlDialogue = currentState.nvlDialogues.last;
-      if (latestNvlDialogue.speaker != null && latestNvlDialogue.speaker!.isNotEmpty) {
-        dialoguePreview = '【${latestNvlDialogue.speaker}】${RichTextParser.cleanText(latestNvlDialogue.dialogue)}';
-      } else {
-        dialoguePreview = RichTextParser.cleanText(latestNvlDialogue.dialogue);
-      }
-    } else if (currentState.dialogue != null && currentState.dialogue!.isNotEmpty) {
-      // 普通模式的对话
-      if (currentState.speaker != null && currentState.speaker!.isNotEmpty) {
-        dialoguePreview = '【${currentState.speaker}】${RichTextParser.cleanText(currentState.dialogue!)}';
-      } else {
-        dialoguePreview = RichTextParser.cleanText(currentState.dialogue!);
-      }
-    }
+
+    // 对话预览现在不再硬编码，而是在读取时实时查询
+    // 这里保存空字符串，实际显示时会根据scriptIndex实时查询
+    String dialoguePreview = '';
 
     // 生成截图数据
     Uint8List? screenshotData;
     try {
       screenshotData = await ScreenshotGenerator.generateScreenshotData(
-        currentState,
+        snapshot.currentState,
         poseConfigs,
       );
     } catch (e) {
