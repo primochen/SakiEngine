@@ -47,16 +47,15 @@ class AssetManager {
   }
 
   Future<List<String>> listAssets(String directory, String extension) async {
-    List<String> assets = <String>[];
+    final assets = <String>[];
+    final seen = <String>{};
     final candidates =
         GameScriptLocalization.resolveAssetDirectories(directory);
-    String resolvedDirectory =
-        candidates.isNotEmpty ? candidates.first : directory;
+    final resolvedDirectories = <String>[];
 
     await _loadManifest();
     if (_assetManifest != null) {
-      for (var i = 0; i < candidates.length; i++) {
-        final candidate = candidates[i];
+      for (final candidate in candidates) {
         final currentAssets = <String>[];
 
         for (final assetPath in _assetManifest!.keys) {
@@ -67,21 +66,22 @@ class AssetManager {
         }
 
         if (currentAssets.isNotEmpty) {
-          assets = currentAssets;
-          resolvedDirectory = candidate;
-          break;
-        }
-
-        if (i == candidates.length - 1) {
-          assets = currentAssets;
-          resolvedDirectory = candidate;
+          resolvedDirectories.add(candidate);
+          for (final fileName in currentAssets) {
+            if (seen.add(fileName)) {
+              assets.add(fileName);
+            }
+          }
         }
       }
     }
 
     if (kDebugMode) {
+      final resolved = resolvedDirectories.isEmpty
+          ? 'none'
+          : resolvedDirectories.join(' -> ');
       print(
-          'Found ${assets.length} assets in $resolvedDirectory (requested: $directory) with extension $extension: ${assets.join(', ')}');
+          'Found ${assets.length} assets via $resolved (requested: $directory) with extension $extension: ${assets.join(', ')}');
     }
 
     return assets;
