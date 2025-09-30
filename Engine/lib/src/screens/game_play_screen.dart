@@ -280,13 +280,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   @override
   void dispose() {
-    // 取消注册系统热键
-    if (_reloadHotKey != null) {
-      hotKeyManager.unregister(_reloadHotKey!);
-    }
-    // 取消注册开发者面板热键
-    if (_developerPanelHotKey != null) {
-      hotKeyManager.unregister(_developerPanelHotKey!);
+    // 取消注册系统热键（只在桌面平台）
+    if (_isDesktopPlatform()) {
+      if (_reloadHotKey != null) {
+        hotKeyManager.unregister(_reloadHotKey!);
+      }
+      // 取消注册开发者面板热键
+      if (_developerPanelHotKey != null) {
+        hotKeyManager.unregister(_developerPanelHotKey!);
+      }
     }
     // 清理表情选择器管理器
     _expressionSelectorManager?.dispose();
@@ -294,22 +296,33 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _consoleSequenceDetector?.dispose();
     // 清理快进管理器
     _fastForwardManager?.dispose();
-    
+
     // 清理自动播放管理器
     _autoPlayManager?.dispose();
-    
+
     // 清理已读文本快进管理器
     _readTextSkipManager?.dispose();
-    
+
     // 清理加载淡出动画控制器
     _loadingFadeController.dispose();
-    
+
     _gameManager.dispose();
     super.dispose();
   }
 
+  // 检查是否为桌面平台
+  bool _isDesktopPlatform() {
+    if (kIsWeb) return false;
+    return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  }
+
   // 设置系统级热键
   Future<void> _setupHotkey() async {
+    // hotkey_manager 只在桌面平台可用
+    if (!_isDesktopPlatform()) {
+      print('跳过热键注册：当前平台不支持 hotkey_manager');
+      return;
+    }
     _reloadHotKey = HotKey(
       key: PhysicalKeyboardKey.keyR,
       modifiers: [HotKeyModifier.shift],

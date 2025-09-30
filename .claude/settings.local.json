@@ -17,7 +17,9 @@
       "Read(//Library/Afolder/AYEngine/**)",
       "Bash(git checkout:*)",
       "Bash(/dev/null)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pod install:*)",
+      "Bash(flutter:*)"
     ],
     "deny": [],
     "ask": []

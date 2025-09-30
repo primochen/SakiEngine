@@ -11,7 +11,7 @@ class AssetManager {
   factory AssetManager() => _instance;
   AssetManager._internal() {
     // Print the CWD at initialization
-    if (kDebugMode) {
+    if (_shouldLoadFromExternal()) {
       print("AssetManager CWD: ${Directory.current.path}");
       print("Game path from environment: $_debugRoot");
     }
@@ -19,6 +19,13 @@ class AssetManager {
 
   Map<String, dynamic>? _assetManifest;
   final Map<String, String> _imageCache = {};
+
+  // 检查是否应该从外部加载资源（仅桌面平台的Debug模式）
+  static bool _shouldLoadFromExternal() {
+    if (!kDebugMode) return false;
+    // 只在桌面平台从外部加载
+    return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  }
 
   // 获取游戏路径，从dart-define或环境变量获取
   static String get _debugRoot {
@@ -50,7 +57,7 @@ class AssetManager {
       }
 
       final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
-      if (kDebugMode) {
+      if (_shouldLoadFromExternal()) {
         print("Using game from assets: $defaultGame");
         print("Game path resolved to: $gamePath");
       }
@@ -65,7 +72,7 @@ class AssetManager {
     final candidates = GameScriptLocalization.resolveAssetPaths(path);
     Object? lastError;
 
-    if (kDebugMode) {
+    if (_shouldLoadFromExternal()) {
       final gamePath = await _getGamePath();
       if (gamePath.isEmpty) {
         throw Exception(
@@ -80,7 +87,7 @@ class AssetManager {
           return await File(fileSystemPath).readAsString();
         } catch (e) {
           lastError = e;
-          if (kDebugMode) {
+          if (_shouldLoadFromExternal()) {
             print(
                 '[AssetManager] Failed to load $fileSystemPath, trying fallback if available. Error: $e');
           }
@@ -116,7 +123,7 @@ class AssetManager {
         GameScriptLocalization.resolveAssetDirectories(directory);
     final resolvedDirectories = <String>[];
 
-    if (kDebugMode) {
+    if (_shouldLoadFromExternal()) {
       final gamePath = await _getGamePath();
       if (gamePath.isEmpty) {
         print('Game path is not set, cannot list assets from file system.');
@@ -178,7 +185,7 @@ class AssetManager {
       return _imageCache[name];
     }
 
-    if (kDebugMode) {
+    if (_shouldLoadFromExternal()) {
       return _findAssetInFileSystem(name);
     } else {
       return _findAssetInBundle(name);
@@ -392,7 +399,7 @@ class AssetManager {
       // 按字母顺序排序
       availableLayers.sort();
     } catch (e) {
-      if (kDebugMode) {
+      if (_shouldLoadFromExternal()) {
         print("AssetManager: 递归扫描角色图层出错 $characterId: $e");
       }
     }
@@ -438,7 +445,7 @@ class AssetManager {
       // 按字母顺序排序
       availableLayers.sort();
     } catch (e) {
-      if (kDebugMode) {
+      if (_shouldLoadFromExternal()) {
         print("AssetManager: 扫描角色图层出错 $characterId: $e");
       }
     }

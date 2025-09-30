@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -149,6 +150,14 @@ void main() async {
     // 初始化Flutter绑定
     WidgetsFlutterBinding.ensureInitialized();
 
+    // 移动端强制横屏
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+
     // 注册fvp以支持所有平台的视频播放，特别是Windows
     fvp.registerWith(options: {
       'global': {
@@ -160,13 +169,14 @@ void main() async {
     if (!kIsWeb) {
       await PlatformWindowManager.ensureInitialized();
       await PlatformWindowManager.setPreventClose(true);
-      
+
       // 设置窗口默认最大化
       await PlatformWindowManager.maximize();
     }
 
     // 初始化系统热键，清理之前的注册（用于热重载）
-    if (!kIsWeb) {
+    // hotkey_manager 只在桌面平台可用
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       await hotKeyManager.unregisterAll();
     }
 

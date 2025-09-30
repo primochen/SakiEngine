@@ -11,6 +11,13 @@ class ProjectInfoManager {
   String? _cachedProjectName;
   String? _cachedAppName;
 
+  // 检查是否应该从外部加载资源（仅桌面平台的Debug模式）
+  static bool _shouldLoadFromExternal() {
+    if (!kDebugMode) return false;
+    // 只在桌面平台从外部加载
+    return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  }
+
   /// 获取当前项目名称（文件夹名）
   Future<String> getProjectName() async {
     if (_cachedProjectName != null) {
@@ -42,7 +49,7 @@ class ProjectInfoManager {
       _cachedProjectName = projectName;
       return _cachedProjectName!;
     } catch (e) {
-      if (kDebugMode) {
+      if (_shouldLoadFromExternal()) {
         print('Error getting project name: $e');
       }
       // 如果无法获取项目名称，使用默认值
@@ -79,8 +86,8 @@ class ProjectInfoManager {
         }
       }
 
-      if (gamePath.isNotEmpty && kDebugMode) {
-        // 在调试模式下，尝试从game_config.txt读取应用名称
+      if (gamePath.isNotEmpty && _shouldLoadFromExternal()) {
+        // 在桌面调试模式下，尝试从game_config.txt读取应用名称
         final configFile = File(p.join(gamePath, 'game_config.txt'));
         if (await configFile.exists()) {
           final lines = await configFile.readAsLines();
@@ -90,12 +97,12 @@ class ProjectInfoManager {
           }
         }
       }
-      
+
       // 如果无法从配置读取，使用项目名称
       _cachedAppName = await getProjectName();
       return _cachedAppName!;
     } catch (e) {
-      if (kDebugMode) {
+      if (_shouldLoadFromExternal()) {
         print('Error getting app name: $e');
       }
       // fallback到项目名称
