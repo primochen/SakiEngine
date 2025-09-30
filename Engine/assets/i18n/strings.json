@@ -231,12 +231,12 @@
     "dialog.action.cancel": "Cancel"
   },
   "ja": {
-    "menu.newGame": "新しいゲーム",
-    "menu.continue": "続きから",
-    "menu.loadGame": "セーブを読み込む",
-    "menu.settings": "設定",
-    "menu.exitGame": "ゲーム終了",
-    "menu.exit": "終了",
+    "menu.newGame": "New Game",
+    "menu.continue": "Continue",
+    "menu.loadGame": "Load Game",
+    "menu.settings": "Settings",
+    "menu.exitGame": "Exit Game",
+    "menu.exit": "Exit",
     "language.zh-Hans": "簡体字中国語",
     "language.zh-Hant": "繁体字中国語",
     "language.en": "英語",
