@@ -6,6 +6,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/widgets/animated_tooltip.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class QuickMenu extends StatefulWidget {
   final VoidCallback onSave;
@@ -52,13 +53,14 @@ class QuickMenu extends StatefulWidget {
   }
 }
 
-class _QuickMenuState extends State<QuickMenu> 
+class _QuickMenuState extends State<QuickMenu>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   String? _hoveredButtonText;
   int? _hoveredButtonIndex;
   int _lastValidButtonIndex = 0; // 保存最后一个有效的按钮索引
   String _lastValidButtonText = ''; // 保存最后一个有效的按钮文本
   final GlobalKey _menuKey = GlobalKey();
+  final LocalizationManager _localization = LocalizationManager();
   
   // 自动隐藏相关状态
   bool _isAutoHideEnabled = false;
@@ -321,7 +323,7 @@ class _QuickMenuState extends State<QuickMenu>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _QuickMenuButton(
-                          text: '存档',
+                          text: _localization.t('quickMenu.save'),
                           icon: Icons.save_alt_outlined,
                           onPressed: widget.onSave,
                           scale: scale,
@@ -337,7 +339,7 @@ class _QuickMenuState extends State<QuickMenu>
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '读档',
+                          text: _localization.t('quickMenu.load'),
                           icon: Icons.folder_open_outlined,
                           onPressed: widget.onLoad,
                           scale: scale,
@@ -353,7 +355,7 @@ class _QuickMenuState extends State<QuickMenu>
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '回顾',
+                          text: _localization.t('quickMenu.review'),
                           icon: Icons.auto_stories_outlined,
                           onPressed: widget.onReview,
                           scale: scale,
@@ -369,7 +371,7 @@ class _QuickMenuState extends State<QuickMenu>
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '回退',
+                          text: _localization.t('quickMenu.rollback'),
                           icon: Icons.undo_outlined,
                           onPressed: widget.onPreviousDialogue,
                           scale: scale,
@@ -387,7 +389,7 @@ class _QuickMenuState extends State<QuickMenu>
                         // 新增：自动播放按钮
                         if (widget.onAutoPlay != null) ...[
                           _QuickMenuButton(
-                            text: '自动',
+                            text: _localization.t('quickMenu.auto'),
                             icon: Icons.play_arrow_outlined,
                             onPressed: widget.onAutoPlay!,
                             scale: scale,
@@ -407,7 +409,7 @@ class _QuickMenuState extends State<QuickMenu>
                         // 新增：快进按钮（跳过已读文本）
                         if (widget.onSkipRead != null) ...[
                           _QuickMenuButton(
-                            text: '快进',
+                            text: _localization.t('quickMenu.skip'),
                             icon: Icons.fast_forward_outlined,
                             onPressed: widget.onSkipRead!,
                             scale: scale,
@@ -471,7 +473,7 @@ class _QuickMenuState extends State<QuickMenu>
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '设置',
+                          text: _localization.t('quickMenu.settings'),
                           icon: Icons.settings_outlined,
                           onPressed: widget.onSettings,
                           scale: scale,
@@ -479,10 +481,10 @@ class _QuickMenuState extends State<QuickMenu>
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
                             final settingsButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null 
+                                ? (widget.onSkipRead != null
                                     ? (widget.onThemeToggle != null ? 8 : 7)
                                     : (widget.onThemeToggle != null ? 7 : 6))
-                                : (widget.onSkipRead != null 
+                                : (widget.onSkipRead != null
                                     ? (widget.onThemeToggle != null ? 7 : 6)
                                     : (widget.onThemeToggle != null ? 6 : 5));
                             _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
@@ -494,7 +496,7 @@ class _QuickMenuState extends State<QuickMenu>
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '返回',
+                          text: _localization.t('quickMenu.back'),
                           icon: Icons.arrow_back_rounded,
                           onPressed: widget.onBack,
                           scale: scale,
