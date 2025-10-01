@@ -124,7 +124,6 @@ class SoranoutaMenuButtons {
     final isDarkMode = SettingsManager().currentDarkMode;
     final shadowColor = isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9);
 
-    // 如果不需要动画，直接返回内容
     final shadowContent = ImageFiltered(
       imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
       child: Stack(
@@ -180,12 +179,10 @@ class SoranoutaMenuButtons {
     return Positioned(
       top: screenSize.height * 0.08,
       right: screenSize.width * 0.04,
-      child: startAnimation
-        ? AnimatedRollerBlind(
-            startAnimation: startAnimation,
-            child: shadowContent,
-          )
-        : shadowContent, // 不需要动画时直接返回内容
+      child: _AnimatedFadeIn(
+        startAnimation: startAnimation,
+        child: shadowContent,
+      ),
     );
   }
 
@@ -208,6 +205,67 @@ class SoranoutaMenuButtons {
       spacing: buttonSpacing,
       top: 0.08,
       right: 0.05,
+    );
+  }
+}
+
+/// 淡入动画包装器
+/// 与卷帘动画同步的透明度淡入效果
+class _AnimatedFadeIn extends StatefulWidget {
+  final Widget child;
+  final bool startAnimation;
+
+  const _AnimatedFadeIn({
+    required this.child,
+    required this.startAnimation,
+  });
+
+  @override
+  State<_AnimatedFadeIn> createState() => _AnimatedFadeInState();
+}
+
+class _AnimatedFadeInState extends State<_AnimatedFadeIn>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800), // 与卷帘动画同步
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic, // 与卷帘动画同步
+    );
+
+    if (widget.startAnimation) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedFadeIn oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!oldWidget.startAnimation && widget.startAnimation) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: widget.child,
     );
   }
 }
