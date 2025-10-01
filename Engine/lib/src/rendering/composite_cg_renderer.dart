@@ -2144,6 +2144,9 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
   late AnimationController _transitionController;
   late Animation<double> _transitionAnimation;
 
+  // 是否是第一次显示CG（用于从背景渐变到CG）
+  bool _isFirstCg = true;
+
   @override
   void initState() {
     super.initState();
@@ -2215,11 +2218,16 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
         _currentContentId = contentId;
       });
 
-      // 启动渐变动画（除非跳过动画或是淡出）
-      if (!widget.skipAnimation && !widget.isFadingOut && _previousImage != null) {
-        _transitionController.forward(from: 0.0);
+      // 启动渐变动画
+      if (!widget.skipAnimation && !widget.isFadingOut) {
+        if (_previousImage != null || _isFirstCg) {
+          // 有前一张图像，或是第一次显示（从透明渐变）
+          _transitionController.forward(from: 0.0);
+          _isFirstCg = false;
+        }
       } else {
         _transitionController.value = 1.0;
+        _isFirstCg = false;
       }
 
     } catch (e) {
@@ -2248,6 +2256,29 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
 
         // 始终使用shader绘制（如果可用），保持坐标一致性
         if (shaderAvailable && _currentImage != null) {
+          // 如果是第一次显示且没有previous，使用淡入效果
+          if (_previousImage == null && progress < 1.0) {
+            // 第一次显示：从透明渐变到当前图像
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                return Opacity(
+                  opacity: progress,
+                  child: CustomPaint(
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                    painter: _DissolveShaderPainter(
+                      program: dissolveProgram!,
+                      progress: 1.0,  // shader内部progress=1.0，只显示toImage
+                      fromImage: _currentImage!,
+                      toImage: _currentImage!,
+                      opacity: 1.0,
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+
+          // 正常过渡或稳定显示
           final fromImage = _previousImage ?? _currentImage!;
           final toImage = _currentImage!;
           final dissolveProgress = _previousImage != null ? progress : 1.0;
