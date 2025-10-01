@@ -59,13 +59,13 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 180),
-      reverseDuration: const Duration(milliseconds: 120),
+      duration: const Duration(milliseconds: 250),
+      reverseDuration: const Duration(milliseconds: 200),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOut,
-      reverseCurve: Curves.easeIn,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
     );
   }
 
@@ -205,10 +205,15 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
                   ),
                 ),
                 SizedBox(width: 12 * scale),
-                Icon(
-                  _isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  size: 20 * scale,
-                  color: config.themeColors.primary,
+                AnimatedRotation(
+                  turns: _isOpen ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutCubic,
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 20 * scale,
+                    color: config.themeColors.primary,
+                  ),
                 ),
               ],
             ),
@@ -261,7 +266,16 @@ class _DropdownOverlay<T> extends StatelessWidget {
           showWhenUnlinked: false,
           child: FadeTransition(
             opacity: animation,
-            child: _buildDropdown(context),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
+              ),
+              alignment: Alignment.topCenter,
+              child: _buildDropdown(context),
+            ),
           ),
         ),
       ],
