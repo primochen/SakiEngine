@@ -779,6 +779,10 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
   Widget _buildDataCard(double uiScale, double textScale, SakiEngineConfig config) {
     final isLocked = widget.saveSlot?.isLocked ?? false;
     final opacity = isLocked ? 0.6 : 1.0;
+
+    // 移动端对话文字增大2/3
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    final dialogueFontSize = isMobile ? 0.5 : 0.36;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -864,7 +868,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
                       maxLines: 3, // 减少行数从4到3
                       overflow: TextOverflow.ellipsis,
                       style: config.reviewTitleTextStyle.copyWith(
-                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.36, // 稍微减小字体
+                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * dialogueFontSize,
                         color: config.themeColors.onSurface.withOpacity(0.8 * opacity),
                         fontWeight: FontWeight.normal,
                         height: 1.2, // 减少行高从1.4到1.2
