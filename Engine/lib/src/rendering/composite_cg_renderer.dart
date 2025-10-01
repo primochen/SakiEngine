@@ -196,6 +196,7 @@ class CompositeCgRenderer {
         isFadingOut: characterState.isFadingOut,
         skipAnimation: skipAnimations,
         useGpuAcceleration: _useGpuAcceleration,
+        animationProperties: characterState.animationProperties, // 传递动画属性
       ),
     ];
   }
@@ -2116,6 +2117,7 @@ class CgSlotWidget extends StatefulWidget {
   final bool isFadingOut;
   final bool skipAnimation;
   final bool useGpuAcceleration;
+  final Map<String, double>? animationProperties; // 新增：动画属性
 
   const CgSlotWidget({
     super.key,
@@ -2125,6 +2127,7 @@ class CgSlotWidget extends StatefulWidget {
     required this.isFadingOut,
     required this.skipAnimation,
     required this.useGpuAcceleration,
+    this.animationProperties, // 新增
   });
 
   @override
@@ -2247,7 +2250,12 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
       return const SizedBox.shrink();
     }
 
-    return AnimatedBuilder(
+    // 获取动画属性
+    final animProps = widget.animationProperties;
+    final screenSize = MediaQuery.of(context).size;
+
+    // 构建shader绘制widget
+    Widget cgWidget = AnimatedBuilder(
       animation: _transitionAnimation,
       builder: (context, child) {
         final progress = _transitionAnimation.value;
@@ -2311,6 +2319,26 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
         );
       },
     );
+
+    // 应用动画变换（类似背景的实现）
+    if (animProps != null) {
+      cgWidget = Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..translate(
+            (animProps['xcenter'] ?? 0.0) * screenSize.width,
+            (animProps['ycenter'] ?? 0.0) * screenSize.height,
+          )
+          ..scale(animProps['scale'] ?? 1.0)
+          ..rotateZ(animProps['rotation'] ?? 0.0),
+        child: Opacity(
+          opacity: (animProps['alpha'] ?? 1.0).clamp(0.0, 1.0),
+          child: cgWidget,
+        ),
+      );
+    }
+
+    return cgWidget;
   }
 }
 
