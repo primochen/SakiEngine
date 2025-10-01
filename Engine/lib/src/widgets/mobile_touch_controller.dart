@@ -12,6 +12,7 @@ class MobileTouchController extends StatefulWidget {
   final VoidCallback? onLongPress; // 长按回调
   final VoidCallback? onOtherAreaTap; // 其他区域点击回调（用于推进对话等）
   final double quickMenuAreaWidth; // 快捷菜单区域宽度（从左侧开始）
+  final bool hasOverlayOpen; // 是否有弹窗打开（新增参数）
 
   const MobileTouchController({
     super.key,
@@ -19,6 +20,7 @@ class MobileTouchController extends StatefulWidget {
     this.onLongPress,
     this.onOtherAreaTap,
     this.quickMenuAreaWidth = 100.0,
+    this.hasOverlayOpen = false, // 默认为false
   });
 
   @override
@@ -72,6 +74,12 @@ class _MobileTouchControllerState extends State<MobileTouchController> {
     // 如果是长按，不处理点击事件
     if (_isLongPressing) {
       _isLongPressing = false;
+      _pressStartPosition = null;
+      return;
+    }
+
+    // 如果有弹窗打开，不处理点击事件（防止点击穿透）
+    if (widget.hasOverlayOpen) {
       _pressStartPosition = null;
       return;
     }

@@ -400,6 +400,7 @@ class GameUILayerState extends State<GameUILayer> {
     if (isMobile) {
       return MobileTouchController(
         quickMenuAreaWidth: quickMenuAreaWidth,
+        hasOverlayOpen: _hasOverlayOpen, // 传递弹窗状态
         onLongPress: () {
           // 长按屏幕，切换UI显示/隐藏
           final globalManager = GlobalRightClickUIManager();
