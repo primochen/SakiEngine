@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:sakiengine/src/widgets/quick_menu.dart';
+import 'package:sakiengine/src/widgets/mobile_quick_menu.dart';
 
 /// 移动端触屏控制器
 /// 处理移动端特有的触屏交互：
@@ -9,7 +9,6 @@ import 'package:sakiengine/src/widgets/quick_menu.dart';
 /// - 点击其他区域时触发菜单延迟隐藏
 class MobileTouchController extends StatefulWidget {
   final Widget child;
-  final VoidCallback? onQuickMenuAreaTap; // 快捷菜单区域点击回调
   final VoidCallback? onLongPress; // 长按回调
   final VoidCallback? onOtherAreaTap; // 其他区域点击回调（用于推进对话等）
   final double quickMenuAreaWidth; // 快捷菜单区域宽度（从左侧开始）
@@ -17,7 +16,6 @@ class MobileTouchController extends StatefulWidget {
   const MobileTouchController({
     super.key,
     required this.child,
-    this.onQuickMenuAreaTap,
     this.onLongPress,
     this.onOtherAreaTap,
     this.quickMenuAreaWidth = 100.0,
@@ -84,8 +82,8 @@ class _MobileTouchControllerState extends State<MobileTouchController> {
 
       // 检查是否点击在快捷菜单区域
       if (tapPosition.dx < widget.quickMenuAreaWidth) {
-        // 点击快捷菜单区域
-        widget.onQuickMenuAreaTap?.call();
+        // 点击快捷菜单区域，显示菜单
+        MobileQuickMenu.showMenu();
       } else {
         // 点击其他区域（例如推进对话）
         widget.onOtherAreaTap?.call();
@@ -107,7 +105,7 @@ class _MobileTouchControllerState extends State<MobileTouchController> {
   /// 延迟隐藏快捷菜单（如果已显示）
   void _scheduleQuickMenuHide() {
     // 通过快捷菜单的静态方法触发延迟隐藏
-    QuickMenu.scheduleHide();
+    MobileQuickMenu.scheduleHide();
   }
 
   @override

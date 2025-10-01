@@ -20,7 +20,9 @@
       "Bash(cat:*)",
       "Bash(pod install:*)",
       "Bash(flutter:*)",
-      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)"
+      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcrun simctl list:*)"
     ],
     "deny": [],
     "ask": []

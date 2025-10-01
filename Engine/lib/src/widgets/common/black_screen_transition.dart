@@ -172,7 +172,6 @@ class _TransitionOverlayState extends State<_TransitionOverlay>
     // 在动画中点执行场景切换
     if (!_midTransitionExecuted && _controller.value >= 0.5) {
       _midTransitionExecuted = true;
-      print('[TransitionOverlay] 到达转场中点，执行回调');
       widget.onMidTransition();
     }
   }

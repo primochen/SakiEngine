@@ -21,6 +21,7 @@ import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
 import 'package:sakiengine/src/widgets/common/common_indicator.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
+import 'package:sakiengine/src/widgets/mobile_quick_menu.dart'; // 新增：手机端快捷菜单
 import 'package:sakiengine/src/widgets/settings_screen.dart';
 import 'package:sakiengine/src/widgets/mobile_touch_controller.dart';
 
@@ -221,23 +222,44 @@ class GameUILayerState extends State<GameUILayer> {
         ),
 
         // 快捷菜单 - 在播放视频或章节场景时隐藏
+        // 手机端使用 MobileQuickMenu，桌面端使用 QuickMenu
         if (widget.gameState.movieFile == null &&
             !widget.gameManager.isCurrentSceneChapter)
-          HideableUI(
-            child: QuickMenu(
-              onSave: widget.onToggleSave,
-              onLoad: widget.onToggleLoad,
-              onReview: widget.onToggleReview,
-              onSettings: widget.onToggleSettings,
-              onBack: widget.onHandleQuickMenuBack,
-              onPreviousDialogue: widget.onHandlePreviousDialogue,
-              onSkipRead: widget.onSkipRead, // 新增：传递跳过已读文本回调
-              isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
-              onAutoPlay: widget.onAutoPlay, // 新增：传递自动播放回调
-              isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
-              onThemeToggle: widget.onThemeToggle, // 新增：传递主题切换回调
-            ),
-          ),
+          isMobile
+              ? Positioned(
+                  left: 10 * uiScale + mediaPadding.left, // 左边距 + 刘海安全区
+                  top: (MediaQuery.of(context).size.height - MediaQuery.of(context).size.height * 0.9) / 2, // 垂直居中
+                  child: HideableUI(
+                    child: MobileQuickMenu(
+                      onSave: widget.onToggleSave,
+                      onLoad: widget.onToggleLoad,
+                      onReview: widget.onToggleReview,
+                      onSettings: widget.onToggleSettings,
+                      onBack: widget.onHandleQuickMenuBack,
+                      onPreviousDialogue: widget.onHandlePreviousDialogue,
+                      onSkipRead: widget.onSkipRead, // 传递跳过已读文本回调
+                      isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
+                      onAutoPlay: widget.onAutoPlay, // 传递自动播放回调
+                      isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
+                      onThemeToggle: widget.onThemeToggle, // 传递主题切换回调
+                    ),
+                  ),
+                )
+              : HideableUI(
+                  child: QuickMenu(
+                    onSave: widget.onToggleSave,
+                    onLoad: widget.onToggleLoad,
+                    onReview: widget.onToggleReview,
+                    onSettings: widget.onToggleSettings,
+                    onBack: widget.onHandleQuickMenuBack,
+                    onPreviousDialogue: widget.onHandlePreviousDialogue,
+                    onSkipRead: widget.onSkipRead, // 传递跳过已读文本回调
+                    isFastForwarding: widget.gameState.isFastForwarding, // 传递快进状态
+                    onAutoPlay: widget.onAutoPlay, // 传递自动播放回调
+                    isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
+                    onThemeToggle: widget.onThemeToggle, // 传递主题切换回调
+                  ),
+                ),
 
         // 快进指示器 - 顶部显示
         if (widget.gameState.isFastForwarding)
@@ -378,15 +400,12 @@ class GameUILayerState extends State<GameUILayer> {
     if (isMobile) {
       return MobileTouchController(
         quickMenuAreaWidth: quickMenuAreaWidth,
-        onQuickMenuAreaTap: () {
-          // 点击快捷菜单区域，显示菜单
-          QuickMenu.showMenu();
-        },
         onLongPress: () {
           // 长按屏幕，切换UI显示/隐藏
           final globalManager = GlobalRightClickUIManager();
           globalManager.setUIHidden(!globalManager.isUIHidden);
         },
+        onOtherAreaTap: widget.onProgressDialogue,
         child: stackContent,
       );
     }
