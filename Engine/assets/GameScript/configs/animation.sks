@@ -147,7 +147,11 @@ ease 5.0 scale-0 ycenter-0 xcenter+0
 cg1_4
 scale+0.5
 ease 2.0 scale-0
-
+cg1_1
+scale+1.5
+ycenter-0.7
+ease 1.0 ycenter-0.7
+ease 2.0 scale-0 ycenter-0
 attack_syozen
 xcenter-0
 ease 0.5 xcenter+0.25

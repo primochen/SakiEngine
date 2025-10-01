@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 
@@ -14,14 +16,20 @@ class CommonCloseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
+
+    // 移动端按钮尺寸加大
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    final buttonSize = isMobile ? 56.0 : 36.0;
+    final iconSize = isMobile ? 32.0 : 20.0;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onClose,
-        borderRadius: BorderRadius.circular(20 * scale),
+        borderRadius: BorderRadius.circular(buttonSize * scale / 2),
         child: Container(
-          width: 36 * scale,
-          height: 36 * scale,
+          width: buttonSize * scale,
+          height: buttonSize * scale,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: config.themeColors.primary.withValues(alpha: 0.1),
@@ -33,7 +41,7 @@ class CommonCloseButton extends StatelessWidget {
           child: Icon(
             Icons.close,
             color: config.themeColors.primary.withValues(alpha: 0.8),
-            size: 20 * scale,
+            size: iconSize * scale,
           ),
         ),
       ),

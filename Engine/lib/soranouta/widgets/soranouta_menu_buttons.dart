@@ -123,64 +123,69 @@ class SoranoutaMenuButtons {
     ];
     final isDarkMode = SettingsManager().currentDarkMode;
     final shadowColor = isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9);
-    
+
+    // 如果不需要动画，直接返回内容
+    final shadowContent = ImageFiltered(
+      imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+      child: Stack(
+        children: [
+          // 阴影按钮文字和横线
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (int i = 0; i < buttonTexts.length; i++) ...[
+                Container(
+                  margin: EdgeInsets.only(right: 20 * scale),
+                  child: Text(
+                    buttonTexts[i],
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontFamily: 'ChillJinshuSongPro_Soft',
+                      fontSize: 55 * scale,
+                      color: shadowColor,
+                      fontWeight: FontWeight.normal,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                ),
+                if (i < buttonTexts.length - 1)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      width: 200 * scale,
+                      height: 2 * scale,
+                      color: shadowColor,
+                      margin: EdgeInsets.only(right: 0),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+          // 阴影竖线
+          Positioned(
+            top: 20 * scale,
+            right: 0,
+            child: Container(
+              width: 3 * scale,
+              height: (buttonTexts.length * 80 + (buttonTexts.length - 1) * 20) * scale,
+              color: shadowColor,
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Positioned(
       top: screenSize.height * 0.08,
       right: screenSize.width * 0.04,
-      child: AnimatedRollerBlind(
-        startAnimation: startAnimation,
-        child: ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-          child: Stack(
-            children: [
-              // 阴影按钮文字和横线
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < buttonTexts.length; i++) ...[
-                    Container(
-                      margin: EdgeInsets.only(right: 20 * scale),
-                      child: Text(
-                        buttonTexts[i],
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontFamily: 'ChillJinshuSongPro_Soft',
-                          fontSize: 55 * scale,
-                          color: shadowColor,
-                          fontWeight: FontWeight.normal,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                    ),
-                    if (i < buttonTexts.length - 1)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          width: 200 * scale,
-                          height: 2 * scale,
-                          color: shadowColor,
-                          margin: EdgeInsets.only(right: 0),
-                        ),
-                      ),
-                  ],
-                ],
-              ),
-              // 阴影竖线
-              Positioned(
-                top: 20 * scale,
-                right: 0,
-                child: Container(
-                  width: 3 * scale,
-                  height: (buttonTexts.length * 80 + (buttonTexts.length - 1) * 20) * scale,
-                  color: shadowColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: startAnimation
+        ? AnimatedRollerBlind(
+            startAnimation: startAnimation,
+            child: shadowContent,
+          )
+        : shadowContent, // 不需要动画时直接返回内容
     );
   }
 

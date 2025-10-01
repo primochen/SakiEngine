@@ -170,16 +170,16 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 config: config,
                 textScale: menuScale, // 使用菜单缩放系数而不是文本缩放系数
               ),
-              
-              // 按钮区域的白色模糊阴影层 - 独立层
+
+              // 按钮区域的白色模糊阴影层 - 独立层，不参与动画
               SoranoutaMenuButtons.createShadowWidget(
                 config: config,
                 scale: menuScale,
                 screenSize: screenSize,
-                startAnimation: _startMenuAnimation,
+                startAnimation: false, // 阴影不参与动画
               ),
 
-              // SoraNoUta 专用按钮
+              // SoraNoUta 专用按钮，参与卷帘动画
               SoranoutaMenuButtons.createButtonsWidget(
                 onNewGame: widget.onNewGame,
                 onLoadGame: () => setState(() => _showLoadOverlay = true),
@@ -269,6 +269,9 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                     onEnter: (_) => setState(() => _isDarkModeButtonHovered = true),
                     onExit: (_) => setState(() => _isDarkModeButtonHovered = false),
                     child: GestureDetector(
+                      onTapDown: (_) => setState(() => _isDarkModeButtonHovered = true),
+                      onTapUp: (_) => setState(() => _isDarkModeButtonHovered = false),
+                      onTapCancel: () => setState(() => _isDarkModeButtonHovered = false),
                       onTap: () async {
                         final newDarkMode = !isDarkMode;
                         await SettingsManager().setDarkMode(newDarkMode);

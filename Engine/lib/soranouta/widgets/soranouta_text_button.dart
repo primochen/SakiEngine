@@ -19,26 +19,31 @@ class SoranoutaTextButton extends StatefulWidget {
 
 class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
   bool _isHovered = false;
+  bool _isPressed = false; // 添加按下状态
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = SettingsManager().currentDarkMode;
     final normalColor = isDarkMode ? Colors.black : Colors.white;
-    final hoverColor = isDarkMode ? Colors.white : Colors.black;    
+    final hoverColor = isDarkMode ? Colors.white : Colors.black;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
         onTap: widget.onPressed,
         child: Container(
-          margin: EdgeInsets.only(right: 20 * widget.scale), // 给按钮添加右边距
+          margin: EdgeInsets.only(right: 20 * widget.scale),
           child: Text(
             widget.text,
             textAlign: TextAlign.right,
             style: TextStyle(
               fontFamily: 'ChillJinshuSongPro_Soft',
               fontSize: 55 * widget.scale,
-              color: _isHovered ? hoverColor : normalColor,
+              color: (_isHovered || _isPressed) ? hoverColor : normalColor,
               fontWeight: FontWeight.normal,
               letterSpacing: 3,
             ),
