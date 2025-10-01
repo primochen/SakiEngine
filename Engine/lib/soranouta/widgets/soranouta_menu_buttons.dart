@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
@@ -9,6 +10,15 @@ import 'dart:ui' as ui;
 
 class SoranoutaMenuButtons {
   static const double buttonSpacing = 10;
+
+  /// 判断是否应该显示退出按钮
+  /// Web端和移动端不显示退出按钮
+  static bool _shouldShowExitButton() {
+    if (kIsWeb) return false; // Web端不显示
+    if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) return false; // 移动端不显示
+    return true; // 桌面端显示
+  }
+
   static Widget createButtonsWidget({
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
@@ -21,7 +31,7 @@ class SoranoutaMenuButtons {
     final isDarkMode = SettingsManager().currentDarkMode;
     final lineColor = isDarkMode ? Colors.black : Colors.white;
     final localization = LocalizationManager();
-    
+
     final List<Widget> buttons = [
       SoranoutaTextButton(
         text: localization.t('menu.newGame'),
@@ -40,7 +50,7 @@ class SoranoutaMenuButtons {
       ),
     ];
 
-    if (!kIsWeb) {
+    if (_shouldShowExitButton()) {
       buttons.add(
         SoranoutaTextButton(
           text: localization.t('menu.exit'),
@@ -103,7 +113,7 @@ class SoranoutaMenuButtons {
       localization.t('menu.newGame'),
       localization.t('menu.loadGame'),
       localization.t('menu.settings'),
-      if (!kIsWeb) localization.t('menu.exit'),
+      if (_shouldShowExitButton()) localization.t('menu.exit'),
     ];
     final isDarkMode = SettingsManager().currentDarkMode;
     final shadowColor = isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9);
