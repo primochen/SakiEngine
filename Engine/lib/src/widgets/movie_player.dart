@@ -250,7 +250,7 @@ class _MoviePlayerState extends State<MoviePlayer> {
       if (_errorMessage?.contains('视频文件名为空') == true) {
         return const SizedBox.shrink();
       }
-      
+
       return Container(
         color: Colors.black,
         child: Center(
@@ -276,17 +276,44 @@ class _MoviePlayerState extends State<MoviePlayer> {
       );
     }
 
+    // 使用LayoutBuilder手动计算BoxFit.cover的效果
     return Container(
       color: Colors.black,
-      child: Center(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: _controller!.value.size.width,
-            height: _controller!.value.size.height,
-            child: VideoPlayer(_controller!),
-          ),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          final screenHeight = constraints.maxHeight;
+          final videoWidth = _controller!.value.size.width;
+          final videoHeight = _controller!.value.size.height;
+
+          if (videoWidth == 0 || videoHeight == 0) {
+            return const SizedBox.shrink();
+          }
+
+          // 计算BoxFit.cover需要的缩放比例
+          final scaleX = screenWidth / videoWidth;
+          final scaleY = screenHeight / videoHeight;
+          final scale = scaleX > scaleY ? scaleX : scaleY; // 取较大值
+
+          final scaledWidth = videoWidth * scale;
+          final scaledHeight = videoHeight * scale;
+
+          return SizedBox(
+            width: screenWidth,
+            height: screenHeight,
+            child: OverflowBox(
+              minWidth: 0,
+              maxWidth: double.infinity,
+              minHeight: 0,
+              maxHeight: double.infinity,
+              child: SizedBox(
+                width: scaledWidth,
+                height: scaledHeight,
+                child: VideoPlayer(_controller!),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
