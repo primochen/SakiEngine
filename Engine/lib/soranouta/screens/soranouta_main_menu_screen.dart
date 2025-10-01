@@ -41,6 +41,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showDebugPanel = false;
   bool _showSettings = false;
   bool _isDarkModeButtonHovered = false;
+  bool _startMenuAnimation = false; // 控制菜单动画开始
   late String _copyrightText;
   late final LocalizationManager _localizationManager;
 
@@ -51,6 +52,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     _localizationManager.addListener(_handleLocalizationChanged);
     _generateCopyrightText();
     _startBackgroundMusic();
+    _startMenuAnimationAfterSplash();
   }
 
   void _handleLocalizationChanged() {
@@ -58,11 +60,11 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
       setState(() {});
     }
   }
-  
+
   void _generateCopyrightText() {
     final random = Random();
     final randomValue = random.nextDouble();
-    
+
     if (randomValue < 0.1) {
       _copyrightText = 'Ⓒ Copyright 950-2050 Aimes Soft';
     } else {
@@ -74,6 +76,19 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   void dispose() {
     _localizationManager.removeListener(_handleLocalizationChanged);
     super.dispose();
+  }
+
+  Future<void> _startMenuAnimationAfterSplash() async {
+    if (!widget.skipMusicDelay) {
+      // 等待启动遮罩完成后再开始菜单动画
+      const splashTotal = Duration(milliseconds: 3600);
+      await Future.delayed(splashTotal);
+    }
+    if (mounted) {
+      setState(() {
+        _startMenuAnimation = true;
+      });
+    }
   }
 
   Future<void> _startBackgroundMusic() async {
@@ -161,8 +176,9 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 config: config,
                 scale: menuScale,
                 screenSize: screenSize,
+                startAnimation: _startMenuAnimation,
               ),
-              
+
               // SoraNoUta 专用按钮
               SoranoutaMenuButtons.createButtonsWidget(
                 onNewGame: widget.onNewGame,
@@ -172,6 +188,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 config: config,
                 scale: menuScale,
                 screenSize: screenSize,
+                startAnimation: _startMenuAnimation,
               ),
               
               // 版权信息阴影层

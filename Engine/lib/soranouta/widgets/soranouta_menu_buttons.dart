@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/widgets/common/configurable_menu_button.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_text_button.dart';
+import 'package:sakiengine/soranouta/widgets/animated_roller_blind.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'dart:ui' as ui;
@@ -27,6 +28,7 @@ class SoranoutaMenuButtons {
     required SakiEngineConfig config,
     required double scale,
     required Size screenSize,
+    bool startAnimation = true, // 控制动画开始
   }) {
     final isDarkMode = SettingsManager().currentDarkMode;
     final lineColor = isDarkMode ? Colors.black : Colors.white;
@@ -81,24 +83,27 @@ class SoranoutaMenuButtons {
     return Positioned(
       top: screenSize.height * 0.08,
       right: screenSize.width * 0.04,
-      child: Stack(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: widgetsWithSeparators,
-          ),
-          Positioned(
-            top: 20 * scale,
-            right: 0,
-            child: Container(
-              width: 3 * scale,
-              height: (buttons.length * 80 + (buttons.length - 1) * 20) * scale,
-              color: lineColor,
+      child: AnimatedRollerBlind(
+        startAnimation: startAnimation,
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: widgetsWithSeparators,
             ),
-          ),
-        ],
+            Positioned(
+              top: 20 * scale,
+              right: 0,
+              child: Container(
+                width: 3 * scale,
+                height: (buttons.length * 80 + (buttons.length - 1) * 20) * scale,
+                color: lineColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -107,6 +112,7 @@ class SoranoutaMenuButtons {
     required SakiEngineConfig config,
     required double scale,
     required Size screenSize,
+    bool startAnimation = true, // 控制动画开始
   }) {
     final localization = LocalizationManager();
     final List<String> buttonTexts = [
@@ -121,55 +127,58 @@ class SoranoutaMenuButtons {
     return Positioned(
       top: screenSize.height * 0.08,
       right: screenSize.width * 0.04,
-      child: ImageFiltered(
-        imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-        child: Stack(
-          children: [
-            // 阴影按钮文字和横线
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (int i = 0; i < buttonTexts.length; i++) ...[
-                  Container(
-                    margin: EdgeInsets.only(right: 20 * scale),
-                    child: Text(
-                      buttonTexts[i],
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontFamily: 'ChillJinshuSongPro_Soft',
-                        fontSize: 55 * scale,
-                        color: shadowColor,
-                        fontWeight: FontWeight.normal,
-                        letterSpacing: 3,
+      child: AnimatedRollerBlind(
+        startAnimation: startAnimation,
+        child: ImageFiltered(
+          imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+          child: Stack(
+            children: [
+              // 阴影按钮文字和横线
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < buttonTexts.length; i++) ...[
+                    Container(
+                      margin: EdgeInsets.only(right: 20 * scale),
+                      child: Text(
+                        buttonTexts[i],
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontFamily: 'ChillJinshuSongPro_Soft',
+                          fontSize: 55 * scale,
+                          color: shadowColor,
+                          fontWeight: FontWeight.normal,
+                          letterSpacing: 3,
+                        ),
                       ),
                     ),
-                  ),
-                  if (i < buttonTexts.length - 1)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        width: 200 * scale,
-                        height: 2 * scale,
-                        color: shadowColor,
-                        margin: EdgeInsets.only(right: 0),
+                    if (i < buttonTexts.length - 1)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          width: 200 * scale,
+                          height: 2 * scale,
+                          color: shadowColor,
+                          margin: EdgeInsets.only(right: 0),
+                        ),
                       ),
-                    ),
+                  ],
                 ],
-              ],
-            ),
-            // 阴影竖线
-            Positioned(
-              top: 20 * scale,
-              right: 0,
-              child: Container(
-                width: 3 * scale,
-                height: (buttonTexts.length * 80 + (buttonTexts.length - 1) * 20) * scale,
-                color: shadowColor,
               ),
-            ),
-          ],
+              // 阴影竖线
+              Positioned(
+                top: 20 * scale,
+                right: 0,
+                child: Container(
+                  width: 3 * scale,
+                  height: (buttonTexts.length * 80 + (buttonTexts.length - 1) * 20) * scale,
+                  color: shadowColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
