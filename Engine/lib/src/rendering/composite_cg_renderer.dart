@@ -2245,19 +2245,22 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
         final progress = _transitionAnimation.value;
         final dissolveProgram = CompositeCgRenderer._dissolveProgram;
         final shaderAvailable = dissolveProgram != null;
-        final hasPrevious = _previousImage != null && _currentImage != null && progress < 1.0;
 
-        // 优先使用shader（与角色立绘一致）
-        if (shaderAvailable && hasPrevious) {
+        // 始终使用shader绘制（如果可用），保持坐标一致性
+        if (shaderAvailable && _currentImage != null) {
+          final fromImage = _previousImage ?? _currentImage!;
+          final toImage = _currentImage!;
+          final dissolveProgress = _previousImage != null ? progress : 1.0;
+
           return LayoutBuilder(
             builder: (context, constraints) {
               return CustomPaint(
                 size: Size(constraints.maxWidth, constraints.maxHeight),
                 painter: _DissolveShaderPainter(
                   program: dissolveProgram!,
-                  progress: progress,
-                  fromImage: _previousImage!,
-                  toImage: _currentImage!,
+                  progress: dissolveProgress,
+                  fromImage: fromImage,
+                  toImage: toImage,
                   opacity: widget.isFadingOut ? (1.0 - progress) : 1.0,
                 ),
               );
@@ -2265,7 +2268,7 @@ class _CgSlotWidgetState extends State<CgSlotWidget> with SingleTickerProviderSt
           );
         }
 
-        // Fallback: 使用自定义绘制器
+        // Fallback: 使用自定义绘制器（shader不可用时）
         return CustomPaint(
           painter: _CgSlotPainter(
             currentImage: _currentImage,
