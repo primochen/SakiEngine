@@ -1222,7 +1222,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textScale = context.scaleFor(ComponentType.text);
     final isFullscreenMode = _menuDisplayMode == 'fullscreen';
     final localization = LocalizationManager();
-    
+
+    // 根据当前模式动态生成描述，使用已有的翻译键
+    final currentModeText = isFullscreenMode
+        ? localization.t('settings.menuDisplay.fill')
+        : localization.t('settings.menuDisplay.window');
+    final description = '${localization.t('settings.menuDisplay.description')} (${localization.t('settings.menuDisplay.current')}: $currentModeText)';
+
     return Container(
       padding: EdgeInsets.all(16 * scale),
       decoration: BoxDecoration(
@@ -1254,7 +1260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  localization.t('settings.menuDisplay.description'),
+                  description,
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
