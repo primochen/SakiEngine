@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
@@ -278,7 +280,16 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
     }
   }
 
+  /// 获取网格列数（模块化）
+  /// - 移动端（iOS/Android）：固定2列
+  /// - 桌面端/Web：根据窗口高宽比自动调整（2/3/4列）
   int _getCurrentGridColumnCount(BuildContext context) {
+    // 移动端固定2列
+    if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+      return 2;
+    }
+
+    // 桌面端和Web根据窗口比例判断
     final screenRatio = MediaQuery.of(context).size.height / MediaQuery.of(context).size.width;
     if (screenRatio > 1.5) {
       return 2;
@@ -286,6 +297,25 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       return 3;
     } else {
       return 4;
+    }
+  }
+
+  /// 获取网格卡片宽高比（模块化）
+  /// 确保不同列数下内容完整显示
+  double _getCurrentGridChildAspectRatio(BuildContext context) {
+    // 移动端固定比例
+    if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+      return 2.4;
+    }
+
+    // 桌面端和Web根据窗口比例判断
+    final screenRatio = MediaQuery.of(context).size.height / MediaQuery.of(context).size.width;
+    if (screenRatio > 1.5) {
+      return 2.4;
+    } else if (screenRatio > 1.0) {
+      return 2.2;
+    } else {
+      return 2.25;
     }
   }
 
@@ -449,10 +479,8 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
             controller: _scrollController,
             padding: EdgeInsets.all(32 * uiScale),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 2 : 
-                              MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 3 : 4,
-              childAspectRatio: MediaQuery.of(context).size.height / MediaQuery.of(context).size.width > 1.5 ? 2.4 : 
-                                 MediaQuery.of(context).size.height > MediaQuery.of(context).size.width ? 2.2 : 2.25,
+              crossAxisCount: _getCurrentGridColumnCount(context),
+              childAspectRatio: _getCurrentGridChildAspectRatio(context),
               crossAxisSpacing: 20 * uiScale,
               mainAxisSpacing: 20 * uiScale,
             ),
@@ -693,8 +721,10 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
   }
 
   Widget _buildActionButtons(double uiScale, SakiEngineConfig config) {
-    final buttonSize = 26 * uiScale;
-    final buttonSpacing = 3 * uiScale;
+    // 移动端按钮尺寸加倍
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    final buttonSize = isMobile ? 45 * uiScale : 26 * uiScale;
+    final buttonSpacing = isMobile ? 6 * uiScale : 3 * uiScale;
     final isLocked = widget.saveSlot?.isLocked ?? false;
     
     return Row(
