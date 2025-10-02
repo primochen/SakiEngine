@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 class SoranoutaTextButton extends StatefulWidget {
   final String text;
@@ -20,6 +21,7 @@ class SoranoutaTextButton extends StatefulWidget {
 class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
   bool _isHovered = false;
   bool _isPressed = false; // 添加按下状态
+  final _uiSoundManager = UISoundManager();
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +30,17 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
     final hoverColor = isDarkMode ? Colors.white : Colors.black;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _uiSoundManager.playButtonHover();
+      },
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          _uiSoundManager.playButtonClick();
+        },
         onTapCancel: () => setState(() => _isPressed = false),
         onTap: widget.onPressed,
         child: Container(

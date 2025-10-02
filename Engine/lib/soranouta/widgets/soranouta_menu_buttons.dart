@@ -78,16 +78,28 @@ class SoranoutaMenuButtons {
 
     final List<Widget> widgetsWithSeparators = [];
     for (int i = 0; i < buttons.length; i++) {
-      widgetsWithSeparators.add(buttons[i]);
+      // 为每个按钮包装动画，使用索引错开时机
+      widgetsWithSeparators.add(
+        AnimatedRollerBlind(
+          startAnimation: startAnimation,
+          index: i, // 传入索引，用于错开动画
+          child: buttons[i],
+        ),
+      );
       if (i < buttons.length - 1) {
+        // 分割线也添加动画，与对应按钮同步
         widgetsWithSeparators.add(
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              width: 200 * scale, // 恢复原始宽度
-              height: 2 * scale,
-              color: lineColor,
-              margin: EdgeInsets.only(right: 0), // 分割线延伸到竖线
+          AnimatedRollerBlind(
+            startAnimation: startAnimation,
+            index: i, // 与按钮使用相同索引
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                width: 200 * scale,
+                height: 2 * scale,
+                color: lineColor,
+                margin: EdgeInsets.only(right: 0),
+              ),
             ),
           ),
         );
@@ -97,27 +109,29 @@ class SoranoutaMenuButtons {
     return Positioned(
       top: screenSize.height * 0.08,
       right: screenSize.width * 0.04,
-      child: AnimatedRollerBlind(
-        startAnimation: startAnimation,
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: widgetsWithSeparators,
-            ),
-            Positioned(
-              top: 20 * scale,
-              right: 0,
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: widgetsWithSeparators,
+          ),
+          // 竖线也添加动画（直接在这里放置，不用Positioned）
+          Positioned(
+            top: 20 * scale,
+            right: 0,
+            child: AnimatedRollerBlind(
+              startAnimation: startAnimation,
+              index: 0, // 竖线最先出现
               child: Container(
                 width: 3 * scale,
                 height: (buttons.length * 80 + (buttons.length - 1) * 20) * scale,
                 color: lineColor,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

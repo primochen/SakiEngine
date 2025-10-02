@@ -19,6 +19,7 @@ import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart'; // 新增：导入SaveLoadManager
+import 'package:sakiengine/src/utils/ui_sound_manager.dart'; // 新增：导入UISoundManager
 import 'src/utils/platform_window_manager_io.dart' if (dart.library.html) 'src/utils/platform_window_manager_web.dart';
 
 enum AppState { mainMenu, inGame }
@@ -202,6 +203,9 @@ void main() async {
 
     // 初始化多语言管理器
     await LocalizationManager().init();
+
+    // 初始化UI音效管理器
+    await UISoundManager().initialize();
 
     // 初始化全局变量管理器并打印变量状态
     await GlobalVariableManager().init();
