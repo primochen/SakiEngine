@@ -12,6 +12,7 @@ class SoraNoutaStartupFlow extends StatefulWidget {
     required this.onNewGame,
     required this.onLoadGame,
     required this.onLoadGameWithSave,
+    this.onContinueGame, // 新增：继续游戏回调
     required this.skipMusicDelay,
     this.splashDuration = const Duration(seconds: 3),
     this.fadeOutDuration = const Duration(milliseconds: 600),
@@ -22,6 +23,7 @@ class SoraNoutaStartupFlow extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
+  final VoidCallback? onContinueGame; // 新增：继续游戏回调
   final bool skipMusicDelay;
   final Duration splashDuration;
   final Duration fadeOutDuration;
@@ -89,6 +91,7 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
             onNewGame: widget.onNewGame,
             onLoadGame: widget.onLoadGame,
             onLoadGameWithSave: widget.onLoadGameWithSave,
+            onContinueGame: widget.onContinueGame, // 新增：传递继续游戏回调
             skipMusicDelay: widget.skipMusicDelay,
           ),
           if (_overlayVisible)

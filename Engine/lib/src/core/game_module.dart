@@ -19,6 +19,7 @@ abstract class GameModule {
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
+    VoidCallback? onContinueGame, // 新增：继续游戏回调
     bool skipMusicDelay = false,
   });
 
@@ -100,12 +101,14 @@ class DefaultGameModule implements GameModule {
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
+    VoidCallback? onContinueGame, // 新增：继续游戏回调
     bool skipMusicDelay = false,
   }) {
     return MainMenuScreen(
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
+      onContinueGame: onContinueGame, // 新增：传递继续游戏回调
       //gameModule: this,
     );
   }

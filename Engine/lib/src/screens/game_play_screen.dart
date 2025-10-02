@@ -10,6 +10,7 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
@@ -641,6 +642,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _autoPlayManager?.toggleAutoPlay();
   }
 
+  // 新增：处理快速存档
+  Future<void> _handleQuickSave() async {
+    try {
+      final saveLoadManager = SaveLoadManager();
+      final snapshot = _gameManager.saveStateSnapshot();
+      final poseConfigs = _gameManager.poseConfigs;
+
+      await saveLoadManager.quickSave(_currentScript, snapshot, poseConfigs);
+      _showNotificationMessage('快速存档成功');
+    } catch (e) {
+      _showNotificationMessage('快速存档失败: $e');
+    }
+  }
+
   // 显示通知消息
   void _showNotificationMessage(String message) {
     // 调用GameUILayer的showNotification方法
@@ -849,6 +864,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onToggleReview: () => setState(() => _showReviewOverlay = !_showReviewOverlay),
                     onToggleSave: () => setState(() => _showSaveOverlay = !_showSaveOverlay),
                     onToggleLoad: () => setState(() => _showLoadOverlay = !_showLoadOverlay),
+                    onQuickSave: _handleQuickSave, // 新增：快速存档回调
                     onToggleSettings: () => setState(() => _showSettings = !_showSettings),
                     onToggleDeveloperPanel: () => setState(() => _showDeveloperPanel = !_showDeveloperPanel),
                     onToggleDebugPanel: () => setState(() => _showDebugPanel = !_showDebugPanel),

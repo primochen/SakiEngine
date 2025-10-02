@@ -12,6 +12,7 @@ import 'package:sakiengine/src/localization/localization_manager.dart';
 class MobileQuickMenu extends StatefulWidget {
   final VoidCallback onSave;
   final VoidCallback onLoad;
+  final VoidCallback? onQuickSave; // 新增：快速存档回调
   final VoidCallback onReview;
   final VoidCallback onSettings;
   final VoidCallback onBack;
@@ -26,6 +27,7 @@ class MobileQuickMenu extends StatefulWidget {
     super.key,
     required this.onSave,
     required this.onLoad,
+    this.onQuickSave, // 新增：快速存档回调（可选）
     required this.onReview,
     required this.onSettings,
     required this.onBack,
@@ -253,9 +255,20 @@ class _MobileQuickMenuState extends State<MobileQuickMenu> with SingleTickerProv
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // 快速存档按钮（放在最前面）
+                  if (widget.onQuickSave != null) ...[
+                    _MobileQuickMenuButton(
+                      text: _localization.t('quickMenu.quickSave'),
+                      icon: Icons.save_as_outlined,
+                      onPressed: widget.onQuickSave!,
+                      scale: scale,
+                      config: config,
+                    ),
+                    _buildDivider(scale, config),
+                  ],
                   _MobileQuickMenuButton(
                     text: _localization.t('quickMenu.save'),
-                    icon: Icons.save_alt_outlined,
+                    icon: Icons.save_outlined,
                     onPressed: widget.onSave,
                     scale: scale,
                     config: config,

@@ -18,6 +18,7 @@ import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart'; // 新增：导入SaveLoadManager
 import 'src/utils/platform_window_manager_io.dart' if (dart.library.html) 'src/utils/platform_window_manager_web.dart';
 
 enum AppState { mainMenu, inGame }
@@ -78,6 +79,18 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
     );
   }
 
+  // 新增：继续游戏（加载快速存档）
+  Future<void> _continueGame() async {
+    try {
+      final quickSave = await SaveLoadManager().loadQuickSave();
+      if (quickSave != null) {
+        _enterGame(saveSlot: quickSave);
+      }
+    } catch (e) {
+      debugPrint('快速读档失败: $e');
+    }
+  }
+
   void _returnToMainMenu() {
     TransitionOverlayManager.instance.transition(
       context: context,
@@ -114,6 +127,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
                 // 这个回调现在只是个占位符，实际的load逻辑在MainMenuScreen内部处理
               },
               onLoadGameWithSave: (saveSlot) => _enterGame(saveSlot: saveSlot),
+              onContinueGame: _continueGame, // 新增：传递继续游戏回调
               skipMusicDelay: _isReturningFromGame,
             );
             // 重置标记，确保下次进入主菜单时正常延迟

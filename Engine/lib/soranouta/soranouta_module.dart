@@ -22,6 +22,7 @@ class SoranoutaModule extends DefaultGameModule {
     required VoidCallback onNewGame,
     required VoidCallback onLoadGame,
     Function(SaveSlot)? onLoadGameWithSave,
+    VoidCallback? onContinueGame, // 新增：继续游戏回调
     bool skipMusicDelay = false,
   }) {
     // 使用专门的 SoraNoUta 主菜单，继承标题但使用专用按钮
@@ -29,6 +30,7 @@ class SoranoutaModule extends DefaultGameModule {
       onNewGame: onNewGame,
       onLoadGame: onLoadGame,
       onLoadGameWithSave: onLoadGameWithSave,
+      onContinueGame: onContinueGame, // 新增：传递继续游戏回调
       skipMusicDelay: skipMusicDelay,
       skipIntro: skipMusicDelay,
     );

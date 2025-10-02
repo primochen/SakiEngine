@@ -15,6 +15,7 @@ import 'package:sakiengine/src/widgets/common/default_menu_buttons.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 
 class _HoverButton extends StatefulWidget {
   final String text;
@@ -81,12 +82,14 @@ class MainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
+  final VoidCallback? onContinueGame; // 新增：继续游戏回调（快速读档）
 
   const MainMenuScreen({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
     this.onLoadGameWithSave,
+    this.onContinueGame, // 新增：继续游戏回调
   });
 
   @override
@@ -99,6 +102,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _showSettings = false;
   String _appTitle = 'SakiEngine';
   late final LocalizationManager _localizationManager;
+  bool _hasQuickSave = false; // 新增：标记是否有快速存档
 
   @override
   void initState() {
@@ -106,6 +110,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     _localizationManager = LocalizationManager();
     _localizationManager.addListener(_handleLocalizationChanged);
     _loadAppTitle();
+    _checkQuickSave(); // 新增：检查快速存档
   }
 
   void _handleLocalizationChanged() {
@@ -127,9 +132,29 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
   }
 
+  // 新增：检查快速存档是否存在
+  Future<void> _checkQuickSave() async {
+    try {
+      final hasQuickSave = await SaveLoadManager().hasQuickSave();
+      if (mounted) {
+        setState(() {
+          _hasQuickSave = hasQuickSave;
+        });
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+  }
 
   void _handleNewGame() {
     widget.onNewGame();
+  }
+
+  // 新增：处理继续游戏（快速读档）
+  void _handleContinueGame() {
+    if (widget.onContinueGame != null) {
+      widget.onContinueGame!();
+    }
   }
 
   @override
@@ -248,7 +273,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   ) {
     List<MenuButtonConfig> buttonConfigs;
     MenuButtonsLayoutConfig layoutConfig;
-    
+
     // 根据项目选择按钮配置
     if (_appTitle == 'SoraNoUta') {
       buttonConfigs = SoranoutaMenuButtons.createConfigs(
@@ -263,6 +288,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     } else {
       buttonConfigs = DefaultMenuButtons.createDefaultConfigs(
         onNewGame: _handleNewGame,
+        onContinueGame: _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
         onLoadGame: () => setState(() => _showLoadOverlay = true),
         onSettings: () => setState(() => _showSettings = true),
         onExit: () => _showExitConfirmation(context),

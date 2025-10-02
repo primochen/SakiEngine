@@ -48,6 +48,7 @@ class GameUILayer extends StatefulWidget {
   final VoidCallback onToggleReview;
   final VoidCallback onToggleSave;
   final VoidCallback onToggleLoad;
+  final VoidCallback? onQuickSave; // 新增：快速存档回调
   final VoidCallback onToggleSettings;
   final VoidCallback onToggleDeveloperPanel;
   final VoidCallback onToggleDebugPanel;
@@ -91,6 +92,7 @@ class GameUILayer extends StatefulWidget {
     required this.onToggleReview,
     required this.onToggleSave,
     required this.onToggleLoad,
+    this.onQuickSave, // 新增：快速存档回调（可选）
     required this.onToggleSettings,
     required this.onToggleDeveloperPanel,
     required this.onToggleDebugPanel,
@@ -233,6 +235,7 @@ class GameUILayerState extends State<GameUILayer> {
                     child: MobileQuickMenu(
                       onSave: widget.onToggleSave,
                       onLoad: widget.onToggleLoad,
+                      onQuickSave: widget.onQuickSave, // 新增：传递快速存档回调
                       onReview: widget.onToggleReview,
                       onSettings: widget.onToggleSettings,
                       onBack: widget.onHandleQuickMenuBack,
@@ -249,6 +252,7 @@ class GameUILayerState extends State<GameUILayer> {
                   child: QuickMenu(
                     onSave: widget.onToggleSave,
                     onLoad: widget.onToggleLoad,
+                    onQuickSave: widget.onQuickSave, // 新增：传递快速存档回调
                     onReview: widget.onToggleReview,
                     onSettings: widget.onToggleSettings,
                     onBack: widget.onHandleQuickMenuBack,

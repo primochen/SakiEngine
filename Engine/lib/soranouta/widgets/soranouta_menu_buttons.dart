@@ -22,6 +22,7 @@ class SoranoutaMenuButtons {
 
   static Widget createButtonsWidget({
     required VoidCallback onNewGame,
+    VoidCallback? onContinueGame, // 新增：继续游戏回调（可选）
     required VoidCallback onLoadGame,
     required VoidCallback onSettings,
     required VoidCallback onExit,
@@ -34,7 +35,20 @@ class SoranoutaMenuButtons {
     final lineColor = isDarkMode ? Colors.black : Colors.white;
     final localization = LocalizationManager();
 
-    final List<Widget> buttons = [
+    final List<Widget> buttons = [];
+
+    // 如果有快速存档，添加"继续游戏"按钮
+    if (onContinueGame != null) {
+      buttons.add(
+        SoranoutaTextButton(
+          text: localization.t('menu.continue'),
+          onPressed: onContinueGame,
+          scale: scale,
+        ),
+      );
+    }
+
+    buttons.addAll([
       SoranoutaTextButton(
         text: localization.t('menu.newGame'),
         onPressed: onNewGame,
@@ -50,7 +64,7 @@ class SoranoutaMenuButtons {
         onPressed: onSettings,
         scale: scale,
       ),
-    ];
+    ]);
 
     if (_shouldShowExitButton()) {
       buttons.add(
@@ -112,15 +126,23 @@ class SoranoutaMenuButtons {
     required SakiEngineConfig config,
     required double scale,
     required Size screenSize,
+    VoidCallback? onContinueGame, // 新增：继续游戏回调（可选）
     bool startAnimation = true, // 控制动画开始
   }) {
     final localization = LocalizationManager();
-    final List<String> buttonTexts = [
+    final List<String> buttonTexts = [];
+
+    // 如果有快速存档，添加"继续游戏"按钮文本
+    if (onContinueGame != null) {
+      buttonTexts.add(localization.t('menu.continue'));
+    }
+
+    buttonTexts.addAll([
       localization.t('menu.newGame'),
       localization.t('menu.loadGame'),
       localization.t('menu.settings'),
       if (_shouldShowExitButton()) localization.t('menu.exit'),
-    ];
+    ]);
     final isDarkMode = SettingsManager().currentDarkMode;
     final shadowColor = isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9);
 

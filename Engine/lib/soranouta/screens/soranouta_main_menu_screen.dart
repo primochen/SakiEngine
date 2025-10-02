@@ -12,6 +12,7 @@ import 'package:sakiengine/src/widgets/common/game_title_widget.dart';
 import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'package:sakiengine/soranouta/widgets/firefly_animation.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:sakiengine/src/localization/localization_manager.dart';
@@ -22,6 +23,7 @@ class SoraNoutaMainMenuScreen extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
+  final VoidCallback? onContinueGame; // 新增：继续游戏回调（快速读档）
   final bool skipMusicDelay;
 
   const SoraNoutaMainMenuScreen({
@@ -29,6 +31,7 @@ class SoraNoutaMainMenuScreen extends StatefulWidget {
     required this.onNewGame,
     required this.onLoadGame,
     this.onLoadGameWithSave,
+    this.onContinueGame, // 新增：继续游戏回调
     this.skipMusicDelay = false,
   }) : super(key: key);
 
@@ -42,6 +45,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showSettings = false;
   bool _isDarkModeButtonHovered = false;
   bool _startMenuAnimation = false; // 控制菜单动画开始
+  bool _hasQuickSave = false; // 新增：标记是否有快速存档
   late String _copyrightText;
   late final LocalizationManager _localizationManager;
 
@@ -53,11 +57,33 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     _generateCopyrightText();
     _startBackgroundMusic();
     _startMenuAnimationAfterSplash();
+    _checkQuickSave(); // 新增：检查快速存档
   }
 
   void _handleLocalizationChanged() {
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  // 新增：检查快速存档是否存在
+  Future<void> _checkQuickSave() async {
+    try {
+      final hasQuickSave = await SaveLoadManager().hasQuickSave();
+      if (mounted) {
+        setState(() {
+          _hasQuickSave = hasQuickSave;
+        });
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+  }
+
+  // 新增：处理继续游戏（快速读档）
+  void _handleContinueGame() {
+    if (widget.onContinueGame != null) {
+      widget.onContinueGame!();
     }
   }
 
@@ -176,12 +202,14 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 config: config,
                 scale: menuScale,
                 screenSize: screenSize,
+                onContinueGame: _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
                 startAnimation: _startMenuAnimation, // 与按钮动画同步
               ),
 
               // SoraNoUta 专用按钮，参与卷帘动画
               SoranoutaMenuButtons.createButtonsWidget(
                 onNewGame: widget.onNewGame,
+                onContinueGame: _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
                 onLoadGame: () => setState(() => _showLoadOverlay = true),
                 onSettings: () => setState(() => _showSettings = true),
                 onExit: () => _showExitConfirmation(context),

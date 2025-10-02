@@ -13,6 +13,8 @@ import 'package:sakiengine/src/localization/localization_manager.dart';
 class QuickMenu extends StatefulWidget {
   final VoidCallback onSave;
   final VoidCallback onLoad;
+  final VoidCallback? onQuickSave; // 新增：快速存档回调
+  final VoidCallback? onQuickLoad; // 新增：快速读档回调
   final VoidCallback onReview;
   final VoidCallback onSettings;
   final VoidCallback onBack;
@@ -27,6 +29,8 @@ class QuickMenu extends StatefulWidget {
     super.key,
     required this.onSave,
     required this.onLoad,
+    this.onQuickSave, // 新增：快速存档回调（可选）
+    this.onQuickLoad, // 新增：快速读档回调（可选）
     required this.onReview,
     required this.onSettings,
     required this.onBack,
@@ -342,17 +346,36 @@ class _QuickMenuState extends State<QuickMenu>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // 快速存档按钮（放在最前面）
+                        if (widget.onQuickSave != null) ...[
+                          _QuickMenuButton(
+                            text: _localization.t('quickMenu.quickSave'),
+                            icon: Icons.save_as_outlined, // 简单的保存图标用于快速存档
+                            onPressed: widget.onQuickSave!,
+                            scale: scale,
+                            config: config,
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              _hoveredButtonIndex = hovering ? 0 : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = 0;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         _QuickMenuButton(
                           text: _localization.t('quickMenu.save'),
-                          icon: Icons.save_alt_outlined,
+                          icon: Icons.save_outlined, // 有箭头的保存图标用于普通存档
                           onPressed: widget.onSave,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 0 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 1 : 0) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 0;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 1 : 0;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -366,9 +389,9 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 1 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 2 : 1) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 1;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 2 : 1;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -382,9 +405,9 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 2 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 3 : 2) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 2;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 3 : 2;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -398,9 +421,9 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 3 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 4 : 3) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 3;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 4 : 3;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -417,9 +440,10 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isAutoPlaying, // 传递自动播放状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              _hoveredButtonIndex = hovering ? 4 : null;
+                              final index = widget.onQuickSave != null ? 5 : 4;
+                              _hoveredButtonIndex = hovering ? index : null;
                               if (hovering) {
-                                _lastValidButtonIndex = 4;
+                                _lastValidButtonIndex = index;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -437,9 +461,11 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isFastForwarding, // 传递快进状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              _hoveredButtonIndex = hovering ? 5 : null;
+                              final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                              final index = widget.onAutoPlay != null ? baseIndex + 1 : baseIndex;
+                              _hoveredButtonIndex = hovering ? index : null;
                               if (hovering) {
-                                _lastValidButtonIndex = 5;
+                                _lastValidButtonIndex = index;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -456,12 +482,13 @@ class _QuickMenuState extends State<QuickMenu>
                             config: config,
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              final themeButtonIndex = widget.onAutoPlay != null 
-                                  ? (widget.onSkipRead != null ? 6 : 5)
-                                  : (widget.onSkipRead != null ? 5 : 4);
-                              _hoveredButtonIndex = hovering ? themeButtonIndex : null;
+                              final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                              final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                              final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                              final index = baseIndex + autoIndex + skipIndex;
+                              _hoveredButtonIndex = hovering ? index : null;
                               if (hovering) {
-                                _lastValidButtonIndex = themeButtonIndex;
+                                _lastValidButtonIndex = index;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -477,16 +504,14 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final autoHideButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 7 : 6)
-                                    : (widget.onThemeToggle != null ? 6 : 5))
-                                : (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 6 : 5)
-                                    : (widget.onThemeToggle != null ? 5 : 4));
-                            _hoveredButtonIndex = hovering ? autoHideButtonIndex : null;
+                            final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                            final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                            final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                            final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                            final index = baseIndex + autoIndex + skipIndex + themeIndex;
+                            _hoveredButtonIndex = hovering ? index : null;
                             if (hovering) {
-                              _lastValidButtonIndex = autoHideButtonIndex;
+                              _lastValidButtonIndex = index;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -500,16 +525,14 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final settingsButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null
-                                    ? (widget.onThemeToggle != null ? 8 : 7)
-                                    : (widget.onThemeToggle != null ? 7 : 6))
-                                : (widget.onSkipRead != null
-                                    ? (widget.onThemeToggle != null ? 7 : 6)
-                                    : (widget.onThemeToggle != null ? 6 : 5));
-                            _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
+                            final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                            final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                            final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                            final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                            final index = baseIndex + autoIndex + skipIndex + themeIndex + 1;
+                            _hoveredButtonIndex = hovering ? index : null;
                             if (hovering) {
-                              _lastValidButtonIndex = settingsButtonIndex;
+                              _lastValidButtonIndex = index;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -523,16 +546,14 @@ class _QuickMenuState extends State<QuickMenu>
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final returnButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 9 : 8)
-                                    : (widget.onThemeToggle != null ? 8 : 7))
-                                : (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 8 : 7)
-                                    : (widget.onThemeToggle != null ? 7 : 6));
-                            _hoveredButtonIndex = hovering ? returnButtonIndex : null;
+                            final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                            final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                            final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                            final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                            final index = baseIndex + autoIndex + skipIndex + themeIndex + 2;
+                            _hoveredButtonIndex = hovering ? index : null;
                             if (hovering) {
-                              _lastValidButtonIndex = returnButtonIndex;
+                              _lastValidButtonIndex = index;
                               _lastValidButtonText = text;
                             }
                           }),

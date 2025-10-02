@@ -191,6 +191,63 @@ class SaveLoadManager {
     await file.writeAsBytes(binaryData);
   }
 
+  /// 快速存档功能
+  Future<void> quickSave(String currentScript, GameStateSnapshot snapshot, Map<String, PoseConfig> poseConfigs) async {
+    final directory = await getSavesDirectory();
+    final file = File('$directory/quicksave.sakisav');
+
+    // 生成截图数据
+    Uint8List? screenshotData;
+    try {
+      screenshotData = await ScreenshotGenerator.generateScreenshotData(
+        snapshot.currentState,
+        poseConfigs,
+      );
+    } catch (e) {
+      print('生成截图失败: $e');
+    }
+
+    final saveSlot = SaveSlot(
+      id: -1, // 使用特殊ID表示快速存档
+      saveTime: DateTime.now(),
+      currentScript: currentScript,
+      dialoguePreview: '',
+      snapshot: snapshot,
+      screenshotData: screenshotData,
+      isLocked: false,
+    );
+
+    final binaryData = saveSlot.toBinary();
+    await file.writeAsBytes(binaryData);
+  }
+
+  /// 读取快速存档
+  Future<SaveSlot?> loadQuickSave() async {
+    try {
+      final directory = await getSavesDirectory();
+      final file = File('$directory/quicksave.sakisav');
+      if (await file.exists()) {
+        final binaryData = await file.readAsBytes();
+        return SaveSlot.fromBinary(binaryData);
+      }
+    } catch (e) {
+      print('Error loading quick save: $e');
+    }
+    return null;
+  }
+
+  /// 检查快速存档是否存在
+  Future<bool> hasQuickSave() async {
+    try {
+      final directory = await getSavesDirectory();
+      final file = File('$directory/quicksave.sakisav');
+      return await file.exists();
+    } catch (e) {
+      print('Error checking quick save: $e');
+      return false;
+    }
+  }
+
   Future<SaveSlot?> loadGame(int slotId) async {
     try {
       final directory = await getSavesDirectory();
