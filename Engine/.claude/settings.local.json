@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)"
+      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)",
+      "Read(//Library/Afolder/FlutterProject/SakiEngine/Game/SoraNoUta/Assets/images/cg/**)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []
