@@ -3,6 +3,7 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/game_style_switch.dart';
@@ -1549,17 +1550,26 @@ class _SettingsButton extends StatefulWidget {
 
 class _SettingsButtonState extends State<_SettingsButton> {
   bool _isHovered = false;
+  final _uiSoundManager = UISoundManager();
 
   @override
   Widget build(BuildContext context) {
     final isPrimary = widget.style == _SettingsButtonStyle.primary;
     final textScale = context.scaleFor(ComponentType.text);
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: widget.onPressed,
-        onHover: (hovering) => setState(() => _isHovered = hovering),
+        onTap: () {
+          _uiSoundManager.playButtonClick();
+          widget.onPressed();
+        },
+        onHover: (hovering) {
+          setState(() => _isHovered = hovering);
+          if (hovering) {
+            _uiSoundManager.playButtonHover();
+          }
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: EdgeInsets.symmetric(
@@ -1633,6 +1643,7 @@ class _SettingsTabState extends State<_SettingsTab> with SingleTickerProviderSta
   late AnimationController _animationController;
   late Animation<double> _glowAnimation;
   late Animation<Color?> _colorAnimation;
+  final _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -1688,10 +1699,16 @@ class _SettingsTabState extends State<_SettingsTab> with SingleTickerProviderSta
     
     return Expanded(
       child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
+        onEnter: (_) {
+          setState(() => _isHovered = true);
+          _uiSoundManager.playButtonHover();
+        },
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
-          onTap: widget.onTap,
+          onTap: () {
+            _uiSoundManager.playButtonClick();
+            widget.onTap();
+          },
           child: AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {

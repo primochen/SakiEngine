@@ -4,6 +4,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 class ConfirmDialog extends StatefulWidget {
   final String title;
@@ -33,6 +34,7 @@ class _ConfirmDialogState extends State<ConfirmDialog>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _backdropAnimation;
+  final _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -242,10 +244,10 @@ class _ConfirmDialogState extends State<ConfirmDialog>
   }
 
   Widget _buildButton(
-    BuildContext context, 
-    String text, 
+    BuildContext context,
+    String text,
     IconData icon,
-    VoidCallback onPressed, 
+    VoidCallback onPressed,
     double uiScale,
     double textScale,
     SakiEngineConfig config,
@@ -253,46 +255,52 @@ class _ConfirmDialogState extends State<ConfirmDialog>
   ) {
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 16 * uiScale,
-            vertical: 8 * uiScale,
-          ),
-          decoration: BoxDecoration(
-            color: isNegative 
-              ? config.themeColors.background.withOpacity(0.6)
-              : config.themeColors.primary.withOpacity(0.1),
-            border: Border.all(
-              color: isNegative 
-                ? config.themeColors.onSurfaceVariant.withOpacity(0.3)
-                : config.themeColors.primary.withOpacity(0.5),
-              width: 1,
+      child: MouseRegion(
+        onEnter: (_) => _uiSoundManager.playButtonHover(),
+        child: InkWell(
+          onTap: () {
+            _uiSoundManager.playButtonClick();
+            onPressed();
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: 16 * uiScale,
+              vertical: 8 * uiScale,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isNegative 
-                  ? config.themeColors.onSurfaceVariant 
-                  : config.themeColors.primary,
-                size: config.dialogueTextStyle.fontSize! * textScale * 1.2,
+            decoration: BoxDecoration(
+              color: isNegative
+                ? config.themeColors.background.withOpacity(0.6)
+                : config.themeColors.primary.withOpacity(0.1),
+              border: Border.all(
+                color: isNegative
+                  ? config.themeColors.onSurfaceVariant.withOpacity(0.3)
+                  : config.themeColors.primary.withOpacity(0.5),
+                width: 1,
               ),
-              SizedBox(width: 8 * uiScale),
-              Text(
-                text,
-                style: config.dialogueTextStyle.copyWith(
-                  fontSize: config.dialogueTextStyle.fontSize! * textScale,
-                  color: isNegative 
-                    ? config.themeColors.onSurfaceVariant 
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: isNegative
+                    ? config.themeColors.onSurfaceVariant
                     : config.themeColors.primary,
-                  fontWeight: FontWeight.w500,
+                  size: config.dialogueTextStyle.fontSize! * textScale * 1.2,
                 ),
-              ),
-            ],
+                SizedBox(width: 8 * uiScale),
+                Text(
+                  text,
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale,
+                    color: isNegative
+                      ? config.themeColors.onSurfaceVariant
+                      : config.themeColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

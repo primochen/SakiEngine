@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 class SquareIconButton extends StatefulWidget {
   final IconData icon;
@@ -45,36 +46,43 @@ class SquareIconButton extends StatefulWidget {
 
 class _SquareIconButtonState extends State<SquareIconButton> {
   bool _isHovered = false;
+  final _uiSoundManager = UISoundManager();
 
   @override
   Widget build(BuildContext context) {
     final config = SakiEngineConfig();
     final buttonSize = widget.size ?? 24.0;
     final iconSize = widget.iconSize ?? buttonSize * 0.6;
-    
-    final backgroundColor = widget.backgroundColor ?? 
+
+    final backgroundColor = widget.backgroundColor ??
         config.themeColors.background.withOpacity(0.9);
-    final borderColor = widget.borderColor ?? 
+    final borderColor = widget.borderColor ??
         config.themeColors.primary.withOpacity(0.3);
-    final iconColor = widget.iconColor ?? 
+    final iconColor = widget.iconColor ??
         config.themeColors.primary.withOpacity(0.7);
-        
-    final hoverBackgroundColor = widget.hoverBackgroundColor ?? 
+
+    final hoverBackgroundColor = widget.hoverBackgroundColor ??
         config.themeColors.primary.withOpacity(0.15);
-    final hoverBorderColor = widget.hoverBorderColor ?? 
+    final hoverBorderColor = widget.hoverBorderColor ??
         config.themeColors.primary.withOpacity(0.6);
-    final hoverIconColor = widget.hoverIconColor ?? 
+    final hoverIconColor = widget.hoverIconColor ??
         config.themeColors.primary;
 
     Widget button = Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: widget.enabled ? widget.onTap : null,
+        onTap: widget.enabled ? () {
+          _uiSoundManager.playButtonClick();
+          widget.onTap();
+        } : null,
         onHover: widget.enabled ? (hovering) {
           if (mounted) {
             setState(() {
               _isHovered = hovering;
             });
+            if (hovering) {
+              _uiSoundManager.playButtonHover();
+            }
           }
         } : null,
         borderRadius: BorderRadius.circular(

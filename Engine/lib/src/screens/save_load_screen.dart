@@ -9,6 +9,7 @@ import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/screenshot_thumbnail.dart';
@@ -613,6 +614,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
   bool _isHovered = false;
   late AnimationController _animationController;
   late Animation<double> _borderAnimation;
+  final _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -662,7 +664,10 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: widget.onTap,
+        onTap: () {
+          _uiSoundManager.playButtonClick();
+          widget.onTap();
+        },
         borderRadius: BorderRadius.circular(0 * uiScale),
         hoverColor: config.themeColors.primary.withOpacity(0.1),
         onHover: (hovering) {
@@ -671,6 +676,7 @@ class _SaveSlotCardState extends State<_SaveSlotCard> with SingleTickerProviderS
               _isHovered = hovering;
             });
             if (hovering) {
+              _uiSoundManager.playButtonHover();
               _animationController.forward();
             } else {
               _animationController.reverse();

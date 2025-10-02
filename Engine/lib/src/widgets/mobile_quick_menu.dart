@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
 
 /// 手机端专用快捷菜单
@@ -406,6 +407,7 @@ class _MobileQuickMenuButtonState extends State<_MobileQuickMenuButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _pressedAnimationController;
   late Animation<double> _pressedIconAnimation;
+  final _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -454,7 +456,10 @@ class _MobileQuickMenuButtonState extends State<_MobileQuickMenuButton>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: widget.onPressed,
+        onTap: () {
+          _uiSoundManager.playButtonClick();
+          widget.onPressed();
+        },
         splashColor: config.themeColors.primary.withValues(alpha: 0.2),
         highlightColor: config.themeColors.primary.withValues(alpha: 0.1),
         child: AnimatedContainer(

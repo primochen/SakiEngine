@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/animated_tooltip.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
 
@@ -620,7 +621,8 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
-  
+  final _uiSoundManager = UISoundManager();
+
   // 新增：按下状态的动画控制器
   late AnimationController _pressedAnimationController;
   late Animation<double> _pressedIconAnimation;
@@ -700,12 +702,16 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
         height: 48 * scale,
         margin: EdgeInsets.symmetric(horizontal: 2 * scale, vertical: 4 * scale),
         child: InkWell(
-          onTap: widget.onPressed,
+          onTap: () {
+            _uiSoundManager.playButtonClick();
+            widget.onPressed();
+          },
           onHover: (hovering) {
             setState(() => _isHovered = hovering);
             widget.onHover(hovering, widget.text);
-            
+
             if (hovering) {
+              _uiSoundManager.playButtonHover();
               _animationController.forward();
             } else {
               _animationController.reverse();

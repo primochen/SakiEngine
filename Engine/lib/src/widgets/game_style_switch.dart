@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 class GameStyleSwitch extends StatefulWidget {
   final bool value;
@@ -28,6 +29,7 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
   late Animation<double> _pulseAnimation;
   late Animation<double> _glowAnimation;
   bool _isHovered = false;
+  final _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -127,6 +129,7 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
   }
 
   void _handleTap() {
+    _uiSoundManager.playButtonClick();
     widget.onChanged(!widget.value);
   }
 
@@ -138,10 +141,11 @@ class _GameStyleSwitchState extends State<GameStyleSwitch> with TickerProviderSt
     final padding = 6 * widget.scale;
     final knobTravel = switchWidth - knobSize - padding * 2;
     final knobBaseTop = (switchHeight - knobSize) / 2 - 2 * widget.scale;
-    
+
     return MouseRegion(
       onEnter: (_) {
         setState(() => _isHovered = true);
+        _uiSoundManager.playButtonHover();
         if (widget.value) {
           _pulseController.repeat(reverse: true);
         }

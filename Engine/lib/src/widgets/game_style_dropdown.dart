@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 class GameStyleDropdownItem<T> {
   final T value;
@@ -45,6 +46,7 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   final LayerLink _layerLink = LayerLink();
+  final _uiSoundManager = UISoundManager();
 
   GameStyleDropdownItem<T> get _selectedItem {
     final index = widget.items.indexWhere((item) => item.value == widget.value);
@@ -77,6 +79,7 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
   }
 
   void _toggleDropdown() {
+    _uiSoundManager.playButtonClick();
     if (_isOpen) {
       _removeOverlay();
     } else {
@@ -102,6 +105,7 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
           items: widget.items,
           selectedValue: _selectedItem.value,
           onSelect: (value) {
+            _uiSoundManager.playButtonClick();
             widget.onChanged(value);
             _removeOverlay();
           },
@@ -146,7 +150,10 @@ class _GameStyleDropdownState<T> extends State<GameStyleDropdown<T>>
         ((baseOpacity - 0.12).clamp(0.0, 1.0) as num).toDouble();
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _uiSoundManager.playButtonHover();
+      },
       onExit: (_) => setState(() => _isHovered = false),
       child: CompositedTransformTarget(
         link: _layerLink,
@@ -367,6 +374,7 @@ class _DropdownItem<T> extends StatefulWidget {
 
 class _DropdownItemState<T> extends State<_DropdownItem<T>> {
   bool _isHovered = false;
+  final _uiSoundManager = UISoundManager();
 
   @override
   Widget build(BuildContext context) {
@@ -382,7 +390,12 @@ class _DropdownItemState<T> extends State<_DropdownItem<T>> {
 
     return InkWell(
       onTap: widget.onTap,
-      onHover: (value) => setState(() => _isHovered = value),
+      onHover: (value) {
+        setState(() => _isHovered = value);
+        if (value) {
+          _uiSoundManager.playButtonHover();
+        }
+      },
       child: Container(
         color: baseColor,
         padding: EdgeInsets.symmetric(
