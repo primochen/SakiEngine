@@ -5,6 +5,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/music_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/widgets/settings_screen.dart';
@@ -48,6 +49,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _hasQuickSave = false; // 新增：标记是否有快速存档
   late String _copyrightText;
   late final LocalizationManager _localizationManager;
+  final _uiSoundManager = UISoundManager(); // 新增：UI音效管理器
 
   @override
   void initState() {
@@ -294,11 +296,17 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                   curve: Curves.easeOutBack,
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _isDarkModeButtonHovered = true),
+                    onEnter: (_) {
+                      setState(() => _isDarkModeButtonHovered = true);
+                      _uiSoundManager.playButtonHover();
+                    },
                     onExit: (_) => setState(() => _isDarkModeButtonHovered = false),
                     child: GestureDetector(
                       onTapDown: (_) => setState(() => _isDarkModeButtonHovered = true),
-                      onTapUp: (_) => setState(() => _isDarkModeButtonHovered = false),
+                      onTapUp: (_) {
+                        setState(() => _isDarkModeButtonHovered = false);
+                        _uiSoundManager.playButtonClick();
+                      },
                       onTapCancel: () => setState(() => _isDarkModeButtonHovered = false),
                       onTap: () async {
                         final newDarkMode = !isDarkMode;
