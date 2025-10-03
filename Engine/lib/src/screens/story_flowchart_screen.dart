@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:ui';
+import 'dart:io';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
@@ -8,6 +10,8 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/widgets/common/square_icon_button.dart';
 import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/game_style_dropdown.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
+import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 剧情流程图界面
 class StoryFlowchartScreen extends StatefulWidget {
@@ -377,41 +381,66 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     );
   }
 
-  /// 计算节点布局（避免重叠）
+  /// 计算节点布局（避免重叠，垂直居中对称）
   Map<String, Map<String, double>> _calculateLayout(List<StoryFlowNode> rootNodes) {
     final Map<String, Map<String, double>> layoutInfo = {};
-    final Map<int, int> depthCounters = {}; // 每个深度的节点计数器
+    final Map<int, List<StoryFlowNode>> depthNodes = {}; // 每个深度的节点列表
 
     // 获取当前章节的所有节点，用于查找子节点
     final currentChapterNodes = _getNodesForCurrentChapter();
     final nodesMap = {for (var n in currentChapterNodes) n.id: n};
 
-    void layoutNode(StoryFlowNode node, int depth, int siblingIndex) {
-      // 计算该深度已有多少节点
-      depthCounters[depth] = (depthCounters[depth] ?? 0);
-      final actualY = depthCounters[depth]!;
+    // 第一步：收集每个深度的所有节点
+    void collectNodes(StoryFlowNode node, int depth) {
+      depthNodes[depth] = depthNodes[depth] ?? [];
+      depthNodes[depth]!.add(node);
 
-      // 更新深度计数器
-      depthCounters[depth] = actualY + 1;
-
-      final double x = 100 + depth * 400.0;
-      final double y = 100 + actualY * 200.0;
-
-      layoutInfo[node.id] = {'x': x, 'y': y, 'depth': depth.toDouble()};
-
-      // 递归处理子节点（只在当前章节中查找）
+      // 递归处理子节点
       final children = node.childNodeIds
           .map((id) => nodesMap[id])
           .whereType<StoryFlowNode>()
           .toList();
-      for (int i = 0; i < children.length; i++) {
-        layoutNode(children[i], depth + 1, i);
+      for (var child in children) {
+        collectNodes(child, depth + 1);
       }
     }
 
-    // 从所有根节点开始布局
-    for (int i = 0; i < rootNodes.length; i++) {
-      layoutNode(rootNodes[i], 0, i);
+    // 收集所有根节点及其子节点
+    for (var root in rootNodes) {
+      collectNodes(root, 0);
+    }
+
+    // 第二步：计算每个深度的垂直居中位置（临时使用相对坐标）
+    double minY = double.infinity;
+    for (var entry in depthNodes.entries) {
+      final depth = entry.key;
+      final nodes = entry.value;
+      final nodeCount = nodes.length;
+
+      // 计算垂直居中的起始Y坐标（相对于0）
+      final totalHeight = (nodeCount - 1) * 200.0;
+      final startY = -totalHeight / 2; // 从负值开始，实现居中
+
+      for (int i = 0; i < nodes.length; i++) {
+        final node = nodes[i];
+        final double x = 100 + depth * 400.0;
+        final double y = startY + i * 200.0;
+
+        layoutInfo[node.id] = {'x': x, 'y': y, 'depth': depth.toDouble()};
+
+        // 记录最小Y值
+        if (y < minY) {
+          minY = y;
+        }
+      }
+    }
+
+    // 第三步：如果有负数Y坐标，整体向下偏移
+    if (minY < 0) {
+      final offset = -minY + 100; // 偏移到至少Y=100的位置
+      for (var entry in layoutInfo.entries) {
+        entry.value['y'] = entry.value['y']! + offset;
+      }
     }
 
     return layoutInfo;
@@ -517,17 +546,73 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       return;
     }
 
-    // TODO: 实现从自动存档加载
-    // 暂时显示提示信息
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '点击了节点: ${node.displayName}',
-          style: TextStyle(color: SakiEngineConfig().themeColors.primary),
+    // 从自动存档加载
+    if (node.autoSaveId != null && node.autoSaveId!.isNotEmpty) {
+      try {
+        final saveLoadManager = SaveLoadManager();
+
+        // 构建存档文件路径
+        final directory = await saveLoadManager.getSavesDirectory();
+        final file = File('$directory/${node.autoSaveId}.sakisav');
+
+        if (await file.exists()) {
+          final binaryData = await file.readAsBytes();
+          final saveSlot = SaveSlot.fromBinary(binaryData);
+
+          // 加载存档到游戏状态
+          final gameManager = GameManager();
+          await gameManager.restoreFromSnapshot(
+            saveSlot.currentScript,
+            saveSlot.snapshot,
+          );
+
+          // 关闭流程图界面
+          if (mounted && widget.onClose != null) {
+            widget.onClose!();
+          }
+
+          if (kDebugMode) {
+            print('[StoryFlowchart] 从节点 ${node.id} 的自动存档加载成功');
+          }
+        } else {
+          if (kDebugMode) {
+            print('[StoryFlowchart] 自动存档文件不存在: ${node.autoSaveId}');
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '未找到自动存档',
+                style: TextStyle(color: SakiEngineConfig().themeColors.primary),
+              ),
+              backgroundColor: Colors.black.withOpacity(0.8),
+            ),
+          );
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('[StoryFlowchart] 加载自动存档失败: $e');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '加载失败: $e',
+              style: TextStyle(color: SakiEngineConfig().themeColors.primary),
+            ),
+            backgroundColor: Colors.black.withOpacity(0.8),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '该节点没有关联的存档',
+            style: TextStyle(color: SakiEngineConfig().themeColors.primary),
+          ),
+          backgroundColor: Colors.black.withOpacity(0.8),
         ),
-        backgroundColor: Colors.black.withOpacity(0.8),
-      ),
-    );
+      );
+    }
 
     // 关闭流程图界面
     if (widget.onClose != null) {

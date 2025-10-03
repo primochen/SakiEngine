@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:crypto/crypto.dart';
 import 'package:sakiengine/src/game/unified_game_data_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 
 /// 剧情节点类型
 enum StoryNodeType {
@@ -263,16 +266,17 @@ class StoryFlowchartManager extends ChangeNotifier {
     SaveSlot saveSlot,
   ) async {
     try {
-      final autoSaveId = '${autoSavePrefix}${nodeId}_${saveSlot.id}';
+      // 使用 MD5 哈希生成纯 ASCII 文件名（6位）
+      final nodeIdHash = md5.convert(utf8.encode(nodeId)).toString().substring(0, 6);
+      final autoSaveId = '${autoSavePrefix}${nodeIdHash}_${saveSlot.id}';
 
-      // 将存档数据序列化并保存到 UnifiedGameDataManager
-      final dataManager = UnifiedGameDataManager();
-      final projectName = await ProjectInfoManager().getAppName();
+      // 直接保存为文件（参考 SaveLoadManager 的实现）
+      final saveLoadManager = SaveLoadManager();
+      final directory = await saveLoadManager.getSavesDirectory();
+      final file = File('$directory/$autoSaveId.sakisav');
 
-      // 保存存档数据为字符串（使用base64编码二进制数据）
-      final saveData = saveSlot.toBinary();
-      final saveDataBase64 = base64Encode(saveData);
-      await dataManager.setStringVariable('autosave_$autoSaveId', saveDataBase64, projectName);
+      final binaryData = saveSlot.toBinary();
+      await file.writeAsBytes(binaryData);
 
       // 更新节点关联
       final node = _nodes[nodeId];
@@ -282,7 +286,7 @@ class StoryFlowchartManager extends ChangeNotifier {
       }
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 为节点 $nodeId 创建自动存档: $autoSaveId');
+        print('[StoryFlowchart] 为节点 $nodeId 创建自动存档文件: $autoSaveId.sakisav');
       }
 
       return autoSaveId;
