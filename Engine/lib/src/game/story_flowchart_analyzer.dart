@@ -125,6 +125,15 @@ class StoryFlowchartAnalyzer {
     Map<String, int> mergeLabels,
   ) async {
     final label = _findNearestLabel(index, nodes, labelIndex) ?? 'menu_$index';
+
+    // 跳过捉迷藏相关的分支（cp1_002 中的石头剪刀布）
+    if (_isHideAndSeekBranch(label, menuNode)) {
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 跳过捉迷藏分支: $label');
+      }
+      return;
+    }
+
     final branchId = 'branch_$index';
 
     // 找到父节点（传入mergeLabels来判断）
@@ -166,6 +175,25 @@ class StoryFlowchartAnalyzer {
     if (kDebugMode) {
       print('[FlowchartAnalyzer] 创建分支: $label at $index, 父节点: $parentId');
     }
+  }
+
+  /// 判断是否为捉迷藏相关分支（需要跳过）
+  bool _isHideAndSeekBranch(String label, MenuNode menuNode) {
+    // 检查是否在 cp1_002 的捉迷藏部分
+    if (label.startsWith('cp1_002')) {
+      // 检查选项文本是否包含"剪刀"、"石头"、"布"
+      for (final choice in menuNode.choices) {
+        if (choice.text.contains('剪刀') ||
+            choice.text.contains('石头') ||
+            choice.text.contains('布') ||
+            choice.text.contains('出剪刀') ||
+            choice.text.contains('出石头') ||
+            choice.text.contains('出布')) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /// 查找父节点
