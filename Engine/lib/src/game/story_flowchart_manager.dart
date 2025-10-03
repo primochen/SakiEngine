@@ -269,8 +269,8 @@ class StoryFlowchartManager extends ChangeNotifier {
       final node = _nodes[nodeId];
       if (node == null) return null;
 
-      // 直接使用节点的 label 作为文件名
-      final autoSaveId = '${autoSavePrefix}${node.label}';
+      // 使用节点ID作为文件名（语言无关）
+      final autoSaveId = '${autoSavePrefix}$nodeId';
 
       // 直接保存为文件（参考 SaveLoadManager 的实现）
       final saveLoadManager = SaveLoadManager();
@@ -285,7 +285,7 @@ class StoryFlowchartManager extends ChangeNotifier {
       await save();
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 为节点 $nodeId (label: ${node.label}) 创建自动存档文件: $autoSaveId.sakisav');
+        print('[StoryFlowchart] 为节点 $nodeId (${node.displayName}) 创建自动存档文件: $autoSaveId.sakisav');
       }
 
       return autoSaveId;

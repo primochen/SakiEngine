@@ -149,16 +149,8 @@ class GameManager {
         nodeId = 'branch_$scriptIndex';
         displayName = '分支选择: $label';
         nodeType = StoryNodeType.branch;
-      } else if (node is ReturnNode) {
-        // 结局：找到return前的最后一个scene
-        final lastSceneIndex = _findLastSceneBeforeReturn(scriptIndex);
-        if (lastSceneIndex != null) {
-          final label = _findNearestLabel(lastSceneIndex) ?? 'ending_$lastSceneIndex';
-          nodeId = 'ending_$lastSceneIndex';
-          displayName = '结局: $label';
-          nodeType = StoryNodeType.ending;
-        }
       }
+      // 注意：章节末尾的自动存档由 _checkChapterEndAutoSave 处理
 
       if (nodeId != null && nodeType != null) {
         // 创建自动存档
@@ -188,15 +180,188 @@ class GameManager {
     }
   }
 
-  /// 查找return前的最后一个scene
-  int? _findLastSceneBeforeReturn(int returnIndex) {
-    for (int i = returnIndex - 1; i >= 0; i--) {
+  /// 查找章节结束前的最后一个有对话的scene
+  /// 章节结束可能是：jump到下一章、遇到下一个chapter背景、或return
+  int? _findLastSceneWithDialogueBeforeChapterEnd(int startIndex) {
+    // 从startIndex往前找所有scene
+    for (int i = startIndex - 1; i >= 0; i--) {
       final node = _script.children[i];
       if (node is BackgroundNode || node is MovieNode) {
-        return i;
+        // 找到一个scene，检查它后面（到下一个scene或章节结束之间）是否有对话
+        bool hasDialogue = false;
+        for (int j = i + 1; j < startIndex; j++) {
+          final checkNode = _script.children[j];
+          // 如果遇到下一个scene，停止检查
+          if (checkNode is BackgroundNode || checkNode is MovieNode) {
+            break;
+          }
+          // 如果有对话节点，标记为有对话
+          if (checkNode is SayNode || checkNode is ConditionalSayNode) {
+            hasDialogue = true;
+            break;
+          }
+        }
+
+        // 如果这个scene后面有对话，就是我们要找的
+        if (hasDialogue) {
+          return i;
+        }
       }
     }
     return null;
+  }
+
+  /// 检查当前scene是否是章节末尾前最后一个有对话的scene
+  /// 如果是则创建自动存档,用于解锁流程图跳转功能
+  Future<void> _checkChapterEndAutoSave(int sceneIndex) async {
+    final currentNode = _script.children[sceneIndex];
+    String sceneName = '';
+    if (currentNode is BackgroundNode) {
+      sceneName = currentNode.background;
+    } else if (currentNode is MovieNode) {
+      sceneName = currentNode.movieFile;
+    }
+
+    if (kDebugMode) {
+      print('[AutoSave] 检查scene是否为章节末尾: $sceneName (index: $sceneIndex)');
+    }
+
+    // 获取当前所在章节(通过label名称判断,如cp0_xxx)
+    final currentLabel = _findNearestLabel(sceneIndex);
+    String? currentChapter;
+    if (currentLabel != null) {
+      final chapterMatch = RegExp(r'^cp(\d+)_').firstMatch(currentLabel);
+      if (chapterMatch != null) {
+        currentChapter = chapterMatch.group(1);
+      }
+    }
+
+    if (currentChapter == null) {
+      if (kDebugMode) {
+        print('[AutoSave] ❌ $sceneName 无法确定所在章节');
+      }
+      return;
+    }
+
+    // 从当前scene往后查找章节结束点
+    for (int i = sceneIndex + 1; i < _script.children.length; i++) {
+      final node = _script.children[i];
+
+      // 情况1: 遇到return节点 (回主菜单)
+      if (node is ReturnNode) {
+        final lastSceneIndex = _findLastSceneWithDialogueBeforeChapterEnd(i);
+        if (kDebugMode) {
+          print('[AutoSave] 找到return节点 (index: $i), return前最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
+        }
+
+        if (lastSceneIndex == sceneIndex) {
+          await _createChapterEndAutoSave(sceneIndex, sceneName, i);
+        } else {
+          if (kDebugMode) {
+            print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是return前最后一个有对话的scene');
+          }
+        }
+        return;
+      }
+
+      // 情况2: 遇到下一个章节的背景
+      if (node is BackgroundNode && _containsChapter(node.background) && i != sceneIndex) {
+        final lastSceneIndex = _findLastSceneWithDialogueBeforeChapterEnd(i);
+        if (kDebugMode) {
+          print('[AutoSave] 找到下一章节背景 ${node.background} (index: $i), 前面最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
+        }
+
+        if (lastSceneIndex == sceneIndex) {
+          await _createChapterEndAutoSave(sceneIndex, sceneName, i);
+        } else {
+          if (kDebugMode) {
+            print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是下一章前最后一个有对话的scene');
+          }
+        }
+        return;
+      }
+
+      // 情况3: 遇到jump节点，检查是否跳转到下一章
+      if (node is JumpNode) {
+        // 检查jump目标label是否是不同的章节
+        final targetLabel = node.targetLabel;
+        final targetChapterMatch = RegExp(r'^cp(\d+)_').firstMatch(targetLabel);
+
+        if (targetChapterMatch != null) {
+          final targetChapter = targetChapterMatch.group(1);
+
+          // 只有跨章节的jump才算章节末尾
+          if (targetChapter != currentChapter) {
+            final lastSceneIndex = _findLastSceneWithDialogueBeforeChapterEnd(i);
+            if (kDebugMode) {
+              print('[AutoSave] 找到跨章节jump: cp$currentChapter -> cp$targetChapter (index: $i), 前面最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
+            }
+
+            if (lastSceneIndex == sceneIndex) {
+              await _createChapterEndAutoSave(sceneIndex, sceneName, i);
+            } else {
+              if (kDebugMode) {
+                print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是跨章节jump前最后一个有对话的scene');
+              }
+            }
+            return;
+          } else {
+            if (kDebugMode) {
+              print('[AutoSave] 跳过同章节jump: $targetLabel (当前章节: cp$currentChapter)');
+            }
+          }
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      print('[AutoSave] ❌ $sceneName 不是章节末尾: 未找到章节结束点');
+    }
+  }
+
+  /// 创建章节末尾自动存档
+  Future<void> _createChapterEndAutoSave(int sceneIndex, String sceneName, int endIndex) async {
+    // 获取当前章节编号并构建语言无关的ID
+    final currentLabel = _findNearestLabel(sceneIndex);
+    String chapterIdSuffix = 'unknown';
+    String chapterDisplayName = 'unknown';
+
+    if (currentLabel != null) {
+      final chapterMatch = RegExp(r'^cp(\d+)_').firstMatch(currentLabel);
+      if (chapterMatch != null) {
+        final chapterNum = chapterMatch.group(1);
+        chapterIdSuffix = chapterNum!; // 例如: "0", "1", "2"
+        chapterDisplayName = '第${chapterNum}章';
+      }
+    }
+
+    // 使用与流程图分析器一致的节点ID格式: chapter_end_{number}
+    final nodeId = 'chapter_end_$chapterIdSuffix';
+    final displayName = '${chapterDisplayName}末尾';
+
+    if (kDebugMode) {
+      print('[AutoSave] ✅ $sceneName 是章节末尾! 创建自动存档: $displayName (节点ID: $nodeId)');
+    }
+
+    // 创建自动存档
+    final saveSlot = SaveSlot(
+      id: int.parse(DateTime.now().millisecondsSinceEpoch.toString().substring(0, 10)),
+      saveTime: DateTime.now(),
+      currentScript: currentScriptFile,
+      dialoguePreview: displayName,
+      snapshot: saveStateSnapshot(),
+      screenshotData: null,
+    );
+
+    // 保存到流程图管理器
+    final actualAutoSaveId = await _flowchartManager.createAutoSaveForNode(nodeId, saveSlot);
+
+    // 解锁节点
+    await _flowchartManager.unlockNode(nodeId, autoSaveId: actualAutoSaveId);
+
+    if (kDebugMode) {
+      print('[AutoSave] 章节末尾自动存档创建完成: $displayName (scene: $sceneIndex, end: $endIndex, autoSaveId: $actualAutoSaveId)');
+    }
   }
 
   /// 查找最近的label
@@ -1110,6 +1275,9 @@ class GameManager {
           await _checkAndCreateAutoSave(_scriptIndex, reason: '章节开始');
         }
 
+        // 检查当前scene是否是章节末尾前最后一个没有对话的scene
+        await _checkChapterEndAutoSave(_scriptIndex);
+
         // 检查是否要清空CG状态
         // 如果新背景不是CG且当前有CG显示，则清空CG
         final isNewBackgroundCG = node.background.toLowerCase().contains('cg');
@@ -1242,6 +1410,9 @@ class GameManager {
           //print('[GameManager] 检测到chapter视频，停止快进: ${node.movieFile}');
           setFastForwardMode(false);
         }
+
+        // 检查当前movie是否是章节末尾前最后一个没有对话的scene
+        await _checkChapterEndAutoSave(_scriptIndex);
 
         // 清空CG状态和角色立绘，因为视频会全屏显示
         final shouldClearAll = true;

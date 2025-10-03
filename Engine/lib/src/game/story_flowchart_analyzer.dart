@@ -48,28 +48,30 @@ class StoryFlowchartAnalyzer {
       final mergeLabels = _preDetectMergePoints(nodes, labelIndex);
 
       // 第二步：分析章节和分支
-      String? currentChapter;
+      String? currentChapter; // 章节显示名称（用于chapterName字段）
+      String? currentChapterId; // 章节ID（用于父节点引用）
       for (int i = 0; i < nodes.length; i++) {
         final node = nodes[i];
 
         // 检查当前位置是否是汇合点的label位置
         if (node is LabelNode && mergeLabels.containsKey(node.name)) {
           // 在这个位置创建汇合点节点
-          await _createMergePointNode(node.name, mergeLabels[node.name]!, currentChapter);
+          await _createMergePointNode(node.name, mergeLabels[node.name]!, currentChapter, currentChapterId);
         }
 
         // 检测章节
         if (node is BackgroundNode && _isChapterBackground(node.background)) {
           currentChapter = _extractChapterName(node.background);
+          currentChapterId = _extractChapterId(node.background);
           await _createChapterNode(currentChapter, i, nodes, labelIndex);
         }
         // 检测分支
         else if (node is MenuNode) {
-          await _createBranchNode(i, node, nodes, labelIndex, currentChapter, mergeLabels);
+          await _createBranchNode(i, node, nodes, labelIndex, currentChapter, currentChapterId, mergeLabels);
         }
         // 检测结局
         else if (node is ReturnNode) {
-          await _createEndingNode(i, nodes, labelIndex, currentChapter, mergeLabels);
+          await _createEndingNode(i, nodes, labelIndex, currentChapter, currentChapterId, mergeLabels);
         }
       }
 
@@ -104,7 +106,15 @@ class StoryFlowchartAnalyzer {
     Map<String, int> labelIndex,
   ) async {
     final label = _findNearestLabel(index, nodes, labelIndex) ?? 'chapter_$index';
-    final nodeId = 'chapter_$chapterName';
+
+    // 从背景名称获取语言无关的章节ID
+    final node = nodes[index];
+    String chapterId = 'chapter_$index';
+    if (node is BackgroundNode) {
+      chapterId = _extractChapterId(node.background);
+    }
+
+    final nodeId = chapterId;
 
     final chapterNode = StoryFlowNode(
       id: nodeId,
@@ -119,7 +129,7 @@ class StoryFlowchartAnalyzer {
     await _manager.addOrUpdateNode(chapterNode);
 
     if (kDebugMode) {
-      print('[FlowchartAnalyzer] 创建章节: $chapterName at $index');
+      print('[FlowchartAnalyzer] 创建章节: $chapterName (ID: $nodeId) at $index');
     }
   }
 
@@ -130,6 +140,7 @@ class StoryFlowchartAnalyzer {
     List<SksNode> nodes,
     Map<String, int> labelIndex,
     String? currentChapter,
+    String? currentChapterId,
     Map<String, int> mergeLabels,
   ) async {
     final label = _findNearestLabel(index, nodes, labelIndex) ?? 'menu_$index';
@@ -144,8 +155,8 @@ class StoryFlowchartAnalyzer {
 
     final branchId = 'branch_$index';
 
-    // 找到父节点（传入mergeLabels来判断）
-    final parentId = _findParentNode(label, currentChapter, mergeLabels);
+    // 找到父节点（传入mergeLabels来判断，使用currentChapterId）
+    final parentId = _findParentNode(label, currentChapterId, mergeLabels);
 
     final branchNode = StoryFlowNode(
       id: branchId,
@@ -207,7 +218,7 @@ class StoryFlowchartAnalyzer {
   /// 查找父节点
   String? _findParentNode(
     String currentLabel,
-    String? currentChapter,
+    String? currentChapterId,
     Map<String, int> mergeLabels,
   ) {
     // 检查当前label是否是汇合点
@@ -215,9 +226,9 @@ class StoryFlowchartAnalyzer {
       return 'merge_$currentLabel'; // 父节点是汇合点
     }
 
-    // 否则返回章节节点
-    if (currentChapter != null) {
-      return 'chapter_$currentChapter';
+    // 否则返回章节节点ID（语言无关）
+    if (currentChapterId != null) {
+      return currentChapterId;
     }
 
     return null;
@@ -228,6 +239,7 @@ class StoryFlowchartAnalyzer {
     String label,
     int scriptIndex,
     String? currentChapter,
+    String? currentChapterId,
   ) async {
     final mergeId = 'merge_$label';
 
@@ -379,6 +391,7 @@ class StoryFlowchartAnalyzer {
     List<SksNode> nodes,
     Map<String, int> labelIndex,
     String? currentChapter,
+    String? currentChapterId,
     Map<String, int> mergeLabels,
   ) async {
     final lastSceneIndex = _findLastSceneBeforeReturn(returnIndex, nodes);
@@ -386,8 +399,8 @@ class StoryFlowchartAnalyzer {
       final label = _findNearestLabel(lastSceneIndex, nodes, labelIndex) ?? 'ending_$lastSceneIndex';
       final endingId = 'ending_$lastSceneIndex';
 
-      // 找到父节点（传入mergeLabels来判断）
-      final parentId = _findParentNode(label, currentChapter, mergeLabels);
+      // 找到父节点（传入mergeLabels来判断，使用currentChapterId）
+      final parentId = _findParentNode(label, currentChapterId, mergeLabels);
 
       // 只有当父节点不是章节根节点时，才创建结局节点
       // 如果父节点是章节根节点，说明这个return不是分支结局，而是普通剧情流程
@@ -526,7 +539,9 @@ class StoryFlowchartAnalyzer {
 
       if (!hasChildren) {
         // 最后一个节点没有子节点，创建章节末尾节点
-        final endId = 'chapter_end_${chapterNode.displayName}';
+        // 使用章节ID（去掉"chapter_"前缀）+ "_end"作为末尾节点ID
+        final chapterIdWithoutPrefix = chapterNode.id.replaceFirst('chapter_', '');
+        final endId = 'chapter_end_$chapterIdWithoutPrefix';
 
         final endNode = StoryFlowNode(
           id: endId,
@@ -541,7 +556,7 @@ class StoryFlowchartAnalyzer {
         await _manager.addOrUpdateNode(endNode);
 
         if (kDebugMode) {
-          print('[FlowchartAnalyzer] 创建章节末尾节点: ${chapterNode.displayName}末尾 (父节点: ${lastNode.id})');
+          print('[FlowchartAnalyzer] 创建章节末尾节点: ${chapterNode.displayName}末尾 (ID: $endId, 父节点: ${lastNode.id})');
         }
       }
     }
@@ -591,7 +606,7 @@ class StoryFlowchartAnalyzer {
         RegExp(r'\bep\d+\b').hasMatch(lower);
   }
 
-  /// 提取章节名
+  /// 提取章节名（用于显示）
   String _extractChapterName(String? bgName) {
     if (bgName == null) return 'Unknown';
 
@@ -614,6 +629,31 @@ class StoryFlowchartAnalyzer {
     }
 
     return bgName;
+  }
+
+  /// 提取章节ID（语言无关，用于节点ID）
+  String _extractChapterId(String? bgName) {
+    if (bgName == null) return 'unknown';
+
+    final chapterMatch = RegExp(r'chapter[_\s-]?(\d+)', caseSensitive: false).firstMatch(bgName);
+    if (chapterMatch != null) {
+      return 'chapter_${chapterMatch.group(1)}';
+    }
+
+    final chMatch = RegExp(r'\bch(\d+)\b', caseSensitive: false).firstMatch(bgName);
+    if (chMatch != null) {
+      return 'chapter_${chMatch.group(1)}';
+    }
+
+    if (bgName.toLowerCase().contains('prologue')) {
+      return 'chapter_prologue';
+    }
+
+    if (bgName.toLowerCase().contains('epilogue')) {
+      return 'chapter_epilogue';
+    }
+
+    return 'chapter_$bgName';
   }
 
   /// 查找最近的label

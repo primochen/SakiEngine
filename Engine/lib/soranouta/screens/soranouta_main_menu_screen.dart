@@ -346,8 +346,8 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
 
               // 流程图按钮阴影层
               Positioned(
-                right: 20,
-                top: 20,
+                left: 90,
+                bottom: 20,
                 child: AnimatedScale(
                   scale: _isFlowchartButtonHovered ? 1.15 : 1.0,
                   duration: const Duration(milliseconds: 200),
@@ -365,8 +365,8 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
 
               // 流程图按钮
               Positioned(
-                right: 20,
-                top: 20,
+                left: 90,
+                bottom: 20,
                 child: AnimatedScale(
                   scale: _isFlowchartButtonHovered ? 1.15 : 1.0,
                   duration: const Duration(milliseconds: 200),
