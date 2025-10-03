@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
@@ -90,25 +91,34 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
   /// 构建主要内容
   Widget _buildContent(double uiScale, double textScale) {
-    return Row(
+    return Stack(
       children: [
-        // 左侧流程图主体
-        Expanded(
-          child: _buildFlowchartViewer(uiScale, textScale),
-        ),
+        // 流程图主体（全屏）
+        _buildFlowchartViewer(uiScale, textScale),
 
-        // 右侧信息面板
-        Container(
-          width: 280 * uiScale,
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: SakiEngineConfig().themeColors.primary.withOpacity(0.2),
-                width: 1,
+        // 右侧信息面板（顶对齐，毛玻璃背景）
+        Positioned(
+          top: 0,
+          right: 0,
+          bottom: 0, // 让面板上下铺满
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // 真正的毛玻璃模糊效果
+              child: Container(
+                width: 280 * uiScale,
+                decoration: BoxDecoration(
+                  color: SakiEngineConfig().themeColors.background.withOpacity(0.7), // 半透明背景
+                  border: Border(
+                    left: BorderSide(
+                      color: SakiEngineConfig().themeColors.primary.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: _buildInfoPanel(uiScale, textScale),
               ),
             ),
           ),
-          child: _buildInfoPanel(uiScale, textScale),
         ),
       ],
     );
@@ -163,9 +173,10 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final config = SakiEngineConfig();
     final availableChapters = _getAvailableChapters();
 
-    return SingleChildScrollView(
+    return Container(
       padding: EdgeInsets.all(20 * uiScale),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // 让面板不垂直拉伸
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 章节选择下拉菜单
