@@ -351,19 +351,13 @@ class GameUILayerState extends State<GameUILayer> {
         if (widget.showFlowchart)
           HideableUI(
             child: StoryFlowchartScreen(
+              isInGame: true, // 游戏内调用，显示"进度将丢失"提示
               onClose: () {
                 if (widget.onFlowchart != null) {
                   widget.onFlowchart!();
                 }
               },
-              onLoadSave: widget.onLoadGame != null
-                  ? (saveSlot) {
-                      widget.onLoadGame?.call(saveSlot);
-                      if (widget.onFlowchart != null) {
-                        widget.onFlowchart!(); // 加载后关闭流程图
-                      }
-                    }
-                  : null,
+              onLoadSave: widget.onLoadGame, // onLoadGame 回调内部已经会关闭流程图
             ),
           ),
 

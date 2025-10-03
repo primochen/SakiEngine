@@ -12,16 +12,19 @@ import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/game_style_dropdown.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 
 /// 剧情流程图界面
 class StoryFlowchartScreen extends StatefulWidget {
   final VoidCallback? onClose;
   final Function(SaveSlot)? onLoadSave;
+  final bool isInGame; // 是否在游戏中（用于区分弹窗提示内容）
 
   const StoryFlowchartScreen({
     Key? key,
     this.onClose,
     this.onLoadSave,
+    this.isInGame = false, // 默认不在游戏中
   }) : super(key: key);
 
   @override
@@ -739,6 +742,26 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       return;
     }
 
+    // 显示确认对话框，防止误触
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return ConfirmDialog(
+          title: '确认加载',
+          content: widget.isInGame
+              ? '确定要加载到「${node.displayName}」吗？\n当前未保存的进度将丢失。'
+              : '确定要加载到「${node.displayName}」吗？',
+          confirmResult: true,
+          cancelResult: false,
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return; // 用户取消，不执行加载
+    }
+
     // 从自动存档加载
     if (node.autoSaveId != null && node.autoSaveId!.isNotEmpty) {
       try {
@@ -759,11 +782,12 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           // 使用 onLoadSave 回调来加载存档（和"继续游戏"一样的方式）
           if (widget.onLoadSave != null) {
             widget.onLoadSave!(saveSlot);
-          }
-
-          // 关闭流程图界面
-          if (mounted && widget.onClose != null) {
-            widget.onClose!();
+            // onLoadSave 回调内部会关闭流程图并显示通知，这里不需要再调用 onClose
+          } else {
+            // 如果没有 onLoadSave 回调，则调用 onClose（兼容性）
+            if (mounted && widget.onClose != null) {
+              widget.onClose!();
+            }
           }
         } else {
           if (kDebugMode) {
@@ -803,11 +827,6 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           backgroundColor: Colors.black.withOpacity(0.8),
         ),
       );
-    }
-
-    // 关闭流程图界面
-    if (widget.onClose != null) {
-      widget.onClose!();
     }
   }
 
