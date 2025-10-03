@@ -35,6 +35,16 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
   String? _selectedChapter; // 当前选中的章节
 
+  // 节点尺寸常量（用于计算节点中心和偏移）
+  static const double _largeNodeWidth = 280.0;
+  static const double _smallNodeWidth = 200.0;
+
+  // 估算的节点高度（padding + 内容）
+  // 大节点：padding(16*2) + 标题(~20) + 间距(6) + 类型(~18) ≈ 76
+  static const double _largeNodeHeight = 76.0;
+  // 小节点：padding(10*2) + 单行文本(~18) ≈ 38
+  static const double _smallNodeHeight = 38.0;
+
   @override
   void initState() {
     super.initState();
@@ -443,6 +453,19 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       }
     }
 
+    // 第四步：调整小节点的Y坐标，使其中心对齐到大节点的中心
+    final double verticalAdjustment = (_largeNodeHeight - _smallNodeHeight) / 2;
+    for (var entry in layoutInfo.entries) {
+      final node = nodesMap[entry.key];
+      if (node != null) {
+        final bool isSmallNode = (node.metadata != null && node.metadata!.containsKey('branchText')) ||
+                                  node.type == StoryNodeType.merge;
+        if (isSmallNode) {
+          entry.value['y'] = entry.value['y']! + verticalAdjustment;
+        }
+      }
+    }
+
     return layoutInfo;
   }
 
@@ -452,80 +475,110 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final color = _getNodeColor(node.type, node.isUnlocked, config);
     final isCurrentNode = _flowchartManager.currentNode?.id == node.id;
 
+    // 判断节点类型
+    final bool isBranchOption = node.metadata != null && node.metadata!.containsKey('branchText'); // 分支选项（option_xxx）
+    final bool isMergePoint = node.type == StoryNodeType.merge; // 汇合点
+
+    // 只有分支选项和汇合点不可点击
+    final bool isClickable = !isBranchOption && !isMergePoint;
+    // 只有分支选项和汇合点使用更小的样式
+    final bool isSmallNode = isBranchOption || isMergePoint;
+
+    // 不再需要 Transform.translate，因为 y 坐标已经在 layoutInfo 中调整过了
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _onNodeTapped(node),
-        onHover: (hovering) {
+        onTap: isClickable ? () => _onNodeTapped(node) : null,
+        onHover: isClickable ? (hovering) {
           if (hovering) {
             _uiSoundManager.playButtonHover();
           }
-        },
-        hoverColor: config.themeColors.primary.withOpacity(0.1),
+        } : null,
+        hoverColor: isClickable ? config.themeColors.primary.withOpacity(0.1) : Colors.transparent,
         child: Container(
-          width: 280, // 节点宽度
-          padding: EdgeInsets.all(16 * uiScale),
+          width: isSmallNode ? 200 : 280, // 小节点宽度更窄
+          padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale), // 小节点内边距更小
           decoration: BoxDecoration(
-            // 大幅增加背景不透明度，提高对比度
-            color: node.isUnlocked
-                ? color.withOpacity(0.6) // 从0.15增加到0.6
-                : color.withOpacity(0.3),  // 从0.05增加到0.3
+            // 分支选项使用浅白色背景
+            color: isBranchOption
+                ? config.themeColors.background.withOpacity(0.8) // 使用主题背景色
+                : (node.isUnlocked
+                    ? color.withOpacity(0.6)
+                    : color.withOpacity(0.3)),
             border: Border.all(
               color: isCurrentNode
                   ? config.themeColors.primary
-                  : color.withOpacity(node.isUnlocked ? 0.8 : 0.5), // 增加边框不透明度
-              width: isCurrentNode ? 3 : 2, // 增粗边框
+                  : (isBranchOption
+                      ? config.themeColors.primary.withOpacity(0.5) // 分支选项使用暗色边框
+                      : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
+              width: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2), // 小节点边框更细
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                node.displayName,
-                style: TextStyle(
-                  // 完全不透明的白色
-                  color: Colors.white,
-                  fontSize: 16 * textScale,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: 6 * uiScale),
-              Text(
-                _getNodeTypeText(node.type),
-                style: TextStyle(
-                  // 完全不透明的白色
-                  color: Colors.white,
-                  fontSize: 14 * textScale,
-                ),
-              ),
-
-              // 只有章节和结局才显示"未解锁"标签
-              if (!node.isUnlocked &&
-                  node.type != StoryNodeType.branch &&
-                  node.type != StoryNodeType.merge)
-                Container(
-                  margin: EdgeInsets.only(top: 8 * uiScale),
-                  padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3), // 添加背景色
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.5),
-                      width: 1,
-                    ),
-                  ),
+          child: isSmallNode
+              ? // 分支选项和汇合点：单行显示，垂直居中
+                Align(
+                  alignment: Alignment.center,
                   child: Text(
-                    '未解锁',
+                    node.displayName,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12 * textScale,
+                      // 分支选项使用暗色文字，汇合点使用白色文字
+                      color: isBranchOption ? config.themeColors.primary : config.themeColors.background,
+                      fontSize: 14 * textScale, // 更小的字体
+                      fontWeight: FontWeight.normal, // 不加粗
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
+                )
+              : // 章节、分支选择和结局：双行显示
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      node.displayName,
+                      style: TextStyle(
+                        // 完全不透明的白色
+                        color: config.themeColors.background,
+                        fontSize: 16 * textScale,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 6 * uiScale),
+                    Text(
+                      _getNodeTypeText(node.type),
+                      style: TextStyle(
+                        // 完全不透明的白色
+                        color: config.themeColors.background,
+                        fontSize: 14 * textScale,
+                      ),
+                    ),
+
+                    // 只有章节和结局才显示"未解锁"标签
+                    if (!node.isUnlocked)
+                      Container(
+                        margin: EdgeInsets.only(top: 8 * uiScale),
+                        padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
+                        decoration: BoxDecoration(
+                          color: config.themeColors.primary.withOpacity(0.2),
+                          border: Border.all(
+                            color: config.themeColors.background.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          '未解锁',
+                          style: TextStyle(
+                            color: config.themeColors.background.withOpacity(0.7),
+                            fontSize: 12 * textScale,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-            ],
-          ),
         ),
       ),
     );
@@ -720,10 +773,21 @@ class FlowchartPainter extends CustomPainter {
     final childLayout = layoutInfo[childNode.id];
 
     if (parentLayout != null && childLayout != null) {
-      final double x1 = parentLayout['x']! + 280; // 父节点右边缘
-      final double y1 = parentLayout['y']! + 40; // 父节点中心（节点高度的一半）
+      // 判断节点是否为小节点
+      final bool isParentSmall = (parentNode.metadata != null && parentNode.metadata!.containsKey('branchText')) ||
+                                  parentNode.type == StoryNodeType.merge;
+      final bool isChildSmall = (childNode.metadata != null && childNode.metadata!.containsKey('branchText')) ||
+                                 childNode.type == StoryNodeType.merge;
+
+      // 使用常量定义的节点尺寸
+      final double parentWidth = isParentSmall ? 200.0 : 280.0;
+      final double parentHeight = isParentSmall ? 38.0 : 76.0;
+      final double childHeight = isChildSmall ? 38.0 : 76.0;
+
+      final double x1 = parentLayout['x']! + parentWidth; // 父节点右边缘
+      final double y1 = parentLayout['y']! + parentHeight / 2; // 父节点中心
       final double x2 = childLayout['x']!; // 子节点左边缘
-      final double y2 = childLayout['y']! + 40; // 子节点中心
+      final double y2 = childLayout['y']! + childHeight / 2; // 子节点中心
 
       // 绘制贝塞尔曲线
       final path = Path();
