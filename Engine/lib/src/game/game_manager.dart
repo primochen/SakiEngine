@@ -2622,7 +2622,10 @@ class GameManager {
     }
 
     // 修复bug：同时更新当前状态的对话文本
-    _refreshCurrentStateDialogue();
+    // 但NVL模式不需要刷新，因为nvlDialogues已经在上面正确恢复了
+    if (!snapshot.isNvlMode) {
+      _refreshCurrentStateDialogue();
+    }
 
     // 检查恢复位置的音乐区间（强制检查）
     await _checkMusicRegionAtCurrentIndex(forceCheck: true);
