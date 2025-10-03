@@ -27,10 +27,21 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   final TransformationController _transformController = TransformationController();
   final UISoundManager _uiSoundManager = UISoundManager();
 
+  String? _selectedChapter; // 当前选中的章节
+
   @override
   void initState() {
     super.initState();
     _flowchartManager.addListener(_onFlowchartUpdate);
+    // 初始化时选择第一个章节
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chapters = _getAvailableChapters();
+      if (chapters.isNotEmpty && _selectedChapter == null) {
+        setState(() {
+          _selectedChapter = chapters.first;
+        });
+      }
+    });
   }
 
   @override
@@ -42,6 +53,26 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
   void _onFlowchartUpdate() {
     setState(() {});
+  }
+
+  /// 获取所有可用的章节
+  List<String> _getAvailableChapters() {
+    final allNodes = _flowchartManager.nodes.values;
+    final chapterNames = allNodes
+        .where((node) => node.chapterName != null)
+        .map((node) => node.chapterName!)
+        .toSet()
+        .toList();
+    chapterNames.sort();
+    return chapterNames;
+  }
+
+  /// 获取当前章节的所有节点
+  List<StoryFlowNode> _getNodesForCurrentChapter() {
+    if (_selectedChapter == null) return [];
+    return _flowchartManager.nodes.values
+        .where((node) => node.chapterName == _selectedChapter)
+        .toList();
   }
 
   @override
@@ -85,7 +116,12 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   /// 构建流程图查看器
   Widget _buildFlowchartViewer(double uiScale, double textScale) {
     final config = SakiEngineConfig();
-    final rootNodes = _flowchartManager.rootNodes;
+
+    // 只获取当前章节的节点
+    final currentChapterNodes = _getNodesForCurrentChapter();
+    final rootNodes = currentChapterNodes
+        .where((node) => node.type == StoryNodeType.chapter)
+        .toList();
 
     // 计算所有节点的布局信息
     final layoutInfo = _calculateLayout(rootNodes);
@@ -101,7 +137,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         clipBehavior: Clip.none, // 关键：不裁切超出边界的内容
         child: CustomPaint(
           painter: FlowchartPainter(
-            nodes: _flowchartManager.nodes.values.toList(),
+            nodes: currentChapterNodes,
             currentNodeId: _flowchartManager.currentNode?.id,
             primaryColor: config.themeColors.primary,
             layoutInfo: layoutInfo, // 传递布局信息
@@ -122,12 +158,62 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final unlockedEndings = _flowchartManager.getUnlockedEndingsCount();
     final totalEndings = _flowchartManager.getTotalEndingsCount();
     final config = SakiEngineConfig();
+    final availableChapters = _getAvailableChapters();
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(20 * uiScale),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 章节选择下拉菜单
+          if (availableChapters.isNotEmpty) ...[
+            Text(
+              '选择章节',
+              style: TextStyle(
+                color: config.themeColors.primary,
+                fontSize: 18 * textScale,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12 * uiScale),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 12 * uiScale, vertical: 4 * uiScale),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: config.themeColors.primary.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: DropdownButton<String>(
+                value: _selectedChapter,
+                isExpanded: true,
+                underline: SizedBox(),
+                dropdownColor: Colors.black.withOpacity(0.9),
+                style: TextStyle(
+                  color: config.themeColors.primary,
+                  fontSize: 16 * textScale,
+                ),
+                items: availableChapters.map((chapter) {
+                  return DropdownMenuItem<String>(
+                    value: chapter,
+                    child: Text(chapter),
+                  );
+                }).toList(),
+                onChanged: (newChapter) {
+                  if (newChapter != null) {
+                    setState(() {
+                      _selectedChapter = newChapter;
+                      _transformController.value = Matrix4.identity(); // 重置视图
+                    });
+                    _uiSoundManager.playButtonClick();
+                  }
+                },
+              ),
+            ),
+            SizedBox(height: 24 * uiScale),
+          ],
+
           // 结局统计卡片
           Container(
             padding: EdgeInsets.all(16 * uiScale),
@@ -416,6 +502,10 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final Map<String, Map<String, double>> layoutInfo = {};
     final Map<int, int> depthCounters = {}; // 每个深度的节点计数器
 
+    // 获取当前章节的所有节点，用于查找子节点
+    final currentChapterNodes = _getNodesForCurrentChapter();
+    final nodesMap = {for (var n in currentChapterNodes) n.id: n};
+
     void layoutNode(StoryFlowNode node, int depth, int siblingIndex) {
       // 计算该深度已有多少节点
       depthCounters[depth] = (depthCounters[depth] ?? 0);
@@ -429,8 +519,11 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
       layoutInfo[node.id] = {'x': x, 'y': y, 'depth': depth.toDouble()};
 
-      // 递归处理子节点
-      final children = _flowchartManager.getChildNodes(node.id);
+      // 递归处理子节点（只在当前章节中查找）
+      final children = node.childNodeIds
+          .map((id) => nodesMap[id])
+          .whereType<StoryFlowNode>()
+          .toList();
       for (int i = 0; i < children.length; i++) {
         layoutNode(children[i], depth + 1, i);
       }

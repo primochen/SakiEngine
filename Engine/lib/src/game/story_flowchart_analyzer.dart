@@ -18,9 +18,17 @@ class StoryFlowchartAnalyzer {
       // 清空旧数据
       await _manager.clearAll();
 
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 正在获取合并后的脚本...');
+      }
+
       // 获取合并后的脚本
       final script = await _scriptMerger.getMergedScript();
       final nodes = script.children;
+
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 获取到 ${nodes.length} 个节点');
+      }
 
       // 建立label索引
       final Map<String, int> labelIndex = {};
@@ -30,30 +38,16 @@ class StoryFlowchartAnalyzer {
         }
       }
 
-      // 临时：只分析第0章（用于调试）
-      int endIndex = nodes.length;
-      for (int i = 0; i < nodes.length; i++) {
-        if (nodes[i] is BackgroundNode) {
-          final bg = (nodes[i] as BackgroundNode).background;
-          if (bg != null && _isChapterBackground(bg)) {
-            final chapterName = _extractChapterName(bg);
-            if (chapterName == '第1章') {
-              endIndex = i;
-              if (kDebugMode) {
-                print('[FlowchartAnalyzer] 调试模式：只分析到第1章之前 (索引 $endIndex)');
-              }
-              break;
-            }
-          }
-        }
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 建立label索引完成，共 ${labelIndex.length} 个label');
       }
 
       // 第一步：预先检测汇合点（不创建节点，只返回哪些label是汇合点）
-      final mergeLabels = _preDetectMergePoints(nodes.sublist(0, endIndex), labelIndex);
+      final mergeLabels = _preDetectMergePoints(nodes, labelIndex);
 
       // 第二步：分析章节和分支
       String? currentChapter;
-      for (int i = 0; i < endIndex; i++) {
+      for (int i = 0; i < nodes.length; i++) {
         final node = nodes[i];
 
         // 检查当前位置是否是汇合点的label位置
@@ -78,17 +72,19 @@ class StoryFlowchartAnalyzer {
       }
 
       // 第三步：创建实际的汇合点节点，并收集它们的父节点ID
-      await _createMergePointNodes(nodes.sublist(0, endIndex), labelIndex, mergeLabels);
+      await _createMergePointNodes(nodes, labelIndex, mergeLabels);
+
+      // 第四步：为每个章节添加"章节末尾"节点
+      await _createChapterEndNodes(nodes, labelIndex);
 
       if (kDebugMode) {
         print('[FlowchartAnalyzer] 脚本分析完成');
         print('[FlowchartAnalyzer] 统计信息: ${_manager.exportData()['stats']}');
       }
     } catch (e, stack) {
-      if (kDebugMode) {
-        print('[FlowchartAnalyzer] 分析失败: $e');
-        print(stack);
-      }
+      print('[FlowchartAnalyzer] 分析失败: $e');
+      print('[FlowchartAnalyzer] 堆栈跟踪:');
+      print(stack);
     }
   }
 
@@ -286,7 +282,7 @@ class StoryFlowchartAnalyzer {
     }
 
     if (kDebugMode) {
-      print('[FlowchartAnalyzer] Label到Jump目标映射: $labelToJumpTarget');
+      print('[FlowchartAnalyzer] Label到Jump目标映射完成，共 ${labelToJumpTarget.length} 个映射');
     }
 
     // 收集每个汇合点的父节点ID（来自哪些选项）
@@ -307,9 +303,6 @@ class StoryFlowchartAnalyzer {
 
         if (finalTarget != null && mergeParents.containsKey(finalTarget)) {
           mergeParents[finalTarget]!.add(node.id);
-          if (kDebugMode) {
-            print('[FlowchartAnalyzer] 选项 ${node.id} (label: $choiceLabel) 最终跳转到汇合点 $finalTarget');
-          }
         }
       }
     }
@@ -377,6 +370,53 @@ class StoryFlowchartAnalyzer {
     }
   }
 
+  /// 为每个章节创建末尾节点
+  Future<void> _createChapterEndNodes(
+    List<SksNode> nodes,
+    Map<String, int> labelIndex,
+  ) async {
+    // 获取所有章节节点
+    final allNodes = _manager.nodes;
+    final chapterNodes = allNodes.values.where((n) => n.type == StoryNodeType.chapter).toList();
+
+    for (final chapterNode in chapterNodes) {
+      // 找到该章节下的所有节点
+      final chapterNodesInSameChapter = allNodes.values
+          .where((n) => n.chapterName == chapterNode.displayName && n.id != chapterNode.id)
+          .toList();
+
+      if (chapterNodesInSameChapter.isEmpty) continue;
+
+      // 找到最后一个节点（scriptIndex最大的）
+      chapterNodesInSameChapter.sort((a, b) => a.scriptIndex.compareTo(b.scriptIndex));
+      final lastNode = chapterNodesInSameChapter.last;
+
+      // 检查最后一个节点是否有子节点
+      final hasChildren = lastNode.childNodeIds.isNotEmpty;
+
+      if (!hasChildren) {
+        // 最后一个节点没有子节点，创建章节末尾节点
+        final endId = 'chapter_end_${chapterNode.displayName}';
+
+        final endNode = StoryFlowNode(
+          id: endId,
+          label: 'end_${chapterNode.displayName}',
+          type: StoryNodeType.ending,
+          displayName: '${chapterNode.displayName}末尾',
+          scriptIndex: lastNode.scriptIndex + 1,
+          chapterName: chapterNode.displayName,
+          parentNodeId: lastNode.id,
+        );
+
+        await _manager.addOrUpdateNode(endNode);
+
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 创建章节末尾节点: ${chapterNode.displayName}末尾 (父节点: ${lastNode.id})');
+        }
+      }
+    }
+  }
+
   /// 预先检测汇合点（分析哪些label有多个跳转来源）
   Map<String, int> _preDetectMergePoints(
     List<SksNode> nodes,
@@ -392,9 +432,6 @@ class StoryFlowchartAnalyzer {
       if (node is JumpNode) {
         final targetLabel = node.targetLabel;
         labelJumpCount[targetLabel] = (labelJumpCount[targetLabel] ?? 0) + 1;
-        if (kDebugMode) {
-          print('[FlowchartAnalyzer] 发现JumpNode at $i 跳转到 $targetLabel (当前计数: ${labelJumpCount[targetLabel]})');
-        }
       }
     }
 
@@ -403,9 +440,6 @@ class StoryFlowchartAnalyzer {
     labelJumpCount.forEach((label, count) {
       if (count >= 2) {
         mergeLabels[label] = labelIndex[label] ?? -1;
-        if (kDebugMode) {
-          print('[FlowchartAnalyzer] 确认汇合点: $label (被跳转 $count 次, 索引: ${labelIndex[label]})');
-        }
       }
     });
 
