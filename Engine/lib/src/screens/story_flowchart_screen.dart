@@ -3,6 +3,9 @@ import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/widgets/common/square_icon_button.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 /// 剧情流程图界面
 class StoryFlowchartScreen extends StatefulWidget {
@@ -22,6 +25,7 @@ class StoryFlowchartScreen extends StatefulWidget {
 class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   final StoryFlowchartManager _flowchartManager = StoryFlowchartManager();
   final TransformationController _transformController = TransformationController();
+  final UISoundManager _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -43,21 +47,22 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   @override
   Widget build(BuildContext context) {
     final uiScale = context.scaleFor(ComponentType.ui);
+    final textScale = context.scaleFor(ComponentType.text);
 
     return OverlayScaffold(
       title: '剧情流程图',
       onClose: widget.onClose ?? () => Navigator.of(context).pop(),
-      content: _buildContent(uiScale),
+      content: _buildContent(uiScale, textScale),
     );
   }
 
   /// 构建主要内容
-  Widget _buildContent(double uiScale) {
+  Widget _buildContent(double uiScale, double textScale) {
     return Row(
       children: [
         // 左侧流程图主体
         Expanded(
-          child: _buildFlowchartViewer(),
+          child: _buildFlowchartViewer(uiScale, textScale),
         ),
 
         // 右侧信息面板
@@ -66,34 +71,40 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: Colors.white.withOpacity(0.1),
+                color: SakiEngineConfig().themeColors.primary.withOpacity(0.2),
                 width: 1,
               ),
             ),
           ),
-          child: _buildInfoPanel(uiScale),
+          child: _buildInfoPanel(uiScale, textScale),
         ),
       ],
     );
   }
 
   /// 构建流程图查看器
-  Widget _buildFlowchartViewer() {
-    return InteractiveViewer(
-      transformationController: _transformController,
-      boundaryMargin: const EdgeInsets.all(100),
-      minScale: 0.1,
-      maxScale: 4.0,
-      child: Center(
-        child: CustomPaint(
-          painter: FlowchartPainter(
-            nodes: _flowchartManager.nodes.values.toList(),
-            currentNodeId: _flowchartManager.currentNode?.id,
-          ),
-          child: SizedBox(
-            width: 2000,
-            height: 3000,
-            child: _buildNodeWidgets(),
+  Widget _buildFlowchartViewer(double uiScale, double textScale) {
+    final config = SakiEngineConfig();
+
+    return Container(
+      color: Colors.black.withOpacity(0.3),
+      child: InteractiveViewer(
+        transformationController: _transformController,
+        boundaryMargin: const EdgeInsets.all(100),
+        minScale: 0.1,
+        maxScale: 4.0,
+        child: Center(
+          child: CustomPaint(
+            painter: FlowchartPainter(
+              nodes: _flowchartManager.nodes.values.toList(),
+              currentNodeId: _flowchartManager.currentNode?.id,
+              primaryColor: config.themeColors.primary,
+            ),
+            child: SizedBox(
+              width: 2000,
+              height: 3000,
+              child: _buildNodeWidgets(uiScale, textScale),
+            ),
           ),
         ),
       ),
@@ -101,35 +112,56 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   }
 
   /// 信息面板
-  Widget _buildInfoPanel(double uiScale) {
+  Widget _buildInfoPanel(double uiScale, double textScale) {
     final currentNode = _flowchartManager.currentNode;
     final unlockedEndings = _flowchartManager.getUnlockedEndingsCount();
     final totalEndings = _flowchartManager.getTotalEndingsCount();
+    final config = SakiEngineConfig();
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(20 * uiScale),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 结局统计
+          // 结局统计卡片
           Container(
             padding: EdgeInsets.all(16 * uiScale),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8 * uiScale),
+              color: config.themeColors.primary.withOpacity(0.05),
+              border: Border.all(
+                color: config.themeColors.primary.withOpacity(0.2),
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.emoji_events, color: Colors.amber, size: 24 * uiScale),
+                Icon(
+                  Icons.emoji_events,
+                  color: config.themeColors.primary,
+                  size: 24 * uiScale,
+                ),
                 SizedBox(width: 12 * uiScale),
                 Expanded(
-                  child: Text(
-                    '结局达成\n$unlockedEndings / $totalEndings',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16 * uiScale,
-                      height: 1.4,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '结局达成',
+                        style: TextStyle(
+                          color: config.themeColors.primary.withOpacity(0.7),
+                          fontSize: 12 * textScale,
+                        ),
+                      ),
+                      SizedBox(height: 4 * uiScale),
+                      Text(
+                        '$unlockedEndings / $totalEndings',
+                        style: TextStyle(
+                          color: config.themeColors.primary,
+                          fontSize: 20 * textScale,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -142,25 +174,25 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           Text(
             '当前位置',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 18 * uiScale,
+              color: config.themeColors.primary,
+              fontSize: 16 * textScale,
               fontWeight: FontWeight.bold,
             ),
           ),
           SizedBox(height: 12 * uiScale),
 
           if (currentNode != null) ...[
-            _buildInfoRow('章节', currentNode.chapterName ?? '-', uiScale),
-            _buildInfoRow('位置', currentNode.displayName, uiScale),
-            _buildInfoRow('类型', _getNodeTypeText(currentNode.type), uiScale),
+            _buildInfoRow('章节', currentNode.chapterName ?? '-', uiScale, textScale, config),
+            _buildInfoRow('位置', currentNode.displayName, uiScale, textScale, config),
+            _buildInfoRow('类型', _getNodeTypeText(currentNode.type), uiScale, textScale, config),
 
             if (currentNode.firstReachedTime != null) ...[
               SizedBox(height: 8 * uiScale),
               Text(
                 '首次到达: ${_formatTime(currentNode.firstReachedTime!)}',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 12 * uiScale,
+                  color: config.themeColors.primary.withOpacity(0.5),
+                  fontSize: 11 * textScale,
                 ),
               ),
             ],
@@ -168,8 +200,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             Text(
               '暂无数据',
               style: TextStyle(
-                color: Colors.white54,
-                fontSize: 14 * uiScale,
+                color: config.themeColors.primary.withOpacity(0.3),
+                fontSize: 14 * textScale,
               ),
             ),
 
@@ -179,15 +211,15 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           Text(
             '操作说明',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 18 * uiScale,
+              color: config.themeColors.primary,
+              fontSize: 16 * textScale,
               fontWeight: FontWeight.bold,
             ),
           ),
           SizedBox(height: 12 * uiScale),
-          _buildHelpItem('鼠标拖动', '移动视图', uiScale),
-          _buildHelpItem('滚轮缩放', '放大/缩小', uiScale),
-          _buildHelpItem('点击节点', '跳转到该位置', uiScale),
+          _buildHelpItem('鼠标拖动', '移动视图', uiScale, textScale, config),
+          _buildHelpItem('滚轮缩放', '放大/缩小', uiScale, textScale, config),
+          _buildHelpItem('点击节点', '跳转到该位置', uiScale, textScale, config),
 
           SizedBox(height: 24 * uiScale),
 
@@ -195,34 +227,63 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           Text(
             '图例',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 18 * uiScale,
+              color: config.themeColors.primary,
+              fontSize: 16 * textScale,
               fontWeight: FontWeight.bold,
             ),
           ),
           SizedBox(height: 12 * uiScale),
-          _buildLegendItem(Colors.blue, '章节', uiScale),
-          _buildLegendItem(Colors.orange, '分支选择', uiScale),
-          _buildLegendItem(Colors.purple, '汇合点', uiScale),
-          _buildLegendItem(Colors.green, '已达成结局', uiScale),
-          _buildLegendItem(Colors.grey, '未达成结局', uiScale),
+          _buildLegendItem(_getNodeColor(StoryNodeType.chapter, true, config), '章节', uiScale, textScale, config),
+          _buildLegendItem(_getNodeColor(StoryNodeType.branch, true, config), '分支选择', uiScale, textScale, config),
+          _buildLegendItem(_getNodeColor(StoryNodeType.merge, true, config), '汇合点', uiScale, textScale, config),
+          _buildLegendItem(_getNodeColor(StoryNodeType.ending, true, config), '已达成结局', uiScale, textScale, config),
+          _buildLegendItem(_getNodeColor(StoryNodeType.ending, false, config), '未达成结局', uiScale, textScale, config),
 
           SizedBox(height: 16 * uiScale),
 
           // 重置视图按钮
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _transformController.value = Matrix4.identity(),
-              icon: Icon(Icons.refresh, size: 20 * uiScale),
-              label: Text(
-                '重置视图',
-                style: TextStyle(fontSize: 14 * uiScale),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 12 * uiScale),
-                backgroundColor: Colors.white.withOpacity(0.1),
-                foregroundColor: Colors.white,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  _uiSoundManager.playButtonClick();
+                  _transformController.value = Matrix4.identity();
+                },
+                onHover: (hovering) {
+                  if (hovering) {
+                    _uiSoundManager.playButtonHover();
+                  }
+                },
+                hoverColor: config.themeColors.primary.withOpacity(0.1),
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 12 * uiScale),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: config.themeColors.primary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.refresh,
+                        size: 20 * uiScale,
+                        color: config.themeColors.primary,
+                      ),
+                      SizedBox(width: 8 * uiScale),
+                      Text(
+                        '重置视图',
+                        style: TextStyle(
+                          fontSize: 14 * textScale,
+                          color: config.themeColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -231,7 +292,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, double uiScale) {
+  Widget _buildInfoRow(String label, String value, double uiScale, double textScale, SakiEngineConfig config) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8 * uiScale),
       child: Row(
@@ -242,8 +303,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             child: Text(
               '$label:',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontSize: 14 * uiScale,
+                color: config.themeColors.primary.withOpacity(0.5),
+                fontSize: 13 * textScale,
               ),
             ),
           ),
@@ -251,8 +312,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             child: Text(
               value,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 14 * uiScale,
+                color: config.themeColors.primary,
+                fontSize: 13 * textScale,
               ),
             ),
           ),
@@ -261,7 +322,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     );
   }
 
-  Widget _buildHelpItem(String action, String description, double uiScale) {
+  Widget _buildHelpItem(String action, String description, double uiScale, double textScale, SakiEngineConfig config) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8 * uiScale),
       child: Row(
@@ -269,14 +330,16 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4 * uiScale),
+              border: Border.all(
+                color: config.themeColors.primary.withOpacity(0.3),
+                width: 1,
+              ),
             ),
             child: Text(
               action,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 12 * uiScale,
+                color: config.themeColors.primary,
+                fontSize: 11 * textScale,
               ),
             ),
           ),
@@ -285,8 +348,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             child: Text(
               description,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 12 * uiScale,
+                color: config.themeColors.primary.withOpacity(0.6),
+                fontSize: 11 * textScale,
               ),
             ),
           ),
@@ -295,7 +358,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     );
   }
 
-  Widget _buildLegendItem(Color color, String label, double uiScale) {
+  Widget _buildLegendItem(Color color, String label, double uiScale, double textScale, SakiEngineConfig config) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8 * uiScale),
       child: Row(
@@ -305,15 +368,18 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             height: 16 * uiScale,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(4 * uiScale),
+              border: Border.all(
+                color: config.themeColors.primary.withOpacity(0.3),
+                width: 1,
+              ),
             ),
           ),
           SizedBox(width: 8 * uiScale),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 14 * uiScale,
+              color: config.themeColors.primary.withOpacity(0.8),
+              fontSize: 13 * textScale,
             ),
           ),
         ],
@@ -322,19 +388,19 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   }
 
   /// 构建节点组件
-  Widget _buildNodeWidgets() {
+  Widget _buildNodeWidgets(double uiScale, double textScale) {
     final rootNodes = _flowchartManager.rootNodes;
 
     return Stack(
       children: [
         for (final rootNode in rootNodes)
-          _buildNodeTree(rootNode, 0, rootNodes.indexOf(rootNode)),
+          _buildNodeTree(rootNode, 0, rootNodes.indexOf(rootNode), uiScale, textScale),
       ],
     );
   }
 
   /// 递归构建节点树
-  Widget _buildNodeTree(StoryFlowNode node, int depth, int siblingIndex) {
+  Widget _buildNodeTree(StoryFlowNode node, int depth, int siblingIndex, double uiScale, double textScale) {
     final children = _flowchartManager.getChildNodes(node.id);
     final double x = 100 + depth * 300.0;
     final double y = 100 + siblingIndex * 150.0;
@@ -345,80 +411,93 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         Positioned(
           left: x,
           top: y,
-          child: _buildNodeWidget(node),
+          child: _buildNodeWidget(node, uiScale, textScale),
         ),
 
         // 子节点
         for (int i = 0; i < children.length; i++)
-          _buildNodeTree(children[i], depth + 1, i),
+          _buildNodeTree(children[i], depth + 1, i, uiScale, textScale),
       ],
     );
   }
 
   /// 构建单个节点组件
-  Widget _buildNodeWidget(StoryFlowNode node) {
-    final color = _getNodeColor(node);
+  Widget _buildNodeWidget(StoryFlowNode node, double uiScale, double textScale) {
+    final config = SakiEngineConfig();
+    final color = _getNodeColor(node.type, node.isUnlocked, config);
     final isCurrentNode = _flowchartManager.currentNode?.id == node.id;
 
-    return GestureDetector(
-      onTap: () => _onNodeTapped(node),
-      child: Container(
-        width: 200,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(node.isUnlocked ? 1.0 : 0.3),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isCurrentNode ? Colors.yellow : Colors.white.withOpacity(0.3),
-            width: isCurrentNode ? 3 : 1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onNodeTapped(node),
+        onHover: (hovering) {
+          if (hovering) {
+            _uiSoundManager.playButtonHover();
+          }
+        },
+        hoverColor: config.themeColors.primary.withOpacity(0.1),
+        child: Container(
+          width: 200,
+          padding: EdgeInsets.all(12 * uiScale),
+          decoration: BoxDecoration(
+            color: node.isUnlocked
+                ? color.withOpacity(0.15)
+                : color.withOpacity(0.05),
+            border: Border.all(
+              color: isCurrentNode
+                  ? config.themeColors.primary
+                  : color.withOpacity(node.isUnlocked ? 0.5 : 0.2),
+              width: isCurrentNode ? 2 : 1,
+            ),
           ),
-          boxShadow: isCurrentNode
-              ? [
-                  BoxShadow(
-                    color: Colors.yellow.withOpacity(0.5),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  )
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              node.displayName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                node.displayName,
+                style: TextStyle(
+                  color: node.isUnlocked
+                      ? config.themeColors.primary
+                      : config.themeColors.primary.withOpacity(0.3),
+                  fontSize: 13 * textScale,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _getNodeTypeText(node.type),
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 12,
+              SizedBox(height: 4 * uiScale),
+              Text(
+                _getNodeTypeText(node.type),
+                style: TextStyle(
+                  color: node.isUnlocked
+                      ? color.withOpacity(0.8)
+                      : color.withOpacity(0.3),
+                  fontSize: 11 * textScale,
+                ),
               ),
-            ),
 
-            if (!node.isUnlocked)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(4),
+              if (!node.isUnlocked)
+                Container(
+                  margin: EdgeInsets.only(top: 8 * uiScale),
+                  padding: EdgeInsets.symmetric(horizontal: 6 * uiScale, vertical: 3 * uiScale),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: config.themeColors.primary.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '未解锁',
+                    style: TextStyle(
+                      color: config.themeColors.primary.withOpacity(0.3),
+                      fontSize: 10 * textScale,
+                    ),
+                  ),
                 ),
-                child: const Text(
-                  '未解锁',
-                  style: TextStyle(color: Colors.white70, fontSize: 10),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -426,10 +505,18 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
   /// 节点点击事件
   Future<void> _onNodeTapped(StoryFlowNode node) async {
+    _uiSoundManager.playButtonClick();
+
     if (!node.isUnlocked) {
       // 未解锁节点，显示提示
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('该节点尚未解锁')),
+        SnackBar(
+          content: Text(
+            '该节点尚未解锁',
+            style: TextStyle(color: SakiEngineConfig().themeColors.primary),
+          ),
+          backgroundColor: Colors.black.withOpacity(0.8),
+        ),
       );
       return;
     }
@@ -437,7 +524,13 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     // TODO: 实现从自动存档加载
     // 暂时显示提示信息
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('点击了节点: ${node.displayName}')),
+      SnackBar(
+        content: Text(
+          '点击了节点: ${node.displayName}',
+          style: TextStyle(color: SakiEngineConfig().themeColors.primary),
+        ),
+        backgroundColor: Colors.black.withOpacity(0.8),
+      ),
     );
 
     // 关闭流程图界面
@@ -447,16 +540,20 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   }
 
   /// 获取节点颜色
-  Color _getNodeColor(StoryFlowNode node) {
-    switch (node.type) {
+  Color _getNodeColor(StoryNodeType type, bool isUnlocked, SakiEngineConfig config) {
+    final primary = config.themeColors.primary;
+
+    switch (type) {
       case StoryNodeType.chapter:
-        return Colors.blue;
+        return primary.withOpacity(0.8); // 章节用主题色
       case StoryNodeType.branch:
-        return Colors.orange;
+        return Color.lerp(primary, Colors.orange, 0.3)!; // 分支用橙色调
       case StoryNodeType.merge:
-        return Colors.purple;
+        return Color.lerp(primary, Colors.purple, 0.3)!; // 汇合用紫色调
       case StoryNodeType.ending:
-        return node.isUnlocked ? Colors.green : Colors.grey;
+        return isUnlocked
+            ? Color.lerp(primary, Colors.green, 0.3)! // 已达成结局用绿色调
+            : primary.withOpacity(0.2); // 未达成结局用灰色
     }
   }
 
@@ -485,17 +582,19 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 class FlowchartPainter extends CustomPainter {
   final List<StoryFlowNode> nodes;
   final String? currentNodeId;
+  final Color primaryColor;
 
   FlowchartPainter({
     required this.nodes,
     this.currentNodeId,
+    required this.primaryColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..strokeWidth = 2
+      ..color = primaryColor.withOpacity(0.2)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
     // 绘制节点间的连接线
@@ -528,9 +627,26 @@ class FlowchartPainter extends CustomPainter {
           );
 
           canvas.drawPath(path, paint);
+
+          // 在线的终点绘制箭头
+          _drawArrow(canvas, x2 - 10, y2, paint);
         }
       }
     }
+  }
+
+  void _drawArrow(Canvas canvas, double x, double y, Paint paint) {
+    final arrowPaint = Paint()
+      ..color = primaryColor.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(x, y);
+    path.lineTo(x - 8, y - 5);
+    path.lineTo(x - 8, y + 5);
+    path.close();
+
+    canvas.drawPath(path, arrowPaint);
   }
 
   int _calculateDepth(StoryFlowNode node) {
