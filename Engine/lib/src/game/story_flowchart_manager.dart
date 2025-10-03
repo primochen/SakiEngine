@@ -266,9 +266,11 @@ class StoryFlowchartManager extends ChangeNotifier {
     SaveSlot saveSlot,
   ) async {
     try {
-      // 使用 MD5 哈希生成纯 ASCII 文件名（6位）
-      final nodeIdHash = md5.convert(utf8.encode(nodeId)).toString().substring(0, 6);
-      final autoSaveId = '${autoSavePrefix}${nodeIdHash}_${saveSlot.id}';
+      final node = _nodes[nodeId];
+      if (node == null) return null;
+
+      // 直接使用节点的 label 作为文件名
+      final autoSaveId = '${autoSavePrefix}${node.label}';
 
       // 直接保存为文件（参考 SaveLoadManager 的实现）
       final saveLoadManager = SaveLoadManager();
@@ -279,14 +281,11 @@ class StoryFlowchartManager extends ChangeNotifier {
       await file.writeAsBytes(binaryData);
 
       // 更新节点关联
-      final node = _nodes[nodeId];
-      if (node != null) {
-        _nodes[nodeId] = node.copyWith(autoSaveId: autoSaveId);
-        await save();
-      }
+      _nodes[nodeId] = node.copyWith(autoSaveId: autoSaveId);
+      await save();
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 为节点 $nodeId 创建自动存档文件: $autoSaveId.sakisav');
+        print('[StoryFlowchart] 为节点 $nodeId (label: ${node.label}) 创建自动存档文件: $autoSaveId.sakisav');
       }
 
       return autoSaveId;

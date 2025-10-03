@@ -162,11 +162,11 @@ class GameManager {
           screenshotData: null,
         );
 
-        // 保存到流程图管理器
-        await _flowchartManager.createAutoSaveForNode(nodeId, saveSlot);
+        // 保存到流程图管理器，并获取实际的 autoSaveId
+        final actualAutoSaveId = await _flowchartManager.createAutoSaveForNode(nodeId, saveSlot);
 
-        // 解锁节点
-        await _flowchartManager.unlockNode(nodeId, autoSaveId: 'auto_$nodeId');
+        // 解锁节点，使用实际的 autoSaveId
+        await _flowchartManager.unlockNode(nodeId, autoSaveId: actualAutoSaveId);
 
         if (kDebugMode) {
           print('[AutoSave] 创建自动存档: $displayName (原因: $reason)');
