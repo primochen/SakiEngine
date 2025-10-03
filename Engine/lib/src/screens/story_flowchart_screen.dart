@@ -563,38 +563,38 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final bool isSmallNode = isBranchOption || isMergePoint;
 
     // 不再需要 Transform.translate，因为 y 坐标已经在 layoutInfo 中调整过了
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isClickable ? () => _onNodeTapped(node) : null,
-        onHover: isClickable ? (hovering) {
-          setState(() {
-            _hoveredNodeId = hovering ? node.id : null;
-          });
-          if (hovering) {
-            _uiSoundManager.playButtonHover();
-          }
-        } : null,
-        hoverColor: isClickable ? config.themeColors.primary.withOpacity(0.1) : Colors.transparent,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // 主节点容器
-            CustomPaint(
-              painter: _NotchBorderPainter(
-                notchSize: 16 * uiScale,
-                borderColor: isCurrentNode
-                    ? config.themeColors.primary
-                    : (isBranchOption
-                        ? config.themeColors.primary.withOpacity(0.5)
-                        : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
-                borderWidth: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2),
-              ),
-              child: ClipPath(
-                clipper: _NotchCornerClipper(
-                  notchSize: 16 * uiScale,
-                  isSmallNode: isSmallNode,
-                ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // 主节点容器
+        CustomPaint(
+          painter: _NotchBorderPainter(
+            notchSize: 16 * uiScale,
+            borderColor: isCurrentNode
+                ? config.themeColors.primary
+                : (isBranchOption
+                    ? config.themeColors.primary.withOpacity(0.5)
+                    : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
+            borderWidth: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2),
+          ),
+          child: ClipPath(
+            clipper: _NotchCornerClipper(
+              notchSize: 16 * uiScale,
+              isSmallNode: isSmallNode,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isClickable ? () => _onNodeTapped(node) : null,
+                onHover: isClickable ? (hovering) {
+                  setState(() {
+                    _hoveredNodeId = hovering ? node.id : null;
+                  });
+                  if (hovering) {
+                    _uiSoundManager.playButtonHover();
+                  }
+                } : null,
+                hoverColor: isClickable ? config.themeColors.primary.withOpacity(0.1) : Colors.transparent,
                 child: Container(
                   width: (isSmallNode ? 200 : 280) * uiScale,
                   padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale),
@@ -674,49 +674,49 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                 ),
               ),
             ),
-
-            // 可点击节点的悬浮图标（右上角）
-            if (isClickable && node.isUnlocked)
-              Positioned(
-                top: -8 * uiScale,
-                right: -8 * uiScale,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: isHovered ? 1.0 : 0.0),
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutBack,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 0.8 + (value * 0.4), // 从0.8放大到1.2
-                      child: Transform.rotate(
-                        angle: value * 0.2, // 轻微旋转
-                        child: Container(
-                          width: 32 * uiScale,
-                          height: 32 * uiScale,
-                          decoration: BoxDecoration(
-                            color: config.themeColors.primary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: config.themeColors.primary.withOpacity(0.4 + value * 0.3),
-                                blurRadius: 8 + (value * 8),
-                                spreadRadius: value * 2,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.play_arrow_rounded,
-                            color: config.themeColors.background,
-                            size: 20 * uiScale,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-          ],
+          ),
         ),
-      ),
+
+        // 可点击节点的悬浮图标（右上角）
+        if (isClickable && node.isUnlocked)
+          Positioned(
+            top: -8 * uiScale,
+            right: -8 * uiScale,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: isHovered ? 1.0 : 0.0),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: 0.8 + (value * 0.4), // 从0.8放大到1.2
+                  child: Transform.rotate(
+                    angle: value * 0.2, // 轻微旋转
+                    child: Container(
+                      width: 32 * uiScale,
+                      height: 32 * uiScale,
+                      decoration: BoxDecoration(
+                        color: config.themeColors.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: config.themeColors.primary.withOpacity(0.4 + value * 0.3),
+                            blurRadius: 8 + (value * 8),
+                            spreadRadius: value * 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: config.themeColors.background,
+                        size: 20 * uiScale,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 
