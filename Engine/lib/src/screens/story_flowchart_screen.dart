@@ -87,24 +87,23 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final config = SakiEngineConfig();
 
     return Container(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.transparent, // 移除黑色遮罩，改为透明
       child: InteractiveViewer(
         transformationController: _transformController,
-        boundaryMargin: const EdgeInsets.all(100),
+        boundaryMargin: const EdgeInsets.all(2000), // 增大边界，防止裁切
         minScale: 0.1,
         maxScale: 4.0,
-        child: Center(
-          child: CustomPaint(
-            painter: FlowchartPainter(
-              nodes: _flowchartManager.nodes.values.toList(),
-              currentNodeId: _flowchartManager.currentNode?.id,
-              primaryColor: config.themeColors.primary,
-            ),
-            child: SizedBox(
-              width: 2000,
-              height: 3000,
-              child: _buildNodeWidgets(uiScale, textScale),
-            ),
+        clipBehavior: Clip.none, // 关键：不裁切超出边界的内容
+        child: CustomPaint(
+          painter: FlowchartPainter(
+            nodes: _flowchartManager.nodes.values.toList(),
+            currentNodeId: _flowchartManager.currentNode?.id,
+            primaryColor: config.themeColors.primary,
+          ),
+          child: SizedBox(
+            width: 8000, // 大幅增加宽度，容纳更多节点
+            height: 10000, // 大幅增加高度，容纳更多节点
+            child: _buildNodeWidgets(uiScale, textScale),
           ),
         ),
       ),
@@ -149,7 +148,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                         '结局达成',
                         style: TextStyle(
                           color: config.themeColors.primary.withOpacity(0.7),
-                          fontSize: 12 * textScale,
+                          fontSize: 15 * textScale, // 增大字体
                         ),
                       ),
                       SizedBox(height: 4 * uiScale),
@@ -157,7 +156,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                         '$unlockedEndings / $totalEndings',
                         style: TextStyle(
                           color: config.themeColors.primary,
-                          fontSize: 20 * textScale,
+                          fontSize: 26 * textScale, // 增大字体
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -175,7 +174,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             '当前位置',
             style: TextStyle(
               color: config.themeColors.primary,
-              fontSize: 16 * textScale,
+              fontSize: 18 * textScale, // 增大字体
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -192,7 +191,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                 '首次到达: ${_formatTime(currentNode.firstReachedTime!)}',
                 style: TextStyle(
                   color: config.themeColors.primary.withOpacity(0.5),
-                  fontSize: 11 * textScale,
+                  fontSize: 13 * textScale, // 增大字体
                 ),
               ),
             ],
@@ -201,7 +200,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               '暂无数据',
               style: TextStyle(
                 color: config.themeColors.primary.withOpacity(0.3),
-                fontSize: 14 * textScale,
+                fontSize: 15 * textScale, // 增大字体
               ),
             ),
 
@@ -212,7 +211,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             '操作说明',
             style: TextStyle(
               color: config.themeColors.primary,
-              fontSize: 16 * textScale,
+              fontSize: 18 * textScale, // 增大字体
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -228,7 +227,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             '图例',
             style: TextStyle(
               color: config.themeColors.primary,
-              fontSize: 16 * textScale,
+              fontSize: 18 * textScale, // 增大字体
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -277,7 +276,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                       Text(
                         '重置视图',
                         style: TextStyle(
-                          fontSize: 14 * textScale,
+                          fontSize: 16 * textScale, // 增大字体
                           color: config.themeColors.primary,
                         ),
                       ),
@@ -304,7 +303,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               '$label:',
               style: TextStyle(
                 color: config.themeColors.primary.withOpacity(0.5),
-                fontSize: 13 * textScale,
+                fontSize: 15 * textScale, // 增大字体
               ),
             ),
           ),
@@ -313,7 +312,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               value,
               style: TextStyle(
                 color: config.themeColors.primary,
-                fontSize: 13 * textScale,
+                fontSize: 15 * textScale, // 增大字体
               ),
             ),
           ),
@@ -339,7 +338,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               action,
               style: TextStyle(
                 color: config.themeColors.primary,
-                fontSize: 11 * textScale,
+                fontSize: 13 * textScale, // 增大字体
               ),
             ),
           ),
@@ -349,7 +348,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               description,
               style: TextStyle(
                 color: config.themeColors.primary.withOpacity(0.6),
-                fontSize: 11 * textScale,
+                fontSize: 13 * textScale, // 增大字体
               ),
             ),
           ),
@@ -364,8 +363,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       child: Row(
         children: [
           Container(
-            width: 16 * uiScale,
-            height: 16 * uiScale,
+            width: 20 * uiScale, // 增大图例色块
+            height: 20 * uiScale,
             decoration: BoxDecoration(
               color: color,
               border: Border.all(
@@ -379,7 +378,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             label,
             style: TextStyle(
               color: config.themeColors.primary.withOpacity(0.8),
-              fontSize: 13 * textScale,
+              fontSize: 15 * textScale, // 增大字体
             ),
           ),
         ],
@@ -402,10 +401,11 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   /// 递归构建节点树
   Widget _buildNodeTree(StoryFlowNode node, int depth, int siblingIndex, double uiScale, double textScale) {
     final children = _flowchartManager.getChildNodes(node.id);
-    final double x = 100 + depth * 300.0;
-    final double y = 100 + siblingIndex * 150.0;
+    final double x = 100 + depth * 400.0; // 增大水平间距
+    final double y = 100 + siblingIndex * 200.0; // 增大垂直间距
 
     return Stack(
+      clipBehavior: Clip.none, // 不裁切子节点
       children: [
         // 当前节点
         Positioned(
@@ -438,8 +438,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         },
         hoverColor: config.themeColors.primary.withOpacity(0.1),
         child: Container(
-          width: 200,
-          padding: EdgeInsets.all(12 * uiScale),
+          width: 280, // 增大节点宽度
+          padding: EdgeInsets.all(16 * uiScale), // 增大内边距
           decoration: BoxDecoration(
             color: node.isUnlocked
                 ? color.withOpacity(0.15)
@@ -461,27 +461,27 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                   color: node.isUnlocked
                       ? config.themeColors.primary
                       : config.themeColors.primary.withOpacity(0.3),
-                  fontSize: 13 * textScale,
+                  fontSize: 16 * textScale, // 增大字体
                   fontWeight: FontWeight.bold,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: 4 * uiScale),
+              SizedBox(height: 6 * uiScale),
               Text(
                 _getNodeTypeText(node.type),
                 style: TextStyle(
                   color: node.isUnlocked
                       ? color.withOpacity(0.8)
                       : color.withOpacity(0.3),
-                  fontSize: 11 * textScale,
+                  fontSize: 14 * textScale, // 增大字体
                 ),
               ),
 
               if (!node.isUnlocked)
                 Container(
                   margin: EdgeInsets.only(top: 8 * uiScale),
-                  padding: EdgeInsets.symmetric(horizontal: 6 * uiScale, vertical: 3 * uiScale),
+                  padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: config.themeColors.primary.withOpacity(0.2),
@@ -492,7 +492,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                     '未解锁',
                     style: TextStyle(
                       color: config.themeColors.primary.withOpacity(0.3),
-                      fontSize: 10 * textScale,
+                      fontSize: 12 * textScale, // 增大字体
                     ),
                   ),
                 ),
@@ -593,8 +593,8 @@ class FlowchartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = primaryColor.withOpacity(0.2)
-      ..strokeWidth = 1.5
+      ..color = primaryColor.withOpacity(0.3) // 增加线条不透明度，更清晰
+      ..strokeWidth = 2.5 // 增粗线条
       ..style = PaintingStyle.stroke;
 
     // 绘制节点间的连接线
@@ -612,10 +612,10 @@ class FlowchartPainter extends CustomPainter {
           final parentSiblingIndex = _calculateSiblingIndex(parentNode);
           final nodeSiblingIndex = _calculateSiblingIndex(node);
 
-          final double x1 = 100 + parentDepth * 300.0 + 200; // 父节点右边缘
-          final double y1 = 100 + parentSiblingIndex * 150.0 + 30; // 父节点中心
-          final double x2 = 100 + nodeDepth * 300.0; // 子节点左边缘
-          final double y2 = 100 + nodeSiblingIndex * 150.0 + 30; // 子节点中心
+          final double x1 = 100 + parentDepth * 400.0 + 280; // 父节点右边缘（更新间距和宽度）
+          final double y1 = 100 + parentSiblingIndex * 200.0 + 40; // 父节点中心（更新间距）
+          final double x2 = 100 + nodeDepth * 400.0; // 子节点左边缘（更新间距）
+          final double y2 = 100 + nodeSiblingIndex * 200.0 + 40; // 子节点中心（更新间距）
 
           // 绘制贝塞尔曲线
           final path = Path();
@@ -637,13 +637,13 @@ class FlowchartPainter extends CustomPainter {
 
   void _drawArrow(Canvas canvas, double x, double y, Paint paint) {
     final arrowPaint = Paint()
-      ..color = primaryColor.withOpacity(0.3)
+      ..color = primaryColor.withOpacity(0.5) // 增加箭头不透明度
       ..style = PaintingStyle.fill;
 
     final path = Path();
     path.moveTo(x, y);
-    path.lineTo(x - 8, y - 5);
-    path.lineTo(x - 8, y + 5);
+    path.lineTo(x - 10, y - 6); // 增大箭头尺寸
+    path.lineTo(x - 10, y + 6);
     path.close();
 
     canvas.drawPath(path, arrowPaint);
