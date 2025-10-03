@@ -179,11 +179,11 @@ class StoryFlowchartManager extends ChangeNotifier {
       }
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 初始化完成，加载了 ${_nodes.length} 个节点');
+        //print('[StoryFlowchart] 初始化完成，加载了 ${_nodes.length} 个节点');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[StoryFlowchart] 初始化失败: $e');
+        //print('[StoryFlowchart] 初始化失败: $e');
       }
     }
   }
@@ -202,11 +202,11 @@ class StoryFlowchartManager extends ChangeNotifier {
       await dataManager.setStringVariable('story_flowchart', jsonEncode(jsonData), projectName);
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 保存成功，共 ${_nodes.length} 个节点');
+        //print('[StoryFlowchart] 保存成功，共 ${_nodes.length} 个节点');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[StoryFlowchart] 保存失败: $e');
+        //print('[StoryFlowchart] 保存失败: $e');
       }
     }
   }
@@ -255,7 +255,7 @@ class StoryFlowchartManager extends ChangeNotifier {
       notifyListeners();
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 解锁节点: ${node.displayName} ($nodeId)');
+        //print('[StoryFlowchart] 解锁节点: ${node.displayName} ($nodeId)');
       }
     }
   }
@@ -285,13 +285,13 @@ class StoryFlowchartManager extends ChangeNotifier {
       await save();
 
       if (kDebugMode) {
-        print('[StoryFlowchart] 为节点 $nodeId (${node.displayName}) 创建自动存档文件: $autoSaveId.sakisav');
+        //print('[StoryFlowchart] 为节点 $nodeId (${node.displayName}) 创建自动存档文件: $autoSaveId.sakisav');
       }
 
       return autoSaveId;
     } catch (e) {
       if (kDebugMode) {
-        print('[StoryFlowchart] 创建自动存档失败: $e');
+        //print('[StoryFlowchart] 创建自动存档失败: $e');
       }
       return null;
     }
@@ -357,7 +357,7 @@ class StoryFlowchartManager extends ChangeNotifier {
     notifyListeners();
 
     if (kDebugMode) {
-      print('[StoryFlowchart] 已清空所有数据');
+      //print('[StoryFlowchart] 已清空所有数据');
     }
   }
 

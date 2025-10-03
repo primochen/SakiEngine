@@ -753,7 +753,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           final saveSlot = SaveSlot.fromBinary(binaryData);
 
           if (kDebugMode) {
-            print('[StoryFlowchart] 从节点 ${node.id} 的自动存档加载成功');
+            //print('[StoryFlowchart] 从节点 ${node.id} 的自动存档加载成功');
           }
 
           // 使用 onLoadSave 回调来加载存档（和"继续游戏"一样的方式）
@@ -767,7 +767,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           }
         } else {
           if (kDebugMode) {
-            print('[StoryFlowchart] 自动存档文件不存在: ${node.autoSaveId}');
+            //print('[StoryFlowchart] 自动存档文件不存在: ${node.autoSaveId}');
           }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -781,7 +781,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('[StoryFlowchart] 加载自动存档失败: $e');
+          //print('[StoryFlowchart] 加载自动存档失败: $e');
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
