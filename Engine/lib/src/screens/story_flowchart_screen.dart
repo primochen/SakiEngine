@@ -120,14 +120,30 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     setState(() {});
   }
 
-  /// 获取所有可用的章节
+  /// 获取所有可用的章节（只包含有解锁节点的章节）
   List<String> _getAvailableChapters() {
     final allNodes = _flowchartManager.nodes.values;
-    final chapterNames = allNodes
+    final chapterNames = <String>[];
+
+    // 遍历所有章节名称
+    final allChapterNames = allNodes
         .where((node) => node.chapterName != null)
         .map((node) => node.chapterName!)
         .toSet()
         .toList();
+
+    // 对每个章节，检查是否有解锁的节点
+    for (final chapterName in allChapterNames) {
+      final hasUnlockedNodes = allNodes.any((node) =>
+        node.chapterName == chapterName && node.isUnlocked
+      );
+
+      // 只有包含解锁节点的章节才添加到列表
+      if (hasUnlockedNodes) {
+        chapterNames.add(chapterName);
+      }
+    }
+
     chapterNames.sort();
     return chapterNames;
   }

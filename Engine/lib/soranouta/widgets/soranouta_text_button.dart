@@ -29,31 +29,39 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
     final normalColor = isDarkMode ? Colors.black : Colors.white;
     final hoverColor = isDarkMode ? Colors.white : Colors.black;
 
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        _uiSoundManager.playButtonHover();
-      },
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) {
-          setState(() => _isPressed = false);
-          _uiSoundManager.playButtonClick();
-        },
-        onTapCancel: () => setState(() => _isPressed = false),
-        onTap: widget.onPressed,
-        child: Container(
-          margin: EdgeInsets.only(right: 20 * widget.scale),
-          child: Text(
-            widget.text,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontFamily: 'ChillJinshuSongPro_Soft',
-              fontSize: 55 * widget.scale,
-              color: (_isHovered || _isPressed) ? hoverColor : normalColor,
-              fontWeight: FontWeight.normal,
-              letterSpacing: 3,
+    return Container(
+      // 增大容器，避免放大时被裁剪（1.15倍需要额外15%空间）
+      padding: EdgeInsets.symmetric(
+        horizontal: 10 * widget.scale, // 左右各留20单位
+      ),
+      child: AnimatedScale(
+        scale: _isHovered ? 1.15 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: MouseRegion(
+          onEnter: (_) {
+            setState(() => _isHovered = true);
+            _uiSoundManager.playButtonHover();
+          },
+          onExit: (_) => setState(() => _isHovered = false),
+          child: GestureDetector(
+            onTapDown: (_) => setState(() => _isPressed = true),
+            onTapUp: (_) {
+              setState(() => _isPressed = false);
+              _uiSoundManager.playButtonClick();
+            },
+            onTapCancel: () => setState(() => _isPressed = false),
+            onTap: widget.onPressed,
+            child: Text(
+              widget.text,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontFamily: 'ChillJinshuSongPro_Soft',
+                fontSize: 55 * widget.scale,
+                color: (_isHovered || _isPressed) ? hoverColor : normalColor,
+                fontWeight: FontWeight.normal,
+                letterSpacing: 3,
+              ),
             ),
           ),
         ),
