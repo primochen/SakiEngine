@@ -46,7 +46,7 @@ class StoryFlowchartAnalyzer {
           if (_isChapterBackground(bgName)) {
             currentChapter = _extractChapterName(bgName);
 
-            // 创建章节节点
+            // 创建章节节点（作为独立的根节点，没有父节点）
             final chapterNodeId = 'chapter_$currentChapter';
             final chapterNode = StoryFlowNode(
               id: chapterNodeId,
@@ -55,15 +55,15 @@ class StoryFlowchartAnalyzer {
               displayName: currentChapter,
               scriptIndex: i,
               chapterName: currentChapter,
-              parentNodeId: lastChapterIndex >= 0 ? 'chapter_${_extractChapterName(_getBackgroundAtIndex(lastChapterIndex, nodes))}' : null,
+              parentNodeId: null, // 章节是根节点，没有父节点
             );
 
             await _flowchartManager.addOrUpdateNode(chapterNode);
-            lastNodeId = chapterNodeId;
+            lastNodeId = chapterNodeId; // 更新lastNodeId，后续的分支将以此章节为父节点
             lastChapterIndex = i;
 
             if (kDebugMode) {
-              print('[FlowchartAnalyzer] 发现章节: $currentChapter at index $i');
+              print('[FlowchartAnalyzer] 发现章节: $currentChapter at index $i (根节点)');
             }
           }
         }
@@ -161,7 +161,7 @@ class StoryFlowchartAnalyzer {
     }
   }
 
-  /// 分析分支选项后的路径
+  /// 分析分支选项后的路径（增强版）
   Future<void> _analyzePathAfterBranch(
     String parentNodeId,
     int startIndex,
@@ -169,12 +169,87 @@ class StoryFlowchartAnalyzer {
     Map<String, int> labelIndexMap,
     String? currentChapter,
   ) async {
-    // 跟踪路径，直到遇到下一个分支、章节或结局
+    // 跟踪路径，直到遇到下一个分支、章节、结局或跳转
     for (int i = startIndex; i < nodes.length; i++) {
       final node = nodes[i];
 
-      // 遇到新的分支或章节，停止跟踪
-      if (node is MenuNode || _isChapterBackground(_getNodeBackground(node))) {
+      // 遇到章节背景或章节相关节点，立即停止（章节应该由主循环处理）
+      if (node is BackgroundNode && _isChapterBackground(node.background)) {
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 路径分析遇到新章节，停止 (index: $i)');
+        }
+        break;
+      }
+      if (node is MovieNode && _isChapterBackground(node.movieFile)) {
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 路径分析遇到新章节(Movie)，停止 (index: $i)');
+        }
+        break;
+      }
+
+      // 遇到新的分支，创建分支节点并继续分析
+      if (node is MenuNode) {
+        final branchNodeId = 'branch_$i';
+        final label = _findNearestLabel(i, nodes, labelIndexMap) ?? 'menu_$i';
+
+        // 检查是否已存在
+        if (!_flowchartManager.nodes.containsKey(branchNodeId)) {
+          // 创建分支节点
+          final branchNode = StoryFlowNode(
+            id: branchNodeId,
+            label: label,
+            type: StoryNodeType.branch,
+            displayName: '分支选择: $label',
+            scriptIndex: i,
+            chapterName: currentChapter,
+            parentNodeId: parentNodeId,
+          );
+
+          await _flowchartManager.addOrUpdateNode(branchNode);
+
+          // 为每个选项创建子节点
+          for (final option in node.choices) {
+            final targetLabel = option.targetLabel;
+            final optionIndex = labelIndexMap[targetLabel];
+
+            if (optionIndex != null) {
+              final optionNodeId = 'option_${branchNodeId}_$targetLabel';
+
+              // 检查是否已存在
+              if (!_flowchartManager.nodes.containsKey(optionNodeId)) {
+                final optionNode = StoryFlowNode(
+                  id: optionNodeId,
+                  label: targetLabel,
+                  type: StoryNodeType.branch,
+                  displayName: option.text,
+                  scriptIndex: optionIndex,
+                  chapterName: currentChapter,
+                  parentNodeId: branchNodeId,
+                  metadata: {'branchText': option.text},
+                );
+
+                await _flowchartManager.addOrUpdateNode(optionNode);
+
+                // 递归分析选项后的路径
+                await _analyzePathAfterBranch(
+                  optionNodeId,
+                  optionIndex,
+                  nodes,
+                  labelIndexMap,
+                  currentChapter,
+                );
+              }
+            }
+          }
+        }
+        break; // 分支已处理，停止当前路径分析
+      }
+
+      // 遇到跳转，停止当前路径（跳转目标会在汇合点检测中处理）
+      if (node is JumpNode) {
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 路径分析遇到跳转，停止 (target: ${node.targetLabel})');
+        }
         break;
       }
 
@@ -183,19 +258,23 @@ class StoryFlowchartAnalyzer {
         final lastSceneIndex = _findLastSceneBeforeReturn(i, nodes);
         if (lastSceneIndex != null) {
           final endingNodeId = 'ending_$lastSceneIndex';
-          final label = _findNearestLabel(lastSceneIndex, nodes, labelIndexMap) ?? 'ending_$lastSceneIndex';
 
-          final endingNode = StoryFlowNode(
-            id: endingNodeId,
-            label: label,
-            type: StoryNodeType.ending,
-            displayName: '结局: $label',
-            scriptIndex: lastSceneIndex,
-            chapterName: currentChapter,
-            parentNodeId: parentNodeId,
-          );
+          // 检查是否已存在
+          if (!_flowchartManager.nodes.containsKey(endingNodeId)) {
+            final label = _findNearestLabel(lastSceneIndex, nodes, labelIndexMap) ?? 'ending_$lastSceneIndex';
 
-          await _flowchartManager.addOrUpdateNode(endingNode);
+            final endingNode = StoryFlowNode(
+              id: endingNodeId,
+              label: label,
+              type: StoryNodeType.ending,
+              displayName: '结局: $label',
+              scriptIndex: lastSceneIndex,
+              chapterName: currentChapter,
+              parentNodeId: parentNodeId,
+            );
+
+            await _flowchartManager.addOrUpdateNode(endingNode);
+          }
         }
         break;
       }
@@ -248,12 +327,18 @@ class StoryFlowchartAnalyzer {
         final targetIndex = labelIndexMap[label];
         if (targetIndex != null) {
           final mergeNodeId = 'merge_$label';
+
+          // 获取当前章节（从第一个父节点获取）
+          final firstParent = _flowchartManager.nodes[parents.first];
+          final currentChapter = firstParent?.chapterName;
+
           final mergeNode = StoryFlowNode(
             id: mergeNodeId,
             label: label,
             type: StoryNodeType.merge,
             displayName: '汇合点: $label',
             scriptIndex: targetIndex,
+            chapterName: currentChapter, // 设置章节名
             parentNodeId: parents.first, // 保留第一个父节点作为主父节点
             metadata: {
               'parentCount': parents.length,
@@ -266,6 +351,15 @@ class StoryFlowchartAnalyzer {
           if (kDebugMode) {
             print('[FlowchartAnalyzer] 发现汇合点: $label (来自 ${parents.length} 个分支: ${parents.join(", ")})');
           }
+
+          // 关键：继续分析汇合点之后的路径
+          await _analyzePathAfterBranch(
+            mergeNodeId,
+            targetIndex,
+            nodes,
+            labelIndexMap,
+            currentChapter,
+          );
         }
       }
     }
