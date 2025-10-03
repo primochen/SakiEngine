@@ -149,6 +149,15 @@ class GameManager {
         nodeId = 'branch_$scriptIndex';
         displayName = '分支选择: $label';
         nodeType = StoryNodeType.branch;
+      } else if (node is ReturnNode) {
+        // 结局：找到return前的最后一个scene
+        final lastSceneIndex = _findLastSceneBeforeReturn(scriptIndex);
+        if (lastSceneIndex != null) {
+          final label = _findNearestLabel(lastSceneIndex) ?? 'ending_$lastSceneIndex';
+          nodeId = 'ending_$lastSceneIndex';
+          displayName = '结局: $label';
+          nodeType = StoryNodeType.ending;
+        }
       }
 
       if (nodeId != null && nodeType != null) {
@@ -177,6 +186,17 @@ class GameManager {
         print('[AutoSave] 创建自动存档失败: $e');
       }
     }
+  }
+
+  /// 查找return前的最后一个scene
+  int? _findLastSceneBeforeReturn(int returnIndex) {
+    for (int i = returnIndex - 1; i >= 0; i--) {
+      final node = _script.children[i];
+      if (node is BackgroundNode || node is MovieNode) {
+        return i;
+      }
+    }
+    return null;
   }
 
   /// 查找最近的label
@@ -2015,6 +2035,9 @@ class GameManager {
       }
 
       if (node is ReturnNode) {
+        // 在结局前创建自动存档
+        await _checkAndCreateAutoSave(_scriptIndex, reason: '结局');
+
         _scriptIndex++;
         onReturn?.call();
         _isProcessing = false;
