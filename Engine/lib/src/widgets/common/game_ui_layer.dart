@@ -58,6 +58,7 @@ class GameUILayer extends StatefulWidget {
   final VoidCallback? onSkipRead; // 新增：跳过已读文本回调
   final VoidCallback? onAutoPlay; // 新增：自动播放回调
   final VoidCallback? onThemeToggle; // 新增：主题切换回调
+  final VoidCallback? onFlowchart; // 新增：流程图回调
   final Function(DialogueHistoryEntry) onJumpToHistoryEntry;
   final Function(SaveSlot)? onLoadGame;
   final VoidCallback onProgressDialogue;
@@ -102,6 +103,7 @@ class GameUILayer extends StatefulWidget {
     this.onSkipRead, // 新增：跳过已读文本回调（可选）
     this.onAutoPlay, // 新增：自动播放回调（可选）
     this.onThemeToggle, // 新增：主题切换回调（可选）
+    this.onFlowchart, // 新增：流程图回调（可选）
     required this.onJumpToHistoryEntry,
     required this.onLoadGame,
     required this.onProgressDialogue,
@@ -262,6 +264,7 @@ class GameUILayerState extends State<GameUILayer> {
                     onAutoPlay: widget.onAutoPlay, // 传递自动播放回调
                     isAutoPlaying: widget.gameState.isAutoPlaying, // 传递自动播放状态
                     onThemeToggle: widget.onThemeToggle, // 传递主题切换回调
+                    onFlowchart: widget.onFlowchart, // 传递流程图回调
                   ),
                 ),
 

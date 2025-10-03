@@ -29,6 +29,8 @@ import 'package:sakiengine/src/utils/gpu_image_compositor.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/utils/character_composite_cache.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
+import 'package:sakiengine/src/game/story_flowchart_manager.dart';
+import 'package:sakiengine/src/utils/binary_serializer.dart';
 
 enum _NvlContextMode { none, standard, movie, noMask }
 
@@ -123,6 +125,87 @@ class GameManager {
 
   // 智能CG预测器
   final SmartCgPredictor _smartPredictor = SmartCgPredictor();
+
+  // 剧情流程图管理器
+  final StoryFlowchartManager _flowchartManager = StoryFlowchartManager();
+
+  /// 检查是否需要创建自动存档
+  Future<void> _checkAndCreateAutoSave(int scriptIndex, {String? reason}) async {
+    try {
+      final node = _script.children[scriptIndex];
+      String? nodeId;
+      String? displayName;
+      StoryNodeType? nodeType;
+
+      // 判断节点类型
+      if (node is BackgroundNode && _containsChapter(node.background)) {
+        // 章节开始
+        nodeId = 'chapter_${_extractChapterName(node.background)}';
+        displayName = _extractChapterName(node.background);
+        nodeType = StoryNodeType.chapter;
+      } else if (node is MenuNode) {
+        // 分支选择
+        final label = _findNearestLabel(scriptIndex) ?? 'menu_$scriptIndex';
+        nodeId = 'branch_$scriptIndex';
+        displayName = '分支选择: $label';
+        nodeType = StoryNodeType.branch;
+      }
+
+      if (nodeId != null && nodeType != null) {
+        // 创建自动存档
+        final saveSlot = SaveSlot(
+          id: int.parse(DateTime.now().millisecondsSinceEpoch.toString().substring(0, 10)),
+          saveTime: DateTime.now(),
+          currentScript: currentScriptFile,
+          dialoguePreview: displayName ?? '自动存档',
+          snapshot: saveStateSnapshot(),
+          screenshotData: null,
+        );
+
+        // 保存到流程图管理器
+        await _flowchartManager.createAutoSaveForNode(nodeId, saveSlot);
+
+        // 解锁节点
+        await _flowchartManager.unlockNode(nodeId, autoSaveId: 'auto_$nodeId');
+
+        if (kDebugMode) {
+          print('[AutoSave] 创建自动存档: $displayName (原因: $reason)');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[AutoSave] 创建自动存档失败: $e');
+      }
+    }
+  }
+
+  /// 查找最近的label
+  String? _findNearestLabel(int index) {
+    for (int i = index; i >= 0; i--) {
+      if (_script.children[i] is LabelNode) {
+        return (_script.children[i] as LabelNode).name;
+      }
+    }
+    return null;
+  }
+
+  /// 提取章节名
+  String _extractChapterName(String bgName) {
+    final chapterMatch = RegExp(r'chapter[_\s-]?(\d+)', caseSensitive: false).firstMatch(bgName);
+    if (chapterMatch != null) {
+      return '第${chapterMatch.group(1)}章';
+    }
+
+    final chMatch = RegExp(r'\bch(\d+)\b', caseSensitive: false).firstMatch(bgName);
+    if (chMatch != null) {
+      return '第${chMatch.group(1)}章';
+    }
+
+    if (bgName.toLowerCase().contains('prologue')) return '序章';
+    if (bgName.toLowerCase().contains('epilogue')) return '尾声';
+
+    return bgName;
+  }
 
   /// 检测并播放角色属性变化动画（用于pose切换）
   Future<void> _checkAndAnimatePoseAttributeChanges({
@@ -797,6 +880,9 @@ class GameManager {
     await _loadConfigs();
     await GlobalVariableManager().init(); // 初始化全局变量管理器
 
+    // 初始化剧情流程图管理器
+    await _flowchartManager.initialize();
+
     // 初始化CG预分析器
     _cgPreAnalyzer.initialize();
 
@@ -991,12 +1077,17 @@ class GameManager {
       }
 
       if (node is BackgroundNode) {
-        // 检测是否包含chapter，如果是则停止快进
+        // 检测是否包含chapter，如果是则停止快进并创建自动存档
         if (_isFastForwardMode && _containsChapter(node.background)) {
           //print('[GameManager] 检测到chapter场景，停止快进: ${node.background}');
           setFastForwardMode(false);
           // 通知UI层快进状态已改变，这样快进指示器会消失
           // GameState已在setFastForwardMode中更新
+        }
+
+        // 章节开始时创建自动存档
+        if (_containsChapter(node.background)) {
+          await _checkAndCreateAutoSave(_scriptIndex, reason: '章节开始');
         }
 
         // 检查是否要清空CG状态
@@ -1909,6 +2000,9 @@ class GameManager {
       }
 
       if (node is MenuNode) {
+        // 分支选择前创建自动存档
+        await _checkAndCreateAutoSave(_scriptIndex, reason: '分支选择');
+
         _currentState = _currentState.copyWith(
             currentNode: node,
             clearDialogueAndSpeaker: true,

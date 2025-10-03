@@ -4,6 +4,8 @@ import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
+import 'package:sakiengine/src/game/story_flowchart_analyzer.dart';
+import 'package:flutter/foundation.dart';
 
 /// soraの歌启动流程：先展示 Logo，再以纯黑淡出进入主菜单
 class SoraNoutaStartupFlow extends StatefulWidget {
@@ -54,6 +56,21 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
           setState(() => _phase = _SplashPhase.done);
         }
       });
+
+    // 后台初始化流程图分析器
+    Future.microtask(() async {
+      try {
+        final analyzer = StoryFlowchartAnalyzer();
+        await analyzer.analyzeScript();
+        if (kDebugMode) {
+          print('[SoraNoUta] 剧情流程图初始化完成');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('[SoraNoUta] 流程图初始化失败: $e');
+        }
+      }
+    });
 
     if (widget.skipIntro) {
       _phase = _SplashPhase.done;

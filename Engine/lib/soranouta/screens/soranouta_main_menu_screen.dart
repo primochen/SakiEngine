@@ -14,6 +14,7 @@ import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'package:sakiengine/soranouta/widgets/firefly_animation.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
+import 'package:sakiengine/src/utils/story_flowchart_helper.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:sakiengine/src/localization/localization_manager.dart';
@@ -45,6 +46,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showDebugPanel = false;
   bool _showSettings = false;
   bool _isDarkModeButtonHovered = false;
+  bool _isFlowchartButtonHovered = false; // 新增：流程图按钮悬停状态
   bool _startMenuAnimation = false; // 控制菜单动画开始
   bool _hasQuickSave = false; // 新增：标记是否有快速存档
   late String _copyrightText;
@@ -339,7 +341,71 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                   ),
                 ),
               ),
-              
+
+              // 流程图按钮阴影层
+              Positioned(
+                right: 20,
+                top: 20,
+                child: AnimatedScale(
+                  scale: _isFlowchartButtonHovered ? 1.15 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                    child: Icon(
+                      Icons.account_tree,
+                      size: 48 * textScale,
+                      color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 流程图按钮
+              Positioned(
+                right: 20,
+                top: 20,
+                child: AnimatedScale(
+                  scale: _isFlowchartButtonHovered ? 1.15 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) {
+                      setState(() => _isFlowchartButtonHovered = true);
+                      _uiSoundManager.playButtonHover();
+                    },
+                    onExit: (_) => setState(() => _isFlowchartButtonHovered = false),
+                    child: GestureDetector(
+                      onTapDown: (_) => setState(() => _isFlowchartButtonHovered = true),
+                      onTapUp: (_) {
+                        setState(() => _isFlowchartButtonHovered = false);
+                        _uiSoundManager.playButtonClick();
+                      },
+                      onTapCancel: () => setState(() => _isFlowchartButtonHovered = false),
+                      onTap: () async {
+                        _uiSoundManager.playButtonClick();
+                        await StoryFlowchartHelper.showFlowchart(
+                          context,
+                          analyzeScriptFirst: true,
+                          onLoadSave: (saveSlot) {
+                            widget.onLoadGameWithSave?.call(saveSlot);
+                          },
+                        );
+                      },
+                      child: Tooltip(
+                        message: '剧情流程图',
+                        child: Icon(
+                          Icons.account_tree,
+                          size: 48 * textScale,
+                          color: isDarkMode ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
               // 覆盖层
               if (_showLoadOverlay)
                 SaveLoadScreen(

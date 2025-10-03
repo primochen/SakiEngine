@@ -21,6 +21,7 @@ import 'package:sakiengine/src/widgets/smart_image.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
+import 'package:sakiengine/src/utils/game_flowchart_mixin.dart';
 import 'package:sakiengine/src/rendering/cg_character_renderer.dart';
 import 'package:sakiengine/src/rendering/composite_cg_renderer.dart';
 import 'package:sakiengine/src/rendering/rendering_system_integration.dart';
@@ -72,7 +73,7 @@ class GamePlayScreen extends StatefulWidget {
   State<GamePlayScreen> createState() => _GamePlayScreenState();
 }
 
-class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
+class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin, GameFlowchartMixin {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _gameUILayerKey = GlobalKey<GameUILayerState>();
@@ -874,6 +875,16 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
                     onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
                     onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
+                    onFlowchart: () => showGameFlowchart(context, _gameManager, (saveSlot) {
+                      // 从流程图加载存档
+                      _currentScript = saveSlot.currentScript;
+                      _gameManager.restoreFromSnapshot(
+                        saveSlot.currentScript,
+                        saveSlot.snapshot,
+                        shouldReExecute: false
+                      );
+                      _showNotificationMessage('已跳转到选定节点');
+                    }), // 新增：流程图回调
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
                     onLoadGame: (saveSlot) {
                       // 在当前GamePlayScreen中恢复存档，而不是创建新实例

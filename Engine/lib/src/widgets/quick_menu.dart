@@ -25,6 +25,7 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback? onAutoPlay; // 新增：自动播放回调
   final bool isAutoPlaying; // 新增：自动播放状态
   final VoidCallback? onThemeToggle; // 新增：主题切换回调
+  final VoidCallback? onFlowchart; // 新增：流程图回调
 
   const QuickMenu({
     super.key,
@@ -41,6 +42,7 @@ class QuickMenu extends StatefulWidget {
     this.onAutoPlay, // 新增：自动播放回调（可选）
     this.isAutoPlaying = false, // 新增：自动播放状态
     this.onThemeToggle, // 新增：主题切换回调（可选）
+    this.onFlowchart, // 新增：流程图回调（可选）
   });
 
   @override
@@ -518,6 +520,30 @@ class _QuickMenuState extends State<QuickMenu>
                           }),
                         ),
                         _buildDivider(scale, config),
+                        // 新增：流程图按钮
+                        if (widget.onFlowchart != null) ...[
+                          _QuickMenuButton(
+                            text: _localization.t('quickMenu.flowchart'),
+                            icon: Icons.account_tree_outlined,
+                            onPressed: widget.onFlowchart!,
+                            scale: scale,
+                            config: config,
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                              final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                              final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                              final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                              final index = baseIndex + autoIndex + skipIndex + themeIndex + 1;
+                              _hoveredButtonIndex = hovering ? index : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = index;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         _QuickMenuButton(
                           text: _localization.t('quickMenu.settings'),
                           icon: Icons.settings_outlined,

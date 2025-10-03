@@ -6,7 +6,8 @@
       "Bash(chmod:*)",
       "Bash(bash:*)",
       "Bash(flutter analyze:*)",
-      "Read(//Library/Afolder/FlutterProject/SakiEngine/Game/SoraNoUta/Assets/gui/**)"
+      "Read(//Library/Afolder/FlutterProject/SakiEngine/Game/SoraNoUta/Assets/gui/**)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
