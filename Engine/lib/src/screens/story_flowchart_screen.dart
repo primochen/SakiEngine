@@ -85,6 +85,10 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   /// 构建流程图查看器
   Widget _buildFlowchartViewer(double uiScale, double textScale) {
     final config = SakiEngineConfig();
+    final rootNodes = _flowchartManager.rootNodes;
+
+    // 计算所有节点的布局信息
+    final layoutInfo = _calculateLayout(rootNodes);
 
     return Container(
       color: Colors.transparent, // 移除黑色遮罩，改为透明
@@ -99,11 +103,12 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             nodes: _flowchartManager.nodes.values.toList(),
             currentNodeId: _flowchartManager.currentNode?.id,
             primaryColor: config.themeColors.primary,
+            layoutInfo: layoutInfo, // 传递布局信息
           ),
           child: SizedBox(
             width: 8000, // 大幅增加宽度，容纳更多节点
             height: 10000, // 大幅增加高度，容纳更多节点
-            child: _buildNodeWidgets(uiScale, textScale),
+            child: _buildNodeWidgets(uiScale, textScale, layoutInfo),
           ),
         ),
       ),
@@ -387,38 +392,55 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   }
 
   /// 构建节点组件
-  Widget _buildNodeWidgets(double uiScale, double textScale) {
-    final rootNodes = _flowchartManager.rootNodes;
-
+  Widget _buildNodeWidgets(double uiScale, double textScale, Map<String, Map<String, double>> layoutInfo) {
     return Stack(
+      clipBehavior: Clip.none, // 不裁切超出边界的内容
       children: [
-        for (final rootNode in rootNodes)
-          _buildNodeTree(rootNode, 0, rootNodes.indexOf(rootNode), uiScale, textScale),
+        for (final entry in layoutInfo.entries)
+          Positioned(
+            left: entry.value['x'] as double,
+            top: entry.value['y'] as double,
+            child: _buildNodeWidget(
+              _flowchartManager.nodes[entry.key]!,
+              uiScale,
+              textScale,
+            ),
+          ),
       ],
     );
   }
 
-  /// 递归构建节点树
-  Widget _buildNodeTree(StoryFlowNode node, int depth, int siblingIndex, double uiScale, double textScale) {
-    final children = _flowchartManager.getChildNodes(node.id);
-    final double x = 100 + depth * 400.0; // 增大水平间距
-    final double y = 100 + siblingIndex * 200.0; // 增大垂直间距
+  /// 计算节点布局（避免重叠）
+  Map<String, Map<String, double>> _calculateLayout(List<StoryFlowNode> rootNodes) {
+    final Map<String, Map<String, double>> layoutInfo = {};
+    final Map<int, int> depthCounters = {}; // 每个深度的节点计数器
 
-    return Stack(
-      clipBehavior: Clip.none, // 不裁切子节点
-      children: [
-        // 当前节点
-        Positioned(
-          left: x,
-          top: y,
-          child: _buildNodeWidget(node, uiScale, textScale),
-        ),
+    void layoutNode(StoryFlowNode node, int depth, int siblingIndex) {
+      // 计算该深度已有多少节点
+      depthCounters[depth] = (depthCounters[depth] ?? 0);
+      final actualY = depthCounters[depth]!;
 
-        // 子节点
-        for (int i = 0; i < children.length; i++)
-          _buildNodeTree(children[i], depth + 1, i, uiScale, textScale),
-      ],
-    );
+      // 更新深度计数器
+      depthCounters[depth] = actualY + 1;
+
+      final double x = 100 + depth * 400.0;
+      final double y = 100 + actualY * 200.0;
+
+      layoutInfo[node.id] = {'x': x, 'y': y, 'depth': depth.toDouble()};
+
+      // 递归处理子节点
+      final children = _flowchartManager.getChildNodes(node.id);
+      for (int i = 0; i < children.length; i++) {
+        layoutNode(children[i], depth + 1, i);
+      }
+    }
+
+    // 从所有根节点开始布局
+    for (int i = 0; i < rootNodes.length; i++) {
+      layoutNode(rootNodes[i], 0, i);
+    }
+
+    return layoutInfo;
   }
 
   /// 构建单个节点组件
@@ -438,17 +460,18 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         },
         hoverColor: config.themeColors.primary.withOpacity(0.1),
         child: Container(
-          width: 280, // 增大节点宽度
-          padding: EdgeInsets.all(16 * uiScale), // 增大内边距
+          width: 280, // 节点宽度
+          padding: EdgeInsets.all(16 * uiScale),
           decoration: BoxDecoration(
+            // 大幅增加背景不透明度，提高对比度
             color: node.isUnlocked
-                ? color.withOpacity(0.15)
-                : color.withOpacity(0.05),
+                ? color.withOpacity(0.6) // 从0.15增加到0.6
+                : color.withOpacity(0.3),  // 从0.05增加到0.3
             border: Border.all(
               color: isCurrentNode
                   ? config.themeColors.primary
-                  : color.withOpacity(node.isUnlocked ? 0.5 : 0.2),
-              width: isCurrentNode ? 2 : 1,
+                  : color.withOpacity(node.isUnlocked ? 0.8 : 0.5), // 增加边框不透明度
+              width: isCurrentNode ? 3 : 2, // 增粗边框
             ),
           ),
           child: Column(
@@ -458,11 +481,20 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               Text(
                 node.displayName,
                 style: TextStyle(
+                  // 使用白色或黑色以获得最佳对比度
                   color: node.isUnlocked
-                      ? config.themeColors.primary
-                      : config.themeColors.primary.withOpacity(0.3),
-                  fontSize: 16 * textScale, // 增大字体
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.5),
+                  fontSize: 16 * textScale,
                   fontWeight: FontWeight.bold,
+                  shadows: [
+                    // 添加文字阴影，进一步提高可读性
+                    Shadow(
+                      offset: const Offset(1, 1),
+                      blurRadius: 2,
+                      color: Colors.black.withOpacity(0.8),
+                    ),
+                  ],
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -472,9 +504,16 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                 _getNodeTypeText(node.type),
                 style: TextStyle(
                   color: node.isUnlocked
-                      ? color.withOpacity(0.8)
-                      : color.withOpacity(0.3),
-                  fontSize: 14 * textScale, // 增大字体
+                      ? Colors.white.withOpacity(0.9)
+                      : Colors.white.withOpacity(0.5),
+                  fontSize: 14 * textScale,
+                  shadows: [
+                    Shadow(
+                      offset: const Offset(1, 1),
+                      blurRadius: 2,
+                      color: Colors.black.withOpacity(0.8),
+                    ),
+                  ],
                 ),
               ),
 
@@ -483,16 +522,17 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                   margin: EdgeInsets.only(top: 8 * uiScale),
                   padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
                   decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3), // 添加背景色
                     border: Border.all(
-                      color: config.themeColors.primary.withOpacity(0.2),
+                      color: Colors.white.withOpacity(0.5),
                       width: 1,
                     ),
                   ),
                   child: Text(
                     '未解锁',
                     style: TextStyle(
-                      color: config.themeColors.primary.withOpacity(0.3),
-                      fontSize: 12 * textScale, // 增大字体
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12 * textScale,
                     ),
                   ),
                 ),
@@ -583,11 +623,13 @@ class FlowchartPainter extends CustomPainter {
   final List<StoryFlowNode> nodes;
   final String? currentNodeId;
   final Color primaryColor;
+  final Map<String, Map<String, double>> layoutInfo; // 新增：布局信息
 
   FlowchartPainter({
     required this.nodes,
     this.currentNodeId,
     required this.primaryColor,
+    required this.layoutInfo, // 新增：接收布局信息
   });
 
   @override
@@ -606,30 +648,30 @@ class FlowchartPainter extends CustomPainter {
         );
 
         if (parentNode.id != node.id) {
-          // 计算节点位置（需要与 _buildNodeTree 中的计算一致）
-          final parentDepth = _calculateDepth(parentNode);
-          final nodeDepth = _calculateDepth(node);
-          final parentSiblingIndex = _calculateSiblingIndex(parentNode);
-          final nodeSiblingIndex = _calculateSiblingIndex(node);
+          // 使用布局信息获取精确位置
+          final parentLayout = layoutInfo[parentNode.id];
+          final nodeLayout = layoutInfo[node.id];
 
-          final double x1 = 100 + parentDepth * 400.0 + 280; // 父节点右边缘（更新间距和宽度）
-          final double y1 = 100 + parentSiblingIndex * 200.0 + 40; // 父节点中心（更新间距）
-          final double x2 = 100 + nodeDepth * 400.0; // 子节点左边缘（更新间距）
-          final double y2 = 100 + nodeSiblingIndex * 200.0 + 40; // 子节点中心（更新间距）
+          if (parentLayout != null && nodeLayout != null) {
+            final double x1 = parentLayout['x']! + 280; // 父节点右边缘
+            final double y1 = parentLayout['y']! + 40; // 父节点中心（节点高度的一半）
+            final double x2 = nodeLayout['x']!; // 子节点左边缘
+            final double y2 = nodeLayout['y']! + 40; // 子节点中心
 
-          // 绘制贝塞尔曲线
-          final path = Path();
-          path.moveTo(x1, y1);
-          path.cubicTo(
-            x1 + 50, y1,
-            x2 - 50, y2,
-            x2, y2,
-          );
+            // 绘制贝塞尔曲线
+            final path = Path();
+            path.moveTo(x1, y1);
+            path.cubicTo(
+              x1 + 50, y1,
+              x2 - 50, y2,
+              x2, y2,
+            );
 
-          canvas.drawPath(path, paint);
+            canvas.drawPath(path, paint);
 
-          // 在线的终点绘制箭头
-          _drawArrow(canvas, x2 - 10, y2, paint);
+            // 在线的终点绘制箭头
+            _drawArrow(canvas, x2 - 10, y2, paint);
+          }
         }
       }
     }
@@ -647,16 +689,6 @@ class FlowchartPainter extends CustomPainter {
     path.close();
 
     canvas.drawPath(path, arrowPaint);
-  }
-
-  int _calculateDepth(StoryFlowNode node) {
-    // 简化计算，实际应根据父节点递归计算
-    return 0;
-  }
-
-  int _calculateSiblingIndex(StoryFlowNode node) {
-    // 简化计算，实际应根据兄弟节点计算
-    return 0;
   }
 
   @override
