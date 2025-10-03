@@ -580,90 +580,99 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           clipBehavior: Clip.none,
           children: [
             // 主节点容器
-            Container(
-              width: (isSmallNode ? 200 : 280) * uiScale, // 应用 uiScale
-              padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale), // 小节点内边距更小
-              decoration: BoxDecoration(
-                // 分支选项使用浅白色背景
-                color: isBranchOption
-                    ? config.themeColors.background.withOpacity(0.8) // 使用主题背景色
-                    : (node.isUnlocked
-                        ? color.withOpacity(0.6)
-                        : color.withOpacity(0.3)),
-                border: Border.all(
-                  color: isCurrentNode
-                      ? config.themeColors.primary
-                      : (isBranchOption
-                          ? config.themeColors.primary.withOpacity(0.5) // 分支选项使用暗色边框
-                          : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
-                  width: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2), // 小节点边框更细
+            CustomPaint(
+              painter: _NotchBorderPainter(
+                notchSize: 16 * uiScale,
+                borderColor: isCurrentNode
+                    ? config.themeColors.primary
+                    : (isBranchOption
+                        ? config.themeColors.primary.withOpacity(0.5)
+                        : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
+                borderWidth: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2),
+              ),
+              child: ClipPath(
+                clipper: _NotchCornerClipper(
+                  notchSize: 16 * uiScale,
+                  isSmallNode: isSmallNode,
+                ),
+                child: Container(
+                  width: (isSmallNode ? 200 : 280) * uiScale,
+                  padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale),
+                  decoration: BoxDecoration(
+                    // 分支选项使用浅白色背景
+                    color: isBranchOption
+                        ? config.themeColors.background.withOpacity(0.8)
+                        : (node.isUnlocked
+                            ? color.withOpacity(0.6)
+                            : color.withOpacity(0.3)),
+                  ),
+                  child: isSmallNode
+                      ? // 分支选项和汇合点：单行显示，垂直居中
+                        Align(
+                          alignment: Alignment.center,
+                          child: Text(
+                            node.displayName,
+                            style: TextStyle(
+                              // 分支选项使用暗色文字，汇合点使用白色文字
+                              color: isBranchOption ? config.themeColors.primary : config.themeColors.background,
+                              fontSize: 14 * textScale, // 更小的字体
+                              fontWeight: FontWeight.normal, // 不加粗
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : // 章节、分支选择和结局：双行显示
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              node.displayName,
+                              style: TextStyle(
+                                // 完全不透明的白色
+                                color: config.themeColors.background,
+                                fontSize: 16 * textScale,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 6 * uiScale),
+                            Text(
+                              _getNodeTypeText(node.type),
+                              style: TextStyle(
+                                // 完全不透明的白色
+                                color: config.themeColors.background,
+                                fontSize: 14 * textScale,
+                              ),
+                            ),
+
+                            // 只有章节和结局才显示"未解锁"标签
+                            if (!node.isUnlocked)
+                              Container(
+                                margin: EdgeInsets.only(top: 8 * uiScale),
+                                padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
+                                decoration: BoxDecoration(
+                                  color: config.themeColors.primary.withOpacity(0.2),
+                                  border: Border.all(
+                                    color: config.themeColors.background.withOpacity(0.5),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  '未解锁',
+                                  style: TextStyle(
+                                    color: config.themeColors.background.withOpacity(0.7),
+                                    fontSize: 12 * textScale,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                 ),
               ),
-              child: isSmallNode
-                  ? // 分支选项和汇合点：单行显示，垂直居中
-                    Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        node.displayName,
-                        style: TextStyle(
-                          // 分支选项使用暗色文字，汇合点使用白色文字
-                          color: isBranchOption ? config.themeColors.primary : config.themeColors.background,
-                          fontSize: 14 * textScale, // 更小的字体
-                          fontWeight: FontWeight.normal, // 不加粗
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : // 章节、分支选择和结局：双行显示
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          node.displayName,
-                          style: TextStyle(
-                            // 完全不透明的白色
-                            color: config.themeColors.background,
-                            fontSize: 16 * textScale,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 6 * uiScale),
-                        Text(
-                          _getNodeTypeText(node.type),
-                          style: TextStyle(
-                            // 完全不透明的白色
-                            color: config.themeColors.background,
-                            fontSize: 14 * textScale,
-                          ),
-                        ),
-
-                        // 只有章节和结局才显示"未解锁"标签
-                        if (!node.isUnlocked)
-                          Container(
-                            margin: EdgeInsets.only(top: 8 * uiScale),
-                            padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
-                            decoration: BoxDecoration(
-                              color: config.themeColors.primary.withOpacity(0.2),
-                              border: Border.all(
-                                color: config.themeColors.background.withOpacity(0.5),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              '未解锁',
-                              style: TextStyle(
-                                color: config.themeColors.background.withOpacity(0.7),
-                                fontSize: 12 * textScale,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
             ),
 
             // 可点击节点的悬浮图标（右上角）
@@ -952,5 +961,87 @@ class FlowchartPainter extends CustomPainter {
   bool shouldRepaint(FlowchartPainter oldDelegate) {
     return oldDelegate.currentNodeId != currentNodeId ||
         oldDelegate.nodes.length != nodes.length;
+  }
+}
+
+/// 左上角切角裁剪器
+class _NotchCornerClipper extends CustomClipper<Path> {
+  final double notchSize;
+  final bool isSmallNode;
+
+  _NotchCornerClipper({
+    required this.notchSize,
+    required this.isSmallNode,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+
+    // 从左上角切角后的位置开始
+    path.moveTo(notchSize, 0);
+    // 右上角
+    path.lineTo(size.width, 0);
+    // 右下角
+    path.lineTo(size.width, size.height);
+    // 左下角
+    path.lineTo(0, size.height);
+    // 左边到切角位置
+    path.lineTo(0, notchSize);
+    // 斜线切角回到起点
+    path.lineTo(notchSize, 0);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_NotchCornerClipper oldClipper) {
+    return oldClipper.notchSize != notchSize || oldClipper.isSmallNode != isSmallNode;
+  }
+}
+
+/// 自定义边框绘制器（绘制切角边框）
+class _NotchBorderPainter extends CustomPainter {
+  final double notchSize;
+  final Color borderColor;
+  final double borderWidth;
+
+  _NotchBorderPainter({
+    required this.notchSize,
+    required this.borderColor,
+    required this.borderWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = borderColor
+      ..strokeWidth = borderWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+
+    // 从左上角切角后的位置开始
+    path.moveTo(notchSize, 0);
+    // 顶边到右上角
+    path.lineTo(size.width, 0);
+    // 右边到右下角
+    path.lineTo(size.width, size.height);
+    // 底边到左下角
+    path.lineTo(0, size.height);
+    // 左边到切角位置
+    path.lineTo(0, notchSize);
+    // 斜线切角回到起点
+    path.lineTo(notchSize, 0);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_NotchBorderPainter oldDelegate) {
+    return oldDelegate.borderColor != borderColor ||
+        oldDelegate.borderWidth != borderWidth ||
+        oldDelegate.notchSize != notchSize;
   }
 }
