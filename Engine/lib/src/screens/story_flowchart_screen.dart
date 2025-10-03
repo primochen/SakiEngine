@@ -6,6 +6,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/widgets/common/square_icon_button.dart';
 import 'package:sakiengine/src/utils/ui_sound_manager.dart';
+import 'package:sakiengine/src/widgets/game_style_dropdown.dart';
 
 /// 剧情流程图界面
 class StoryFlowchartScreen extends StatefulWidget {
@@ -126,26 +127,28 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     // 计算所有节点的布局信息
     final layoutInfo = _calculateLayout(rootNodes);
 
-    return Container(
-      color: Colors.transparent, // 移除黑色遮罩，改为透明
-      child: InteractiveViewer(
-        transformationController: _transformController,
-        // 无边界限制 - 移除boundaryMargin让用户可以无限平移
-        constrained: false, // 关键：允许子组件超出视图边界
-        minScale: 0.1,
-        maxScale: 4.0,
-        clipBehavior: Clip.none, // 关键：不裁切超出边界的内容
-        child: CustomPaint(
-          painter: FlowchartPainter(
-            nodes: currentChapterNodes,
-            currentNodeId: _flowchartManager.currentNode?.id,
-            primaryColor: config.themeColors.primary,
-            layoutInfo: layoutInfo, // 传递布局信息
-          ),
-          child: SizedBox(
-            width: 20000, // 极大的宽度，支持任意多的深度
-            height: 20000, // 极大的高度，支持任意多的节点
-            child: _buildNodeWidgets(uiScale, textScale, layoutInfo),
+    return ClipRect( // 添加裁剪，防止内容超出边界
+      child: Container(
+        color: Colors.transparent, // 移除黑色遮罩，改为透明
+        child: InteractiveViewer(
+          transformationController: _transformController,
+          // 无边界限制 - 移除boundaryMargin让用户可以无限平移
+          constrained: false, // 关键：允许子组件超出视图边界
+          minScale: 0.1,
+          maxScale: 4.0,
+          clipBehavior: Clip.hardEdge, // 改为硬边缘裁剪，防止内容溢出
+          child: CustomPaint(
+            painter: FlowchartPainter(
+              nodes: currentChapterNodes,
+              currentNodeId: _flowchartManager.currentNode?.id,
+              primaryColor: config.themeColors.primary,
+              layoutInfo: layoutInfo, // 传递布局信息
+            ),
+            child: SizedBox(
+              width: 20000, // 极大的宽度，支持任意多的深度
+              height: 20000, // 极大的高度，支持任意多的节点
+              child: _buildNodeWidgets(uiScale, textScale, layoutInfo),
+            ),
           ),
         ),
       ),
@@ -176,161 +179,27 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               ),
             ),
             SizedBox(height: 12 * uiScale),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 12 * uiScale, vertical: 4 * uiScale),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: config.themeColors.primary.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: DropdownButton<String>(
-                value: _selectedChapter,
-                isExpanded: true,
-                underline: SizedBox(),
-                dropdownColor: Colors.black.withOpacity(0.9),
-                style: TextStyle(
-                  color: config.themeColors.primary,
-                  fontSize: 16 * textScale,
-                ),
-                items: availableChapters.map((chapter) {
-                  return DropdownMenuItem<String>(
-                    value: chapter,
-                    child: Text(chapter),
-                  );
-                }).toList(),
-                onChanged: (newChapter) {
-                  if (newChapter != null) {
-                    setState(() {
-                      _selectedChapter = newChapter;
-                      _transformController.value = Matrix4.identity(); // 重置视图
-                    });
-                    _uiSoundManager.playButtonClick();
-                  }
-                },
-              ),
+            GameStyleDropdown<String>(
+              items: availableChapters.map((chapter) {
+                return GameStyleDropdownItem<String>(
+                  value: chapter,
+                  label: chapter,
+                );
+              }).toList(),
+              value: _selectedChapter ?? availableChapters.first,
+              onChanged: (newChapter) {
+                setState(() {
+                  _selectedChapter = newChapter;
+                  _transformController.value = Matrix4.identity(); // 重置视图
+                });
+              },
+              scale: uiScale,
+              textScale: textScale,
+              config: config,
+              width: 240 * uiScale, // 固定宽度，下拉列表会自动匹配
             ),
             SizedBox(height: 24 * uiScale),
           ],
-
-          // 结局统计卡片
-          Container(
-            padding: EdgeInsets.all(16 * uiScale),
-            decoration: BoxDecoration(
-              color: config.themeColors.primary.withOpacity(0.05),
-              border: Border.all(
-                color: config.themeColors.primary.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.emoji_events,
-                  color: config.themeColors.primary,
-                  size: 24 * uiScale,
-                ),
-                SizedBox(width: 12 * uiScale),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '结局达成',
-                        style: TextStyle(
-                          color: config.themeColors.primary.withOpacity(0.7),
-                          fontSize: 15 * textScale, // 增大字体
-                        ),
-                      ),
-                      SizedBox(height: 4 * uiScale),
-                      Text(
-                        '$unlockedEndings / $totalEndings',
-                        style: TextStyle(
-                          color: config.themeColors.primary,
-                          fontSize: 26 * textScale, // 增大字体
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: 24 * uiScale),
-
-          // 当前位置
-          Text(
-            '当前位置',
-            style: TextStyle(
-              color: config.themeColors.primary,
-              fontSize: 18 * textScale, // 增大字体
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12 * uiScale),
-
-          if (currentNode != null) ...[
-            _buildInfoRow('章节', currentNode.chapterName ?? '-', uiScale, textScale, config),
-            _buildInfoRow('位置', currentNode.displayName, uiScale, textScale, config),
-            _buildInfoRow('类型', _getNodeTypeText(currentNode.type), uiScale, textScale, config),
-
-            if (currentNode.firstReachedTime != null) ...[
-              SizedBox(height: 8 * uiScale),
-              Text(
-                '首次到达: ${_formatTime(currentNode.firstReachedTime!)}',
-                style: TextStyle(
-                  color: config.themeColors.primary.withOpacity(0.5),
-                  fontSize: 13 * textScale, // 增大字体
-                ),
-              ),
-            ],
-          ] else
-            Text(
-              '暂无数据',
-              style: TextStyle(
-                color: config.themeColors.primary.withOpacity(0.3),
-                fontSize: 15 * textScale, // 增大字体
-              ),
-            ),
-
-          SizedBox(height: 24 * uiScale),
-
-          // 操作说明
-          Text(
-            '操作说明',
-            style: TextStyle(
-              color: config.themeColors.primary,
-              fontSize: 18 * textScale, // 增大字体
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12 * uiScale),
-          _buildHelpItem('鼠标拖动', '移动视图', uiScale, textScale, config),
-          _buildHelpItem('滚轮缩放', '放大/缩小', uiScale, textScale, config),
-          _buildHelpItem('点击节点', '跳转到该位置', uiScale, textScale, config),
-
-          SizedBox(height: 24 * uiScale),
-
-          // 图例
-          Text(
-            '图例',
-            style: TextStyle(
-              color: config.themeColors.primary,
-              fontSize: 18 * textScale, // 增大字体
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12 * uiScale),
-          _buildLegendItem(_getNodeColor(StoryNodeType.chapter, true, config), '章节', uiScale, textScale, config),
-          _buildLegendItem(_getNodeColor(StoryNodeType.branch, true, config), '分支选择', uiScale, textScale, config),
-          _buildLegendItem(_getNodeColor(StoryNodeType.merge, true, config), '汇合点', uiScale, textScale, config),
-          _buildLegendItem(_getNodeColor(StoryNodeType.ending, true, config), '已达成结局', uiScale, textScale, config),
-          _buildLegendItem(_getNodeColor(StoryNodeType.ending, false, config), '未达成结局', uiScale, textScale, config),
-
-          SizedBox(height: 16 * uiScale),
 
           // 重置视图按钮
           SizedBox(
