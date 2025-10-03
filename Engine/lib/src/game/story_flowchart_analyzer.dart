@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 
 /// 剧情流程图分析器 - 完全重写版本
 class StoryFlowchartAnalyzer {
@@ -79,6 +81,9 @@ class StoryFlowchartAnalyzer {
 
       // 第五步：为每个章节添加"章节末尾"节点
       await _createChapterEndNodes(nodes, labelIndex);
+
+      // 第六步：扫描自动存档文件，恢复节点解锁状态
+      await _restoreUnlockStatusFromAutoSaves();
 
       if (kDebugMode) {
         print('[FlowchartAnalyzer] 脚本分析完成');
@@ -635,5 +640,66 @@ class StoryFlowchartAnalyzer {
   /// 清空并重新分析
   Future<void> resetAndAnalyze() async {
     await analyzeScript();
+  }
+
+  /// 扫描自动存档文件，恢复节点解锁状态
+  Future<void> _restoreUnlockStatusFromAutoSaves() async {
+    try {
+      final saveLoadManager = SaveLoadManager();
+      final directory = await saveLoadManager.getSavesDirectory();
+      final dir = Directory(directory);
+
+      if (!await dir.exists()) {
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 存档目录不存在，跳过恢复解锁状态');
+        }
+        return;
+      }
+
+      // 扫描目录中的所有自动存档文件
+      final autoSaveFiles = <String>[];
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.sakisav')) {
+          final fileName = entity.path.split('/').last.replaceAll('.sakisav', '');
+          if (fileName.startsWith(StoryFlowchartManager.autoSavePrefix)) {
+            autoSaveFiles.add(fileName);
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 找到 ${autoSaveFiles.length} 个自动存档文件: $autoSaveFiles');
+      }
+
+      // 根据自动存档文件名，找到对应的节点并标记为已解锁
+      int unlockedCount = 0;
+      for (final autoSaveId in autoSaveFiles) {
+        // 从文件名提取label (移除前缀 "auto_story_")
+        final label = autoSaveId.replaceFirst(StoryFlowchartManager.autoSavePrefix, '');
+
+        // 查找对应的节点
+        final allNodes = _manager.nodes;
+        for (final node in allNodes.values) {
+          if (node.label == label && !node.isUnlocked) {
+            // 解锁节点
+            await _manager.unlockNode(node.id, autoSaveId: autoSaveId);
+            unlockedCount++;
+
+            if (kDebugMode) {
+              print('[FlowchartAnalyzer] 根据自动存档 $autoSaveId 解锁节点: ${node.displayName} (${node.id})');
+            }
+            break;
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 共恢复 $unlockedCount 个节点的解锁状态');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 恢复解锁状态失败: $e');
+      }
+    }
   }
 }
