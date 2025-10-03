@@ -634,3 +634,4 @@ scene #ffffff timer 5.0
 ////音乐停止
 // persistent.chapter1_completed = True
 ////黑屏 切换下一章的标题
+return
