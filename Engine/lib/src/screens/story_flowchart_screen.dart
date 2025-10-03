@@ -167,6 +167,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               currentNodeId: _flowchartManager.currentNode?.id,
               primaryColor: config.themeColors.primary,
               layoutInfo: layoutInfo, // 传递布局信息
+              uiScale: uiScale, // 传递 UI 缩放比例
             ),
             child: SizedBox(
               width: 20000, // 极大的宽度，支持任意多的深度
@@ -496,7 +497,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         } : null,
         hoverColor: isClickable ? config.themeColors.primary.withOpacity(0.1) : Colors.transparent,
         child: Container(
-          width: isSmallNode ? 200 : 280, // 小节点宽度更窄
+          width: (isSmallNode ? 200 : 280) * uiScale, // 应用 uiScale
           padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale), // 小节点内边距更小
           decoration: BoxDecoration(
             // 分支选项使用浅白色背景
@@ -718,13 +719,15 @@ class FlowchartPainter extends CustomPainter {
   final List<StoryFlowNode> nodes;
   final String? currentNodeId;
   final Color primaryColor;
-  final Map<String, Map<String, double>> layoutInfo; // 新增：布局信息
+  final Map<String, Map<String, double>> layoutInfo;
+  final double uiScale; // 新增：UI缩放比例
 
   FlowchartPainter({
     required this.nodes,
     this.currentNodeId,
     required this.primaryColor,
-    required this.layoutInfo, // 新增：接收布局信息
+    required this.layoutInfo,
+    required this.uiScale, // 新增：接收UI缩放比例
   });
 
   @override
@@ -779,10 +782,10 @@ class FlowchartPainter extends CustomPainter {
       final bool isChildSmall = (childNode.metadata != null && childNode.metadata!.containsKey('branchText')) ||
                                  childNode.type == StoryNodeType.merge;
 
-      // 使用常量定义的节点尺寸
-      final double parentWidth = isParentSmall ? 200.0 : 280.0;
-      final double parentHeight = isParentSmall ? 38.0 : 76.0;
-      final double childHeight = isChildSmall ? 38.0 : 76.0;
+      // 使用常量定义的节点尺寸，并应用 uiScale
+      final double parentWidth = (isParentSmall ? 200.0 : 280.0) * uiScale;
+      final double parentHeight = (isParentSmall ? 38.0 : 76.0) * uiScale;
+      final double childHeight = (isChildSmall ? 38.0 : 76.0) * uiScale;
 
       final double x1 = parentLayout['x']! + parentWidth; // 父节点右边缘
       final double y1 = parentLayout['y']! + parentHeight / 2; // 父节点中心
