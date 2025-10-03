@@ -14,7 +14,8 @@ import 'package:sakiengine/src/widgets/common/game_background_widget.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_menu_buttons.dart';
 import 'package:sakiengine/soranouta/widgets/firefly_animation.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
-import 'package:sakiengine/src/utils/story_flowchart_helper.dart';
+import 'package:sakiengine/src/screens/story_flowchart_screen.dart';
+import 'package:sakiengine/src/game/story_flowchart_analyzer.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:sakiengine/src/localization/localization_manager.dart';
@@ -45,6 +46,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
   bool _showLoadOverlay = false;
   bool _showDebugPanel = false;
   bool _showSettings = false;
+  bool _showFlowchart = false; // 新增：流程图覆盖层状态
   bool _isDarkModeButtonHovered = false;
   bool _isFlowchartButtonHovered = false; // 新增：流程图按钮悬停状态
   bool _startMenuAnimation = false; // 控制菜单动画开始
@@ -385,13 +387,11 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                       onTapCancel: () => setState(() => _isFlowchartButtonHovered = false),
                       onTap: () async {
                         _uiSoundManager.playButtonClick();
-                        await StoryFlowchartHelper.showFlowchart(
-                          context,
-                          analyzeScriptFirst: true,
-                          onLoadSave: (saveSlot) {
-                            widget.onLoadGameWithSave?.call(saveSlot);
-                          },
-                        );
+                        // 先分析脚本（如果需要）
+                        final analyzer = StoryFlowchartAnalyzer();
+                        await analyzer.analyzeScript();
+                        // 显示流程图覆盖层
+                        setState(() => _showFlowchart = true);
                       },
                       child: Tooltip(
                         message: '剧情流程图',
@@ -418,7 +418,16 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 SettingsScreen(
                   onClose: () => setState(() => _showSettings = false),
                 ),
-                
+
+              if (_showFlowchart)
+                StoryFlowchartScreen(
+                  onClose: () => setState(() => _showFlowchart = false),
+                  onLoadSave: (saveSlot) {
+                    widget.onLoadGameWithSave?.call(saveSlot);
+                    setState(() => _showFlowchart = false);
+                  },
+                ),
+
               if (_showDebugPanel)
                 DebugPanelDialog(
                   onClose: () => setState(() => _showDebugPanel = false),

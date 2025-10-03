@@ -6,6 +6,7 @@ import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/screens/game_play_screen.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
+import 'package:sakiengine/src/screens/story_flowchart_screen.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/dialogue_progression_manager.dart';
@@ -39,6 +40,7 @@ class GameUILayer extends StatefulWidget {
   final bool showSaveOverlay;
   final bool showLoadOverlay;
   final bool showSettings;
+  final bool showFlowchart; // 新增：流程图显示状态
   final bool showDeveloperPanel;
   final bool showDebugPanel;
   final bool showExpressionSelector;
@@ -86,6 +88,7 @@ class GameUILayer extends StatefulWidget {
     required this.showSaveOverlay,
     required this.showLoadOverlay,
     required this.showSettings,
+    required this.showFlowchart,
     required this.showDeveloperPanel,
     required this.showDebugPanel,
     required this.showExpressionSelector,
@@ -341,6 +344,26 @@ class GameUILayerState extends State<GameUILayer> {
           HideableUI(
             child: SettingsScreen(
               onClose: widget.onToggleSettings,
+            ),
+          ),
+
+        // 流程图界面
+        if (widget.showFlowchart)
+          HideableUI(
+            child: StoryFlowchartScreen(
+              onClose: () {
+                if (widget.onFlowchart != null) {
+                  widget.onFlowchart!();
+                }
+              },
+              onLoadSave: widget.onLoadGame != null
+                  ? (saveSlot) {
+                      widget.onLoadGame?.call(saveSlot);
+                      if (widget.onFlowchart != null) {
+                        widget.onFlowchart!(); // 加载后关闭流程图
+                      }
+                    }
+                  : null,
             ),
           ),
 

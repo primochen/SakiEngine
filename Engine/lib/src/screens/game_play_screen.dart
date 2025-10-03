@@ -77,11 +77,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _gameUILayerKey = GlobalKey<GameUILayerState>();
-  String _currentScript = 'start'; 
+  String _currentScript = 'start';
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
   bool _showLoadOverlay = false;
   bool _showSettings = false;
+  bool _showFlowchart = false; // 流程图显示状态
   bool _isShowingMenu = false;
   bool _showDeveloperPanel = false; // 开发者面板显示状态
   bool _showDebugPanel = false; // 调试面板显示状态
@@ -858,6 +859,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     showSaveOverlay: _showSaveOverlay,
                     showLoadOverlay: _showLoadOverlay,
                     showSettings: _showSettings,
+                    showFlowchart: _showFlowchart,
                     showDeveloperPanel: _showDeveloperPanel,
                     showDebugPanel: _showDebugPanel,
                     showExpressionSelector: _showExpressionSelector,
@@ -875,26 +877,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
                     onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
                     onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
-                    onFlowchart: () => showGameFlowchart(context, _gameManager, (saveSlot) {
-                      // 从流程图加载存档
+                    onFlowchart: () => setState(() => _showFlowchart = !_showFlowchart), // 新增：流程图回调
+                    onJumpToHistoryEntry: _jumpToHistoryEntry,
+                    onLoadGame: (saveSlot) {
+                      // 在当前GamePlayScreen中恢复存档，而不是创建新实例
                       _currentScript = saveSlot.currentScript;
                       _gameManager.restoreFromSnapshot(
                         saveSlot.currentScript,
                         saveSlot.snapshot,
                         shouldReExecute: false
                       );
-                      _showNotificationMessage('已跳转到选定节点');
-                    }), // 新增：流程图回调
-                    onJumpToHistoryEntry: _jumpToHistoryEntry,
-                    onLoadGame: (saveSlot) {
-                      // 在当前GamePlayScreen中恢复存档，而不是创建新实例
-                      _currentScript = saveSlot.currentScript;
-                      _gameManager.restoreFromSnapshot(
-                        saveSlot.currentScript, 
-                        saveSlot.snapshot, 
-                        shouldReExecute: false
-                      );
                       _showNotificationMessage('读档成功');
+                      // 关闭流程图
+                      setState(() => _showFlowchart = false);
                     },
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
                     expressionSelectorManager: _expressionSelectorManager,
