@@ -74,7 +74,10 @@ class StoryFlowchartAnalyzer {
       // 第三步：创建实际的汇合点节点，并收集它们的父节点ID
       await _createMergePointNodes(nodes, labelIndex, mergeLabels);
 
-      // 第四步：为每个章节添加"章节末尾"节点
+      // 第四步：处理汇合点之后的跳转（连接到结局或下一章）
+      await _connectMergePointsToNextNodes(nodes, labelIndex, mergeLabels);
+
+      // 第五步：为每个章节添加"章节末尾"节点
       await _createChapterEndNodes(nodes, labelIndex);
 
       if (kDebugMode) {
@@ -271,6 +274,7 @@ class StoryFlowchartAnalyzer {
         metadata: {
           'parentCount': parents.length,
           'parentIds': parents,
+          'isMergePoint': true, // 标记为汇合点
         },
       );
 
@@ -398,7 +402,92 @@ class StoryFlowchartAnalyzer {
     }
   }
 
-  /// 为每个章节创建末尾节点
+  /// 处理汇合点之后的跳转（连接到结局或下一章）
+  Future<void> _connectMergePointsToNextNodes(
+    List<SksNode> nodes,
+    Map<String, int> labelIndex,
+    Map<String, int> mergeLabels,
+  ) async {
+    final allNodes = _manager.nodes;
+
+    // 遍历所有汇合点
+    for (final entry in mergeLabels.entries) {
+      final mergeLabel = entry.key;
+      final mergeIndex = entry.value;
+      final mergeId = 'merge_$mergeLabel';
+      final mergeNode = allNodes[mergeId];
+
+      if (mergeNode == null) continue;
+
+      // 从汇合点开始，查找下一个关键节点（return、jump、menu）
+      bool foundNextNode = false;
+
+      for (int i = mergeIndex + 1; i < nodes.length; i++) {
+        final node = nodes[i];
+
+        // 遇到新的 label，停止（说明进入了其他模块）
+        if (node is LabelNode && node.name != mergeLabel) {
+          break;
+        }
+
+        // 找到 return，创建结局节点并连接
+        if (node is ReturnNode) {
+          final endingIndex = _findLastSceneBeforeReturn(i, nodes);
+          if (endingIndex != null) {
+            final endingLabel = _findNearestLabel(endingIndex, nodes, labelIndex) ?? 'ending_$endingIndex';
+            final endingId = 'ending_$endingIndex';
+
+            // 检查这个结局节点是否已经存在
+            if (!allNodes.containsKey(endingId)) {
+              final endingNode = StoryFlowNode(
+                id: endingId,
+                label: endingLabel,
+                type: StoryNodeType.ending,
+                displayName: '结局: $endingLabel',
+                scriptIndex: endingIndex,
+                chapterName: mergeNode.chapterName,
+                parentNodeId: mergeId,
+              );
+
+              await _manager.addOrUpdateNode(endingNode);
+
+              if (kDebugMode) {
+                print('[FlowchartAnalyzer] 汇合点 $mergeLabel 连接到结局: $endingLabel');
+              }
+            }
+          }
+          foundNextNode = true;
+          break;
+        }
+
+        // 找到 jump，连接到跳转目标
+        if (node is JumpNode) {
+          final targetLabel = node.targetLabel;
+
+          // 检查跳转目标是否是章节
+          if (allNodes.containsKey('chapter_${_extractChapterName(targetLabel)}')) {
+            // 跳转到下一章，不需要创建新节点
+            if (kDebugMode) {
+              print('[FlowchartAnalyzer] 汇合点 $mergeLabel 跳转到下一章: $targetLabel');
+            }
+          }
+
+          foundNextNode = true;
+          break;
+        }
+
+        // 找到新的 menu，说明有新分支，不需要处理
+        if (node is MenuNode) {
+          foundNextNode = true;
+          break;
+        }
+      }
+
+      if (!foundNextNode && kDebugMode) {
+        print('[FlowchartAnalyzer] 汇合点 $mergeLabel 之后没有找到明确的结束点');
+      }
+    }
+  }
   Future<void> _createChapterEndNodes(
     List<SksNode> nodes,
     Map<String, int> labelIndex,

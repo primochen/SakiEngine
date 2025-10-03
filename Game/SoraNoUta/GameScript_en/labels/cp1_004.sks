@@ -290,8 +290,8 @@ nvlm
 "毕竟我妈都来学校了，不回去也不合适。"
 "大不了回去以后再说其实我已经好了，没有不舒服的地方了。"
 endnvlm
-jump cp1_009_end
-label cp1_009_2
+jump cp1_004_end
+label cp1_004_2
 scene bl
 nvlm
 "但是下午路上那条狗怎么办？"
@@ -299,8 +299,8 @@ nvlm
 "不打算回去的，但是我妈都来学校了，不回去也不合适。"
 "大不了回去以后再说其实我已经好了，没有不舒服的地方了。"
 endnvlm
-jump cp1_009_end
-label cp1_009_end
+jump cp1_004_end
+label cp1_004_end
 scene sky
 ////背景切到天空 nvl模式
 nvlm
