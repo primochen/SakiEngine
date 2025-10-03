@@ -254,17 +254,17 @@ class StoryFlowchartAnalyzer {
             type: StoryNodeType.merge,
             displayName: '汇合点: $label',
             scriptIndex: targetIndex,
-            metadata: {'parentCount': parents.length},
+            parentNodeId: parents.first, // 保留第一个父节点作为主父节点
+            metadata: {
+              'parentCount': parents.length,
+              'parentIds': parents, // 保存所有父节点ID列表
+            },
           );
 
-          // 注意：汇合点有多个父节点，这里只记录第一个
-          // 实际渲染时需要特殊处理
-          await _flowchartManager.addOrUpdateNode(
-            mergeNode.copyWith(parentNodeId: parents.first),
-          );
+          await _flowchartManager.addOrUpdateNode(mergeNode);
 
           if (kDebugMode) {
-            print('[FlowchartAnalyzer] 发现汇合点: $label (来自 ${parents.length} 个分支)');
+            print('[FlowchartAnalyzer] 发现汇合点: $label (来自 ${parents.length} 个分支: ${parents.join(", ")})');
           }
         }
       }

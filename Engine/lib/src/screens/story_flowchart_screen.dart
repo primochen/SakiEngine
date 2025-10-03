@@ -94,7 +94,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       color: Colors.transparent, // 移除黑色遮罩，改为透明
       child: InteractiveViewer(
         transformationController: _transformController,
-        boundaryMargin: const EdgeInsets.all(2000), // 增大边界，防止裁切
+        // 无边界限制 - 移除boundaryMargin让用户可以无限平移
+        constrained: false, // 关键：允许子组件超出视图边界
         minScale: 0.1,
         maxScale: 4.0,
         clipBehavior: Clip.none, // 关键：不裁切超出边界的内容
@@ -106,8 +107,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
             layoutInfo: layoutInfo, // 传递布局信息
           ),
           child: SizedBox(
-            width: 8000, // 大幅增加宽度，容纳更多节点
-            height: 10000, // 大幅增加高度，容纳更多节点
+            width: 20000, // 极大的宽度，支持任意多的深度
+            height: 20000, // 极大的高度，支持任意多的节点
             child: _buildNodeWidgets(uiScale, textScale, layoutInfo),
           ),
         ),
@@ -481,20 +482,10 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               Text(
                 node.displayName,
                 style: TextStyle(
-                  // 使用白色或黑色以获得最佳对比度
-                  color: node.isUnlocked
-                      ? Colors.white
-                      : Colors.white.withOpacity(0.5),
+                  // 完全不透明的白色
+                  color: Colors.white,
                   fontSize: 16 * textScale,
                   fontWeight: FontWeight.bold,
-                  shadows: [
-                    // 添加文字阴影，进一步提高可读性
-                    Shadow(
-                      offset: const Offset(1, 1),
-                      blurRadius: 2,
-                      color: Colors.black.withOpacity(0.8),
-                    ),
-                  ],
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -503,17 +494,9 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               Text(
                 _getNodeTypeText(node.type),
                 style: TextStyle(
-                  color: node.isUnlocked
-                      ? Colors.white.withOpacity(0.9)
-                      : Colors.white.withOpacity(0.5),
+                  // 完全不透明的白色
+                  color: Colors.white,
                   fontSize: 14 * textScale,
-                  shadows: [
-                    Shadow(
-                      offset: const Offset(1, 1),
-                      blurRadius: 2,
-                      color: Colors.black.withOpacity(0.8),
-                    ),
-                  ],
                 ),
               ),
 
@@ -641,6 +624,7 @@ class FlowchartPainter extends CustomPainter {
 
     // 绘制节点间的连接线
     for (final node in nodes) {
+      // 处理普通的父子关系
       if (node.parentNodeId != null) {
         final parentNode = nodes.firstWhere(
           (n) => n.id == node.parentNodeId,
@@ -648,32 +632,54 @@ class FlowchartPainter extends CustomPainter {
         );
 
         if (parentNode.id != node.id) {
-          // 使用布局信息获取精确位置
-          final parentLayout = layoutInfo[parentNode.id];
-          final nodeLayout = layoutInfo[node.id];
+          _drawConnection(canvas, paint, parentNode, node);
+        }
+      }
 
-          if (parentLayout != null && nodeLayout != null) {
-            final double x1 = parentLayout['x']! + 280; // 父节点右边缘
-            final double y1 = parentLayout['y']! + 40; // 父节点中心（节点高度的一半）
-            final double x2 = nodeLayout['x']!; // 子节点左边缘
-            final double y2 = nodeLayout['y']! + 40; // 子节点中心
-
-            // 绘制贝塞尔曲线
-            final path = Path();
-            path.moveTo(x1, y1);
-            path.cubicTo(
-              x1 + 50, y1,
-              x2 - 50, y2,
-              x2, y2,
+      // 特殊处理汇合点：绘制所有分支到汇合点的连接线
+      if (node.type == StoryNodeType.merge && node.metadata != null) {
+        final parentIds = node.metadata!['parentIds'] as List<dynamic>?;
+        if (parentIds != null && parentIds.isNotEmpty) {
+          // 绘制每个父节点到汇合点的连接线
+          for (final parentId in parentIds) {
+            final parentNode = nodes.firstWhere(
+              (n) => n.id == parentId,
+              orElse: () => node,
             );
-
-            canvas.drawPath(path, paint);
-
-            // 在线的终点绘制箭头
-            _drawArrow(canvas, x2 - 10, y2, paint);
+            if (parentNode.id != node.id) {
+              _drawConnection(canvas, paint, parentNode, node);
+            }
           }
         }
       }
+    }
+  }
+
+  /// 绘制两个节点之间的连接线
+  void _drawConnection(Canvas canvas, Paint paint, StoryFlowNode parentNode, StoryFlowNode childNode) {
+    // 使用布局信息获取精确位置
+    final parentLayout = layoutInfo[parentNode.id];
+    final childLayout = layoutInfo[childNode.id];
+
+    if (parentLayout != null && childLayout != null) {
+      final double x1 = parentLayout['x']! + 280; // 父节点右边缘
+      final double y1 = parentLayout['y']! + 40; // 父节点中心（节点高度的一半）
+      final double x2 = childLayout['x']!; // 子节点左边缘
+      final double y2 = childLayout['y']! + 40; // 子节点中心
+
+      // 绘制贝塞尔曲线
+      final path = Path();
+      path.moveTo(x1, y1);
+      path.cubicTo(
+        x1 + 50, y1,
+        x2 - 50, y2,
+        x2, y2,
+      );
+
+      canvas.drawPath(path, paint);
+
+      // 在线的终点绘制箭头
+      _drawArrow(canvas, x2 - 10, y2, paint);
     }
   }
 
