@@ -1266,6 +1266,9 @@ class GameManager {
 
       // 跳过标签节点
       if (node is LabelNode) {
+        // 通知章节自动存档管理器：经过了一个label
+        _chapterAutoSaveManager.onLabelPassed(node.name);
+
         _scriptIndex++;
         continue;
       }
@@ -1936,9 +1939,9 @@ class GameManager {
               print('[GameManager] 🔔 准备调用章节自动存档检查 (NVL模式)');
             }
             await _chapterAutoSaveManager.onDialogueDisplayed(
-              scriptIndex: _scriptIndex,
+              scriptIndex: currentNodeIndex,  // 使用当前节点索引
               currentScriptFile: currentScriptFile,
-              currentLabel: _findNearestLabel(_scriptIndex),
+              currentLabel: _findNearestLabel(currentNodeIndex),
               saveStateSnapshot: saveStateSnapshot,
               flowchartManager: _flowchartManager,
             );
@@ -2194,9 +2197,9 @@ class GameManager {
               print('[GameManager] 🔔 准备调用章节自动存档检查 (NVL模式-第二处)');
             }
             await _chapterAutoSaveManager.onDialogueDisplayed(
-              scriptIndex: _scriptIndex,
+              scriptIndex: currentNodeIndex,  // 使用当前节点索引，而不是_scriptIndex
               currentScriptFile: currentScriptFile,
-              currentLabel: _findNearestLabel(_scriptIndex),
+              currentLabel: _findNearestLabel(currentNodeIndex),  // 也使用currentNodeIndex查找label
               saveStateSnapshot: saveStateSnapshot,
               flowchartManager: _flowchartManager,
             );
@@ -2241,9 +2244,9 @@ class GameManager {
               print('[GameManager] 🔔 准备调用章节自动存档检查 (普通对话模式)');
             }
             await _chapterAutoSaveManager.onDialogueDisplayed(
-              scriptIndex: _scriptIndex,
+              scriptIndex: currentNodeIndex,  // 使用当前节点索引
               currentScriptFile: currentScriptFile,
-              currentLabel: _findNearestLabel(_scriptIndex),
+              currentLabel: _findNearestLabel(currentNodeIndex),
               saveStateSnapshot: saveStateSnapshot,
               flowchartManager: _flowchartManager,
             );

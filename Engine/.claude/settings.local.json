@@ -10,7 +10,8 @@
       "Bash(grep:*)",
       "Read(//Library/Afolder/FlutterProject/SakiEngine/**)",
       "Bash(flutter run:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Read(//Library/Afolder/**)"
     ],
     "deny": [],
     "ask": []
