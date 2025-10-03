@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/game/game_manager.dart';
 
 /// 章节自动存档管理器
 ///
@@ -105,15 +106,42 @@ class ChapterAutoSaveManager {
 
       if (kDebugMode) {
         print('[ChapterAutoSave] 🎯 创建章节存档: $displayName (nodeId: $nodeId, scriptIndex: $scriptIndex)');
+        print('[ChapterAutoSave] 📝 存档时的详细信息: currentScript=$currentScriptFile, lastSeenLabel=$_lastSeenLabel');
       }
 
       // 创建自动存档
+      final snapshot = saveStateSnapshot();
+
+      if (kDebugMode) {
+        print('[ChapterAutoSave] 📊 存档快照信息: scriptIndex=${snapshot.scriptIndex}, nvlDialogues数量=${snapshot.nvlDialogues.length}');
+        if (snapshot.nvlDialogues.isNotEmpty) {
+          print('[ChapterAutoSave] 📊 NVL最后一句: ${snapshot.nvlDialogues.last.dialogue}');
+        }
+      }
+
+      // 修复NVL重复执行bug：对话已经显示并添加到nvlDialogues了，
+      // 但scriptIndex还没++，所以需要手动+1，避免读档后重复执行
+      final fixedSnapshot = GameStateSnapshot(
+        currentState: snapshot.currentState,
+        scriptIndex: snapshot.scriptIndex + 1,  // 关键：scriptIndex+1
+        dialogueHistory: snapshot.dialogueHistory,
+        isNvlMode: snapshot.isNvlMode,
+        isNvlMovieMode: snapshot.isNvlMovieMode,
+        isNvlnMode: snapshot.isNvlnMode,
+        isNvlOverlayVisible: snapshot.isNvlOverlayVisible,
+        nvlDialogues: snapshot.nvlDialogues,
+      );
+
+      if (kDebugMode) {
+        print('[ChapterAutoSave] 🔧 修正后的scriptIndex: ${fixedSnapshot.scriptIndex} (原始: ${snapshot.scriptIndex})');
+      }
+
       final saveSlot = SaveSlot(
         id: int.parse(DateTime.now().millisecondsSinceEpoch.toString().substring(0, 10)),
         saveTime: DateTime.now(),
         currentScript: currentScriptFile,
         dialoguePreview: displayName,
-        snapshot: saveStateSnapshot(),
+        snapshot: fixedSnapshot,  // 使用修正后的snapshot
         screenshotData: null,
       );
 
