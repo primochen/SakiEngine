@@ -1,8 +1,0 @@
-// 简化的视频测试脚本
-label start
-"开始视频测试"
-
-movie start.mp4
-"视频播放完成！"
-
-return

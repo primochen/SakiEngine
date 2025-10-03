@@ -39,7 +39,8 @@ class SoraNoutaMainMenuScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<SoraNoutaMainMenuScreen> createState() => _SoraNoutaMainMenuScreenState();
+  State<SoraNoutaMainMenuScreen> createState() =>
+      _SoraNoutaMainMenuScreenState();
 }
 
 class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
@@ -175,7 +176,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
       builder: (context, child) {
         // 当设置变化时，重新更新主题配置
         config.updateThemeForDarkMode();
-        
+
         return Scaffold(
           body: Stack(
             fit: StackFit.expand,
@@ -185,7 +186,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 config: config,
                 backgroundName: 'main', // soranouta 直接传递 'main'
               ),
-              
+
               // 萤火虫动画层 - 在背景之上，其他UI之下
               const Positioned.fill(
                 child: FireflyAnimation(
@@ -196,7 +197,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                   minSpeed: 0.08,
                 ),
               ),
-              
+
               // 模块化标题组件
               GameTitleWidget(
                 config: config,
@@ -208,14 +209,16 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 config: config,
                 scale: menuScale,
                 screenSize: screenSize,
-                onContinueGame: _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
+                onContinueGame:
+                    _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
                 startAnimation: _startMenuAnimation, // 与按钮动画同步
               ),
 
               // SoraNoUta 专用按钮，参与卷帘动画
               SoranoutaMenuButtons.createButtonsWidget(
                 onNewGame: widget.onNewGame,
-                onContinueGame: _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
+                onContinueGame:
+                    _hasQuickSave ? _handleContinueGame : null, // 新增：传递继续游戏回调
                 onLoadGame: () => setState(() => _showLoadOverlay = true),
                 onSettings: () => setState(() => _showSettings = true),
                 onExit: () => _showExitConfirmation(context),
@@ -224,7 +227,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                 screenSize: screenSize,
                 startAnimation: _startMenuAnimation,
               ),
-              
+
               // 版权信息阴影层
               Positioned(
                 right: 20,
@@ -236,13 +239,15 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                     style: TextStyle(
                       fontFamily: 'ChillJinshuSongPro_Soft',
                       fontSize: 40 * textScale,
-                      color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.9)
+                          : Colors.black.withOpacity(0.9),
                       fontWeight: FontWeight.normal,
                     ),
                   ),
                 ),
               ),
-              
+
               // 版权信息文本
               Positioned(
                 right: 20,
@@ -257,7 +262,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                   ),
                 ),
               ),
-              
+
               // 深色模式切换按钮阴影层
               Positioned(
                 left: 20,
@@ -270,7 +275,8 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                     imageFilter: ui.ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 400),
-                      transitionBuilder: (Widget child, Animation<double> animation) {
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
                         return RotationTransition(
                           turns: animation,
                           child: FadeTransition(
@@ -283,13 +289,15 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                         isDarkMode ? Icons.dark_mode : Icons.light_mode,
                         key: ValueKey(isDarkMode ? 'dark' : 'light'),
                         size: 48 * textScale,
-                        color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.9)
+                            : Colors.black.withOpacity(0.9),
                       ),
                     ),
                   ),
                 ),
               ),
-              
+
               // 深色模式切换按钮
               Positioned(
                 left: 20,
@@ -304,14 +312,17 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                       setState(() => _isDarkModeButtonHovered = true);
                       _uiSoundManager.playButtonHover();
                     },
-                    onExit: (_) => setState(() => _isDarkModeButtonHovered = false),
+                    onExit: (_) =>
+                        setState(() => _isDarkModeButtonHovered = false),
                     child: GestureDetector(
-                      onTapDown: (_) => setState(() => _isDarkModeButtonHovered = true),
+                      onTapDown: (_) =>
+                          setState(() => _isDarkModeButtonHovered = true),
                       onTapUp: (_) {
                         setState(() => _isDarkModeButtonHovered = false);
                         _uiSoundManager.playButtonClick();
                       },
-                      onTapCancel: () => setState(() => _isDarkModeButtonHovered = false),
+                      onTapCancel: () =>
+                          setState(() => _isDarkModeButtonHovered = false),
                       onTap: () async {
                         final newDarkMode = !isDarkMode;
                         await SettingsManager().setDarkMode(newDarkMode);
@@ -323,7 +334,8 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                       },
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 400),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
                           return RotationTransition(
                             turns: animation,
                             child: FadeTransition(
@@ -336,8 +348,10 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                           isDarkMode ? Icons.dark_mode : Icons.light_mode,
                           key: ValueKey(isDarkMode ? 'dark' : 'light'),
                           size: 48 * textScale,
-                          color: isDarkMode ? Colors.black : Colors.white,
-                        ),
+                          color: _isDarkModeButtonHovered
+                            ? (isDarkMode ? Colors.white : Colors.black)
+                            : (isDarkMode ? Colors.black : Colors.white),
+                      ),
                       ),
                     ),
                   ),
@@ -357,7 +371,9 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                     child: Icon(
                       Icons.account_tree,
                       size: 48 * textScale,
-                      color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black.withOpacity(0.9),
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.9)
+                          : Colors.black.withOpacity(0.9),
                     ),
                   ),
                 ),
@@ -377,14 +393,17 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                       setState(() => _isFlowchartButtonHovered = true);
                       _uiSoundManager.playButtonHover();
                     },
-                    onExit: (_) => setState(() => _isFlowchartButtonHovered = false),
+                    onExit: (_) =>
+                        setState(() => _isFlowchartButtonHovered = false),
                     child: GestureDetector(
-                      onTapDown: (_) => setState(() => _isFlowchartButtonHovered = true),
+                      onTapDown: (_) =>
+                          setState(() => _isFlowchartButtonHovered = true),
                       onTapUp: (_) {
                         setState(() => _isFlowchartButtonHovered = false);
                         _uiSoundManager.playButtonClick();
                       },
-                      onTapCancel: () => setState(() => _isFlowchartButtonHovered = false),
+                      onTapCancel: () =>
+                          setState(() => _isFlowchartButtonHovered = false),
                       onTap: () async {
                         _uiSoundManager.playButtonClick();
                         // 先分析脚本（如果需要）
@@ -393,13 +412,12 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                         // 显示流程图覆盖层
                         setState(() => _showFlowchart = true);
                       },
-                      child: Tooltip(
-                        message: '剧情流程图',
-                        child: Icon(
-                          Icons.account_tree,
-                          size: 48 * textScale,
-                          color: isDarkMode ? Colors.black : Colors.white,
-                        ),
+                      child: Icon(
+                        Icons.account_tree,
+                        size: 48 * textScale,
+                        color: _isFlowchartButtonHovered
+                            ? (isDarkMode ? Colors.white : Colors.black)
+                            : (isDarkMode ? Colors.black : Colors.white),
                       ),
                     ),
                   ),
@@ -413,7 +431,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
                   onClose: () => setState(() => _showLoadOverlay = false),
                   onLoadSlot: widget.onLoadGameWithSave,
                 ),
-                
+
               if (_showSettings)
                 SettingsScreen(
                   onClose: () => setState(() => _showSettings = false),
