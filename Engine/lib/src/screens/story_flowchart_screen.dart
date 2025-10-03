@@ -49,7 +49,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   void initState() {
     super.initState();
     _flowchartManager.addListener(_onFlowchartUpdate);
-    // 初始化时选择第一个章节
+    // 初始化时选择第一个章节并居中视图
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chapters = _getAvailableChapters();
       if (chapters.isNotEmpty && _selectedChapter == null) {
@@ -57,6 +57,47 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           _selectedChapter = chapters.first;
         });
       }
+      // 将视图居中到画布中心
+      _centerView();
+    });
+  }
+
+  /// 将视图居中到根节点
+  void _centerView() {
+    // 获取视图尺寸
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+      if (renderBox == null) return;
+
+      final viewportSize = renderBox.size;
+
+      // 获取当前章节的根节点
+      final currentChapterNodes = _getNodesForCurrentChapter();
+      final rootNodes = currentChapterNodes
+          .where((node) => node.type == StoryNodeType.chapter)
+          .toList();
+
+      if (rootNodes.isEmpty) return;
+
+      // 计算根节点的布局位置
+      final layoutInfo = _calculateLayout(rootNodes);
+      final rootNode = rootNodes.first;
+      final rootLayout = layoutInfo[rootNode.id];
+
+      if (rootLayout == null) return;
+
+      // 获取根节点的中心坐标
+      final double rootCenterX = rootLayout['x']! + (_largeNodeWidth / 2);
+      final double rootCenterY = rootLayout['y']! + (_largeNodeHeight / 2);
+
+      // 计算需要的平移，使根节点中心对齐到视口中心
+      final double translateX = -rootCenterX + viewportSize.width / 2;
+      final double translateY = -rootCenterY + viewportSize.height / 2;
+
+      _transformController.value = Matrix4.identity()
+        ..translate(translateX, translateY);
     });
   }
 
@@ -212,8 +253,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               uiScale: uiScale, // 传递 UI 缩放比例
             ),
             child: SizedBox(
-              width: 20000, // 极大的宽度，支持任意多的深度
-              height: 20000, // 极大的高度，支持任意多的节点
+              width: 40000, // 极大的宽度，左右各20000
+              height: 40000, // 极大的高度，上下各20000
               child: _buildNodeWidgets(uiScale, textScale, layoutInfo),
             ),
           ),
@@ -258,8 +299,8 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               onChanged: (newChapter) {
                 setState(() {
                   _selectedChapter = newChapter;
-                  _transformController.value = Matrix4.identity(); // 重置视图
                 });
+                _centerView(); // 切换章节后居中视图
               },
               scale: uiScale,
               textScale: textScale,
@@ -277,7 +318,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
               child: InkWell(
                 onTap: () {
                   _uiSoundManager.playButtonClick();
-                  _transformController.value = Matrix4.identity();
+                  _centerView();
                 },
                 onHover: (hovering) {
                   if (hovering) {
@@ -463,40 +504,28 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       collectNodes(root, 0);
     }
 
-    // 第二步：计算每个深度的垂直居中位置（临时使用相对坐标）
-    double minY = double.infinity;
+    // 第二步：计算每个深度的垂直居中位置（使用画布中心作为原点）
+    const double canvasCenter = 20000.0; // 画布中心点（40000 / 2）
+
     for (var entry in depthNodes.entries) {
       final depth = entry.key;
       final nodes = entry.value;
       final nodeCount = nodes.length;
 
-      // 计算垂直居中的起始Y坐标（相对于0）
+      // 计算垂直居中的起始Y坐标（以画布中心为原点）
       final totalHeight = (nodeCount - 1) * 200.0;
-      final startY = -totalHeight / 2; // 从负值开始，实现居中
+      final startY = canvasCenter - totalHeight / 2; // 以画布中心为基准居中
 
       for (int i = 0; i < nodes.length; i++) {
         final node = nodes[i];
-        final double x = 100 + depth * 400.0;
+        final double x = canvasCenter + 100 + depth * 400.0; // X也以画布中心为基准
         final double y = startY + i * 200.0;
 
         layoutInfo[node.id] = {'x': x, 'y': y, 'depth': depth.toDouble()};
-
-        // 记录最小Y值
-        if (y < minY) {
-          minY = y;
-        }
       }
     }
 
-    // 第三步：如果有负数Y坐标，整体向下偏移
-    if (minY < 0) {
-      final offset = -minY + 100; // 偏移到至少Y=100的位置
-      for (var entry in layoutInfo.entries) {
-        entry.value['y'] = entry.value['y']! + offset;
-      }
-    }
-
-    // 第四步：调整小节点的Y坐标，使其中心对齐到大节点的中心
+    // 第三步：调整小节点的Y坐标，使其中心对齐到大节点的中心
     final double verticalAdjustment = (_largeNodeHeight - _smallNodeHeight) / 2;
     for (var entry in layoutInfo.entries) {
       final node = nodesMap[entry.key];
