@@ -187,62 +187,71 @@ class StoryFlowchartAnalyzer {
         break;
       }
 
-      // 遇到新的分支，创建分支节点并继续分析
+      // 遇到新的分支，继续分析（但要避免重复创建）
       if (node is MenuNode) {
         final branchNodeId = 'branch_$i';
+
+        // 检查这个分支是否已经被主循环处理过
+        if (_flowchartManager.nodes.containsKey(branchNodeId)) {
+          if (kDebugMode) {
+            print('[FlowchartAnalyzer] 路径分析遇到已处理的分支，停止 (index: $i)');
+          }
+          break; // 已经处理过，停止避免重复
+        }
+
+        // 这是一个新分支（汇合点之后的分支），需要创建
         final label = _findNearestLabel(i, nodes, labelIndexMap) ?? 'menu_$i';
+        final branchNode = StoryFlowNode(
+          id: branchNodeId,
+          label: label,
+          type: StoryNodeType.branch,
+          displayName: '分支选择: $label',
+          scriptIndex: i,
+          chapterName: currentChapter,
+          parentNodeId: parentNodeId,
+        );
 
-        // 检查是否已存在
-        if (!_flowchartManager.nodes.containsKey(branchNodeId)) {
-          // 创建分支节点
-          final branchNode = StoryFlowNode(
-            id: branchNodeId,
-            label: label,
-            type: StoryNodeType.branch,
-            displayName: '分支选择: $label',
-            scriptIndex: i,
-            chapterName: currentChapter,
-            parentNodeId: parentNodeId,
-          );
+        await _flowchartManager.addOrUpdateNode(branchNode);
 
-          await _flowchartManager.addOrUpdateNode(branchNode);
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 路径分析中发现新分支: $label at index $i');
+        }
 
-          // 为每个选项创建子节点
-          for (final option in node.choices) {
-            final targetLabel = option.targetLabel;
-            final optionIndex = labelIndexMap[targetLabel];
+        // 为每个选项创建子节点并继续分析
+        for (final option in node.choices) {
+          final targetLabel = option.targetLabel;
+          final optionIndex = labelIndexMap[targetLabel];
 
-            if (optionIndex != null) {
-              final optionNodeId = 'option_${branchNodeId}_$targetLabel';
+          if (optionIndex != null) {
+            final optionNodeId = 'option_${branchNodeId}_$targetLabel';
 
-              // 检查是否已存在
-              if (!_flowchartManager.nodes.containsKey(optionNodeId)) {
-                final optionNode = StoryFlowNode(
-                  id: optionNodeId,
-                  label: targetLabel,
-                  type: StoryNodeType.branch,
-                  displayName: option.text,
-                  scriptIndex: optionIndex,
-                  chapterName: currentChapter,
-                  parentNodeId: branchNodeId,
-                  metadata: {'branchText': option.text},
-                );
+            if (!_flowchartManager.nodes.containsKey(optionNodeId)) {
+              final optionNode = StoryFlowNode(
+                id: optionNodeId,
+                label: targetLabel,
+                type: StoryNodeType.branch,
+                displayName: option.text,
+                scriptIndex: optionIndex,
+                chapterName: currentChapter,
+                parentNodeId: branchNodeId,
+                metadata: {'branchText': option.text},
+              );
 
-                await _flowchartManager.addOrUpdateNode(optionNode);
+              await _flowchartManager.addOrUpdateNode(optionNode);
 
-                // 递归分析选项后的路径
-                await _analyzePathAfterBranch(
-                  optionNodeId,
-                  optionIndex,
-                  nodes,
-                  labelIndexMap,
-                  currentChapter,
-                );
-              }
+              // 递归分析选项后的路径
+              await _analyzePathAfterBranch(
+                optionNodeId,
+                optionIndex,
+                nodes,
+                labelIndexMap,
+                currentChapter,
+              );
             }
           }
         }
-        break; // 分支已处理，停止当前路径分析
+
+        break; // 分支已处理，停止当前路径
       }
 
       // 遇到跳转，停止当前路径（跳转目标会在汇合点检测中处理）

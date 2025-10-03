@@ -7,7 +7,9 @@
       "Bash(bash:*)",
       "Bash(flutter analyze:*)",
       "Read(//Library/Afolder/FlutterProject/SakiEngine/Game/SoraNoUta/Assets/gui/**)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Read(//Library/Afolder/FlutterProject/SakiEngine/**)",
+      "Bash(flutter run:*)"
     ],
     "deny": [],
     "ask": []
