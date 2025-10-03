@@ -384,20 +384,28 @@ class StoryFlowchartAnalyzer {
       // 找到父节点（传入mergeLabels来判断）
       final parentId = _findParentNode(label, currentChapter, mergeLabels);
 
-      final endingNode = StoryFlowNode(
-        id: endingId,
-        label: label,
-        type: StoryNodeType.ending,
-        displayName: '结局: $label',
-        scriptIndex: lastSceneIndex,
-        chapterName: currentChapter,
-        parentNodeId: parentId,
-      );
+      // 只有当父节点不是章节根节点时，才创建结局节点
+      // 如果父节点是章节根节点，说明这个return不是分支结局，而是普通剧情流程
+      if (parentId != null && !parentId.startsWith('chapter_')) {
+        final endingNode = StoryFlowNode(
+          id: endingId,
+          label: label,
+          type: StoryNodeType.ending,
+          displayName: '结局: $label',
+          scriptIndex: lastSceneIndex,
+          chapterName: currentChapter,
+          parentNodeId: parentId,
+        );
 
-      await _manager.addOrUpdateNode(endingNode);
+        await _manager.addOrUpdateNode(endingNode);
 
-      if (kDebugMode) {
-        print('[FlowchartAnalyzer] 创建结局: $label at $lastSceneIndex');
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 创建结局: $label at $lastSceneIndex');
+        }
+      } else {
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 跳过非分支结局: $label (父节点: $parentId)');
+        }
       }
     }
   }
