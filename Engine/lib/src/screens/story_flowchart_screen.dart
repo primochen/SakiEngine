@@ -576,6 +576,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                     ? config.themeColors.primary.withOpacity(0.5)
                     : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
             borderWidth: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2),
+            isSmallNode: isSmallNode, // 传递小节点标识
           ),
           child: ClipPath(
             clipper: _NotchCornerClipper(
@@ -978,20 +979,26 @@ class _NotchCornerClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final path = Path();
 
-    // 从左上角切角后的位置开始
-    path.moveTo(notchSize, 0);
-    // 右上角
-    path.lineTo(size.width, 0);
-    // 右下角
-    path.lineTo(size.width, size.height);
-    // 左下角
-    path.lineTo(0, size.height);
-    // 左边到切角位置
-    path.lineTo(0, notchSize);
-    // 斜线切角回到起点
-    path.lineTo(notchSize, 0);
-    path.close();
+    if (isSmallNode) {
+      // 小节点：左上角 + 右下角双切角
+      path.moveTo(notchSize, 0); // 从左上角切角后开始
+      path.lineTo(size.width, 0); // 顶边到右上角
+      path.lineTo(size.width, size.height - notchSize); // 右边到右下角切角前
+      path.lineTo(size.width - notchSize, size.height); // 右下角斜切
+      path.lineTo(0, size.height); // 底边到左下角
+      path.lineTo(0, notchSize); // 左边到左上角切角前
+      path.lineTo(notchSize, 0); // 左上角斜切回起点
+    } else {
+      // 大节点：只有左上角切角
+      path.moveTo(notchSize, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height);
+      path.lineTo(0, size.height);
+      path.lineTo(0, notchSize);
+      path.lineTo(notchSize, 0);
+    }
 
+    path.close();
     return path;
   }
 
@@ -1006,11 +1013,13 @@ class _NotchBorderPainter extends CustomPainter {
   final double notchSize;
   final Color borderColor;
   final double borderWidth;
+  final bool isSmallNode;
 
   _NotchBorderPainter({
     required this.notchSize,
     required this.borderColor,
     required this.borderWidth,
+    this.isSmallNode = false,
   });
 
   @override
@@ -1022,18 +1031,24 @@ class _NotchBorderPainter extends CustomPainter {
 
     final path = Path();
 
-    // 从左上角切角后的位置开始
-    path.moveTo(notchSize, 0);
-    // 顶边到右上角
-    path.lineTo(size.width, 0);
-    // 右边到右下角
-    path.lineTo(size.width, size.height);
-    // 底边到左下角
-    path.lineTo(0, size.height);
-    // 左边到切角位置
-    path.lineTo(0, notchSize);
-    // 斜线切角回到起点
-    path.lineTo(notchSize, 0);
+    if (isSmallNode) {
+      // 小节点：左上角 + 右下角双切角
+      path.moveTo(notchSize, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height - notchSize);
+      path.lineTo(size.width - notchSize, size.height);
+      path.lineTo(0, size.height);
+      path.lineTo(0, notchSize);
+      path.lineTo(notchSize, 0);
+    } else {
+      // 大节点：只有左上角切角
+      path.moveTo(notchSize, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height);
+      path.lineTo(0, size.height);
+      path.lineTo(0, notchSize);
+      path.lineTo(notchSize, 0);
+    }
 
     canvas.drawPath(path, paint);
   }
@@ -1042,6 +1057,7 @@ class _NotchBorderPainter extends CustomPainter {
   bool shouldRepaint(_NotchBorderPainter oldDelegate) {
     return oldDelegate.borderColor != borderColor ||
         oldDelegate.borderWidth != borderWidth ||
-        oldDelegate.notchSize != notchSize;
+        oldDelegate.notchSize != notchSize ||
+        oldDelegate.isSmallNode != isSmallNode;
   }
 }
