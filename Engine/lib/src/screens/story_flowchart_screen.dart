@@ -34,6 +34,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   final UISoundManager _uiSoundManager = UISoundManager();
 
   String? _selectedChapter; // 当前选中的章节
+  String? _hoveredNodeId; // 当前悬浮的节点ID
 
   // 节点尺寸常量（用于计算节点中心和偏移）
   static const double _largeNodeWidth = 280.0;
@@ -88,16 +89,20 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
       if (rootLayout == null) return;
 
+      // 默认缩放比例为2倍
+      const double defaultScale = 2.0;
+
       // 获取根节点的中心坐标
       final double rootCenterX = rootLayout['x']! + (_largeNodeWidth / 2);
       final double rootCenterY = rootLayout['y']! + (_largeNodeHeight / 2);
 
-      // 计算需要的平移，使根节点中心对齐到视口中心
-      final double translateX = -rootCenterX + viewportSize.width / 2;
-      final double translateY = -rootCenterY + viewportSize.height / 2;
+      // 计算需要的平移，使根节点中心对齐到视口中心（考虑缩放）
+      final double translateX = -rootCenterX * defaultScale + viewportSize.width / 2;
+      final double translateY = -rootCenterY * defaultScale + viewportSize.height / 2;
 
       _transformController.value = Matrix4.identity()
-        ..translate(translateX, translateY);
+        ..translate(translateX, translateY)
+        ..scale(defaultScale);
     });
   }
 
@@ -546,6 +551,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final config = SakiEngineConfig();
     final color = _getNodeColor(node.type, node.isUnlocked, config);
     final isCurrentNode = _flowchartManager.currentNode?.id == node.id;
+    final isHovered = _hoveredNodeId == node.id;
 
     // 判断节点类型
     final bool isBranchOption = node.metadata != null && node.metadata!.containsKey('branchText'); // 分支选项（option_xxx）
@@ -562,95 +568,144 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       child: InkWell(
         onTap: isClickable ? () => _onNodeTapped(node) : null,
         onHover: isClickable ? (hovering) {
+          setState(() {
+            _hoveredNodeId = hovering ? node.id : null;
+          });
           if (hovering) {
             _uiSoundManager.playButtonHover();
           }
         } : null,
         hoverColor: isClickable ? config.themeColors.primary.withOpacity(0.1) : Colors.transparent,
-        child: Container(
-          width: (isSmallNode ? 200 : 280) * uiScale, // 应用 uiScale
-          padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale), // 小节点内边距更小
-          decoration: BoxDecoration(
-            // 分支选项使用浅白色背景
-            color: isBranchOption
-                ? config.themeColors.background.withOpacity(0.8) // 使用主题背景色
-                : (node.isUnlocked
-                    ? color.withOpacity(0.6)
-                    : color.withOpacity(0.3)),
-            border: Border.all(
-              color: isCurrentNode
-                  ? config.themeColors.primary
-                  : (isBranchOption
-                      ? config.themeColors.primary.withOpacity(0.5) // 分支选项使用暗色边框
-                      : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
-              width: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2), // 小节点边框更细
-            ),
-          ),
-          child: isSmallNode
-              ? // 分支选项和汇合点：单行显示，垂直居中
-                Align(
-                  alignment: Alignment.center,
-                  child: Text(
-                    node.displayName,
-                    style: TextStyle(
-                      // 分支选项使用暗色文字，汇合点使用白色文字
-                      color: isBranchOption ? config.themeColors.primary : config.themeColors.background,
-                      fontSize: 14 * textScale, // 更小的字体
-                      fontWeight: FontWeight.normal, // 不加粗
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              : // 章节、分支选择和结局：双行显示
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      node.displayName,
-                      style: TextStyle(
-                        // 完全不透明的白色
-                        color: config.themeColors.background,
-                        fontSize: 16 * textScale,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 6 * uiScale),
-                    Text(
-                      _getNodeTypeText(node.type),
-                      style: TextStyle(
-                        // 完全不透明的白色
-                        color: config.themeColors.background,
-                        fontSize: 14 * textScale,
-                      ),
-                    ),
-
-                    // 只有章节和结局才显示"未解锁"标签
-                    if (!node.isUnlocked)
-                      Container(
-                        margin: EdgeInsets.only(top: 8 * uiScale),
-                        padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
-                        decoration: BoxDecoration(
-                          color: config.themeColors.primary.withOpacity(0.2),
-                          border: Border.all(
-                            color: config.themeColors.background.withOpacity(0.5),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          '未解锁',
-                          style: TextStyle(
-                            color: config.themeColors.background.withOpacity(0.7),
-                            fontSize: 12 * textScale,
-                          ),
-                        ),
-                      ),
-                  ],
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // 主节点容器
+            Container(
+              width: (isSmallNode ? 200 : 280) * uiScale, // 应用 uiScale
+              padding: EdgeInsets.all(isSmallNode ? 10 * uiScale : 16 * uiScale), // 小节点内边距更小
+              decoration: BoxDecoration(
+                // 分支选项使用浅白色背景
+                color: isBranchOption
+                    ? config.themeColors.background.withOpacity(0.8) // 使用主题背景色
+                    : (node.isUnlocked
+                        ? color.withOpacity(0.6)
+                        : color.withOpacity(0.3)),
+                border: Border.all(
+                  color: isCurrentNode
+                      ? config.themeColors.primary
+                      : (isBranchOption
+                          ? config.themeColors.primary.withOpacity(0.5) // 分支选项使用暗色边框
+                          : color.withOpacity(node.isUnlocked ? 0.8 : 0.5)),
+                  width: isCurrentNode ? 3 : (isSmallNode ? 1.5 : 2), // 小节点边框更细
                 ),
+              ),
+              child: isSmallNode
+                  ? // 分支选项和汇合点：单行显示，垂直居中
+                    Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        node.displayName,
+                        style: TextStyle(
+                          // 分支选项使用暗色文字，汇合点使用白色文字
+                          color: isBranchOption ? config.themeColors.primary : config.themeColors.background,
+                          fontSize: 14 * textScale, // 更小的字体
+                          fontWeight: FontWeight.normal, // 不加粗
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : // 章节、分支选择和结局：双行显示
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          node.displayName,
+                          style: TextStyle(
+                            // 完全不透明的白色
+                            color: config.themeColors.background,
+                            fontSize: 16 * textScale,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 6 * uiScale),
+                        Text(
+                          _getNodeTypeText(node.type),
+                          style: TextStyle(
+                            // 完全不透明的白色
+                            color: config.themeColors.background,
+                            fontSize: 14 * textScale,
+                          ),
+                        ),
+
+                        // 只有章节和结局才显示"未解锁"标签
+                        if (!node.isUnlocked)
+                          Container(
+                            margin: EdgeInsets.only(top: 8 * uiScale),
+                            padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
+                            decoration: BoxDecoration(
+                              color: config.themeColors.primary.withOpacity(0.2),
+                              border: Border.all(
+                                color: config.themeColors.background.withOpacity(0.5),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              '未解锁',
+                              style: TextStyle(
+                                color: config.themeColors.background.withOpacity(0.7),
+                                fontSize: 12 * textScale,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+
+            // 可点击节点的悬浮图标（右上角）
+            if (isClickable && node.isUnlocked)
+              Positioned(
+                top: -8 * uiScale,
+                right: -8 * uiScale,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: isHovered ? 1.0 : 0.0),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 0.8 + (value * 0.4), // 从0.8放大到1.2
+                      child: Transform.rotate(
+                        angle: value * 0.2, // 轻微旋转
+                        child: Container(
+                          width: 32 * uiScale,
+                          height: 32 * uiScale,
+                          decoration: BoxDecoration(
+                            color: config.themeColors.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: config.themeColors.primary.withOpacity(0.4 + value * 0.3),
+                                blurRadius: 8 + (value * 8),
+                                spreadRadius: value * 2,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.play_arrow_rounded,
+                            color: config.themeColors.background,
+                            size: 20 * uiScale,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
