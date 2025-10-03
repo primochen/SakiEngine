@@ -714,21 +714,33 @@ class StoryFlowchartAnalyzer {
       // 根据自动存档文件名，找到对应的节点并标记为已解锁
       int unlockedCount = 0;
       for (final autoSaveId in autoSaveFiles) {
-        // 从文件名提取label (移除前缀 "auto_story_")
-        final label = autoSaveId.replaceFirst(StoryFlowchartManager.autoSavePrefix, '');
+        // 从文件名提取nodeId (移除前缀 "auto_story_")
+        final nodeId = autoSaveId.replaceFirst(StoryFlowchartManager.autoSavePrefix, '');
 
-        // 查找对应的节点
+        // 查找对应的节点（同时支持两种匹配方式）
         final allNodes = _manager.nodes;
-        for (final node in allNodes.values) {
-          if (node.label == label && !node.isUnlocked) {
-            // 解锁节点
-            await _manager.unlockNode(node.id, autoSaveId: autoSaveId);
-            unlockedCount++;
+        StoryFlowNode? node;
 
-            if (kDebugMode) {
-              print('[FlowchartAnalyzer] 根据自动存档 $autoSaveId 解锁节点: ${node.displayName} (${node.id})');
+        // 方式1：直接通过node.id匹配（适用于branch_、chapter_end_等生成的ID）
+        node = allNodes[nodeId];
+
+        // 方式2：如果方式1没找到，尝试通过node.label匹配（适用于章节开始等使用label作为nodeId的情况）
+        if (node == null) {
+          for (final n in allNodes.values) {
+            if (n.label == nodeId && !n.isUnlocked) {
+              node = n;
+              break;
             }
-            break;
+          }
+        }
+
+        if (node != null && !node.isUnlocked) {
+          // 解锁节点
+          await _manager.unlockNode(node.id, autoSaveId: autoSaveId);
+          unlockedCount++;
+
+          if (kDebugMode) {
+            print('[FlowchartAnalyzer] 根据自动存档 $autoSaveId 解锁节点: ${node.displayName} (${node.id})');
           }
         }
       }
