@@ -624,18 +624,6 @@ class FlowchartPainter extends CustomPainter {
 
     // 绘制节点间的连接线
     for (final node in nodes) {
-      // 处理普通的父子关系
-      if (node.parentNodeId != null) {
-        final parentNode = nodes.firstWhere(
-          (n) => n.id == node.parentNodeId,
-          orElse: () => node,
-        );
-
-        if (parentNode.id != node.id) {
-          _drawConnection(canvas, paint, parentNode, node);
-        }
-      }
-
       // 特殊处理汇合点：绘制所有分支到汇合点的连接线
       if (node.type == StoryNodeType.merge && node.metadata != null) {
         final parentIds = node.metadata!['parentIds'] as List<dynamic>?;
@@ -650,6 +638,17 @@ class FlowchartPainter extends CustomPainter {
               _drawConnection(canvas, paint, parentNode, node);
             }
           }
+        }
+      }
+      // 处理普通的父子关系（非汇合点）
+      else if (node.parentNodeId != null) {
+        final parentNode = nodes.firstWhere(
+          (n) => n.id == node.parentNodeId,
+          orElse: () => node,
+        );
+
+        if (parentNode.id != node.id) {
+          _drawConnection(canvas, paint, parentNode, node);
         }
       }
     }
