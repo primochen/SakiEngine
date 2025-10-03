@@ -31,6 +31,7 @@ import 'package:sakiengine/src/utils/character_composite_cache.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
+import 'package:sakiengine/src/game/nvl_state_manager.dart';
 
 enum _NvlContextMode { none, standard, movie, noMask }
 
@@ -2544,35 +2545,33 @@ class GameManager {
     }
 
     // 修复bug：从新脚本中获取当前对话文本，避免使用存档中的旧文本
+    // 使用 NvlStateManager 来处理 NVL 模式的特殊逻辑
     String? freshDialogue;
     String? freshSpeaker;
     List<NvlDialogue>? freshNvlDialogues;
 
-    // 关键修复：当前对话应该从历史记录最后一条的位置获取，而不是从_scriptIndex获取
-    // 因为历史记录的最后一条就是当前显示的对话
-    final dialogueScriptIndex = snapshot.dialogueHistory.isNotEmpty
-        ? snapshot.dialogueHistory.last.scriptIndex
-        : _scriptIndex;
+    // NVL模式：使用模块化的状态管理器
+    freshNvlDialogues = NvlStateManager.restoreNvlDialogues(
+      snapshot: snapshot,
+      script: _script,
+      characterConfigs: _characterConfigs,
+      scriptIndex: _scriptIndex,
+    );
 
-    if (dialogueScriptIndex >= 0 && dialogueScriptIndex < _script.children.length) {
-      final currentNode = _script.children[dialogueScriptIndex];
-      if (currentNode is SayNode) {
-        freshDialogue = currentNode.dialogue;
-        if (currentNode.character != null) {
-          final characterConfig = _characterConfigs[currentNode.character];
-          freshSpeaker = characterConfig?.name;
-        }
+    // 非NVL模式：刷新当前对话
+    if (!snapshot.isNvlMode) {
+      final dialogueScriptIndex = snapshot.dialogueHistory.isNotEmpty
+          ? snapshot.dialogueHistory.last.scriptIndex
+          : _scriptIndex;
 
-        // 如果是NVL模式，同时更新nvlDialogues中的最后一条对话
-        if (snapshot.isNvlMode && snapshot.nvlDialogues.isNotEmpty) {
-          freshNvlDialogues = List<NvlDialogue>.from(snapshot.nvlDialogues);
-          final lastDialogue = freshNvlDialogues.last;
-          freshNvlDialogues[freshNvlDialogues.length - 1] = NvlDialogue(
-            speaker: freshSpeaker,
-            speakerAlias: lastDialogue.speakerAlias,
-            dialogue: freshDialogue,
-            timestamp: lastDialogue.timestamp,
-          );
+      if (dialogueScriptIndex >= 0 && dialogueScriptIndex < _script.children.length) {
+        final currentNode = _script.children[dialogueScriptIndex];
+        if (currentNode is SayNode) {
+          freshDialogue = currentNode.dialogue;
+          if (currentNode.character != null) {
+            final characterConfig = _characterConfigs[currentNode.character];
+            freshSpeaker = characterConfig?.name;
+          }
         }
       }
     }
@@ -2592,6 +2591,7 @@ class GameManager {
       speaker: freshSpeaker ?? snapshot.currentState.speaker,
     );
 
+    // 设置NVL上下文模式
     _activeNvlContext = snapshot.isNvlMode
         ? (snapshot.isNvlMovieMode
             ? _NvlContextMode.movie
@@ -2698,6 +2698,7 @@ class GameManager {
         isFastForwarding: false, // 修复快进回退bug：强制设置为非快进状态
       );
 
+      // 设置NVL上下文模式
       _activeNvlContext = _savedSnapshot!.isNvlMode
           ? (_savedSnapshot!.isNvlMovieMode
               ? _NvlContextMode.movie
