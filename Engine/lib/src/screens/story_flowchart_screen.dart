@@ -86,9 +86,51 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   /// 获取当前章节的所有节点
   List<StoryFlowNode> _getNodesForCurrentChapter() {
     if (_selectedChapter == null) return [];
-    return _flowchartManager.nodes.values
-        .where((node) => node.chapterName == _selectedChapter)
-        .toList();
+
+    final allNodes = _flowchartManager.nodes.values.toList();
+    final nodesMap = {for (var n in allNodes) n.id: n};
+
+    // 递归查找最近的有解锁状态的祖先节点（章节、分支选择、结局）
+    bool isAncestorUnlocked(String? nodeId) {
+      if (nodeId == null) return false;
+      final node = nodesMap[nodeId];
+      if (node == null) return false;
+
+      // 如果是分支选项或汇合点，继续向上查找
+      final bool isBranchOption = node.metadata != null && node.metadata!.containsKey('branchText');
+      final bool isMergePoint = node.type == StoryNodeType.merge;
+
+      if (isBranchOption || isMergePoint) {
+        // 汇合点可能有多个父节点
+        if (isMergePoint && node.metadata != null) {
+          final parentIds = node.metadata!['parentIds'] as List<dynamic>?;
+          if (parentIds != null && parentIds.isNotEmpty) {
+            // 只要有一个父节点的祖先解锁就返回 true
+            return parentIds.any((id) => isAncestorUnlocked(id as String));
+          }
+        }
+        // 分支选项向上查找
+        return isAncestorUnlocked(node.parentNodeId);
+      }
+
+      // 找到有解锁状态的节点，返回其解锁状态
+      return node.isUnlocked;
+    }
+
+    return allNodes.where((node) {
+      if (node.chapterName != _selectedChapter) return false;
+
+      // 分支选项和汇合点：检查祖先节点是否已解锁
+      final bool isBranchOption = node.metadata != null && node.metadata!.containsKey('branchText');
+      final bool isMergePoint = node.type == StoryNodeType.merge;
+
+      if (isBranchOption || isMergePoint) {
+        return isAncestorUnlocked(node.id);
+      }
+
+      // 其他节点：只返回已解锁的节点
+      return node.isUnlocked;
+    }).toList();
   }
 
   @override
