@@ -502,7 +502,10 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                 ),
               ),
 
-              if (!node.isUnlocked)
+              // 只有章节和结局才显示"未解锁"标签
+              if (!node.isUnlocked &&
+                  node.type != StoryNodeType.branch &&
+                  node.type != StoryNodeType.merge)
                 Container(
                   margin: EdgeInsets.only(top: 8 * uiScale),
                   padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
@@ -559,20 +562,18 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           final binaryData = await file.readAsBytes();
           final saveSlot = SaveSlot.fromBinary(binaryData);
 
-          // 加载存档到游戏状态
-          final gameManager = GameManager();
-          await gameManager.restoreFromSnapshot(
-            saveSlot.currentScript,
-            saveSlot.snapshot,
-          );
+          if (kDebugMode) {
+            print('[StoryFlowchart] 从节点 ${node.id} 的自动存档加载成功');
+          }
+
+          // 使用 onLoadSave 回调来加载存档（和"继续游戏"一样的方式）
+          if (widget.onLoadSave != null) {
+            widget.onLoadSave!(saveSlot);
+          }
 
           // 关闭流程图界面
           if (mounted && widget.onClose != null) {
             widget.onClose!();
-          }
-
-          if (kDebugMode) {
-            print('[StoryFlowchart] 从节点 ${node.id} 的自动存档加载成功');
           }
         } else {
           if (kDebugMode) {
