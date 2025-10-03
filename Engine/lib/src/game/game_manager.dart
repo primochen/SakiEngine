@@ -32,6 +32,7 @@ import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/game/nvl_state_manager.dart';
+import 'package:sakiengine/src/game/chapter_autosave_manager.dart';
 
 enum _NvlContextMode { none, standard, movie, noMask }
 
@@ -114,6 +115,13 @@ class GameManager {
   bool _isFastForwardMode = false;
   _NvlContextMode _activeNvlContext = _NvlContextMode.none;
   bool _showNvlOverlayOnNextDialogue = false;
+
+  // 待处理的章节自动存档信息（章节背景显示后，等待第一句话再存档）
+  String? _pendingChapterAutoSaveLabel; // 待存档的章节label
+
+  // 章节自动存档管理器
+  final ChapterAutoSaveManager _chapterAutoSaveManager = ChapterAutoSaveManager();
+
 
   // 场景动画控制器
   SceneAnimationController? _sceneAnimationController;
@@ -1263,19 +1271,6 @@ class GameManager {
       }
 
       if (node is BackgroundNode) {
-        // 检测是否包含chapter，如果是则停止快进并创建自动存档
-        if (_isFastForwardMode && _containsChapter(node.background)) {
-          //print('[GameManager] 检测到chapter场景，停止快进: ${node.background}');
-          setFastForwardMode(false);
-          // 通知UI层快进状态已改变，这样快进指示器会消失
-          // GameState已在setFastForwardMode中更新
-        }
-
-        // 章节开始时创建自动存档
-        if (_containsChapter(node.background)) {
-          await _checkAndCreateAutoSave(_scriptIndex, reason: '章节开始');
-        }
-
         // 检查当前scene是否是章节末尾前最后一个没有对话的scene
         await _checkChapterEndAutoSave(_scriptIndex);
 
@@ -1895,6 +1890,10 @@ class GameManager {
 
         // 在 NVL 或 NVLN 模式下的特殊处理
         if (_activeNvlContext != _NvlContextMode.none) {
+          if (kDebugMode) {
+            print('[GameManager] ⭐ 进入NVL模式处理分支 - _activeNvlContext=$_activeNvlContext, scriptIndex=$_scriptIndex');
+          }
+
           final shouldRevealOverlay = _showNvlOverlayOnNextDialogue;
           if (shouldRevealOverlay) {
             _showNvlOverlayOnNextDialogue = false;
@@ -1926,6 +1925,29 @@ class GameManager {
           );
 
           _gameStateController.add(_currentState);
+
+          if (kDebugMode) {
+            print('[GameManager] 📍 NVL状态已发送，即将检查章节存档');
+          }
+
+          // 检查是否需要创建章节开头的自动存档（NVL模式）
+          try {
+            if (kDebugMode) {
+              print('[GameManager] 🔔 准备调用章节自动存档检查 (NVL模式)');
+            }
+            await _chapterAutoSaveManager.onDialogueDisplayed(
+              scriptIndex: _scriptIndex,
+              currentScriptFile: currentScriptFile,
+              currentLabel: _findNearestLabel(_scriptIndex),
+              saveStateSnapshot: saveStateSnapshot,
+              flowchartManager: _flowchartManager,
+            );
+          } catch (e, stackTrace) {
+            if (kDebugMode) {
+              print('[GameManager] ❌ 章节自动存档检查失败: $e');
+              print('堆栈: $stackTrace');
+            }
+          }
 
           // NVL/NVLN 模式下每句话都要停下来等待点击
           _scriptIndex++;
@@ -2126,6 +2148,10 @@ class GameManager {
 
         // 在 NVL 或 NVLN 模式下的特殊处理
         if (_activeNvlContext != _NvlContextMode.none) {
+          if (kDebugMode) {
+            print('[GameManager] ⭐ 进入NVL模式处理分支 - _activeNvlContext=$_activeNvlContext, scriptIndex=$_scriptIndex');
+          }
+
           final shouldRevealOverlay = _showNvlOverlayOnNextDialogue;
           if (shouldRevealOverlay) {
             _showNvlOverlayOnNextDialogue = false;
@@ -2158,6 +2184,29 @@ class GameManager {
 
           _gameStateController.add(_currentState);
 
+          if (kDebugMode) {
+            print('[GameManager] 📍 NVL状态已发送(第二处)，即将检查章节存档');
+          }
+
+          // 检查是否需要创建章节开头的自动存档（NVL模式-第二处）
+          try {
+            if (kDebugMode) {
+              print('[GameManager] 🔔 准备调用章节自动存档检查 (NVL模式-第二处)');
+            }
+            await _chapterAutoSaveManager.onDialogueDisplayed(
+              scriptIndex: _scriptIndex,
+              currentScriptFile: currentScriptFile,
+              currentLabel: _findNearestLabel(_scriptIndex),
+              saveStateSnapshot: saveStateSnapshot,
+              flowchartManager: _flowchartManager,
+            );
+          } catch (e, stackTrace) {
+            if (kDebugMode) {
+              print('[GameManager] ❌ 章节自动存档检查失败: $e');
+              print('堆栈: $stackTrace');
+            }
+          }
+
           // NVL/NVLN 模式下每句话都要停下来等待点击
           _scriptIndex++;
           _isProcessing = false;
@@ -2185,6 +2234,26 @@ class GameManager {
           );
 
           _gameStateController.add(_currentState);
+
+          // 检查是否需要创建章节开头的自动存档（普通对话模式）
+          try {
+            if (kDebugMode) {
+              print('[GameManager] 🔔 准备调用章节自动存档检查 (普通对话模式)');
+            }
+            await _chapterAutoSaveManager.onDialogueDisplayed(
+              scriptIndex: _scriptIndex,
+              currentScriptFile: currentScriptFile,
+              currentLabel: _findNearestLabel(_scriptIndex),
+              saveStateSnapshot: saveStateSnapshot,
+              flowchartManager: _flowchartManager,
+            );
+          } catch (e, stackTrace) {
+            if (kDebugMode) {
+              print('[GameManager] ❌ 章节自动存档检查失败: $e');
+              print('堆栈: $stackTrace');
+            }
+          }
+
           _scriptIndex++;
           _isProcessing = false;
           return;
