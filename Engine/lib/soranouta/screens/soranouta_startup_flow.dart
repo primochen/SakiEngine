@@ -102,27 +102,22 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // 使用IndexedStack来避免重建主菜单
-        IndexedStack(
-          index: _showMainMenu ? 1 : 0,
-          children: [
-            // Logo页面
-            _LogoScreen(
-              logoAsset: widget.logoAsset,
-              splashDuration: widget.splashDuration,
-              fadeOutDuration: widget.fadeOutDuration,
-              onComplete: _onLogoComplete,
-            ),
-            // 主菜单页面
-            SoraNoutaMainMenuScreen(
-              onNewGame: widget.onNewGame,
-              onLoadGame: widget.onLoadGame,
-              onLoadGameWithSave: widget.onLoadGameWithSave,
-              onContinueGame: widget.onContinueGame,
-              skipMusicDelay: widget.skipMusicDelay,
-            ),
-          ],
-        ),
+        // 根据状态显示不同页面，确保主菜单只在需要时才初始化
+        if (!_showMainMenu)
+          _LogoScreen(
+            logoAsset: widget.logoAsset,
+            splashDuration: widget.splashDuration,
+            fadeOutDuration: widget.fadeOutDuration,
+            onComplete: _onLogoComplete,
+          )
+        else
+          SoraNoutaMainMenuScreen(
+            onNewGame: widget.onNewGame,
+            onLoadGame: widget.onLoadGame,
+            onLoadGameWithSave: widget.onLoadGameWithSave,
+            onContinueGame: widget.onContinueGame,
+            skipMusicDelay: widget.skipMusicDelay,
+          ),
         // 黑场过渡层
         if (_showMainMenu)
           IgnorePointer(
