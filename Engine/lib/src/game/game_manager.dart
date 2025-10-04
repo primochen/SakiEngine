@@ -2139,10 +2139,6 @@ class GameManager {
 
         // 在 NVL 或 NVLN 模式下的特殊处理
         if (_activeNvlContext != _NvlContextMode.none) {
-          if (kDebugMode) {
-            print('[GameManager] ⭐ 进入NVL模式处理分支 - _activeNvlContext=$_activeNvlContext, scriptIndex=$_scriptIndex');
-          }
-
           final shouldRevealOverlay = _showNvlOverlayOnNextDialogue;
           if (shouldRevealOverlay) {
             _showNvlOverlayOnNextDialogue = false;
@@ -2175,15 +2171,9 @@ class GameManager {
 
           _gameStateController.add(_currentState);
 
-          if (kDebugMode) {
-            print('[GameManager] 📍 NVL状态已发送(第二处)，即将检查章节存档');
-          }
 
           // 检查是否需要创建章节开头的自动存档（NVL模式-第二处）
           try {
-            if (kDebugMode) {
-              print('[GameManager] 🔔 准备调用章节自动存档检查 (NVL模式-第二处)');
-            }
             await _chapterAutoSaveManager.onDialogueDisplayed(
               scriptIndex: currentNodeIndex,  // 使用当前节点索引，而不是_scriptIndex
               currentScriptFile: currentScriptFile,
@@ -2228,9 +2218,6 @@ class GameManager {
 
           // 检查是否需要创建章节开头的自动存档（普通对话模式）
           try {
-            if (kDebugMode) {
-              print('[GameManager] 🔔 准备调用章节自动存档检查 (普通对话模式)');
-            }
             await _chapterAutoSaveManager.onDialogueDisplayed(
               scriptIndex: currentNodeIndex,  // 使用当前节点索引
               currentScriptFile: currentScriptFile,

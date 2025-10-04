@@ -759,24 +759,53 @@ class _BlinkMaskPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (closeProgress <= 0) return;
 
-    final maskPaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-
     // 计算上下遮罩的高度（从0逐渐增长到屏幕高度的一半）
     final maskHeight = (size.height / 2) * closeProgress;
 
-    // 绘制上方黑色遮罩（从顶部向下）
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, maskHeight),
-      maskPaint,
+    // 模糊边缘的高度（羽化效果）
+    final blurHeight = size.height * 0.08; // 8%的屏幕高度作为模糊区域
+
+    // 绘制上方黑色遮罩（从顶部向下，带模糊边缘）
+    final topRect = Rect.fromLTWH(0, 0, size.width, maskHeight);
+    final topGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.black,
+        Colors.black,
+        Colors.black.withOpacity(0.0),
+      ],
+      stops: [
+        0.0,
+        math.max(0.0, 1.0 - (blurHeight / maskHeight)),
+        1.0,
+      ],
     );
 
-    // 绘制下方黑色遮罩（从底部向上）
-    canvas.drawRect(
-      Rect.fromLTWH(0, size.height - maskHeight, size.width, maskHeight),
-      maskPaint,
+    final topPaint = Paint()
+      ..shader = topGradient.createShader(topRect);
+    canvas.drawRect(topRect, topPaint);
+
+    // 绘制下方黑色遮罩（从底部向上，带模糊边缘）
+    final bottomRect = Rect.fromLTWH(0, size.height - maskHeight, size.width, maskHeight);
+    final bottomGradient = LinearGradient(
+      begin: Alignment.bottomCenter,
+      end: Alignment.topCenter,
+      colors: [
+        Colors.black,
+        Colors.black,
+        Colors.black.withOpacity(0.0),
+      ],
+      stops: [
+        0.0,
+        math.max(0.0, 1.0 - (blurHeight / maskHeight)),
+        1.0,
+      ],
     );
+
+    final bottomPaint = Paint()
+      ..shader = bottomGradient.createShader(bottomRect);
+    canvas.drawRect(bottomRect, bottomPaint);
   }
 
   @override
