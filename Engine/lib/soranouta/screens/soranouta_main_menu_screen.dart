@@ -62,9 +62,13 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     _localizationManager = LocalizationManager();
     _localizationManager.addListener(_handleLocalizationChanged);
     _generateCopyrightText();
-    _startBackgroundMusic();
-    _startMenuAnimationAfterSplash();
-    _checkQuickSave(); // 新增：检查快速存档
+    _checkQuickSave();
+
+    // 延迟播放音乐和启动动画，确保页面已显示
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startBackgroundMusic();
+      _initMenuAnimation();
+    });
   }
 
   void _handleLocalizationChanged() {
@@ -111,12 +115,7 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
     super.dispose();
   }
 
-  Future<void> _startMenuAnimationAfterSplash() async {
-    if (!widget.skipMusicDelay) {
-      // 等待启动遮罩完成后再开始菜单动画
-      const splashTotal = Duration(milliseconds: 3600);
-      await Future.delayed(splashTotal);
-    }
+  void _initMenuAnimation() {
     if (mounted) {
       setState(() {
         _startMenuAnimation = true;
@@ -126,12 +125,15 @@ class _SoraNoutaMainMenuScreenState extends State<SoraNoutaMainMenuScreen> {
 
   Future<void> _startBackgroundMusic() async {
     try {
-      if (!widget.skipMusicDelay) {
-        // 延时等待启动遮罩完成 (Logo展示 + 黑幕淡出)
-        const splashTotal = Duration(milliseconds: 3600);
-        await Future.delayed(splashTotal);
+      // 如果是从游戏返回主菜单，立即播放；否则等待一小段时间让页面渲染
+      if (widget.skipMusicDelay) {
+        await MusicManager().playBackgroundMusic('Assets/music/dream.mp3');
+      } else {
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          await MusicManager().playBackgroundMusic('Assets/music/dream.mp3');
+        }
       }
-      await MusicManager().playBackgroundMusic('Assets/music/dream.mp3');
     } catch (e) {
       // Silently handle music loading errors
     }

@@ -7,14 +7,14 @@ import 'package:sakiengine/soranouta/screens/soranouta_main_menu_screen.dart';
 import 'package:sakiengine/src/game/story_flowchart_analyzer.dart';
 import 'package:flutter/foundation.dart';
 
-/// soraの歌启动流程：先展示 Logo，再以纯黑淡出进入主菜单
+/// soraの歌启动流程：先展示独立的Logo页面，然后切换到主菜单
 class SoraNoutaStartupFlow extends StatefulWidget {
   const SoraNoutaStartupFlow({
     super.key,
     required this.onNewGame,
     required this.onLoadGame,
     required this.onLoadGameWithSave,
-    this.onContinueGame, // 新增：继续游戏回调
+    this.onContinueGame,
     required this.skipMusicDelay,
     this.splashDuration = const Duration(seconds: 3),
     this.fadeOutDuration = const Duration(milliseconds: 600),
@@ -25,7 +25,7 @@ class SoraNoutaStartupFlow extends StatefulWidget {
   final VoidCallback onNewGame;
   final VoidCallback onLoadGame;
   final Function(SaveSlot)? onLoadGameWithSave;
-  final VoidCallback? onContinueGame; // 新增：继续游戏回调
+  final VoidCallback? onContinueGame;
   final bool skipMusicDelay;
   final Duration splashDuration;
   final Duration fadeOutDuration;
@@ -36,26 +36,28 @@ class SoraNoutaStartupFlow extends StatefulWidget {
   State<SoraNoutaStartupFlow> createState() => _SoraNoutaStartupFlowState();
 }
 
-enum _SplashPhase { logo, fadeOut, done }
-
 class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
     with SingleTickerProviderStateMixin {
-  Timer? _timer;
-  late final AnimationController _fadeController;
-  late _SplashPhase _phase;
+  bool _showMainMenu = false;
+  late AnimationController _transitionController;
+  late Animation<double> _fadeInAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    _fadeController = AnimationController(
+    _transitionController = AnimationController(
+      duration: const Duration(milliseconds: 500),
       vsync: this,
-      duration: widget.fadeOutDuration,
-    )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          setState(() => _phase = _SplashPhase.done);
-        }
-      });
+    );
+
+    _fadeInAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _transitionController,
+      curve: Curves.easeIn,
+    ));
 
     // 后台初始化流程图分析器
     Future.microtask(() async {
@@ -72,13 +74,119 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
       }
     });
 
+    // 如果跳过intro，直接显示主菜单
     if (widget.skipIntro) {
-      _phase = _SplashPhase.done;
-      _fadeController.value = 1.0;
-    } else {
-      _phase = _SplashPhase.logo;
-      _timer = Timer(widget.splashDuration, _startFadeOut);
+      _showMainMenu = true;
+      _transitionController.value = 1.0;
     }
+  }
+
+  @override
+  void dispose() {
+    _transitionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onLogoComplete() async {
+    setState(() {
+      _showMainMenu = true;
+    });
+    // 等待一帧确保IndexedStack切换完成
+    await Future.delayed(const Duration(milliseconds: 50));
+    if (mounted) {
+      _transitionController.forward();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // 使用IndexedStack来避免重建主菜单
+        IndexedStack(
+          index: _showMainMenu ? 1 : 0,
+          children: [
+            // Logo页面
+            _LogoScreen(
+              logoAsset: widget.logoAsset,
+              splashDuration: widget.splashDuration,
+              fadeOutDuration: widget.fadeOutDuration,
+              onComplete: _onLogoComplete,
+            ),
+            // 主菜单页面
+            SoraNoutaMainMenuScreen(
+              onNewGame: widget.onNewGame,
+              onLoadGame: widget.onLoadGame,
+              onLoadGameWithSave: widget.onLoadGameWithSave,
+              onContinueGame: widget.onContinueGame,
+              skipMusicDelay: widget.skipMusicDelay,
+            ),
+          ],
+        ),
+        // 黑场过渡层
+        if (_showMainMenu)
+          IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _fadeInAnimation,
+              builder: (context, child) {
+                final opacity = 1.0 - _fadeInAnimation.value;
+                if (opacity <= 0) return const SizedBox.shrink();
+                return ColoredBox(
+                  color: Colors.black.withOpacity(opacity),
+                  child: const SizedBox(
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 独立的Logo展示页面
+class _LogoScreen extends StatefulWidget {
+  const _LogoScreen({
+    required this.logoAsset,
+    required this.splashDuration,
+    required this.fadeOutDuration,
+    required this.onComplete,
+  });
+
+  final String logoAsset;
+  final Duration splashDuration;
+  final Duration fadeOutDuration;
+  final VoidCallback onComplete;
+
+  @override
+  State<_LogoScreen> createState() => _LogoScreenState();
+}
+
+enum _LogoPhase { display, fadeOut }
+
+class _LogoScreenState extends State<_LogoScreen>
+    with SingleTickerProviderStateMixin {
+  Timer? _timer;
+  late final AnimationController _fadeController;
+  _LogoPhase _phase = _LogoPhase.display;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: widget.fadeOutDuration,
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          widget.onComplete();
+        }
+      });
+
+    // 等待指定时长后开始淡出
+    _timer = Timer(widget.splashDuration, _startFadeOut);
   }
 
   @override
@@ -89,112 +197,72 @@ class _SoraNoutaStartupFlowState extends State<SoraNoutaStartupFlow>
   }
 
   void _startFadeOut() {
-    if (_phase == _SplashPhase.logo && mounted) {
-      setState(() => _phase = _SplashPhase.fadeOut);
+    if (_phase == _LogoPhase.display && mounted) {
+      setState(() => _phase = _LogoPhase.fadeOut);
       _fadeController.forward(from: 0.0);
     }
   }
 
-  bool get _overlayVisible => _phase != _SplashPhase.done;
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          SoraNoutaMainMenuScreen(
-            onNewGame: widget.onNewGame,
-            onLoadGame: widget.onLoadGame,
-            onLoadGameWithSave: widget.onLoadGameWithSave,
-            onContinueGame: widget.onContinueGame, // 新增：传递继续游戏回调
-            skipMusicDelay: widget.skipMusicDelay,
-          ),
-          if (_overlayVisible)
-            IgnorePointer(
-              child: AnimatedBuilder(
-                animation: _fadeController,
-                builder: (context, child) {
-                  final t = _fadeController.value.clamp(0.0, 1.0);
-                  double logoOpacity = 1.0;
-                  double overlayOpacity = 1.0;
-
-                  if (_phase == _SplashPhase.fadeOut) {
-                    if (t < 0.5) {
-                      // 先让 Logo 在黑幕中淡出
-                      final progress = t / 0.5;
-                      logoOpacity = 1.0 - progress;
-                      overlayOpacity = 1.0;
-                    } else {
-                      // Logo 已消失，开始让黑幕本身淡出
-                      logoOpacity = 0.0;
-                      final progress = (t - 0.5) / 0.5;
-                      overlayOpacity = 1.0 - progress;
-                    }
-                  }
-
-                  return _SplashOverlay(
-                    assetName: widget.logoAsset,
-                    logoOpacity: logoOpacity,
-                    overlayOpacity: overlayOpacity,
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SplashOverlay extends StatelessWidget {
-  const _SplashOverlay({
-    required this.assetName,
-    required this.logoOpacity,
-    required this.overlayOpacity,
-  });
-
-  final String assetName;
-  final double logoOpacity;
-  final double overlayOpacity;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedOverlay = overlayOpacity.clamp(0.0, 1.0);
-    final clampedLogo = logoOpacity.clamp(0.0, 1.0);
     final isDarkMode = SettingsManager().currentDarkMode;
     final baseColor = isDarkMode ? Colors.black : Colors.white;
 
-    return ColoredBox(
-      color: baseColor.withOpacity(clampedOverlay),
-      child: Center(
-        child: clampedLogo > 0
-            ? Opacity(
-                opacity: clampedLogo,
-                child: FractionallySizedBox(
-                  widthFactor: 0.8,
-                  heightFactor: 0.8,
-                  child: isDarkMode
-                      ? SmartAssetImage(
-                          assetName: assetName,
-                          fit: BoxFit.contain,
-                        )
-                      : ColorFiltered(
-                          colorFilter: const ColorFilter.matrix(<double>[
-                            -1, 0, 0, 0, 255,
-                            0, -1, 0, 0, 255,
-                            0, 0, -1, 0, 255,
-                            0, 0, 0, 1, 0,
-                          ]),
-                          child: SmartAssetImage(
-                            assetName: assetName,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                ),
-              )
-            : null,
+    return Scaffold(
+      backgroundColor: baseColor,
+      body: AnimatedBuilder(
+        animation: _fadeController,
+        builder: (context, child) {
+          final t = _fadeController.value.clamp(0.0, 1.0);
+          double logoOpacity = 1.0;
+          double backgroundOpacity = 1.0;
+
+          if (_phase == _LogoPhase.fadeOut) {
+            if (t < 0.5) {
+              // 先让Logo淡出
+              final progress = t / 0.5;
+              logoOpacity = 1.0 - progress;
+              backgroundOpacity = 1.0;
+            } else {
+              // Logo已消失，背景也开始淡出
+              logoOpacity = 0.0;
+              final progress = (t - 0.5) / 0.5;
+              backgroundOpacity = 1.0 - progress;
+            }
+          }
+
+          return ColoredBox(
+            color: baseColor.withOpacity(backgroundOpacity),
+            child: Center(
+              child: logoOpacity > 0
+                  ? Opacity(
+                      opacity: logoOpacity,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.8,
+                        heightFactor: 0.8,
+                        child: isDarkMode
+                            ? SmartAssetImage(
+                                assetName: widget.logoAsset,
+                                fit: BoxFit.contain,
+                              )
+                            : ColorFiltered(
+                                colorFilter: const ColorFilter.matrix(<double>[
+                                  -1, 0, 0, 0, 255,
+                                  0, -1, 0, 0, 255,
+                                  0, 0, -1, 0, 255,
+                                  0, 0, 0, 1, 0,
+                                ]),
+                                child: SmartAssetImage(
+                                  assetName: widget.logoAsset,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                      ),
+                    )
+                  : null,
+            ),
+          );
+        },
       ),
     );
   }
