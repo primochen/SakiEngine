@@ -31,13 +31,15 @@ class _SoranoutaTextButtonState extends State<SoranoutaTextButton> {
 
     return Container(
       // 增大容器，避免放大时被裁剪（1.15倍需要额外15%空间）
-      padding: EdgeInsets.symmetric(
-        horizontal: 10 * widget.scale, // 左右各留20单位
+      padding: EdgeInsets.only(
+        left: 50 * widget.scale, // 仅左侧预留20单位
+        right:20 * widget.scale,
       ),
       child: AnimatedScale(
         scale: _isHovered ? 1.15 : 1.0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutBack,
+        alignment: Alignment.bottomRight, // 放大锚点设置为右侧
         child: MouseRegion(
           onEnter: (_) {
             setState(() => _isHovered = true);
