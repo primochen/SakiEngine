@@ -12,7 +12,17 @@
       "Read(//Users/dfsteve/Downloads/igiari/**)",
       "Bash(ffmpeg:*)",
       "Read(//Users/dfsteve/Documents/SakiEngine/**)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "WebFetch(domain:www.renpy.org)",
+      "Read(//Library/Afolder/AYEngine/**)",
+      "Bash(git checkout:*)",
+      "Bash(/dev/null)",
+      "Bash(cat:*)",
+      "Bash(pod install:*)",
+      "Bash(flutter:*)",
+      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcrun simctl list:*)"
     ],
     "deny": [],
     "ask": []

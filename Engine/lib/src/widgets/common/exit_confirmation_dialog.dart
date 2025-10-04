@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
+import '../../utils/platform_window_manager_io.dart' if (dart.library.html) '../../utils/platform_window_manager_web.dart';
 
 class ExitConfirmationDialog {
-  static const String title = '退出游戏';
-  static const String contentWithProgress = '确定要退出游戏吗？未保存的游戏进度将会丢失。';
-  static const String contentSimple = '确定要退出游戏吗？';
-
   static Future<bool> showExitConfirmation(BuildContext context, {bool hasProgress = true}) async {
+    final localization = LocalizationManager();
+    final title = localization.t('dialog.exit.title');
+    final content = hasProgress
+        ? localization.t('dialog.exit.contentWithProgress')
+        : localization.t('dialog.exit.contentSimple');
+
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
           title: title,
-          content: hasProgress ? contentWithProgress : contentSimple,
+          content: content,
           onConfirm: () => Navigator.of(context).pop(true),
         );
       },
@@ -23,26 +26,28 @@ class ExitConfirmationDialog {
   }
 
   static Future<void> showExitConfirmationAndDestroy(BuildContext context) async {
+    final localization = LocalizationManager();
+    final title = localization.t('dialog.exit.title');
+    final content = localization.t('dialog.exit.contentSimple');
+
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return ConfirmDialog(
           title: title,
-          content: contentSimple,
+          content: content,
           onConfirm: () => Navigator.of(context).pop(true),
         );
       },
     );
     
     if (shouldExit == true) {
-      // 优化退出流程：先关闭窗口再退出程序
+      // 修复Windows关闭游戏的bug：直接销毁窗口，避免重复触发onWindowClose
       try {
-        await windowManager.close();
-        await Future.delayed(const Duration(milliseconds: 100));
-        SystemNavigator.pop();
+        await PlatformWindowManager.destroy();
       } catch (e) {
-        // 如果关闭失败，使用原有方法
-        await windowManager.destroy();
+        // 如果销毁失败，使用系统退出
+        SystemNavigator.pop();
       }
     }
   }

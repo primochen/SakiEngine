@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sakiengine/src/utils/smart_asset_image.dart';
 
 class SceneLayer {
   final String assetName;
@@ -89,25 +90,21 @@ class MultiLayerRenderer {
 
   static Widget _buildLayer(SceneLayer layer, Size screenSize) {
     // The base widget is the Image, configured to fill its parent container.
-    Widget imageContent = Image.asset(
-      'assets/Assets/images/backgrounds/${layer.assetName.replaceAll(' ', '-')}.webp',
+    Widget imageContent = SmartAssetImage(
+      assetName: 'backgrounds/${layer.assetName.replaceAll(' ', '-')}',
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset(
-          'assets/Assets/gui/${layer.assetName}.webp',
-          errorBuilder: (context, error2, stackTrace2) {
-            return Container(
-              color: Colors.transparent,
-              child: Center(
-                child: Text(
-                  'Missing: ${layer.assetName}',
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      errorWidget: SmartAssetImage(
+        assetName: 'gui/${layer.assetName}',
+        errorWidget: Container(
+          color: Colors.transparent,
+          child: Center(
+            child: Text(
+              'Missing: ${layer.assetName}',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
+      ),
     );
 
     final pos = layer.position;

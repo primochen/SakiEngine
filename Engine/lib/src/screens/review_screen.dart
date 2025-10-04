@@ -6,6 +6,7 @@ import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class ReviewOverlay extends StatefulWidget {
   final List<DialogueHistoryEntry> dialogueHistory;
@@ -25,6 +26,7 @@ class ReviewOverlay extends StatefulWidget {
 
 class _ReviewOverlayState extends State<ReviewOverlay> {
   final ScrollController _scrollController = ScrollController();
+  final LocalizationManager _localization = LocalizationManager();
   
   // 字体大小百分比 (相对于标题字体大小)
   static const double _titleSizeRatio = 1.0;              // 标题: 100%
@@ -56,7 +58,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     final textScale = context.scaleFor(ComponentType.text);
 
     return OverlayScaffold(
-      title: '对话记录',
+      title: _localization.t('review.title'),
       onClose: widget.onClose,
       content: widget.dialogueHistory.isEmpty
           ? _buildEmptyState(uiScale, textScale, config)
@@ -75,7 +77,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
         ),
         child: Center(
           child: Text(
-            '${widget.dialogueHistory.length} 段记录',
+            _localization.t('review.count', params: {'count': widget.dialogueHistory.length.toString()}),
             style: config.reviewTitleTextStyle.copyWith(
               fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _bottomTextSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.7),
@@ -112,7 +114,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
           ),
           SizedBox(height: 24 * uiScale),
           Text(
-            '回忆的书页还是空白的',
+            _localization.t('review.empty.title'),
             style: config.reviewTitleTextStyle.copyWith(
               fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _emptyMainTextSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.7),
@@ -121,7 +123,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
           ),
           SizedBox(height: 8 * uiScale),
           Text(
-            '开始对话来创造美好的回忆吧',
+            _localization.t('review.empty.subtitle'),
             style: config.reviewTitleTextStyle.copyWith(
               fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _emptySubTextSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.5),
@@ -275,7 +277,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 8 * uiScale, vertical: 4 * uiScale),
           child: Text(
-            '跳转',
+            _localization.t('review.jumpTo'),
             style: config.reviewTitleTextStyle.copyWith(
               fontSize: config.reviewTitleTextStyle.fontSize! * textScale * _jumpButtonSizeRatio,
               color: config.themeColors.primary.withValues(alpha: 0.7),
@@ -292,13 +294,13 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    
+
     if (difference.inMinutes < 1) {
-      return '刚刚';
+      return _localization.t('review.time.now');
     } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}分钟前';
+      return _localization.t('review.time.minutesAgo', params: {'count': difference.inMinutes.toString()});
     } else if (difference.inDays < 1) {
-      return '${difference.inHours}小时前';
+      return _localization.t('review.time.hoursAgo', params: {'count': difference.inHours.toString()});
     } else {
       return '${timestamp.month}/${timestamp.day} ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
     }

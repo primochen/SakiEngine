@@ -3,6 +3,7 @@ import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/utils/rich_text_parser.dart';
 import 'package:sakiengine/src/widgets/dialogue_next_arrow.dart';
+import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 
 /// 主对话框内容组件
 class SoranoutaDialogueContent extends StatefulWidget {
@@ -112,10 +113,7 @@ class _SoranoutaDialogueContentState extends State<SoranoutaDialogueContent> {
                         opacity: widget.config.baseWindowBackgroundAlpha *
                             widget.dialogOpacity,
                         child: ColorFiltered(
-                          colorFilter: ColorFilter.mode(
-                            Colors.transparent,
-                            widget.config.baseWindowBackgroundBlendMode,
-                          ),
+                          colorFilter: SvgColorFilterUtils.getSvgColorTemperatureFilter(widget.config),
                           child: FittedBox(
                             fit: BoxFit.none,
                             alignment: Alignment(

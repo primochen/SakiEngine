@@ -71,14 +71,18 @@ echo -e "${GREEN}使用游戏项目: $GAME_NAME${NC}"
 echo -e "${YELLOW}正在准备资源目录...${NC}"
 # 清理旧的游戏资源目录，但保留引擎自带的资源（如 shaders）
 rm -rf "$ENGINE_DIR/assets/Assets"
-rm -rf "$ENGINE_DIR/assets/GameScript"
+rm -rf "$ENGINE_DIR"/assets/GameScript*
 # 确保顶级 assets 目录存在
 mkdir -p "$ENGINE_DIR/assets"
 
 echo -e "${YELLOW}正在拷贝游戏资源和脚本...${NC}"
-# 将 Assets 和 GameScript 目录完整地拷贝到 Engine/assets/ 下
+# 将 Assets 和 GameScript* 目录完整地拷贝到 Engine/assets/ 下
 cp -r "$GAME_DIR/Assets" "$ENGINE_DIR/assets/"
-cp -r "$GAME_DIR/GameScript" "$ENGINE_DIR/assets/"
+for script_dir in "$GAME_DIR"/GameScript*; do
+    if [ -d "$script_dir" ]; then
+        cp -r "$script_dir" "$ENGINE_DIR/assets/"
+    fi
+done
 
 # 复制 default_game.txt 到 assets 目录
 echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"

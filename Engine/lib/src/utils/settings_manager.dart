@@ -1,31 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:window_manager/window_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
+import 'package:sakiengine/src/game/unified_game_data_manager.dart';
+import 'platform_window_manager_io.dart' if (dart.library.html) 'platform_window_manager_web.dart';
 
 class SettingsManager extends ChangeNotifier {
   static final SettingsManager _instance = SettingsManager._internal();
   factory SettingsManager() => _instance;
   SettingsManager._internal();
 
-  static const String _dialogOpacityKey = 'dialog_opacity';
-  static const String _isFullscreenKey = 'is_fullscreen';
-  static const String _darkModeKey = 'dark_mode';
-  
-  // 打字机设置键
-  static const String _typewriterSpeedKey = 'typewriter_chars_per_second';
-  static const String _skipPunctuationDelayKey = 'skip_punctuation_delay';
-  static const String _speakerAnimationKey = 'speaker_animation';
-  static const String _autoHideQuickMenuKey = 'auto_hide_quick_menu';
-  static const String _menuDisplayModeKey = 'menu_display_mode';
-  static const String _fastForwardModeKey = 'fast_forward_mode';
-  
   // 默认值
   static const double defaultDialogOpacity = 0.9;
   static const bool defaultIsFullscreen = false;
   static const bool defaultDarkMode = false;
-  
+
   // 打字机默认值 - 每秒显示字数
   static const double defaultTypewriterCharsPerSecond = 50.0;
   static const bool defaultSkipPunctuationDelay = false;
@@ -33,236 +22,205 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultAutoHideQuickMenu = false;
   static const String defaultMenuDisplayMode = 'windowed'; // 'windowed' or 'fullscreen'
   static const String defaultFastForwardMode = 'read_only'; // 'read_only' or 'force'
+  static const String defaultDialogueFontFamily = 'SourceHanSansCN'; // 对话文字字体
 
-  SharedPreferences? _prefs;
-  double _currentDialogOpacity = defaultDialogOpacity;
-  bool _currentIsFullscreen = defaultIsFullscreen;
-  bool _currentDarkMode = defaultDarkMode;
-  
-  // 打字机设置状态变量
-  double _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
-  bool _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
-  bool _currentSpeakerAnimation = defaultSpeakerAnimation;
-  bool _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
-  String _currentMenuDisplayMode = defaultMenuDisplayMode;
-  String _currentFastForwardMode = defaultFastForwardMode;
+  final _dataManager = UnifiedGameDataManager();
+  String? _projectName;
+  bool _isInitialized = false;
 
   Future<void> init() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    
-    // 获取项目名称以确定默认值
-    String projectName = 'SakiEngine';
+    if (_isInitialized) return;
+
+    // 获取项目名称
     try {
-      projectName = await ProjectInfoManager().getAppName();
+      _projectName = await ProjectInfoManager().getAppName();
     } catch (e) {
-      // 使用默认项目名称
+      _projectName = 'SakiEngine';
     }
-    
-    // 根据项目设置不同的默认菜单显示模式
-    String projectDefaultMenuDisplayMode = defaultMenuDisplayMode;
-    if (projectName == 'SoraNoUta') {
-      projectDefaultMenuDisplayMode = 'fullscreen';
-    }
-    
-    // 初始化时加载当前值
-    _currentDialogOpacity = _prefs?.getDouble(_dialogOpacityKey) ?? defaultDialogOpacity;
-    _currentIsFullscreen = _prefs?.getBool(_isFullscreenKey) ?? defaultIsFullscreen;
-    _currentDarkMode = _prefs?.getBool(_darkModeKey) ?? defaultDarkMode;
-    
-    // 加载打字机设置
-    _currentTypewriterCharsPerSecond = _prefs?.getDouble(_typewriterSpeedKey) ?? defaultTypewriterCharsPerSecond;
-    _currentSkipPunctuationDelay = _prefs?.getBool(_skipPunctuationDelayKey) ?? defaultSkipPunctuationDelay;
-    _currentSpeakerAnimation = _prefs?.getBool(_speakerAnimationKey) ?? defaultSpeakerAnimation;
-    _currentAutoHideQuickMenu = _prefs?.getBool(_autoHideQuickMenuKey) ?? defaultAutoHideQuickMenu;
-    _currentMenuDisplayMode = _prefs?.getString(_menuDisplayModeKey) ?? projectDefaultMenuDisplayMode;
-    _currentFastForwardMode = _prefs?.getString(_fastForwardModeKey) ?? defaultFastForwardMode;
+
+    // 初始化数据管理器
+    await _dataManager.init(_projectName!);
+
+    _isInitialized = true;
   }
 
   // 对话框不透明度
   Future<double> getDialogOpacity() async {
     await init();
-    return _currentDialogOpacity;
+    return _dataManager.dialogOpacity;
   }
 
-  double get currentDialogOpacity => _currentDialogOpacity;
+  double get currentDialogOpacity => _dataManager.dialogOpacity;
 
   Future<void> setDialogOpacity(double opacity) async {
     await init();
-    _currentDialogOpacity = opacity;
-    await _prefs?.setDouble(_dialogOpacityKey, opacity);
-    notifyListeners(); // 通知所有监听者
+    await _dataManager.setDialogOpacity(opacity, _projectName!);
+    notifyListeners();
   }
 
   // 全屏状态
   Future<bool> getIsFullscreen() async {
     await init();
-    return _currentIsFullscreen;
+    return _dataManager.isFullscreen;
   }
 
-  bool get currentIsFullscreen => _currentIsFullscreen;
+  bool get currentIsFullscreen => _dataManager.isFullscreen;
 
   Future<void> setIsFullscreen(bool isFullscreen) async {
     await init();
-    _currentIsFullscreen = isFullscreen;
-    await _prefs?.setBool(_isFullscreenKey, isFullscreen);
-    
-    // 应用全屏设置
-    if (isFullscreen) {
-      await windowManager.setFullScreen(true);
-    } else {
-      await windowManager.setFullScreen(false);
+    await _dataManager.setIsFullscreen(isFullscreen, _projectName!);
+
+    // 应用全屏设置（非Web平台）
+    if (!kIsWeb) {
+      if (isFullscreen) {
+        await PlatformWindowManager.setFullScreen(true);
+      } else {
+        await PlatformWindowManager.setFullScreen(false);
+      }
     }
-    
-    notifyListeners(); // 通知所有监听者
+
+    notifyListeners();
   }
 
   // 深色模式
   Future<bool> getDarkMode() async {
     await init();
-    return _currentDarkMode;
+    return _dataManager.darkMode;
   }
 
-  bool get currentDarkMode => _currentDarkMode;
+  bool get currentDarkMode => _dataManager.darkMode;
 
   Future<void> setDarkMode(bool isDarkMode) async {
     await init();
-    _currentDarkMode = isDarkMode;
-    await _prefs?.setBool(_darkModeKey, isDarkMode);
-    
+    await _dataManager.setDarkMode(isDarkMode, _projectName!);
+
     // 更新主题颜色
     SakiEngineConfig().updateThemeForDarkMode();
-    
-    notifyListeners(); // 通知所有监听者
+
+    notifyListeners();
   }
 
   // 打字机每秒字符数设置
   Future<double> getTypewriterCharsPerSecond() async {
     await init();
-    return _currentTypewriterCharsPerSecond;
+    return _dataManager.typewriterCharsPerSecond;
   }
 
   Future<void> setTypewriterCharsPerSecond(double charsPerSecond) async {
     await init();
-    _currentTypewriterCharsPerSecond = charsPerSecond;
-    await _prefs?.setDouble(_typewriterSpeedKey, charsPerSecond);
+    await _dataManager.setTypewriterCharsPerSecond(charsPerSecond, _projectName!);
     notifyListeners();
   }
 
   // 跳过标点符号延迟设置
   Future<bool> getSkipPunctuationDelay() async {
     await init();
-    return _currentSkipPunctuationDelay;
+    return _dataManager.skipPunctuationDelay;
   }
 
   Future<void> setSkipPunctuationDelay(bool skip) async {
     await init();
-    _currentSkipPunctuationDelay = skip;
-    await _prefs?.setBool(_skipPunctuationDelayKey, skip);
+    await _dataManager.setSkipPunctuationDelay(skip, _projectName!);
     notifyListeners();
   }
 
   // 说话人动画设置
   Future<bool> getSpeakerAnimation() async {
     await init();
-    return _currentSpeakerAnimation;
+    return _dataManager.speakerAnimation;
   }
 
-  bool get currentSpeakerAnimation => _currentSpeakerAnimation;
+  bool get currentSpeakerAnimation => _dataManager.speakerAnimation;
 
   Future<void> setSpeakerAnimation(bool enabled) async {
     await init();
-    _currentSpeakerAnimation = enabled;
-    await _prefs?.setBool(_speakerAnimationKey, enabled);
+    await _dataManager.setSpeakerAnimation(enabled, _projectName!);
     notifyListeners();
   }
 
   // 自动隐藏快捷菜单设置
   Future<bool> getAutoHideQuickMenu() async {
     await init();
-    return _currentAutoHideQuickMenu;
+    return _dataManager.autoHideQuickMenu;
   }
 
-  bool get currentAutoHideQuickMenu => _currentAutoHideQuickMenu;
+  bool get currentAutoHideQuickMenu => _dataManager.autoHideQuickMenu;
 
   Future<void> setAutoHideQuickMenu(bool enabled) async {
     await init();
-    _currentAutoHideQuickMenu = enabled;
-    await _prefs?.setBool(_autoHideQuickMenuKey, enabled);
+    await _dataManager.setAutoHideQuickMenu(enabled, _projectName!);
     notifyListeners();
   }
 
   // 菜单页面显示模式设置
   Future<String> getMenuDisplayMode() async {
     await init();
-    return _currentMenuDisplayMode;
+    return _dataManager.menuDisplayMode;
   }
 
-  String get currentMenuDisplayMode => _currentMenuDisplayMode;
+  String get currentMenuDisplayMode => _dataManager.menuDisplayMode;
 
   Future<void> setMenuDisplayMode(String mode) async {
     await init();
-    _currentMenuDisplayMode = mode;
-    await _prefs?.setString(_menuDisplayModeKey, mode);
+    await _dataManager.setMenuDisplayMode(mode, _projectName!);
     notifyListeners();
   }
 
   // 快进模式设置
   Future<String> getFastForwardMode() async {
     await init();
-    return _currentFastForwardMode;
+    return _dataManager.fastForwardMode;
   }
 
-  String get currentFastForwardMode => _currentFastForwardMode;
+  String get currentFastForwardMode => _dataManager.fastForwardMode;
 
   Future<void> setFastForwardMode(String mode) async {
     await init();
-    _currentFastForwardMode = mode;
-    await _prefs?.setString(_fastForwardModeKey, mode);
+    await _dataManager.setFastForwardMode(mode, _projectName!);
+    notifyListeners();
+  }
+
+  // 对话文字字体设置
+  Future<String> getDialogueFontFamily() async {
+    await init();
+    return _dataManager.dialogueFontFamily;
+  }
+
+  String get currentDialogueFontFamily => _dataManager.dialogueFontFamily;
+
+  Future<void> setDialogueFontFamily(String fontFamily) async {
+    await init();
+    await _dataManager.setDialogueFontFamily(fontFamily, _projectName!);
     notifyListeners();
   }
 
   // 恢复默认设置
   Future<void> resetToDefault() async {
     await init();
-    
-    // 获取项目名称以确定默认值
-    String projectName = 'SakiEngine';
-    try {
-      projectName = await ProjectInfoManager().getAppName();
-    } catch (e) {
-      // 使用默认项目名称
-    }
-    
+
     // 根据项目设置不同的默认菜单显示模式
     String projectDefaultMenuDisplayMode = defaultMenuDisplayMode;
-    if (projectName == 'SoraNoUta') {
+    if (_projectName == 'SoraNoUta') {
       projectDefaultMenuDisplayMode = 'fullscreen';
     }
-    
-    _currentDialogOpacity = defaultDialogOpacity;
-    _currentIsFullscreen = defaultIsFullscreen;
-    _currentDarkMode = defaultDarkMode;
-    _currentTypewriterCharsPerSecond = defaultTypewriterCharsPerSecond;
-    _currentSkipPunctuationDelay = defaultSkipPunctuationDelay;
-    _currentSpeakerAnimation = defaultSpeakerAnimation;
-    _currentAutoHideQuickMenu = defaultAutoHideQuickMenu;
-    _currentMenuDisplayMode = projectDefaultMenuDisplayMode;
-    _currentFastForwardMode = defaultFastForwardMode;
-    
-    await _prefs?.setDouble(_dialogOpacityKey, defaultDialogOpacity);
-    await _prefs?.setBool(_isFullscreenKey, defaultIsFullscreen);
-    await _prefs?.setBool(_darkModeKey, defaultDarkMode);
-    await _prefs?.setDouble(_typewriterSpeedKey, defaultTypewriterCharsPerSecond);
-    await _prefs?.setBool(_skipPunctuationDelayKey, defaultSkipPunctuationDelay);
-    await _prefs?.setBool(_speakerAnimationKey, defaultSpeakerAnimation);
-    await _prefs?.setBool(_autoHideQuickMenuKey, defaultAutoHideQuickMenu);
-    await _prefs?.setString(_menuDisplayModeKey, projectDefaultMenuDisplayMode);
-    await _prefs?.setString(_fastForwardModeKey, defaultFastForwardMode);
-    
-    // 应用默认全屏设置
-    await windowManager.setFullScreen(defaultIsFullscreen);
-    
-    notifyListeners(); // 通知所有监听者
+
+    await _dataManager.setDialogOpacity(defaultDialogOpacity, _projectName!);
+    await _dataManager.setIsFullscreen(defaultIsFullscreen, _projectName!);
+    await _dataManager.setDarkMode(defaultDarkMode, _projectName!);
+    await _dataManager.setTypewriterCharsPerSecond(defaultTypewriterCharsPerSecond, _projectName!);
+    await _dataManager.setSkipPunctuationDelay(defaultSkipPunctuationDelay, _projectName!);
+    await _dataManager.setSpeakerAnimation(defaultSpeakerAnimation, _projectName!);
+    await _dataManager.setAutoHideQuickMenu(defaultAutoHideQuickMenu, _projectName!);
+    await _dataManager.setMenuDisplayMode(projectDefaultMenuDisplayMode, _projectName!);
+    await _dataManager.setFastForwardMode(defaultFastForwardMode, _projectName!);
+    await _dataManager.setDialogueFontFamily(defaultDialogueFontFamily, _projectName!);
+
+    // 应用默认全屏设置（非Web平台）
+    if (!kIsWeb) {
+      await PlatformWindowManager.setFullScreen(defaultIsFullscreen);
+    }
+
+    notifyListeners();
   }
 
   // 获取所有设置

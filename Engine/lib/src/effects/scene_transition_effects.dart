@@ -11,6 +11,7 @@ enum TransitionType {
   diss,  // 直接图片渐变过渡
   wipe,  // 擦除效果 (未来扩展)
   slide, // 滑动效果 (未来扩展)
+  blink, // 睁眼效果 (上下黑屏移开，模拟睁开眼睛)
 }
 
 /// 转场效果管理器
@@ -89,6 +90,18 @@ class SceneTransitionEffectManager {
           onMidTransition: onMidTransition,
           onComplete: () {
             //print('[SceneTransition] wipe转场完成，移除覆盖层');
+            _removeOverlay();
+            _isTransitioning = false;
+            completer.complete();
+          },
+        );
+        break;
+      case TransitionType.blink:
+        transitionWidget = _BlinkTransitionOverlay(
+          duration: duration,
+          onMidTransition: onMidTransition,
+          onComplete: () {
+            //print('[SceneTransition] blink转场完成，移除覆盖层');
             _removeOverlay();
             _isTransitioning = false;
             completer.complete();
@@ -190,7 +203,6 @@ class _FadeTransitionOverlayState extends State<_FadeTransitionOverlay>
     // 在动画中点执行场景切换
     if (!_midTransitionExecuted && _controller.value >= 0.5) {
       _midTransitionExecuted = true;
-      print('[FadeTransition] 到达转场中点，执行回调');
       widget.onMidTransition();
     }
   }
@@ -221,12 +233,15 @@ class _FadeTransitionOverlayState extends State<_FadeTransitionOverlay>
           // 后半段：从黑屏淡入
           opacity = _fadeInAnimation.value;
         }
-        
-        return Material(
-          color: Colors.black.withOpacity(opacity),
-          child: const SizedBox(
-            width: double.infinity,
-            height: double.infinity,
+
+        return IgnorePointer(
+          ignoring: true, // 不拦截UI交互
+          child: Material(
+            color: Colors.black.withOpacity(opacity),
+            child: const SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+            ),
           ),
         );
       },
@@ -366,10 +381,11 @@ class _DissTransitionOverlayState extends State<_DissTransitionOverlay>
   void _onAnimationUpdate() {
     // 对于CG转场，延迟状态更新到90%，避免中途更新导致的闪烁
     // 对于普通背景转场，保持在50%更新
-    final isLikelyCG = widget.oldBackgroundName?.toLowerCase().contains('cg') == true || 
-                      widget.newBackgroundName?.toLowerCase().contains('cg') == true;
-    
-    final updateThreshold = isLikelyCG ? 0.9 : 0.5;
+    final isLikelyCG = widget.oldBackgroundName?.toLowerCase().contains('cg') == true ||
+        widget.newBackgroundName?.toLowerCase().contains('cg') == true;
+
+    // 将普通场景的切换点延后到动画完成前的 90%，避免 50% 时旧背景突然变暗
+    final updateThreshold = isLikelyCG ? 0.95 : 0.9;
     
     // 在指定进度执行场景切换
     if (!_midTransitionExecuted && _controller.value >= updateThreshold) {
@@ -532,7 +548,7 @@ class _WipeTransitionOverlayState extends State<_WipeTransitionOverlay>
       builder: (context, child) {
         // 计算当前扇形覆盖角度
         double sweepProgress;
-        
+
         if (_controller.value <= 0.35) {
           // 前30%：从0度顺时针旋转到360度
           sweepProgress = _wipeInAnimation.value;
@@ -543,14 +559,17 @@ class _WipeTransitionOverlayState extends State<_WipeTransitionOverlay>
           // 后30%：从360度逆时针旋转回0度
           sweepProgress = _wipeOutAnimation.value;
         }
-        
-        return Material(
-          color: Colors.transparent,
-          child: CustomPaint(
-            painter: _WipeMaskPainter(
-              sweepProgress: sweepProgress,
+
+        return IgnorePointer(
+          ignoring: true, // 不拦截UI交互
+          child: Material(
+            color: Colors.transparent,
+            child: CustomPaint(
+              painter: _WipeMaskPainter(
+                sweepProgress: sweepProgress,
+              ),
+              size: Size.infinite,
             ),
-            size: Size.infinite,
           ),
         );
       },
@@ -614,6 +633,188 @@ class _WipeMaskPainter extends CustomPainter {
 }
 
 
+/// 睁眼转场覆盖层（淡入黑屏，然后上下睁眼显示新场景）
+class _BlinkTransitionOverlay extends StatefulWidget {
+  final Duration duration;
+  final VoidCallback onMidTransition;
+  final VoidCallback onComplete;
+
+  const _BlinkTransitionOverlay({
+    required this.duration,
+    required this.onMidTransition,
+    required this.onComplete,
+  });
+
+  @override
+  State<_BlinkTransitionOverlay> createState() => _BlinkTransitionOverlayState();
+}
+
+class _BlinkTransitionOverlayState extends State<_BlinkTransitionOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeInAnimation;
+  late Animation<double> _blinkOutAnimation;
+  bool _midTransitionExecuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    // 前半段：淡入黑屏（像fade一样） (0 -> 1)
+    _fadeInAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+    ));
+
+    // 后半段：睁眼（上下遮罩移开） (1 -> 0)
+    _blinkOutAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+    ));
+
+    _controller.addListener(_onAnimationUpdate);
+    _controller.addStatusListener(_onAnimationStatus);
+
+    // 开始动画
+    _controller.forward();
+  }
+
+  void _onAnimationUpdate() {
+    // 在动画中点（淡入黑屏完成时）执行场景切换
+    if (!_midTransitionExecuted && _controller.value >= 0.5) {
+      _midTransitionExecuted = true;
+      widget.onMidTransition();
+    }
+  }
+
+  void _onAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      widget.onComplete();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        if (_controller.value <= 0.5) {
+          // 前半段：使用fade的淡入黑屏效果
+          return IgnorePointer(
+            ignoring: true,
+            child: Material(
+              color: Colors.black.withOpacity(_fadeInAnimation.value),
+              child: const SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          );
+        } else {
+          // 后半段：使用睁眼的上下遮罩移开效果
+          return IgnorePointer(
+            ignoring: true,
+            child: Material(
+              color: Colors.transparent,
+              child: CustomPaint(
+                painter: _BlinkMaskPainter(
+                  closeProgress: _blinkOutAnimation.value,
+                ),
+                size: Size.infinite,
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+}
+
+/// 睁眼遮罩绘制器
+class _BlinkMaskPainter extends CustomPainter {
+  final double closeProgress;
+
+  _BlinkMaskPainter({
+    required this.closeProgress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (closeProgress <= 0) return;
+
+    // 计算上下遮罩的高度（从0逐渐增长到屏幕高度的一半）
+    final maskHeight = (size.height / 2) * closeProgress;
+
+    // 模糊边缘的高度（羽化效果）
+    final blurHeight = size.height * 0.08; // 8%的屏幕高度作为模糊区域
+
+    // 绘制上方黑色遮罩（从顶部向下，带模糊边缘）
+    final topRect = Rect.fromLTWH(0, 0, size.width, maskHeight);
+    final topGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.black,
+        Colors.black,
+        Colors.black.withOpacity(0.0),
+      ],
+      stops: [
+        0.0,
+        math.max(0.0, 1.0 - (blurHeight / maskHeight)),
+        1.0,
+      ],
+    );
+
+    final topPaint = Paint()
+      ..shader = topGradient.createShader(topRect);
+    canvas.drawRect(topRect, topPaint);
+
+    // 绘制下方黑色遮罩（从底部向上，带模糊边缘）
+    final bottomRect = Rect.fromLTWH(0, size.height - maskHeight, size.width, maskHeight);
+    final bottomGradient = LinearGradient(
+      begin: Alignment.bottomCenter,
+      end: Alignment.topCenter,
+      colors: [
+        Colors.black,
+        Colors.black,
+        Colors.black.withOpacity(0.0),
+      ],
+      stops: [
+        0.0,
+        math.max(0.0, 1.0 - (blurHeight / maskHeight)),
+        1.0,
+      ],
+    );
+
+    final bottomPaint = Paint()
+      ..shader = bottomGradient.createShader(bottomRect);
+    canvas.drawRect(bottomRect, bottomPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BlinkMaskPainter oldDelegate) {
+    return oldDelegate.closeProgress != closeProgress;
+  }
+}
+
+
 /// 转场类型解析工具
 class TransitionTypeParser {
   static TransitionType parseTransitionType(String transitionString) {
@@ -627,6 +828,10 @@ class TransitionTypeParser {
         return TransitionType.wipe;
       case 'slide':
         return TransitionType.slide;
+      case 'blink':
+      case 'eyeopen':
+      case 'eye':
+        return TransitionType.blink;
       default:
         return TransitionType.fade; // 默认使用fade
     }

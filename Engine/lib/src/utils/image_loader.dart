@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 
 /// 图像加载器 - 支持多种图像格式包括AVIF和WebP
 /// 
@@ -23,6 +23,9 @@ import 'package:sakiengine/src/config/saki_engine_config.dart';
 class ImageLoader {
   /// 获取游戏路径，从dart-define或环境变量获取
   static String get _debugRoot {
+    if (kIsWeb) {
+      return '';
+    }
     const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
     if (fromDefine.isNotEmpty) return fromDefine;
     
@@ -34,6 +37,9 @@ class ImageLoader {
 
   /// 获取游戏路径，优先使用环境变量，如果没有则从assets读取default_game.txt
   static Future<String> _getGamePath() async {
+    if (kIsWeb) {
+      return '';
+    }
     // 如果环境变量已设置，直接使用
     if (_debugRoot.isNotEmpty) {
       return _debugRoot;
@@ -58,20 +64,54 @@ class ImageLoader {
   /// 从资源路径加载图像
   static Future<ui.Image?> loadImage(String assetPath) async {
     try {
+      // 检查是否为内存缓存路径
+      if (_isMemoryCachePath(assetPath)) {
+        return await _loadMemoryCacheImage(assetPath);
+      }
+      
       // 在debug模式下，优先从外部文件系统加载
-      if (kDebugMode) {
+      if (kDebugMode && !kIsWeb) {
         final externalImage = await _loadExternalImage(assetPath);
         if (externalImage != null) {
           return externalImage;
         }
         // 如果外部文件加载失败，回退到assets加载
-        print('外部图像加载失败，回退到assets: $assetPath');
       }
       
       // 统一使用AVIF加载器，它内部有完整的回退机制：AVIF → WebP → PNG
       return await _loadAvifImageWithFallback(assetPath);
     } catch (e) {
       print('加载图像失败 $assetPath: $e');
+      return null;
+    }
+  }
+  
+  /// 判断是否为内存缓存路径
+  static bool _isMemoryCachePath(String path) {
+    return CgImageCompositor().isCachePath(path);
+  }
+  
+  /// 从内存缓存加载图像
+  static Future<ui.Image?> _loadMemoryCacheImage(String assetPath) async {
+    try {
+      //print('[ImageLoader] 🐛 尝试从内存缓存加载: $assetPath');
+      
+      final imageBytes = CgImageCompositor().getImageBytes(assetPath);
+      if (imageBytes == null) {
+        //print('[ImageLoader] ❌ 内存缓存中未找到图像: $assetPath');
+        return null;
+      }
+      
+      //print('[ImageLoader] ✅ 找到内存缓存图像: $assetPath (${imageBytes.length} bytes)');
+      
+      final codec = await ui.instantiateImageCodec(imageBytes);
+      final frame = await codec.getNextFrame();
+      codec.dispose();
+      
+      //print('[ImageLoader] ✅ 成功解码图像: ${frame.image.width}x${frame.image.height}');
+      return frame.image;
+    } catch (e) {
+      //print('[ImageLoader] ❌ 从内存缓存加载图像失败 $assetPath: $e');
       return null;
     }
   }
@@ -89,20 +129,20 @@ class ImageLoader {
 
   /// 加载AVIF图像并提供回退机制
   static Future<ui.Image?> _loadAvifImageWithFallback(String assetPath) async {
-    print('[ImageLoader] 尝试加载图片: $assetPath');
+    //print('[ImageLoader] 尝试加载图片: $assetPath');
     
     final config = SakiEngineConfig();
     
     // 首先尝试原始路径（无论什么格式）
     try {
-      print('[ImageLoader] 尝试原始路径: $assetPath');
+      //print('[ImageLoader] 尝试原始路径: $assetPath');
       final originalImage = await _loadImageByFormat(assetPath);
       if (originalImage != null) {
-        print('[ImageLoader] 原始路径加载成功: $assetPath');
+        //print('[ImageLoader] 原始路径加载成功: $assetPath');
         return originalImage;
       }
     } catch (e) {
-      print('[ImageLoader] 原始路径加载失败: $assetPath, 错误: $e');
+      //print('[ImageLoader] 原始路径加载失败: $assetPath, 错误: $e');
     }
     
     // 如果原始路径失败，尝试回退格式（仅当原始是AVIF时）
@@ -111,33 +151,33 @@ class ImageLoader {
       if (config.preferWebpOverAvif) {
         final webpPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.webp');
         try {
-          print('[ImageLoader] 尝试WebP回退: $webpPath');
+          //print('[ImageLoader] 尝试WebP回退: $webpPath');
           final webpImage = await _loadStandardImage(webpPath);
           if (webpImage != null) {
-            print('[ImageLoader] WebP回退成功: $webpPath');
+            //print('[ImageLoader] WebP回退成功: $webpPath');
             return webpImage;
           }
         } catch (e) {
-          print('[ImageLoader] WebP回退失败: $webpPath, 错误: $e');
+          //print('[ImageLoader] WebP回退失败: $webpPath, 错误: $e');
         }
       }
       
       if (config.preferPngOverAvif) {
         final pngPath = assetPath.replaceAll(RegExp(r'\.avif$', caseSensitive: false), '.png');
         try {
-          print('[ImageLoader] 尝试PNG回退: $pngPath');
+          //print('[ImageLoader] 尝试PNG回退: $pngPath');
           final pngImage = await _loadStandardImage(pngPath);
           if (pngImage != null) {
-            print('[ImageLoader] PNG回退成功: $pngPath');
+            //print('[ImageLoader] PNG回退成功: $pngPath');
             return pngImage;
           }
         } catch (e) {
-          print('[ImageLoader] PNG回退失败: $pngPath, 错误: $e');
+          //print('[ImageLoader] PNG回退失败: $pngPath, 错误: $e');
         }
       }
     }
     
-    print('[ImageLoader] 所有尝试都失败，返回null: $assetPath');
+    //print('[ImageLoader] 所有尝试都失败，返回null: $assetPath');
     return null;
   }
 
@@ -147,7 +187,7 @@ class ImageLoader {
       Uint8List bytes;
       
       // 在debug模式下，优先从外部文件系统获取数据
-      if (kDebugMode) {
+      if (kDebugMode && !kIsWeb) {
         final gamePath = await _getGamePath();
         if (gamePath.isNotEmpty) {
           final relativePath = assetPath.startsWith('assets/')
@@ -183,7 +223,6 @@ class ImageLoader {
         return frame.image;
       } catch (e) {
         // 如果标准解码器失败，再尝试flutter_avif
-        print('标准AVIF解码失败，尝试flutter_avif解码器: $e');
         final frames = await decodeAvif(bytes);
         
         if (frames.isNotEmpty) {
@@ -193,7 +232,6 @@ class ImageLoader {
       
       return null;
     } catch (e) {
-      print('加载AVIF图像失败 $assetPath: $e');
       return null;
     }
   }
@@ -201,6 +239,10 @@ class ImageLoader {
   /// 从外部文件系统加载图像（debug模式）
   static Future<ui.Image?> _loadExternalImage(String assetPath) async {
     try {
+      if (kIsWeb) {
+        return null;
+      }
+
       final gamePath = await _getGamePath();
       if (gamePath.isEmpty) {
         return null;
@@ -242,9 +284,6 @@ class ImageLoader {
       
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('从外部文件系统加载图像失败 $assetPath: $e');
-      }
       return null;
     }
   }
@@ -257,7 +296,6 @@ class ImageLoader {
       final frame = await codec.getNextFrame();
       return frame.image;
     } catch (e) {
-      print('加载标准图像失败 $assetPath: $e');
       return null;
     }
   }

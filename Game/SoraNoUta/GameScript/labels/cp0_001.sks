@@ -27,7 +27,7 @@ lm "书包准备好了，今天的生活费我也塞里面了。"
 lm "昨天你爸买了点绿枣回来。我也给你装了点在书包里。"
 lm "等会去等夏悠的时候，也给她带点。"
 endnvlm
-scene sky
+scene sky with eyeopen
 nvlm
 //回到白天天空的背景，diss过渡，继续nvl模式
 "夏悠？想起来了什么。"
@@ -647,7 +647,7 @@ nvlm
 endnvlm
 x pose3 tameiki "啊...所以......所以你只是在想事情，并不是...并不是没钱了？那我刚说的话你就当没听到吧..."////依旧是脸红又害羞的样子，但是眼睛转了过来
 l "什么话？"
-"我明知故问。"
+"我明知故问。！"
 play sound poko
 x pose4 shy4 an fururu repeat 4 "笨蛋，没听到就算了。"////依旧脸红害羞，但是眼睛转了过去
 hide xiayo1

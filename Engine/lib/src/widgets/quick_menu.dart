@@ -1,15 +1,21 @@
 import 'dart:math';
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 import 'package:sakiengine/src/widgets/animated_tooltip.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class QuickMenu extends StatefulWidget {
   final VoidCallback onSave;
   final VoidCallback onLoad;
+  final VoidCallback? onQuickSave; // 新增：快速存档回调
+  final VoidCallback? onQuickLoad; // 新增：快速读档回调
   final VoidCallback onReview;
   final VoidCallback onSettings;
   final VoidCallback onBack;
@@ -19,11 +25,14 @@ class QuickMenu extends StatefulWidget {
   final VoidCallback? onAutoPlay; // 新增：自动播放回调
   final bool isAutoPlaying; // 新增：自动播放状态
   final VoidCallback? onThemeToggle; // 新增：主题切换回调
+  final VoidCallback? onFlowchart; // 新增：流程图回调
 
   const QuickMenu({
     super.key,
     required this.onSave,
     required this.onLoad,
+    this.onQuickSave, // 新增：快速存档回调（可选）
+    this.onQuickLoad, // 新增：快速读档回调（可选）
     required this.onReview,
     required this.onSettings,
     required this.onBack,
@@ -33,6 +42,7 @@ class QuickMenu extends StatefulWidget {
     this.onAutoPlay, // 新增：自动播放回调（可选）
     this.isAutoPlaying = false, // 新增：自动播放状态
     this.onThemeToggle, // 新增：主题切换回调（可选）
+    this.onFlowchart, // 新增：流程图回调（可选）
   });
 
   @override
@@ -50,15 +60,26 @@ class QuickMenu extends StatefulWidget {
   static void hideOnOverlayOpen() {
     _globalInstance?._hideOnOverlayOpen();
   }
+
+  /// 外部调用：显示快捷菜单（用于移动端触屏唤起）
+  static void showMenu() {
+    _globalInstance?._showMenu();
+  }
+
+  /// 外部调用：触发延迟隐藏（用于移动端触屏）
+  static void scheduleHide() {
+    _globalInstance?._scheduleHideMenu();
+  }
 }
 
-class _QuickMenuState extends State<QuickMenu> 
+class _QuickMenuState extends State<QuickMenu>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   String? _hoveredButtonText;
   int? _hoveredButtonIndex;
   int _lastValidButtonIndex = 0; // 保存最后一个有效的按钮索引
   String _lastValidButtonText = ''; // 保存最后一个有效的按钮文本
   final GlobalKey _menuKey = GlobalKey();
+  final LocalizationManager _localization = LocalizationManager();
   
   // 自动隐藏相关状态
   bool _isAutoHideEnabled = false;
@@ -77,32 +98,35 @@ class _QuickMenuState extends State<QuickMenu>
   @override
   void initState() {
     super.initState();
-    
+
     // 注册全局实例
     QuickMenu._globalInstance = this;
-    
+
     // 添加应用生命周期监听
     WidgetsBinding.instance.addObserver(this);
-    
+
+    // 检查是否为移动端
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+
     // 初始化滑动动画
     _slideController = AnimationController(
       duration: _animationDuration,
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(-0.8, 0), // 向左滑出80%
+      end: Offset(isMobile ? -5.0 : -0.8, 0), // 移动端滑出更多以完全隐藏
     ).animate(CurvedAnimation(
       parent: _slideController,
       curve: Curves.easeInOut,
     ));
-    
+
     // 加载设置并监听变化
-    _loadAutoHideSetting();
+    _loadAutoHideSetting(isMobile: isMobile);
     _loadThemeSetting(); // 新增：加载主题设置
     SettingsManager().addListener(_onSettingsChanged);
-    
+
     // 初始状态：如果开启自动隐藏，则隐藏菜单
     if (_isAutoHideEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -126,19 +150,19 @@ class _QuickMenuState extends State<QuickMenu>
     super.dispose();
   }
 
-  void _loadAutoHideSetting() async {
+  void _loadAutoHideSetting({bool isMobile = false}) async {
     final enabled = await SettingsManager().getAutoHideQuickMenu();
     if (mounted) {
       final wasEnabled = _isAutoHideEnabled;
       setState(() {
         _isAutoHideEnabled = enabled;
       });
-      
+
       // 设置变化时的处理
-      if (enabled && !wasEnabled) {
+      if (_isAutoHideEnabled && !wasEnabled) {
         // 刚开启自动隐藏
         _hideMenu();
-      } else if (!enabled && wasEnabled) {
+      } else if (!_isAutoHideEnabled && wasEnabled) {
         // 刚关闭自动隐藏
         if (_isMenuHidden) {
           _showMenu();
@@ -257,12 +281,17 @@ class _QuickMenuState extends State<QuickMenu>
     final config = SakiEngineConfig();
     final scale = context.scaleFor(ComponentType.menu);
     final screenSize = MediaQuery.of(context).size;
+    final mediaPadding = MediaQuery.of(context).padding;
+
+    // 移动端（iOS/Android）需要额外的左边距以避开刘海/灵动岛
+    final isMobile = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    final extraLeftPadding = isMobile ? mediaPadding.left : 0.0;
 
     return Stack(
       children: [
         // 触发区域 - 窗口高度的一半，放在最底层
         Positioned(
-          left: 0,
+          left: extraLeftPadding,
           top: 0,
           child: MouseRegion(
             onEnter: (_) => _onTriggerAreaEnter(),
@@ -275,10 +304,10 @@ class _QuickMenuState extends State<QuickMenu>
             ),
           ),
         ),
-        
+
         // 实际的快捷菜单 - 放在触发区域之上，但确保不完全遮挡触发区域
         Positioned(
-          left: 20 * scale,
+          left: 20 * scale + extraLeftPadding,
           top: 20 * scale,
           child: MouseRegion(
             onEnter: (_) {
@@ -320,65 +349,84 @@ class _QuickMenuState extends State<QuickMenu>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // 快速存档按钮（放在最前面）
+                        if (widget.onQuickSave != null) ...[
+                          _QuickMenuButton(
+                            text: _localization.t('quickMenu.quickSave'),
+                            icon: Icons.save_as_outlined, // 简单的保存图标用于快速存档
+                            onPressed: widget.onQuickSave!,
+                            scale: scale,
+                            config: config,
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              _hoveredButtonIndex = hovering ? 0 : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = 0;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         _QuickMenuButton(
-                          text: '存档',
-                          icon: Icons.save_alt_outlined,
+                          text: _localization.t('quickMenu.save'),
+                          icon: Icons.save_outlined, // 有箭头的保存图标用于普通存档
                           onPressed: widget.onSave,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 0 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 1 : 0) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 0;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 1 : 0;
                               _lastValidButtonText = text;
                             }
                           }),
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '读档',
+                          text: _localization.t('quickMenu.load'),
                           icon: Icons.folder_open_outlined,
                           onPressed: widget.onLoad,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 1 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 2 : 1) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 1;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 2 : 1;
                               _lastValidButtonText = text;
                             }
                           }),
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '回顾',
+                          text: _localization.t('quickMenu.review'),
                           icon: Icons.auto_stories_outlined,
                           onPressed: widget.onReview,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 2 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 3 : 2) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 2;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 3 : 2;
                               _lastValidButtonText = text;
                             }
                           }),
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '回退',
+                          text: _localization.t('quickMenu.rollback'),
                           icon: Icons.undo_outlined,
                           onPressed: widget.onPreviousDialogue,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            _hoveredButtonIndex = hovering ? 3 : null;
+                            _hoveredButtonIndex = hovering ? (widget.onQuickSave != null ? 4 : 3) : null;
                             if (hovering) {
-                              _lastValidButtonIndex = 3;
+                              _lastValidButtonIndex = widget.onQuickSave != null ? 4 : 3;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -387,7 +435,7 @@ class _QuickMenuState extends State<QuickMenu>
                         // 新增：自动播放按钮
                         if (widget.onAutoPlay != null) ...[
                           _QuickMenuButton(
-                            text: '自动',
+                            text: _localization.t('quickMenu.auto'),
                             icon: Icons.play_arrow_outlined,
                             onPressed: widget.onAutoPlay!,
                             scale: scale,
@@ -395,9 +443,10 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isAutoPlaying, // 传递自动播放状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              _hoveredButtonIndex = hovering ? 4 : null;
+                              final index = widget.onQuickSave != null ? 5 : 4;
+                              _hoveredButtonIndex = hovering ? index : null;
                               if (hovering) {
-                                _lastValidButtonIndex = 4;
+                                _lastValidButtonIndex = index;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -407,7 +456,7 @@ class _QuickMenuState extends State<QuickMenu>
                         // 新增：快进按钮（跳过已读文本）
                         if (widget.onSkipRead != null) ...[
                           _QuickMenuButton(
-                            text: '快进',
+                            text: _localization.t('quickMenu.skip'),
                             icon: Icons.fast_forward_outlined,
                             onPressed: widget.onSkipRead!,
                             scale: scale,
@@ -415,9 +464,11 @@ class _QuickMenuState extends State<QuickMenu>
                             isPressed: widget.isFastForwarding, // 传递快进状态
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              _hoveredButtonIndex = hovering ? 5 : null;
+                              final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                              final index = widget.onAutoPlay != null ? baseIndex + 1 : baseIndex;
+                              _hoveredButtonIndex = hovering ? index : null;
                               if (hovering) {
-                                _lastValidButtonIndex = 5;
+                                _lastValidButtonIndex = index;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -427,19 +478,20 @@ class _QuickMenuState extends State<QuickMenu>
                         // 新增：主题切换按钮
                         if (widget.onThemeToggle != null) ...[
                           _QuickMenuButton(
-                            text: _isDarkMode ? '浅色' : '深色',
+                            text: _isDarkMode ? _localization.t('quickMenu.theme.light') : _localization.t('quickMenu.theme.dark'),
                             icon: _isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                             onPressed: _toggleTheme,
                             scale: scale,
                             config: config,
                             onHover: (hovering, text) => setState(() {
                               _hoveredButtonText = hovering ? text : null;
-                              final themeButtonIndex = widget.onAutoPlay != null 
-                                  ? (widget.onSkipRead != null ? 6 : 5)
-                                  : (widget.onSkipRead != null ? 5 : 4);
-                              _hoveredButtonIndex = hovering ? themeButtonIndex : null;
+                              final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                              final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                              final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                              final index = baseIndex + autoIndex + skipIndex;
+                              _hoveredButtonIndex = hovering ? index : null;
                               if (hovering) {
-                                _lastValidButtonIndex = themeButtonIndex;
+                                _lastValidButtonIndex = index;
                                 _lastValidButtonText = text;
                               }
                             }),
@@ -448,69 +500,87 @@ class _QuickMenuState extends State<QuickMenu>
                         ],
                         // 新增：自动隐藏切换按钮
                         _QuickMenuButton(
-                          text: _isAutoHideEnabled ? '固定' : '隐藏',
+                          text: _isAutoHideEnabled ? _localization.t('quickMenu.autoHide.pin') : _localization.t('quickMenu.autoHide.hide'),
                           icon: _isAutoHideEnabled ? Icons.push_pin_outlined : Icons.push_pin_sharp,
                           onPressed: _toggleAutoHide,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final autoHideButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 7 : 6)
-                                    : (widget.onThemeToggle != null ? 6 : 5))
-                                : (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 6 : 5)
-                                    : (widget.onThemeToggle != null ? 5 : 4));
-                            _hoveredButtonIndex = hovering ? autoHideButtonIndex : null;
+                            final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                            final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                            final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                            final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                            final index = baseIndex + autoIndex + skipIndex + themeIndex;
+                            _hoveredButtonIndex = hovering ? index : null;
                             if (hovering) {
-                              _lastValidButtonIndex = autoHideButtonIndex;
+                              _lastValidButtonIndex = index;
                               _lastValidButtonText = text;
                             }
                           }),
                         ),
                         _buildDivider(scale, config),
+                        // 新增：流程图按钮
+                        if (widget.onFlowchart != null) ...[
+                          _QuickMenuButton(
+                            text: _localization.t('quickMenu.flowchart'),
+                            icon: Icons.account_tree_outlined,
+                            onPressed: widget.onFlowchart!,
+                            scale: scale,
+                            config: config,
+                            onHover: (hovering, text) => setState(() {
+                              _hoveredButtonText = hovering ? text : null;
+                              final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                              final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                              final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                              final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                              final index = baseIndex + autoIndex + skipIndex + themeIndex + 1;
+                              _hoveredButtonIndex = hovering ? index : null;
+                              if (hovering) {
+                                _lastValidButtonIndex = index;
+                                _lastValidButtonText = text;
+                              }
+                            }),
+                          ),
+                          _buildDivider(scale, config),
+                        ],
                         _QuickMenuButton(
-                          text: '设置',
+                          text: _localization.t('quickMenu.settings'),
                           icon: Icons.settings_outlined,
                           onPressed: widget.onSettings,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final settingsButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 8 : 7)
-                                    : (widget.onThemeToggle != null ? 7 : 6))
-                                : (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 7 : 6)
-                                    : (widget.onThemeToggle != null ? 6 : 5));
-                            _hoveredButtonIndex = hovering ? settingsButtonIndex : null;
+                            final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                            final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                            final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                            final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                            final index = baseIndex + autoIndex + skipIndex + themeIndex + 1;
+                            _hoveredButtonIndex = hovering ? index : null;
                             if (hovering) {
-                              _lastValidButtonIndex = settingsButtonIndex;
+                              _lastValidButtonIndex = index;
                               _lastValidButtonText = text;
                             }
                           }),
                         ),
                         _buildDivider(scale, config),
                         _QuickMenuButton(
-                          text: '返回',
+                          text: _localization.t('quickMenu.back'),
                           icon: Icons.arrow_back_rounded,
                           onPressed: widget.onBack,
                           scale: scale,
                           config: config,
                           onHover: (hovering, text) => setState(() {
                             _hoveredButtonText = hovering ? text : null;
-                            final returnButtonIndex = widget.onAutoPlay != null
-                                ? (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 9 : 8)
-                                    : (widget.onThemeToggle != null ? 8 : 7))
-                                : (widget.onSkipRead != null 
-                                    ? (widget.onThemeToggle != null ? 8 : 7)
-                                    : (widget.onThemeToggle != null ? 7 : 6));
-                            _hoveredButtonIndex = hovering ? returnButtonIndex : null;
+                            final baseIndex = widget.onQuickSave != null ? 5 : 4;
+                            final autoIndex = widget.onAutoPlay != null ? 1 : 0;
+                            final skipIndex = widget.onSkipRead != null ? 1 : 0;
+                            final themeIndex = widget.onThemeToggle != null ? 1 : 0;
+                            final index = baseIndex + autoIndex + skipIndex + themeIndex + 2;
+                            _hoveredButtonIndex = hovering ? index : null;
                             if (hovering) {
-                              _lastValidButtonIndex = returnButtonIndex;
+                              _lastValidButtonIndex = index;
                               _lastValidButtonText = text;
                             }
                           }),
@@ -577,7 +647,8 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
-  
+  final _uiSoundManager = UISoundManager();
+
   // 新增：按下状态的动画控制器
   late AnimationController _pressedAnimationController;
   late Animation<double> _pressedIconAnimation;
@@ -657,12 +728,16 @@ class _QuickMenuButtonState extends State<_QuickMenuButton> with TickerProviderS
         height: 48 * scale,
         margin: EdgeInsets.symmetric(horizontal: 2 * scale, vertical: 4 * scale),
         child: InkWell(
-          onTap: widget.onPressed,
+          onTap: () {
+            _uiSoundManager.playButtonClick();
+            widget.onPressed();
+          },
           onHover: (hovering) {
             setState(() => _isHovered = hovering);
             widget.onHover(hovering, widget.text);
-            
+
             if (hovering) {
+              _uiSoundManager.playButtonHover();
               _animationController.forward();
             } else {
               _animationController.reverse();

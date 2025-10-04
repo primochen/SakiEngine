@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/config/config_models.dart';
@@ -12,9 +14,13 @@ import 'package:sakiengine/src/utils/debug_logger.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart'; // 新增：导入SaveLoadManager
+import 'package:sakiengine/src/utils/ui_sound_manager.dart'; // 新增：导入UISoundManager
+import 'src/utils/platform_window_manager_io.dart' if (dart.library.html) 'src/utils/platform_window_manager_web.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -33,12 +39,12 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
+    PlatformWindowManager.addListener(this);
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    PlatformWindowManager.removeListener(this);
     super.dispose();
   }
 
@@ -46,14 +52,12 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
   Future<void> onWindowClose() async {
     bool shouldClose = await _showExitConfirmation();
     if (shouldClose) {
-      // 优化退出流程：先关闭窗口再退出程序
+      // 修复Windows关闭游戏的bug：直接销毁窗口，避免重复触发onWindowClose
       try {
-        await windowManager.close();
-        await Future.delayed(const Duration(milliseconds: 100));
-        SystemNavigator.pop();
+        await PlatformWindowManager.destroy();
       } catch (e) {
-        // 如果关闭失败，使用原有方法
-        await windowManager.destroy();
+        // 如果销毁失败，使用系统退出
+        SystemNavigator.pop();
       }
     }
   }
@@ -74,6 +78,18 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
         });
       },
     );
+  }
+
+  // 新增：继续游戏（加载快速存档）
+  Future<void> _continueGame() async {
+    try {
+      final quickSave = await SaveLoadManager().loadQuickSave();
+      if (quickSave != null) {
+        _enterGame(saveSlot: quickSave);
+      }
+    } catch (e) {
+      debugPrint('快速读档失败: $e');
+    }
   }
 
   void _returnToMainMenu() {
@@ -112,6 +128,7 @@ class _GameContainerState extends State<GameContainer> with WindowListener {
                 // 这个回调现在只是个占位符，实际的load逻辑在MainMenuScreen内部处理
               },
               onLoadGameWithSave: (saveSlot) => _enterGame(saveSlot: saveSlot),
+              onContinueGame: _continueGame, // 新增：传递继续游戏回调
               skipMusicDelay: _isReturningFromGame,
             );
             // 重置标记，确保下次进入主菜单时正常延迟
@@ -148,6 +165,14 @@ void main() async {
     // 初始化Flutter绑定
     WidgetsFlutterBinding.ensureInitialized();
 
+    // 移动端强制横屏
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+
     // 注册fvp以支持所有平台的视频播放，特别是Windows
     fvp.registerWith(options: {
       'global': {
@@ -155,21 +180,32 @@ void main() async {
       }
     });
 
-    // 初始化窗口管理器
-    await windowManager.ensureInitialized();
-    await windowManager.setPreventClose(true);
-    
-    // 设置窗口默认最大化
-    await windowManager.maximize();
+    // 初始化窗口管理器（非Web平台）
+    if (!kIsWeb) {
+      await PlatformWindowManager.ensureInitialized();
+      await PlatformWindowManager.setPreventClose(true);
+
+      // 设置窗口默认最大化
+      await PlatformWindowManager.maximize();
+    }
 
     // 初始化系统热键，清理之前的注册（用于热重载）
-    await hotKeyManager.unregisterAll();
+    // hotkey_manager 只在桌面平台可用
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      await hotKeyManager.unregisterAll();
+    }
 
     // 加载引擎配置
     await SakiEngineConfig().loadConfig();
 
     // 初始化设置管理器
     await SettingsManager().init();
+
+    // 初始化多语言管理器
+    await LocalizationManager().init();
+
+    // 初始化UI音效管理器
+    await UISoundManager().initialize();
 
     // 初始化全局变量管理器并打印变量状态
     await GlobalVariableManager().init();
@@ -210,10 +246,24 @@ class SakiEngineApp extends StatefulWidget {
 }
 
 class _SakiEngineAppState extends State<SakiEngineApp> {
+  String? _lastSetTitle; // 添加状态追踪
+  late final Listenable _settingsAppListenable;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsAppListenable = Listenable.merge([
+      SettingsManager(),
+      LocalizationManager(),
+    ]);
+  }
+  
   @override
   Widget build(BuildContext context) {
+    final localization = LocalizationManager();
+
     return AnimatedBuilder(
-      animation: SettingsManager(),
+      animation: _settingsAppListenable,
       builder: (context, child) {
         return FutureBuilder(
           future: moduleLoader.getCurrentModule(),
@@ -221,6 +271,13 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
             if (!snapshot.hasData) {
               return MaterialApp(
                 debugShowCheckedModeBanner: false,
+                locale: localization.currentLocale,
+                supportedLocales: localization.supportedLocales,
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
                 home: Scaffold(
                   body: Center(
                     child: Container(color: Colors.black),
@@ -237,14 +294,32 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
                 final appTitle = titleSnapshot.data ?? 'SakiEngine';
                 final customTheme = gameModule.createTheme();
 
-                // 设置窗口标题
-                if (titleSnapshot.hasData) {
-                  windowManager.setTitle(appTitle);
+                // 只在标题真正改变时设置窗口标题，Web平台增加额外的延迟
+                if (titleSnapshot.hasData && _lastSetTitle != appTitle) {
+                  _lastSetTitle = appTitle;
+                  // 使用addPostFrameCallback避免在build期间调用
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // Web平台延迟更长时间，确保DOM完全稳定
+                    if (kIsWeb) {
+                      Timer(const Duration(milliseconds: 500), () {
+                        PlatformWindowManager.setTitle(appTitle);
+                      });
+                    } else {
+                      PlatformWindowManager.setTitle(appTitle);
+                    }
+                  });
                 }
 
                 return MaterialApp(
                   title: appTitle,
                   debugShowCheckedModeBanner: false,
+                  locale: localization.currentLocale,
+                  supportedLocales: localization.supportedLocales,
+                  localizationsDelegates: const [
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
                   theme: customTheme ??
                       ThemeData(
                         primarySwatch: Colors.blue,
@@ -303,20 +378,21 @@ class _StartupMaskWrapperState extends State<StartupMaskWrapper>
   Future<void> _startMaskAndPrewarm() async {
     if (mounted) {
       try {
-        // 等待1秒保持黑屏，然后预热
-        await Future.delayed(const Duration(milliseconds: 1000));
+        // Web平台使用更长的启动延迟，确保渲染稳定
+        final delay = kIsWeb ? 1500 : 1000;
+        await Future.delayed(Duration(milliseconds: delay));
 
-        // 在后台预热
-        await TransitionPrewarmingManager.instance.prewarm(context);
+        // 在后台预热，Web平台使用更保守的预热策略
+        if (mounted) {
+          await TransitionPrewarmingManager.instance.prewarm(context);
+        }
 
         if (mounted) {
           _prewarmingComplete = true;
           // 开始淡出动画
           _fadeController.forward();
         }
-        print('[StartupMask] 启动遮罩和预热完成，开始淡出');
       } catch (e) {
-        print('[StartupMask] 启动遮罩和预热失败: $e');
         // 即使失败也要开始淡出，避免永远黑屏
         if (mounted) {
           _prewarmingComplete = true;

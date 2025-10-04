@@ -32,11 +32,10 @@ class CgCharacterRenderer {
       final characterId = entry.key;
       final characterState = entry.value;
 
-      // 使用resourceId作为key，确保唯一性
-      final widgetKey = 'cg_${characterState.resourceId}';
+      final widgetKey = 'cg_$characterId';
       
       return FutureBuilder<List<CharacterLayerInfo>>(
-        key: ValueKey(widgetKey), // 使用resourceId作为key
+        key: ValueKey(widgetKey),
         future: CharacterLayerParser.parseCharacterLayers(
           resourceId: characterState.resourceId,
           pose: characterState.pose ?? 'pose1',
@@ -51,7 +50,7 @@ class CgCharacterRenderer {
 
           // 使用同步CG显示组件来处理首次显示的同步问题
           return SynchronizedCgDisplay(
-            key: ValueKey('sync_cg_${characterState.resourceId}'),
+            key: ValueKey('sync_cg_$characterId'),
             layerInfos: layerInfos,
             resourceId: characterState.resourceId,
             isFadingOut: characterState.isFadingOut,
@@ -98,9 +97,12 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 300),
     );
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
 
     _loadImage();
     _loadShader();
@@ -120,7 +122,7 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
   @override
   void didUpdateWidget(covariant CgCharacterLayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // 检查是否开始淡出
     if (!oldWidget.isFadingOut && widget.isFadingOut) {
       // 开始淡出动画
@@ -130,14 +132,20 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
       });
       return;
     }
-    
+
+    // 无论是否资源名称改变，只要不是淡出状态，就确保图像完整显示
     if (oldWidget.assetName != widget.assetName) {
+      // 资源改变时，保存当前图像作为过渡源
       _previousImage = _currentImage;
       _loadImage().then((_) {
-        if (mounted) {
+        if (mounted && !widget.isFadingOut) {
+          // 平滑过渡到新图像
           _controller.forward(from: 0.0);
         }
       });
+    } else if (!widget.isFadingOut && _controller.value < 1.0) {
+      // 资源未改变但动画未完成，继续动画
+      _controller.forward();
     }
   }
 
@@ -149,16 +157,17 @@ class _CgCharacterLayerState extends State<CgCharacterLayer>
         setState(() {
           _currentImage = image;
         });
-        
+
         // 确保在下一帧再通知准备好了，这样setState已经完成
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             widget.onReady?.call();
+            // 如果不是淡出状态，确保动画开始
+            if (!widget.isFadingOut) {
+              _controller.forward(from: 0.0);
+            }
           }
         });
-        
-        // 始终触发动画
-        _controller.forward(from: 0.0);
       }
     }
   }
@@ -338,39 +347,21 @@ class _SynchronizedCgDisplayState extends State<SynchronizedCgDisplay> {
     
     //print('[SynchronizedCgDisplay] 初始化 ${widget.resourceId}, 是否首次显示: $_isFirstDisplay');
     
+    // 修复：无论首次显示还是非首次显示，都直接允许显示图层，避免过渡动画中的空白
+    _allLayersReady = true;
+    _canShowLayers = true;
+    
+    // 标记这个CG已经显示过了，避免后续的同步等待
     if (_isFirstDisplay) {
-      // 初始化所有图层的状态为未准备好
-      for (final layerInfo in widget.layerInfos) {
-        _layerReadyStatus[layerInfo.layerType] = false;
-      }
-      _canShowLayers = false; // 首次显示时，不允许显示图层
-      //print('[SynchronizedCgDisplay] 首次显示，等待图层: ${_layerReadyStatus.keys.toList()}');
-    } else {
-      // 不是首次显示，直接标记为准备好
-      _allLayersReady = true;
-      _canShowLayers = true; // 非首次显示时，立即允许显示
-      //print('[SynchronizedCgDisplay] 非首次显示，立即允许显示');
+      _displayedCgs.add(widget.resourceId);
     }
+    
+    //print('[SynchronizedCgDisplay] 直接允许显示，跳过同步等待');
   }
 
   void _onLayerReady(String layerType) {
-    if (!_isFirstDisplay) return;
-    
-    //print('[SynchronizedCgDisplay] 图层准备完成: $layerType for ${widget.resourceId}');
-    
-    setState(() {
-      _layerReadyStatus[layerType] = true;
-      _allLayersReady = _layerReadyStatus.values.every((ready) => ready);
-      
-      //print('[SynchronizedCgDisplay] 所有图层状态: $_layerReadyStatus');
-      
-      if (_allLayersReady) {
-        // 标记这个CG已经显示过了
-        _displayedCgs.add(widget.resourceId);
-        _canShowLayers = true; // 现在允许显示所有图层
-        //print('[SynchronizedCgDisplay] 所有图层准备完成，现在允许显示 ${widget.resourceId}');
-      }
-    });
+    // 已经跳过同步等待逻辑，这个方法现在不需要做任何事情
+    return;
   }
 
   @override

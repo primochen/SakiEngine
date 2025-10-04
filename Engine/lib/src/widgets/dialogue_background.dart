@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
+import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 
 /// 对话框背景容器组件
 /// 
@@ -65,10 +66,7 @@ class DialogueBackground extends StatelessWidget {
                 child: Opacity(
                   opacity: config.baseWindowBackgroundAlpha * dialogOpacity,
                   child: ColorFiltered(
-                    colorFilter: ColorFilter.mode(
-                      Colors.transparent,
-                      config.baseWindowBackgroundBlendMode,
-                    ),
+                    colorFilter: SvgColorFilterUtils.getSvgColorTemperatureFilter(config),
                     child: FittedBox(
                       fit: BoxFit.none,
                       alignment: Alignment(

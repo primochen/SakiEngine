@@ -109,8 +109,14 @@ mkdir -p "$ENGINE_DIR/assets"
 echo -e "${YELLOW}正在链接游戏资源和脚本...${NC}"
 # 为选中的游戏项目创建Assets符号链接
 ln -shf "$GAME_DIR/Assets" "$ENGINE_DIR/assets/Assets"
-# 为选中的游戏项目创建GameScript符号链接
-ln -shf "$GAME_DIR/GameScript" "$ENGINE_DIR/assets/GameScript"
+# 为选中的游戏项目创建 GameScript* 符号链接
+for script_dir in "$GAME_DIR"/GameScript*; do
+  if [ -d "$script_dir" ]; then
+    script_name=$(basename "$script_dir")
+    rm -rf "$ENGINE_DIR/assets/$script_name"
+    ln -shf "$script_dir" "$ENGINE_DIR/assets/$script_name"
+  fi
+done
 
 # 复制 default_game.txt 到 assets 目录
 echo -e "${YELLOW}正在复制 default_game.txt 到 assets 目录...${NC}"

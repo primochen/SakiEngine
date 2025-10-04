@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # Add flutter_animate dependency (using specific version constraint)
   flutter_animate: ^4.5.0 # Use a specific constraint like ^4.0.0 or newer
@@ -39,7 +41,6 @@ dependencies:
   cupertino_icons: ^1.0.6
   window_manager: ^0.4.3
   flutter_screenutil: ^5.9.3
-  shared_preferences: ^2.5.3
   provider: ^6.1.4
   path: ^1.9.1
   path_provider: ^2.1.5
@@ -79,9 +80,19 @@ flutter:
   assets:
     - assets/default_game.txt
     - assets/fonts/
+    - assets/GameScript_en/
+    - assets/GameScript_en/labels/
+    - assets/GameScript_en/configs/
     - assets/GameScript/
     - assets/GameScript/labels/
     - assets/GameScript/configs/
+    - assets/GameScript_zh-Hant/
+    - assets/GameScript_zh-Hant/labels/
+    - assets/GameScript_zh-Hant/configs/
+    - assets/GameScript_ja/
+    - assets/GameScript_ja/labels/
+    - assets/GameScript_ja/configs/
+    - assets/i18n/
     - assets/Assets/
     - assets/Assets/music/
     - assets/Assets/images/

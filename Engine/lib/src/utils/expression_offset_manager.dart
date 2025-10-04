@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sakiengine/src/utils/character_composite_cache.dart';
 
 /// 差分偏移配置类
 class ExpressionOffsetConfig {
@@ -43,9 +44,9 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose6',
       xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0279, // 纵向偏移（可调整）
-      alpha: 1.0, // 透明度便于对准
-      scale: 0.97, // 新增：缩放比例（可调整）
+      yOffset: 0.028, // 纵向偏移（可调整）
+      alpha: 0.4, // 透明度便于对准
+      scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
     // xiayo1 pose6 帽子配置
@@ -62,9 +63,9 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose7',
       xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0279, // 纵向偏移（可调整）
-      alpha: 1.0, // 透明度便于对准
-      scale: 0.97, // 新增：缩放比例（可调整）
+      yOffset: 0.028, // 纵向偏移（可调整）
+      alpha: 0.4, // 透明度便于对准
+      scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
     // xiayo1 pose7 帽子配置
@@ -81,9 +82,9 @@ class ExpressionOffsetManager {
       characterId: 'xiayo1',
       pose: 'pose8',
       xOffset: 0.0, // 横向偏移（可调整）
-      yOffset: 0.0279, // 纵向偏移（可调整）
-      alpha: 1.0, // 透明度便于对准
-      scale: 0.97, // 新增：缩放比例（可调整）
+      yOffset: 0.028, // 纵向偏移（可调整）
+      alpha: 0.4, // 透明度便于对准
+      scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
     // xiayo1 pose8 帽子配置
@@ -96,25 +97,24 @@ class ExpressionOffsetManager {
       scale: 1.0, // 缩放比例（可调整）
     ));
     
-    if (kDebugMode) {
-      print('[ExpressionOffsetManager] 已初始化默认配置: ${_offsetConfigs.keys}');
-    }
+    // 默认配置初始化日志已移除
   }
   
   /// 添加偏移配置
   void addOffsetConfig(ExpressionOffsetConfig config) {
     _offsetConfigs[config.key] = config;
-    if (kDebugMode) {
-      print('[ExpressionOffsetManager] 添加配置: ${config.toString()}');
-    }
+    CharacterCompositeCache.instance.invalidate(
+      config.characterId,
+      config.pose,
+    );
   }
   
   /// 移除偏移配置
   void removeOffsetConfig(String characterId, String pose) {
     final key = '${characterId}_$pose';
     final removed = _offsetConfigs.remove(key);
-    if (kDebugMode && removed != null) {
-      print('[ExpressionOffsetManager] 移除配置: $key');
+    if (removed != null) {
+      CharacterCompositeCache.instance.invalidate(characterId, pose);
     }
   }
   
@@ -160,9 +160,7 @@ class ExpressionOffsetManager {
   /// 清空所有配置
   void clearAllConfigs() {
     _offsetConfigs.clear();
-    if (kDebugMode) {
-      print('[ExpressionOffsetManager] 已清空所有配置');
-    }
+    // 静默清理
   }
   
   /// 动态调整偏移量（用于实时调试）
@@ -197,9 +195,7 @@ class ExpressionOffsetManager {
     adjustOffset(characterId: 'xiayo1', pose: '7', yOffset: pose7YOffset, xOffset: xOffset);
     adjustOffset(characterId: 'xiayo1', pose: '8', yOffset: pose8YOffset, xOffset: xOffset);
     
-    if (kDebugMode) {
-      print('[ExpressionOffsetManager] 批量设置xiayo1特殊姿势归一化偏移: 6=$pose6YOffset, 7=$pose7YOffset, 8=$pose8YOffset');
-    }
+    // 静默调整
   }
   
   /// 纳米级控制方法 - 微调单个姿势的偏移量
@@ -221,9 +217,7 @@ class ExpressionOffsetManager {
         xOffset: currentConfig.xOffset + deltaX,
       );
       addOffsetConfig(newConfig);
-      if (kDebugMode) {
-        print('[ExpressionOffsetManager] 微调偏移 $key: 旧值(${currentConfig.yOffset}) -> 新值(${newConfig.yOffset})');
-      }
+      // 静默微调
     } else {
       // 如果没有配置，创建新的
       adjustOffset(characterId: characterId, pose: pose, yOffset: deltaY, xOffset: deltaX);

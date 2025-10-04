@@ -7,6 +7,7 @@ import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
+import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 
 class OverlayScaffold extends StatefulWidget {
   final String title;
@@ -187,10 +188,7 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
                                 child: Opacity(
                                   opacity: config.baseWindowBackgroundAlpha,
                                   child: ColorFiltered(
-                                    colorFilter: ColorFilter.mode(
-                                      Colors.transparent,
-                                      config.baseWindowBackgroundBlendMode,
-                                    ),
+                                    colorFilter: SvgColorFilterUtils.getSvgColorTemperatureFilter(config),
                                     child: Align(
                                       alignment: Alignment(
                                         (config.baseWindowXAlign - 0.5) * 2,

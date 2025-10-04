@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Library/Afolder/RenpyProject/SoraNoUta/**)",
+      "Read(//Library/Afolder/FlutterProject/SakiEngine/Game/SoraNoUta/Assets/images/cg/**)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)",
+      "Bash(flutter analyze:*)",
+      "Read(//Library/Afolder/FlutterProject/SakiEngine/Game/SoraNoUta/Assets/gui/**)",
+      "Bash(grep:*)",
+      "Read(//Library/Afolder/FlutterProject/SakiEngine/**)",
+      "Bash(flutter run:*)",
+      "Bash(find:*)",
+      "Read(//Library/Afolder/**)",
+      "Bash(tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

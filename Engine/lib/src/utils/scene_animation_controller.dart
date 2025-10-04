@@ -29,24 +29,24 @@ class SceneAnimationController {
   }) async {
     final animDef = AnimationManager.getAnimation(animationName);
     if (animDef == null) {
-      print('[SceneAnimationController] 动画不存在: $animationName');
+      //print('[SceneAnimationController] 动画不存在: $animationName');
       onComplete?.call();
       return;
     }
 
-    print('[SceneAnimationController] 开始播放场景动画: $animationName, repeat: ${repeatCount == null ? "1(默认)" : (repeatCount == 0 ? "无限(repeat=0)" : repeatCount.toString())}');
+    //print('[SceneAnimationController] 开始播放场景动画: $animationName, repeat: ${repeatCount == null ? "1(默认)" : (repeatCount == 0 ? "无限(repeat=0)" : repeatCount.toString())}');
     
     // 应用预设属性到基础属性上
     _baseProperties = Map.from(baseProperties);
     final presetProperties = animDef.presetProperties;
-    print('[SceneAnimationController] 场景动画 $animationName 的预设属性: $presetProperties');
-    print('[SceneAnimationController] 原始基础属性: $baseProperties');
+    //print('[SceneAnimationController] 场景动画 $animationName 的预设属性: $presetProperties');
+    //print('[SceneAnimationController] 原始基础属性: $baseProperties');
     for (final entry in presetProperties.entries) {
       final currentValue = _baseProperties[entry.key] ?? 0.0;
       _baseProperties[entry.key] = currentValue + entry.value;
-      print('[SceneAnimationController] 应用预设 ${entry.key}: $currentValue + ${entry.value} = ${_baseProperties[entry.key]}');
+      //print('[SceneAnimationController] 应用预设 ${entry.key}: $currentValue + ${entry.value} = ${_baseProperties[entry.key]}');
     }
-    print('[SceneAnimationController] 最终基础属性: $_baseProperties');
+    //print('[SceneAnimationController] 最终基础属性: $_baseProperties');
     
     _currentProperties = Map.from(_baseProperties);
     _originalBaseProperties = Map.from(baseProperties); // 保存真正的初始位置（不包含预设属性）
@@ -67,7 +67,7 @@ class SceneAnimationController {
       }
     }
     
-    print('[SceneAnimationController] 场景动画播放完成: $animationName');
+    //print('[SceneAnimationController] 场景动画播放完成: $animationName');
     onComplete?.call();
   }
 

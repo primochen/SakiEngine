@@ -33,6 +33,8 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
   
   /// UI是否被隐藏
   bool _isUIHidden = false;
+
+  late final GlobalRightClickUIManager _globalManager;
   
   /// 动画控制器
   late AnimationController _animationController;
@@ -43,6 +45,10 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
   @override
   void initState() {
     super.initState();
+
+    _globalManager = GlobalRightClickUIManager();
+    _isUIHidden = _globalManager.isUIHidden;
+
     
     // 初始化动画控制器
     _animationController = AnimationController(
@@ -60,41 +66,52 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
     ));
     
     // 设置初始值
-    _animationController.value = 1.0;
+    _animationController.value = _isUIHidden ? 0.0 : 1.0;
+
+    _globalManager.addListener(_handleGlobalVisibilityChange);
   }
 
   @override
   void dispose() {
+    _globalManager.removeListener(_handleGlobalVisibilityChange);
     _animationController.dispose();
     super.dispose();
   }
 
-  /// 切换UI显示状态
-  void _toggleUIVisibility() {
+  void _handleGlobalVisibilityChange() {
+    final hidden = _globalManager.isUIHidden;
+    if (hidden == _isUIHidden) return;
     setState(() {
-      _isUIHidden = !_isUIHidden;
+      _isUIHidden = hidden;
     });
-    
-    // 同步到全局UI管理器
-    GlobalRightClickUIManager().setUIHidden(_isUIHidden);
-    
-    // 播放动画
     if (_isUIHidden) {
       _animationController.forward();
     } else {
       _animationController.reverse();
     }
-    
-    // 通知回调
     widget.onUIVisibilityChanged?.call(_isUIHidden);
-    
-    // 提供触觉反馈
-    HapticFeedback.lightImpact();
+  }
+
+  void _setUIHidden() {
+    if (!_globalManager.isUIHidden) {
+      _globalManager.setUIHidden(true);
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _setUIVisible() {
+    if (_globalManager.isUIHidden) {
+      _globalManager.setUIHidden(false);
+    }
   }
 
   /// 处理右键点击
   void _handleRightClick(TapUpDetails details) {
-    _toggleUIVisibility();
+    if (_globalManager.isUIHidden) {
+      _setUIVisible();
+    } else {
+      _setUIHidden();
+    }
   }
 
   /// 处理键盘事件（移除ESC键功能，避免与覆盖层冲突）
@@ -119,18 +136,21 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
             child: Listener(
               onPointerDown: (event) {
                 if (event.buttons == 2) { // 右键按下
-                  _toggleUIVisibility();
+                  if (_isUIHidden) {
+                    _setUIVisible();
+                  } else {
+                    _setUIHidden();
+                  }
                 } else if (event.buttons == 1) { // 左键按下
                   if (_isUIHidden) {
-                    // UI隐藏状态下，左键取消隐藏
-                    _toggleUIVisibility();
+                    _setUIVisible();
                   } else {
                     // UI显示状态下，左键推进剧情
                     widget.onLeftClick?.call();
                   }
                 }
               },
-              behavior: HitTestBehavior.translucent,
+              behavior: HitTestBehavior.opaque,
               child: Container(
                 color: Colors.transparent,
               ),

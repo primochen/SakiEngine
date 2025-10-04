@@ -28,7 +28,7 @@ class ProjectModuleLoader {
     final normalizedName = projectName.toLowerCase();
     _registeredModules[normalizedName] = factory;
     if (kDebugMode) {
-      print('[ProjectModuleLoader] 注册项目模块: $normalizedName');
+      //print('[ProjectModuleLoader] 注册项目模块: $normalizedName');
     }
   }
 
@@ -41,14 +41,14 @@ class ProjectModuleLoader {
       final modulePackage = 'package:sakiengine/$normalizedProjectName/${normalizedProjectName}_module.dart';
       
       if (kDebugMode) {
-        print('[ProjectModuleLoader] 尝试加载模块: $modulePackage');
+        //print('[ProjectModuleLoader] 尝试加载模块: $modulePackage');
       }
       
       // 检查模块文件是否存在
       final moduleFile = File('lib/$normalizedProjectName/${normalizedProjectName}_module.dart');
       if (await moduleFile.exists()) {
         if (kDebugMode) {
-          print('[ProjectModuleLoader] 发现项目模块文件: ${moduleFile.path}');
+          //print('[ProjectModuleLoader] 发现项目模块文件: ${moduleFile.path}');
         }
         
         // 尝试通过反射或已知模块映射加载
@@ -56,14 +56,14 @@ class ProjectModuleLoader {
         if (module != null) {
           await module.initialize();
           if (kDebugMode) {
-            print('[ProjectModuleLoader] 成功加载项目特定模块: $projectName');
+            //print('[ProjectModuleLoader] 成功加载项目特定模块: $projectName');
           }
           return module;
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[ProjectModuleLoader] 自动发现模块失败: $projectName, 错误: $e');
+        //print('[ProjectModuleLoader] 自动发现模块失败: $projectName, 错误: $e');
       }
     }
     
@@ -81,7 +81,7 @@ class ProjectModuleLoader {
           return module;
         } catch (e) {
           if (kDebugMode) {
-            print('[ProjectModuleLoader] 加载 SoraNoutaModule 失败: $e');
+            //print('[ProjectModuleLoader] 加载 SoraNoutaModule 失败: $e');
           }
         }
         break;
@@ -98,7 +98,7 @@ class ProjectModuleLoader {
       return module;
     } catch (e) {
       if (kDebugMode) {
-        print('[ProjectModuleLoader] 创建 SoraNoutaModule 失败: $e');
+        //print('[ProjectModuleLoader] 创建 SoraNoutaModule 失败: $e');
       }
     }
     return null;
@@ -132,13 +132,13 @@ class ProjectModuleLoader {
         await _currentModule!.initialize();
         
         if (kDebugMode) {
-          print('[ProjectModuleLoader] 加载已注册模块: $projectName');
+          //print('[ProjectModuleLoader] 加载已注册模块: $projectName');
         }
         
         return _currentModule!;
       } catch (e) {
         if (kDebugMode) {
-          print('[ProjectModuleLoader] 加载已注册模块失败: $projectName, 错误: $e');
+          //print('[ProjectModuleLoader] 加载已注册模块失败: $projectName, 错误: $e');
         }
       }
     }
@@ -155,7 +155,7 @@ class ProjectModuleLoader {
     await _currentModule!.initialize();
     
     if (kDebugMode) {
-      print('[ProjectModuleLoader] 使用默认模块: $projectName');
+      //print('[ProjectModuleLoader] 使用默认模块: $projectName');
     }
     
     return _currentModule!;

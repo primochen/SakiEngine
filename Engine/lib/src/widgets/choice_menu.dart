@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
+import 'package:sakiengine/src/utils/ui_sound_manager.dart';
 
 class ChoiceMenu extends StatefulWidget {
   final MenuNode menuNode;
@@ -163,6 +164,7 @@ class _ChoiceButtonState extends State<_ChoiceButton>
   late AnimationController _hoverController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _glowAnimation;
+  final _uiSoundManager = UISoundManager();
 
   @override
   void initState() {
@@ -205,10 +207,14 @@ class _ChoiceButtonState extends State<_ChoiceButton>
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: widget.onPressed,
+              onTap: () {
+                _uiSoundManager.playButtonClick();
+                widget.onPressed();
+              },
               onHover: (hovering) {
                 setState(() => _isHovered = hovering);
                 if (hovering) {
+                  _uiSoundManager.playButtonHover();
                   _hoverController.forward();
                 } else {
                   _hoverController.reverse();

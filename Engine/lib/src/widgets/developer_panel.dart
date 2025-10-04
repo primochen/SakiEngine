@@ -6,8 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/game/game_script_localization.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
+import 'package:sakiengine/src/utils/svg_color_filter_utils.dart';
 import 'package:sakiengine/src/widgets/common/close_button.dart';
 import 'package:sakiengine/src/utils/read_text_tracker.dart';
 
@@ -35,7 +37,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   String _currentScriptPath = '';
   final TextEditingController _scriptController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
@@ -44,13 +46,13 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   void initState() {
     super.initState();
     _loadCurrentScript();
-    
+
     // 初始化动画
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<double>(
       begin: 1.0,
       end: 0.0,
@@ -58,7 +60,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -66,7 +68,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _animationController.forward();
   }
 
@@ -87,36 +89,46 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     try {
       // 获取当前脚本名称（从GameManager获取）
       final currentScriptName = _getCurrentScriptName();
-      
+
       if (currentScriptName.isNotEmpty) {
         // 尝试直接加载当前脚本文件
         final gamePath = await _getGamePathFromAssetManager();
         if (gamePath != null) {
-          final scriptPath = p.join(gamePath, 'GameScript', 'labels', '$currentScriptName.sks');
-          final scriptFile = File(scriptPath);
-          
-          if (await scriptFile.exists()) {
+          final candidateDirs = GameScriptLocalization.candidateDirectories();
+          final attemptedPaths = <String>[];
+          File? matchedFile;
+
+          for (final dirName in candidateDirs) {
+            final candidatePath =
+                p.join(gamePath, dirName, 'labels', '$currentScriptName.sks');
+            attemptedPaths.add(candidatePath);
+            final candidateFile = File(candidatePath);
+            if (await candidateFile.exists()) {
+              matchedFile = candidateFile;
+              break;
+            }
+          }
+
+          if (matchedFile != null) {
             try {
-              final content = await scriptFile.readAsString();
+              final content = await matchedFile.readAsString();
               _currentScriptContent = content;
-              _currentScriptPath = scriptPath;
+              _currentScriptPath = matchedFile.path;
               _scriptController.text = content;
-              
-              // 自动跳转到当前执行位置
+
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _scrollToCurrentPosition();
               });
-              
+
               if (kDebugMode) {
-                print('开发者面板: 成功加载脚本 $scriptPath');
+                print('开发者面板: 成功加载脚本 ${matchedFile.path}');
               }
             } catch (readError) {
               if (kDebugMode) {
                 print('开发者面板: 读取脚本文件失败: $readError');
               }
-              // 如果无法读取，提供备选方案
               _currentScriptContent = '''// 当前正在播放的脚本: $currentScriptName.sks
-// 路径: $scriptPath
+// 路径: ${matchedFile.path}
 // 
 // 无法直接读取脚本文件: $readError
 // 
@@ -126,9 +138,13 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               _scriptController.text = _currentScriptContent;
             }
           } else {
+            final attemptedMessage = attemptedPaths.isEmpty
+                ? '// 未找到可用的脚本路径'
+                : attemptedPaths.map((path) => '//   - $path').join('\n');
             _currentScriptContent = '''// 当前正在播放的脚本: $currentScriptName.sks
 // 
-// 脚本文件不存在: $scriptPath
+// 未找到脚本文件。已尝试路径:
+$attemptedMessage
 // 请使用"浏览脚本文件"功能手动选择文件
 ''';
             _currentScriptPath = '';
@@ -154,7 +170,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     }
     setState(() {});
   }
-  
+
   void _scrollToCurrentPosition() {
     try {
       if (_currentScriptContent.isEmpty) {
@@ -163,7 +179,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         }
         return;
       }
-      
+
       // 获取当前对话文本
       final currentDialogue = widget.gameManager.currentDialogueText;
       if (currentDialogue.isEmpty) {
@@ -172,17 +188,17 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         }
         return;
       }
-      
+
       final lines = _currentScriptContent.split('\n');
       if (lines.isEmpty) return;
-      
+
       if (kDebugMode) {
         print('开发者面板: 搜索对话文本: "$currentDialogue"');
       }
-      
+
       // 在脚本中搜索当前对话文本
       int targetLine = _findLineByDialogueText(lines, currentDialogue);
-      
+
       if (targetLine >= 0) {
         if (kDebugMode) {
           print('开发者面板: 找到对话文本位置，行号=$targetLine');
@@ -201,22 +217,24 @@ class _DeveloperPanelState extends State<DeveloperPanel>
           return;
         }
       }
-      
+
       // 计算滚动位置，稍微向上偏移几行以提供上下文
       const lineHeight = 21.0;
       final contextOffset = 3; // 向上偏移3行显示上下文
-      final adjustedLine = (targetLine - contextOffset).clamp(0, lines.length - 1);
+      final adjustedLine =
+          (targetLine - contextOffset).clamp(0, lines.length - 1);
       final targetOffset = adjustedLine * lineHeight;
-      
+
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeInOut,
         );
-        
+
         if (kDebugMode) {
-          print('开发者面板: 滚动到位置 $targetOffset (行 $adjustedLine, 原始行 $targetLine)');
+          print(
+              '开发者面板: 滚动到位置 $targetOffset (行 $adjustedLine, 原始行 $targetLine)');
         }
       }
     } catch (e) {
@@ -225,15 +243,15 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       }
     }
   }
-  
+
   int _findLineByDialogueText(List<String> lines, String dialogueText) {
     // 精确搜索：寻找包含对话文本的行
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
-      
+
       // 检查多种对话格式
       String? lineDialogue;
-      
+
       if (line.startsWith('"') && line.endsWith('"')) {
         // 格式1: "对话文本"
         lineDialogue = line.substring(1, line.length - 1);
@@ -244,28 +262,30 @@ class _DeveloperPanelState extends State<DeveloperPanel>
           lineDialogue = line.substring(quoteStart + 1, line.length - 1);
         }
       }
-      
+
       // 检查是否匹配
       if (lineDialogue != null) {
-        if (lineDialogue.contains(dialogueText) || dialogueText.contains(lineDialogue)) {
+        if (lineDialogue.contains(dialogueText) ||
+            dialogueText.contains(lineDialogue)) {
           return i;
         }
       }
     }
     return -1;
   }
-  
+
   int _findLineByPartialText(List<String> lines, String dialogueText) {
     // 模糊搜索：寻找包含部分对话文本的行
     final searchText = dialogueText.trim();
     if (searchText.length < 3) return -1; // 太短的文本不进行模糊搜索
-    
+
     // 取对话文本的前几个字符进行搜索
-    final searchPrefix = searchText.substring(0, (searchText.length / 2).round());
-    
+    final searchPrefix =
+        searchText.substring(0, (searchText.length / 2).round());
+
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
-      
+
       // 在整行中搜索包含搜索前缀的内容
       if (line.contains(searchPrefix)) {
         return i;
@@ -273,7 +293,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     }
     return -1;
   }
-  
+
   int _getCurrentScriptIndex() {
     try {
       // 从GameManager获取当前脚本执行索引
@@ -305,7 +325,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   /// 清除已读状态
   Future<void> _clearReadStatus() async {
     final config = SakiEngineConfig();
-    
+
     // 显示确认对话框
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -358,7 +378,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       try {
         // 清除所有已读记录
         await ReadTextTracker.instance.clearAllReadRecords();
-        
+
         // 显示成功消息
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -394,7 +414,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     try {
       // 生成可能的脚本目录路径
       final possibleDirs = _generatePossibleScriptDirs();
-      
+
       Directory? scriptDir;
       for (final dirPath in possibleDirs) {
         final dir = Directory(dirPath);
@@ -403,7 +423,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
           break;
         }
       }
-      
+
       if (scriptDir == null) {
         // 如果找不到脚本目录，显示错误信息
         if (mounted) {
@@ -417,14 +437,14 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         }
         return;
       }
-      
+
       // 列出所有.sks文件
       final sksFiles = await scriptDir
           .list()
           .where((entity) => entity is File && entity.path.endsWith('.sks'))
           .cast<File>()
           .toList();
-      
+
       if (sksFiles.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -437,12 +457,12 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         }
         return;
       }
-      
+
       // 显示文件选择对话框
       final selectedFile = await _showFileSelectionDialog(sksFiles);
       if (selectedFile != null) {
         await _loadScriptFromFile(selectedFile);
-        
+
         // 展开脚本预览
         if (!_showScriptPreview) {
           setState(() {
@@ -450,7 +470,6 @@ class _DeveloperPanelState extends State<DeveloperPanel>
           });
         }
       }
-      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -463,46 +482,70 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       }
     }
   }
-  
+
   List<String> _generatePossibleScriptDirs() {
     final currentDir = Directory.current.path;
     final homeDir = Platform.environment['HOME'] ?? '';
-    
-    return [
-      // 环境变量指定的路径（避免容器路径）
-      if (Platform.environment['SAKI_GAME_PATH'] != null && 
-          !Platform.environment['SAKI_GAME_PATH']!.contains('Containers'))
-        '${Platform.environment['SAKI_GAME_PATH']}/GameScript/labels',
-      
-      // 用户目录中的安全位置
-      '$homeDir/Documents/SakiEngine/Game/GameScript/labels',
-      '$homeDir/Documents/SoraNoUta/GameScript/labels',
-      '$homeDir/Downloads/SakiEngine/Game/GameScript/labels',
-      '$homeDir/Downloads/SoraNoUta/GameScript/labels',
-      '$homeDir/Desktop/SakiEngine/Game/GameScript/labels',
-      '$homeDir/Desktop/SoraNoUta/GameScript/labels',
-      '$homeDir/SakiEngine/Game/GameScript/labels',
-      '$homeDir/SoraNoUta/GameScript/labels',
-      
-      // 相对路径（如果不在容器内）
-      if (!currentDir.contains('Containers')) ...[
-        '$currentDir/../Game/SoraNoUta/GameScript/labels',
-        '$currentDir/../../Game/SoraNoUta/GameScript/labels',
-        '$currentDir/../Game/GameScript/labels',
-        '$currentDir/Game/GameScript/labels',
-        '$currentDir/assets/GameScript/labels',
-        '$currentDir/../assets/GameScript/labels',
-      ],
-    ];
+    final variants = GameScriptLocalization.candidateDirectories();
+    final paths = <String>{};
+
+    void addVariantPath(String Function(String directoryName) builder) {
+      for (final directoryName in variants) {
+        final built = builder(directoryName);
+        if (built.isEmpty) {
+          continue;
+        }
+        paths.add(p.normalize(built));
+      }
+    }
+
+    final envPath = Platform.environment['SAKI_GAME_PATH'];
+    if (envPath != null &&
+        envPath.isNotEmpty &&
+        !envPath.contains('Containers')) {
+      addVariantPath((dir) => p.join(envPath, dir, 'labels'));
+    }
+
+    if (homeDir.isNotEmpty) {
+      addVariantPath((dir) =>
+          p.join(homeDir, 'Documents', 'SakiEngine', 'Game', dir, 'labels'));
+      addVariantPath(
+          (dir) => p.join(homeDir, 'Documents', 'SoraNoUta', dir, 'labels'));
+      addVariantPath((dir) =>
+          p.join(homeDir, 'Downloads', 'SakiEngine', 'Game', dir, 'labels'));
+      addVariantPath(
+          (dir) => p.join(homeDir, 'Downloads', 'SoraNoUta', dir, 'labels'));
+      addVariantPath((dir) =>
+          p.join(homeDir, 'Desktop', 'SakiEngine', 'Game', dir, 'labels'));
+      addVariantPath(
+          (dir) => p.join(homeDir, 'Desktop', 'SoraNoUta', dir, 'labels'));
+      addVariantPath(
+          (dir) => p.join(homeDir, 'SakiEngine', 'Game', dir, 'labels'));
+      addVariantPath((dir) => p.join(homeDir, 'SoraNoUta', dir, 'labels'));
+    }
+
+    if (!currentDir.contains('Containers')) {
+      addVariantPath((dir) =>
+          p.join(currentDir, '..', 'Game', 'SoraNoUta', dir, 'labels'));
+      addVariantPath((dir) =>
+          p.join(currentDir, '..', '..', 'Game', 'SoraNoUta', dir, 'labels'));
+      addVariantPath((dir) => p.join(currentDir, '..', 'Game', dir, 'labels'));
+      addVariantPath((dir) => p.join(currentDir, 'Game', dir, 'labels'));
+      addVariantPath((dir) => p.join(currentDir, 'assets', dir, 'labels'));
+      addVariantPath(
+          (dir) => p.join(currentDir, '..', 'assets', dir, 'labels'));
+    }
+
+    return paths.toList();
   }
-  
+
   Future<File?> _showFileSelectionDialog(List<File> files) async {
     return await showDialog<File>(
       context: context,
       builder: (BuildContext context) {
         final config = SakiEngineConfig();
         final textScale = context.scaleFor(ComponentType.text);
-        
+
         return AlertDialog(
           backgroundColor: config.themeColors.background,
           shape: RoundedRectangleBorder(
@@ -523,19 +566,21 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               itemBuilder: (context, index) {
                 final file = files[index];
                 final fileName = file.path.split('/').last;
-                
+
                 return ListTile(
                   title: Text(
                     fileName,
                     style: config.dialogueTextStyle.copyWith(
-                      fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                      fontSize:
+                          config.dialogueTextStyle.fontSize! * textScale * 0.6,
                       color: config.themeColors.onSurface,
                     ),
                   ),
                   subtitle: Text(
                     file.path,
                     style: config.dialogueTextStyle.copyWith(
-                      fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
+                      fontSize:
+                          config.dialogueTextStyle.fontSize! * textScale * 0.5,
                       color: config.themeColors.onSurface.withOpacity(0.6),
                     ),
                     maxLines: 1,
@@ -559,7 +604,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       },
     );
   }
-  
+
   Future<void> _loadScriptFromFile(File file) async {
     try {
       final content = await file.readAsString();
@@ -568,7 +613,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         _currentScriptPath = file.path;
         _scriptController.text = content;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -594,26 +639,28 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   // 复制AssetManager中的游戏路径获取逻辑
   Future<String?> _getGamePathFromAssetManager() async {
     // 首先检查环境变量
-    const fromDefine = String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
+    const fromDefine =
+        String.fromEnvironment('SAKI_GAME_PATH', defaultValue: '');
     if (fromDefine.isNotEmpty) return fromDefine;
-    
+
     final fromEnv = Platform.environment['SAKI_GAME_PATH'];
     if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
-    
+
     try {
       // 从assets读取default_game.txt
-      final assetContent = await AssetManager().loadString('assets/default_game.txt');
+      final assetContent =
+          await AssetManager().loadString('assets/default_game.txt');
       final defaultGame = assetContent.trim();
-      
+
       if (defaultGame.isEmpty) {
         throw Exception('default_game.txt is empty');
       }
-      
+
       final gamePath = p.join(Directory.current.path, 'Game', defaultGame);
       if (kDebugMode) {
         print("开发者面板: 从default_game.txt获取游戏路径: $gamePath");
       }
-      
+
       return gamePath;
     } catch (e) {
       if (kDebugMode) {
@@ -646,7 +693,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         final file = File(_currentScriptPath);
         await file.writeAsString(_scriptController.text);
         saveSuccess = true;
-        
+
         if (kDebugMode) {
           print('开发者面板: 直接文件写入成功 $_currentScriptPath');
         }
@@ -654,7 +701,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         if (kDebugMode) {
           print('开发者面板: 直接文件写入失败: $directWriteError');
         }
-        
+
         // 方法2: 使用命令行 echo 写入（绕过沙箱限制）
         try {
           final content = _scriptController.text;
@@ -664,12 +711,10 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               .replaceAll('\$', '\\\$')
               .replaceAll('"', '\\"')
               .replaceAll('\n', '\\n');
-              
-          final result = await Process.run('sh', [
-            '-c',
-            'echo -e "$escapedContent" > "${_currentScriptPath}"'
-          ]);
-          
+
+          final result = await Process.run('sh',
+              ['-c', 'echo -e "$escapedContent" > "${_currentScriptPath}"']);
+
           if (result.exitCode == 0) {
             saveSuccess = true;
             if (kDebugMode) {
@@ -682,12 +727,14 @@ class _DeveloperPanelState extends State<DeveloperPanel>
           // 方法3: 使用 cp 命令
           try {
             final content = _scriptController.text;
-            final tempFile = File('${Directory.systemTemp.path}/saki_temp_script.sks');
+            final tempFile =
+                File('${Directory.systemTemp.path}/saki_temp_script.sks');
             await tempFile.writeAsString(content);
-            
-            final result = await Process.run('cp', [tempFile.path, _currentScriptPath]);
+
+            final result =
+                await Process.run('cp', [tempFile.path, _currentScriptPath]);
             await tempFile.delete();
-            
+
             if (result.exitCode == 0) {
               saveSuccess = true;
               if (kDebugMode) {
@@ -697,11 +744,12 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               errorMessage = 'cp命令失败: ${result.stderr}';
             }
           } catch (copyError) {
-            errorMessage = '所有保存方法均失败: 直接写入($directWriteError), 命令行($commandError), cp($copyError)';
+            errorMessage =
+                '所有保存方法均失败: 直接写入($directWriteError), 命令行($commandError), cp($copyError)';
           }
         }
       }
-      
+
       if (saveSuccess) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -712,7 +760,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             ),
           );
         }
-        
+
         // 保存成功后自动重载
         if (widget.onReload != null) {
           try {
@@ -741,7 +789,6 @@ class _DeveloperPanelState extends State<DeveloperPanel>
       } else {
         throw Exception(errorMessage);
       }
-      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -778,7 +825,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               width: panelWidth,
               child: Shortcuts(
                 shortcuts: <LogicalKeySet, Intent>{
-                  LogicalKeySet(LogicalKeyboardKey.escape): const _CloseIntent(),
+                  LogicalKeySet(LogicalKeyboardKey.escape):
+                      const _CloseIntent(),
                 },
                 child: Actions(
                   actions: <Type, Action<Intent>>{
@@ -801,7 +849,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
                         child: ClipRRect(
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(config.baseWindowBorder),
-                            bottomLeft: Radius.circular(config.baseWindowBorder),
+                            bottomLeft:
+                                Radius.circular(config.baseWindowBorder),
                           ),
                           child: Stack(
                             children: [
@@ -812,27 +861,31 @@ class _DeveloperPanelState extends State<DeveloperPanel>
                                 color: config.themeColors.background,
                               ),
                               // 中层：背景图片
-                              if (config.baseWindowBackground != null && config.baseWindowBackground!.isNotEmpty)
+                              if (config.baseWindowBackground != null &&
+                                  config.baseWindowBackground!.isNotEmpty)
                                 Positioned.fill(
                                   child: Opacity(
-                                    opacity: config.baseWindowBackgroundAlpha * 0.5,
+                                    opacity:
+                                        config.baseWindowBackgroundAlpha * 0.5,
                                     child: ColorFiltered(
-                                      colorFilter: ColorFilter.mode(
-                                        Colors.transparent,
-                                        config.baseWindowBackgroundBlendMode,
-                                      ),
-                                      child: Container(color: Colors.blue), // 临时替换 SmartAssetImage
+                                      colorFilter: SvgColorFilterUtils
+                                          .getSvgColorTemperatureFilter(config),
+                                      child: Container(
+                                          color: Colors
+                                              .blue), // 临时替换 SmartAssetImage
                                     ),
                                   ),
                                 ),
                               // 上层：半透明面板
                               Container(
-                                color: config.themeColors.background.withOpacity(0.85),
+                                color: config.themeColors.background
+                                    .withOpacity(0.85),
                                 child: Column(
                                   children: [
                                     _buildHeader(uiScale, textScale, config),
                                     Expanded(
-                                      child: _buildContent(uiScale, textScale, config),
+                                      child: _buildContent(
+                                          uiScale, textScale, config),
                                     ),
                                   ],
                                 ),
@@ -857,7 +910,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     );
   }
 
-  Widget _buildHeader(double uiScale, double textScale, SakiEngineConfig config) {
+  Widget _buildHeader(
+      double uiScale, double textScale, SakiEngineConfig config) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
@@ -879,7 +933,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             child: Text(
               '开发者面板',
               style: config.reviewTitleTextStyle.copyWith(
-                fontSize: (config.reviewTitleTextStyle.fontSize! - 2) * textScale,
+                fontSize:
+                    (config.reviewTitleTextStyle.fontSize! - 2) * textScale,
                 color: config.themeColors.primary,
                 letterSpacing: 1.0,
               ),
@@ -894,7 +949,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
     );
   }
 
-  Widget _buildContent(double uiScale, double textScale, SakiEngineConfig config) {
+  Widget _buildContent(
+      double uiScale, double textScale, SakiEngineConfig config) {
     return Padding(
       padding: EdgeInsets.all(12 * uiScale),
       child: Column(
@@ -915,9 +971,9 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             uiScale: uiScale,
             textScale: textScale,
           ),
-          
+
           SizedBox(height: 8 * uiScale),
-          
+
           // 调试面板按钮
           _buildStyledButton(
             text: '调试面板',
@@ -930,9 +986,9 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             uiScale: uiScale,
             textScale: textScale,
           ),
-          
+
           SizedBox(height: 8 * uiScale),
-          
+
           // 清除已读状态按钮
           _buildStyledButton(
             text: '清除已读状态',
@@ -941,9 +997,9 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             uiScale: uiScale,
             textScale: textScale,
           ),
-          
+
           SizedBox(height: 8 * uiScale),
-          
+
           // 浏览文件按钮
           _buildStyledButton(
             text: '浏览脚本文件',
@@ -952,7 +1008,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             uiScale: uiScale,
             textScale: textScale,
           ),
-          
+
           // 脚本预览区域
           if (_showScriptPreview) ...[
             SizedBox(height: 12 * uiScale),
@@ -1005,7 +1061,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               text,
               textAlign: TextAlign.center,
               style: config.reviewTitleTextStyle.copyWith(
-                fontSize: (config.reviewTitleTextStyle.fontSize! - 4) * textScale,
+                fontSize:
+                    (config.reviewTitleTextStyle.fontSize! - 4) * textScale,
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),
@@ -1019,7 +1076,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   Widget _buildLineNumbers(double uiScale, double textScale) {
     final lines = _scriptController.text.split('\n');
     final lineCount = lines.length;
-    
+
     return Container(
       padding: EdgeInsets.symmetric(
         vertical: 12 * uiScale,
@@ -1050,11 +1107,11 @@ class _DeveloperPanelState extends State<DeveloperPanel>
   TextSpan _buildHighlightedText(String text, double textScale) {
     final lines = text.split('\n');
     final spans = <TextSpan>[];
-    
+
     for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       final line = lines[lineIndex];
       final lineSpans = <TextSpan>[];
-      
+
       if (line.trim().startsWith('//')) {
         // 注释行 - 绿色
         lineSpans.add(TextSpan(
@@ -1085,7 +1142,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             fontFamily: 'Courier New',
           ),
         ));
-      } else if (RegExp(r'^(scene|show|hide|nvlm|endnvlm|music|sound|fx)\s').hasMatch(line.trim())) {
+      } else if (RegExp(r'^(scene|show|hide|nvlm|endnvlm|music|sound|fx)\s')
+          .hasMatch(line.trim())) {
         // 命令关键词 - 紫色
         lineSpans.add(TextSpan(
           text: line,
@@ -1106,7 +1164,7 @@ class _DeveloperPanelState extends State<DeveloperPanel>
           ),
         ));
       }
-      
+
       spans.addAll(lineSpans);
       if (lineIndex < lines.length - 1) {
         spans.add(TextSpan(
@@ -1118,11 +1176,12 @@ class _DeveloperPanelState extends State<DeveloperPanel>
         ));
       }
     }
-    
+
     return TextSpan(children: spans);
   }
 
-  Widget _buildScriptPreview(double uiScale, double textScale, SakiEngineConfig config) {
+  Widget _buildScriptPreview(
+      double uiScale, double textScale, SakiEngineConfig config) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1138,9 +1197,9 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             ),
           ),
           child: Text(
-            _currentScriptPath.isNotEmpty 
-              ? _currentScriptPath.split('/').last
-              : '无脚本文件',
+            _currentScriptPath.isNotEmpty
+                ? _currentScriptPath.split('/').last
+                : '无脚本文件',
             style: config.reviewTitleTextStyle.copyWith(
               fontSize: (config.reviewTitleTextStyle.fontSize! - 6) * textScale,
               color: config.themeColors.primary.withOpacity(0.8),
@@ -1149,9 +1208,9 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        
+
         SizedBox(height: 8 * uiScale),
-        
+
         // 脚本内容编辑器
         Expanded(
           child: Container(
@@ -1218,9 +1277,9 @@ class _DeveloperPanelState extends State<DeveloperPanel>
             ),
           ),
         ),
-        
+
         SizedBox(height: 8 * uiScale),
-        
+
         // 操作按钮
         _buildActionButton(
           text: '保存并重载',
@@ -1275,7 +1334,8 @@ class _DeveloperPanelState extends State<DeveloperPanel>
               text,
               textAlign: TextAlign.center,
               style: config.reviewTitleTextStyle.copyWith(
-                fontSize: (config.reviewTitleTextStyle.fontSize! - 6) * textScale,
+                fontSize:
+                    (config.reviewTitleTextStyle.fontSize! - 6) * textScale,
                 color: Colors.white,
                 fontWeight: FontWeight.w500,
               ),

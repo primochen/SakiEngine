@@ -85,57 +85,134 @@ jobs:
           echo "🔨 使用build.sh构建Linux应用"
           chmod +x build.sh
           ./build.sh linux
-      
+
+      - name: Verify Build Output
+        run: |
+          echo "🔍 验证构建输出..."
+          echo "📁 Engine/build 目录结构:"
+          ls -laR Engine/build/linux/ || echo "构建目录不存在"
+
+          echo ""
+          echo "📦 检查 bundle 目录:"
+          if [ -d "Engine/build/linux/x64/release/bundle" ]; then
+            echo "✅ bundle 目录存在"
+            ls -lah Engine/build/linux/x64/release/bundle/
+
+            echo ""
+            echo "🔍 检查可执行文件:"
+            find Engine/build/linux/x64/release/bundle -type f -executable -ls
+
+            echo ""
+            echo "📊 bundle 目录大小:"
+            du -sh Engine/build/linux/x64/release/bundle/
+          else
+            echo "❌ bundle 目录不存在！"
+            echo "尝试查找构建输出..."
+            find Engine/build -type f -name "*.so" -o -type f -executable | head -20
+          fi
+
       - name: Package Linux App
         id: build
         run: |
           cd Engine/build/linux/x64/release
-          
+
           # 从项目根目录读取游戏名称（修正相对路径为5层）
           GAME_NAME=$(cat ../../../../../default_game.txt 2>/dev/null | tr -d '\n\r' | xargs)
-          
+
           # 如果读取失败，使用默认名称
           if [ -z "$GAME_NAME" ]; then
             GAME_NAME="SakiEngine"
             echo "⚠️  无法读取 default_game.txt，使用默认名称: $GAME_NAME"
           fi
-          
+
           # 从Engine目录读取版本号（修正相对路径为5层）
           version=$(grep '^version:' ../../../../../Engine/pubspec.yaml 2>/dev/null | cut -d ' ' -f 2 | cut -d '+' -f 1)
-          
+
           # 如果读取失败，使用默认版本
           if [ -z "$version" ]; then
             version="1.0.0"
             echo "⚠️  无法读取版本号，使用默认版本: $version"
           fi
-          
+
           arch="${{ inputs.architecture }}"
           artifact_name="${GAME_NAME}-${version}-Linux-${arch}.zip"
-          
+
           echo "🔍 构建信息:"
           echo "   当前路径: $(pwd)"
           echo "   游戏名称: $GAME_NAME"
           echo "   版本号: $version"
           echo "   架构: $arch"
           echo "   输出文件: $artifact_name"
-          
-          # 检查bundle目录是否存在，bundle实际在runner目录中
-          if [ -d "runner" ]; then
-            # 创建ZIP档案
-            zip -r "$artifact_name" runner
-            echo "✅ 使用 runner 目录创建ZIP: $artifact_name"
-          elif [ -d "bundle" ]; then
-            zip -r "$artifact_name" bundle
-            echo "✅ 使用 bundle 目录创建ZIP: $artifact_name"
-          else
-            echo "❌ 错误: 未找到 bundle 或 runner 目录"
+
+          # 显示当前目录结构用于调试
+          echo ""
+          echo "📁 当前目录内容:"
+          ls -la
+
+          # Flutter Linux构建输出在bundle目录下
+          if [ ! -d "bundle" ]; then
+            echo ""
+            echo "❌ 错误: 未找到 bundle 目录"
             echo "当前目录内容:"
-            ls -la
+            ls -laR
+            echo ""
+            echo "尝试查找可能的输出位置:"
+            find ../.. -type d -name "bundle" 2>/dev/null || true
             exit 1
           fi
-          
+
+          echo ""
+          echo "📦 找到 bundle 目录，显示其内容:"
+          ls -lah bundle/
+
+          # 检查 bundle 目录是否为空
+          if [ ! "$(ls -A bundle/)" ]; then
+            echo "❌ 错误: bundle 目录是空的！"
+            exit 1
+          fi
+
+          # 检查是否存在可执行文件
+          if [ ! -f "bundle/${GAME_NAME}" ] && [ ! -f "bundle/sakiengine" ]; then
+            echo "⚠️  警告: 未找到预期的可执行文件 bundle/${GAME_NAME}"
+            echo "bundle 目录中的可执行文件:"
+            find bundle/ -type f -executable -ls || echo "未找到可执行文件"
+          fi
+
+          # 创建临时目录用于打包
+          PACKAGE_DIR="${GAME_NAME}-${version}-Linux-${arch}"
+          mkdir -p "$PACKAGE_DIR"
+
+          # 复制bundle目录的所有内容到打包目录
+          echo ""
+          echo "📋 正在复制文件到打包目录..."
+          cp -r bundle/* "$PACKAGE_DIR/"
+
+          # 验证复制结果
+          echo "打包目录内容:"
+          ls -lah "$PACKAGE_DIR/"
+
+          # 创建ZIP档案
+          echo ""
+          echo "🗜️  正在创建ZIP文件..."
+          zip -r "$artifact_name" "$PACKAGE_DIR"
+
+          # 验证ZIP文件
+          if [ ! -f "$artifact_name" ]; then
+            echo "❌ 错误: ZIP文件创建失败"
+            exit 1
+          fi
+
+          zip_size=$(du -h "$artifact_name" | cut -f1)
+          echo "✅ 使用 bundle 目录创建ZIP: $artifact_name (大小: $zip_size)"
+
+          # 显示ZIP内容用于验证
+          echo ""
+          echo "📋 ZIP文件内容预览:"
+          unzip -l "$artifact_name" | head -30
+
+          echo ""
           echo "artifact_name=$artifact_name" >> $GITHUB_OUTPUT
-          echo "✅ 构建完成: $artifact_name"
+          echo "✅ 打包完成: $artifact_name"
       
       - name: Upload Linux App
         uses: actions/upload-artifact@v4

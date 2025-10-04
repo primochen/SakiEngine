@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -9,19 +10,23 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:sakiengine/src/config/asset_manager.dart';
 import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
+import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/screens/save_load_screen.dart';
 import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/widgets/choice_menu.dart';
 import 'package:sakiengine/src/widgets/dialogue_box.dart';
 import 'package:sakiengine/src/widgets/quick_menu.dart';
+import 'package:sakiengine/src/widgets/smart_image.dart';
 import 'package:sakiengine/src/screens/review_screen.dart';
 import 'package:sakiengine/src/screens/main_menu_screen.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
+import 'package:sakiengine/src/utils/game_flowchart_mixin.dart';
 import 'package:sakiengine/src/rendering/cg_character_renderer.dart';
+import 'package:sakiengine/src/rendering/composite_cg_renderer.dart';
+import 'package:sakiengine/src/rendering/rendering_system_integration.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/notification_overlay.dart';
-import 'package:sakiengine/src/utils/image_loader.dart';
 import 'package:sakiengine/src/widgets/nvl_screen.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
@@ -31,10 +36,11 @@ import 'package:sakiengine/src/utils/smart_asset_image.dart';
 import 'package:sakiengine/src/rendering/color_background_renderer.dart';
 import 'package:sakiengine/src/effects/scene_filter.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
-import 'package:sakiengine/src/utils/character_layer_parser.dart';
 import 'package:sakiengine/soranouta/widgets/soranouta_dialogue_box.dart';
 import 'package:sakiengine/src/rendering/scene_layer.dart';
+import 'package:sakiengine/src/utils/character_composite_cache.dart';
 import 'package:sakiengine/src/widgets/developer_panel.dart';
+import 'package:sakiengine/src/utils/cg_image_compositor.dart';
 import 'package:sakiengine/src/widgets/debug_panel_dialog.dart';
 import 'package:sakiengine/src/utils/character_auto_distribution.dart';
 import 'package:sakiengine/src/widgets/expression_selector_dialog.dart';
@@ -67,15 +73,16 @@ class GamePlayScreen extends StatefulWidget {
   State<GamePlayScreen> createState() => _GamePlayScreenState();
 }
 
-class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin {
+class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStateMixin, GameFlowchartMixin {
   late final GameManager _gameManager;
   late final DialogueProgressionManager _dialogueProgressionManager;
   final _gameUILayerKey = GlobalKey<GameUILayerState>();
-  String _currentScript = 'start'; 
+  String _currentScript = 'start';
   bool _showReviewOverlay = false;
   bool _showSaveOverlay = false;
   bool _showLoadOverlay = false;
   bool _showSettings = false;
+  bool _showFlowchart = false; // 流程图显示状态
   bool _isShowingMenu = false;
   bool _showDeveloperPanel = false; // 开发者面板显示状态
   bool _showDebugPanel = false; // 调试面板显示状态
@@ -277,13 +284,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   @override
   void dispose() {
-    // 取消注册系统热键
-    if (_reloadHotKey != null) {
-      hotKeyManager.unregister(_reloadHotKey!);
-    }
-    // 取消注册开发者面板热键
-    if (_developerPanelHotKey != null) {
-      hotKeyManager.unregister(_developerPanelHotKey!);
+    // 取消注册系统热键（只在桌面平台）
+    if (_isDesktopPlatform()) {
+      if (_reloadHotKey != null) {
+        hotKeyManager.unregister(_reloadHotKey!);
+      }
+      // 取消注册开发者面板热键
+      if (_developerPanelHotKey != null) {
+        hotKeyManager.unregister(_developerPanelHotKey!);
+      }
     }
     // 清理表情选择器管理器
     _expressionSelectorManager?.dispose();
@@ -291,22 +300,33 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _consoleSequenceDetector?.dispose();
     // 清理快进管理器
     _fastForwardManager?.dispose();
-    
+
     // 清理自动播放管理器
     _autoPlayManager?.dispose();
-    
+
     // 清理已读文本快进管理器
     _readTextSkipManager?.dispose();
-    
+
     // 清理加载淡出动画控制器
     _loadingFadeController.dispose();
-    
+
     _gameManager.dispose();
     super.dispose();
   }
 
+  // 检查是否为桌面平台
+  bool _isDesktopPlatform() {
+    if (kIsWeb) return false;
+    return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  }
+
   // 设置系统级热键
   Future<void> _setupHotkey() async {
+    // hotkey_manager 只在桌面平台可用
+    if (!_isDesktopPlatform()) {
+      print('跳过热键注册：当前平台不支持 hotkey_manager');
+      return;
+    }
     _reloadHotKey = HotKey(
       key: PhysicalKeyboardKey.keyR,
       modifiers: [HotKeyModifier.shift],
@@ -624,6 +644,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     _autoPlayManager?.toggleAutoPlay();
   }
 
+  // 新增：处理快速存档
+  Future<void> _handleQuickSave() async {
+    try {
+      final saveLoadManager = SaveLoadManager();
+      final snapshot = _gameManager.saveStateSnapshot();
+      final poseConfigs = _gameManager.poseConfigs;
+
+      await saveLoadManager.quickSave(_currentScript, snapshot, poseConfigs);
+      _showNotificationMessage('快速存档成功');
+    } catch (e) {
+      _showNotificationMessage('快速存档失败: $e');
+    }
+  }
+
   // 显示通知消息
   void _showNotificationMessage(String message) {
     // 调用GameUILayer的showNotification方法
@@ -825,6 +859,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     showSaveOverlay: _showSaveOverlay,
                     showLoadOverlay: _showLoadOverlay,
                     showSettings: _showSettings,
+                    showFlowchart: _showFlowchart,
                     showDeveloperPanel: _showDeveloperPanel,
                     showDebugPanel: _showDebugPanel,
                     showExpressionSelector: _showExpressionSelector,
@@ -832,6 +867,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onToggleReview: () => setState(() => _showReviewOverlay = !_showReviewOverlay),
                     onToggleSave: () => setState(() => _showSaveOverlay = !_showSaveOverlay),
                     onToggleLoad: () => setState(() => _showLoadOverlay = !_showLoadOverlay),
+                    onQuickSave: _handleQuickSave, // 新增：快速存档回调
                     onToggleSettings: () => setState(() => _showSettings = !_showSettings),
                     onToggleDeveloperPanel: () => setState(() => _showDeveloperPanel = !_showDeveloperPanel),
                     onToggleDebugPanel: () => setState(() => _showDebugPanel = !_showDebugPanel),
@@ -841,16 +877,19 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onSkipRead: _handleSkipReadText, // 新增：跳过已读文本回调
                     onAutoPlay: _handleAutoPlay, // 新增：自动播放回调
                     onThemeToggle: () => setState(() {}), // 新增：主题切换回调 - 触发重建以更新UI
+                    onFlowchart: () => setState(() => _showFlowchart = !_showFlowchart), // 新增：流程图回调
                     onJumpToHistoryEntry: _jumpToHistoryEntry,
                     onLoadGame: (saveSlot) {
                       // 在当前GamePlayScreen中恢复存档，而不是创建新实例
                       _currentScript = saveSlot.currentScript;
                       _gameManager.restoreFromSnapshot(
-                        saveSlot.currentScript, 
-                        saveSlot.snapshot, 
+                        saveSlot.currentScript,
+                        saveSlot.snapshot,
                         shouldReExecute: false
                       );
                       _showNotificationMessage('读档成功');
+                      // 关闭流程图
+                      setState(() => _showFlowchart = false);
                     },
                     onProgressDialogue: () => _dialogueProgressionManager.progressDialogue(),
                     expressionSelectorManager: _expressionSelectorManager,
@@ -892,13 +931,26 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         children: [
           // 背景层 - 总是渲染背景（如果有的话）
           if (gameState.background != null)
-            _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties),
+            Builder(
+              builder: (context) {
+                //print('[GamePlayScreen] 正在渲染背景: ${gameState.background}');
+                return _buildBackground(gameState.background!, gameState.sceneFilter, gameState.sceneLayers, gameState.sceneAnimationProperties);
+              },
+            )
+          else
+            Builder(
+              builder: (context) {
+                //print('[GamePlayScreen] 背景为空，不渲染背景层');
+                return const SizedBox.shrink();
+              },
+            ),
           
           // 角色和CG层 - 只有在没有视频时才显示
           if (gameState.movieFile == null) ...[
             ..._buildCharacters(context, gameState.characters, _gameManager.poseConfigs, gameState.everShownCharacters),
-            // CG角色渲染，像scene一样铺满屏幕
-            ...CgCharacterRenderer.buildCgCharacters(context, gameState.cgCharacters, _gameManager.poseConfigs, gameState.everShownCharacters),
+            // CG角色渲染，使用新的层叠渲染系统
+            // 支持在预合成和层叠渲染间智能切换，优化快进性能
+            ...RenderingSystemManager().buildCgCharacters(context, gameState.cgCharacters, _gameManager),
           ],
           
           // 视频播放器 - 最高优先级，如果有视频则覆盖在背景之上
@@ -971,10 +1023,12 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   /// 构建背景Widget - 支持图片背景和十六进制颜色背景，以及多图层场景和动画
   Widget _buildBackground(String background, [SceneFilter? sceneFilter, List<String>? sceneLayers, Map<String, double>? animationProperties]) {
+    ////print('[_buildBackground] 开始构建背景: $background');
     Widget backgroundWidget;
     
     // 如果有多图层数据，使用多图层渲染器
     if (sceneLayers != null && sceneLayers.isNotEmpty) {
+      ////print('[_buildBackground] 使用多图层渲染器');
       final layers = sceneLayers.map((layerString) => SceneLayer.fromString(layerString))
           .where((layer) => layer != null)
           .cast<SceneLayer>()
@@ -986,39 +1040,67 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           screenSize: MediaQuery.of(context).size,
         );
       } else {
+        ////print('[_buildBackground] 多图层为空，使用黑色背景');
         backgroundWidget = Container(color: Colors.black);
       }
     } else {
+      ////print('[_buildBackground] 单图层模式，背景内容: $background');
       // 单图层模式（原有逻辑）
       // 检查是否为十六进制颜色格式
       if (ColorBackgroundRenderer.isValidHexColor(background)) {
+        ////print('[_buildBackground] 识别为十六进制颜色背景');
         backgroundWidget = ColorBackgroundRenderer.createColorBackgroundWidget(background);
       } else {
-        // 处理图片背景
-        backgroundWidget = FutureBuilder<String?>(
-          key: ValueKey('bg_$background'), // 添加key避免重建
-          future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              return Image.asset(
-                snapshot.data!,
-                key: ValueKey(snapshot.data!), // 为图片添加key
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  // 如果是同步加载（已缓存），直接显示
-                  if (wasSynchronouslyLoaded ?? false) {
-                    return child;
-                  }
-                  // 异步加载时，只在完全加载后显示，避免闪烁
-                  return frame != null ? child : Container(color: Colors.black);
-                },
-              );
-            }
-            return Container(color: Colors.black);
-          },
-        );
+        ////print('[_buildBackground] 识别为图片背景，开始处理图片路径');
+        
+        // 检查是否为内存缓存路径
+        if (CgImageCompositor().isCachePath(background)) {
+          //print('[_buildBackground] 🐛 检测到内存缓存路径，使用SmartImage加载: $background');
+          // 使用SmartImage处理内存缓存路径
+          backgroundWidget = SmartImage.asset(
+            background,
+            key: ValueKey('memory_cache_bg_$background'),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorWidget: Container(color: Colors.black),
+          );
+        } else if (background.startsWith('/')) {
+          //print('[_buildBackground] 🐛 检测到绝对文件路径，直接使用Image.file加载: $background');
+          // 直接使用Image.file，不预缓存，避免FutureBuilder导致的黑屏
+          backgroundWidget = Image.file(
+            File(background),
+            key: ValueKey('direct_bg_$background'),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            // 关键：不使用frameBuilder，让图像立即显示
+            errorBuilder: (context, error, stackTrace) {
+              //print('[_buildBackground] ❌ 直接文件加载失败: $background, 错误: $error');
+              return Container(color: Colors.black);
+            },
+          );
+        } else {
+          ////print('[_buildBackground] 使用AssetManager查找相对路径');
+          // 处理相对路径图片背景（原有逻辑）
+          backgroundWidget = FutureBuilder<String?>(
+            key: ValueKey('bg_$background'), // 添加key避免重建
+            future: AssetManager().findAsset('backgrounds/${background.replaceAll(' ', '-')}'),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data != null) {
+                return SmartImage.asset(
+                  snapshot.data!,
+                  key: ValueKey(snapshot.data!), // 为图片添加key
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorWidget: Container(color: Colors.black),
+                );
+              }
+              return Container(color: Colors.black);
+            },
+          );
+        }
       }
     }
     
@@ -1048,6 +1130,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     return backgroundWidget;
   }
+  
+  /// 预缓存背景图像到Flutter的ImageCache中
+  Future<void> _precacheBackgroundImage(String imagePath, BuildContext context) async {
+    try {
+      print('[_precacheBackgroundImage] 开始预缓存: $imagePath');
+      
+      final file = File(imagePath);
+      if (await file.exists()) {
+        await precacheImage(FileImage(file), context);
+        print('[_precacheBackgroundImage] 预缓存完成: $imagePath');
+      } else {
+        print('[_precacheBackgroundImage] 文件不存在: $imagePath');
+      }
+    } catch (e) {
+      print('[_precacheBackgroundImage] 预缓存失败: $imagePath, 错误: $e');
+    }
+  }
 
   List<Widget> _buildCharacters(BuildContext context, Map<String, CharacterState> characters, Map<String, PoseConfig> poseConfigs, Set<String> everShownCharacters) {
     // 应用自动分布逻辑
@@ -1070,101 +1169,56 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     return charactersByResourceId.values.map((entry) {
       final characterId = entry.key;
       final characterState = entry.value;
-      // 使用分布后的pose配置
-      // 优先查找角色专属的自动分布配置，如果没有则使用原始配置
+
       final autoDistributedPoseId = '${characterId}_auto_distributed';
-      final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ?? 
-                        distributedPoseConfigs[characterState.positionId] ?? 
-                        PoseConfig(id: 'default');
+      final poseConfig = distributedPoseConfigs[autoDistributedPoseId] ??
+          distributedPoseConfigs[characterState.positionId] ??
+          PoseConfig(id: 'default');
 
-      // 使用resourceId作为key，确保唯一性
-      final widgetKey = '${characterState.resourceId}';
-      final cacheKey = '$characterId:${characterState.resourceId}:${characterState.pose ?? 'pose1'}:${characterState.expression ?? 'happy'}';
-      
-      return FutureBuilder<List<CharacterLayerInfo>>(
-        key: ValueKey(widgetKey), // 使用resourceId作为key
-        future: CharacterLayerParser.parseCharacterLayers(
-          resourceId: characterState.resourceId,
-          pose: characterState.pose ?? 'pose1',
-          expression: characterState.expression ?? 'happy',
+      final animProps = characterState.animationProperties;
+      double finalXCenter = poseConfig.xcenter;
+      double finalYCenter = poseConfig.ycenter;
+      double finalScale = poseConfig.scale;
+      double alpha = 1.0;
+
+      if (animProps != null) {
+        finalXCenter = animProps['xcenter'] ?? finalXCenter;
+        finalYCenter = animProps['ycenter'] ?? finalYCenter;
+        finalScale = animProps['scale'] ?? finalScale;
+        alpha = animProps['alpha'] ?? alpha;
+      }
+
+      final characterWidget = _CompositeCharacterWidget(
+        key: ValueKey('composite-${characterState.resourceId}'),
+        characterKey: characterId,
+        resourceId: characterState.resourceId,
+        pose: characterState.pose ?? 'pose1',
+        expression: characterState.expression ?? 'happy',
+        heightFactor: finalScale,
+        isFadingOut: characterState.isFadingOut,
+        skipAnimation: _isFastForwarding,
+        onFadeOutComplete: characterState.isFadingOut
+            ? () => _removeCharacterAfterFadeOut(characterId)
+            : null,
+      );
+
+      Widget finalWidget = characterWidget;
+
+      if (alpha < 1.0) {
+        finalWidget = Opacity(
+          opacity: alpha,
+          child: finalWidget,
+        );
+      }
+
+      return Positioned(
+        key: ValueKey('positioned-${characterState.resourceId}'),
+        left: finalXCenter * MediaQuery.of(context).size.width,
+        top: finalYCenter * MediaQuery.of(context).size.height,
+        child: FractionalTranslation(
+          translation: _anchorToTranslation(poseConfig.anchor),
+          child: finalWidget,
         ),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const SizedBox.shrink();
-          }
-
-          final layerInfos = snapshot.data!;
-
-          // 根据解析结果创建图层组件，使用resourceId和图层类型作为key，保持差分动画
-          final layers = layerInfos.map((layerInfo) {
-            // 获取差分偏移、透明度和缩放（仅对表情图层有效）
-            final (xOffset, yOffset, alpha, scale) = ExpressionOffsetManager().getExpressionOffset(
-              characterId: characterState.resourceId,
-              pose: characterState.pose ?? 'pose1',
-              layerType: layerInfo.layerType,
-            );
-            
-            // 调试输出
-            // ${layerInfo.layerType}, 偏移: ($xOffset, $yOffset), 透明度: $alpha');
-            
-            return _CharacterLayer(
-              key: ValueKey('${characterState.resourceId}-${layerInfo.layerType}'),
-              assetName: layerInfo.assetName,
-              isFadingOut: characterState.isFadingOut,
-              expressionOffsetX: xOffset, // 横向偏移
-              expressionOffsetY: yOffset, // 纵向偏移
-              expressionAlpha: alpha, // 透明度
-              expressionScale: scale, // 缩放比例
-              onFadeOutComplete: characterState.isFadingOut ? () {
-                // 淡出完成，从角色列表中移除该角色
-                _removeCharacterAfterFadeOut(characterId);
-              } : null,
-            );
-          }).toList();
-          
-          final characterStack = Stack(children: layers);
-          
-          Widget finalWidget = characterStack;
-          
-          // 获取动画属性
-          final animProps = characterState.animationProperties;
-          double finalXCenter = poseConfig.xcenter;
-          double finalYCenter = poseConfig.ycenter;
-          double finalScale = poseConfig.scale;
-          double alpha = 1.0;
-          
-          if (animProps != null) {
-            finalXCenter = animProps['xcenter'] ?? finalXCenter;
-            finalYCenter = animProps['ycenter'] ?? finalYCenter;
-            finalScale = animProps['scale'] ?? finalScale;
-            alpha = animProps['alpha'] ?? alpha;
-          }
-          
-          if (finalScale > 0) {
-            finalWidget = SizedBox(
-              height: MediaQuery.of(context).size.height * finalScale,
-              child: characterStack,
-            );
-          }
-          
-          // 应用透明度
-          if (alpha < 1.0) {
-            finalWidget = Opacity(
-              opacity: alpha,
-              child: finalWidget,
-            );
-          }
-
-          return Positioned(
-            key: ValueKey('positioned-$widgetKey'), // 使用resourceId作为key
-            left: finalXCenter * MediaQuery.of(context).size.width,
-            top: finalYCenter * MediaQuery.of(context).size.height,
-            child: FractionalTranslation(
-              translation: _anchorToTranslation(poseConfig.anchor),
-              child: finalWidget,
-            ),
-          );
-        },
       );
     }).toList();
   }
@@ -1182,247 +1236,105 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 }
 
-class _CharacterLayer extends StatefulWidget {
-  final String assetName;
+class _CompositeCharacterWidget extends StatefulWidget {
+  final String characterKey;
+  final String resourceId;
+  final String pose;
+  final String expression;
+  final double heightFactor;
   final bool isFadingOut;
-  final double expressionOffsetX; // 横向偏移（归一化值）
-  final double expressionOffsetY; // 纵向偏移（归一化值）
-  final double expressionAlpha; // 透明度（0.0到1.0）
-  final double expressionScale; // 缩放比例（1.0为原始大小）
+  final bool skipAnimation;
   final VoidCallback? onFadeOutComplete;
-  
-  const _CharacterLayer({
-    super.key, 
-    required this.assetName,
-    this.isFadingOut = false,
-    this.expressionOffsetX = 0.0, // 默认无偏移
-    this.expressionOffsetY = 0.0, // 默认无偏移
-    this.expressionAlpha = 1.0, // 默认完全不透明
-    this.expressionScale = 1.0, // 默认原始大小
+
+  const _CompositeCharacterWidget({
+    super.key,
+    required this.characterKey,
+    required this.resourceId,
+    required this.pose,
+    required this.expression,
+    required this.heightFactor,
+    required this.isFadingOut,
+    required this.skipAnimation,
     this.onFadeOutComplete,
   });
 
   @override
-  State<_CharacterLayer> createState() => _CharacterLayerState();
+  State<_CompositeCharacterWidget> createState() => _CompositeCharacterWidgetState();
 }
 
-class _CharacterLayerState extends State<_CharacterLayer>
-    with SingleTickerProviderStateMixin {
+class _CompositeCharacterWidgetState extends State<_CompositeCharacterWidget> {
   ui.Image? _currentImage;
-  ui.Image? _previousImage;
-
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  static ui.FragmentProgram? _dissolveProgram;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-
-    _loadImage();
-    _loadShader();
-  }
-
-  Future<void> _loadShader() async {
-    if (_dissolveProgram == null) {
-      try {
-        final program = await ui.FragmentProgram.fromAsset('assets/shaders/dissolve.frag');
-        _dissolveProgram = program;
-      } catch (e) {
-        print('Error loading shader: $e');
-      }
-    }
+    _loadComposite();
   }
 
   @override
-  void didUpdateWidget(covariant _CharacterLayer oldWidget) {
+  void didUpdateWidget(covariant _CompositeCharacterWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // 检查是否开始淡出
+
+    if (widget.resourceId != oldWidget.resourceId ||
+        widget.pose != oldWidget.pose ||
+        widget.expression != oldWidget.expression) {
+      _loadComposite();
+    }
+
     if (!oldWidget.isFadingOut && widget.isFadingOut) {
-      // 开始淡出动画
-      _controller.reverse().then((_) {
-        // 淡出完成，通知回调
-        widget.onFadeOutComplete?.call();
+      Future.delayed(const Duration(milliseconds: 220), () {
+        if (mounted && widget.isFadingOut) {
+          widget.onFadeOutComplete?.call();
+        }
       });
-      return;
     }
+  }
+
+  Future<void> _loadComposite() async {
+    //print('[_CompositeCharacterWidget] 开始加载合成图像 - 角色: ${widget.characterKey}, resourceId: ${widget.resourceId}, pose: ${widget.pose}, expression: ${widget.expression}');
     
-    if (oldWidget.assetName != widget.assetName) {
-      _previousImage = _currentImage;
-      _loadImage(); // 移除.then回调，因为_loadImage内部已处理动画触发
-    }
-  }
-
-  Future<void> _loadImage() async {
-    final assetPath = await AssetManager().findAsset(widget.assetName);
-    if (assetPath != null && mounted) {
-      final image = await ImageLoader.loadImage(assetPath);
-      if (mounted && image != null) {
-        // 使用post frame callback避免在build期间调用setState
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              _currentImage = image;
-            });
-            
-            // 修复：如果当前正在淡出，不要触发淡入动画
-            if (!widget.isFadingOut) {
-              _controller.forward(from: 0.0);
-            }
-          }
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _currentImage?.dispose();
-    _previousImage?.dispose();
-    super.dispose();
+    final image = await CharacterCompositeCache.instance
+        .preload(widget.resourceId, widget.pose, widget.expression);
+    
+    //print('[_CompositeCharacterWidget] 合成图像加载完成 - 角色: ${widget.characterKey}, 结果: ${image != null ? "成功" : "失败"}');
+    
+    if (!mounted) return;
+    setState(() {
+      _currentImage = image;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_currentImage == null || _dissolveProgram == null) {
+    final image = _currentImage;
+    //print('[_CompositeCharacterWidget] build调用 - 角色: ${widget.characterKey}, image: ${image != null ? "已加载" : "null"}');
+    
+    if (image == null) {
+      //print('[_CompositeCharacterWidget] 图像为null，返回空组件 - 角色: ${widget.characterKey}');
       return const SizedBox.shrink();
     }
 
-    Widget imageWidget = AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final imageSize = Size(_currentImage!.width.toDouble(), _currentImage!.height.toDouble());
-            
-            // 确定绘制尺寸
-            Size paintSize;
-            if (!constraints.hasBoundedHeight) {
-              paintSize = imageSize;
-            } else {
-              final imageAspectRatio = imageSize.width / imageSize.height;
-              final paintHeight = constraints.maxHeight;
-              final paintWidth = paintHeight * imageAspectRatio;
-              paintSize = Size(paintWidth, paintHeight);
-            }
-            
-            Widget customPaintWidget = CustomPaint(
-              size: paintSize,
-              painter: _DissolvePainter(
-                program: _dissolveProgram!,
-                progress: _animation.value,
-                imageFrom: _previousImage ?? _currentImage!,
-                imageTo: _currentImage!,
-              ),
-            );
-            
-            // 应用透明度（如果不是完全不透明）
-            if (widget.expressionAlpha != 1.0) {
-              customPaintWidget = Opacity(
-                opacity: widget.expressionAlpha,
-                child: customPaintWidget,
-              );
-            }
-            
-            // 应用缩放（如果不是原始大小），锚点为左上角
-            if (widget.expressionScale != 1.0) {
-              customPaintWidget = Transform.scale(
-                scale: widget.expressionScale,
-                alignment: Alignment.topLeft,
-                child: customPaintWidget,
-              );
-            }
-            
-            // 应用差分偏移（如果有偏移），基于实际绘制尺寸
-            if (widget.expressionOffsetX != 0.0 || widget.expressionOffsetY != 0.0) {
-              final pixelOffsetX = paintSize.width * widget.expressionOffsetX;
-              final pixelOffsetY = paintSize.height * widget.expressionOffsetY;
-              
-              return Transform.translate(
-                offset: Offset(pixelOffsetX, pixelOffsetY),
-                child: customPaintWidget,
-              );
-            }
-            
-            return customPaintWidget;
-          },
-        );
-      },
-    );
-    
-    return imageWidget;
-  }
-}
-
-class _DissolvePainter extends CustomPainter {
-  final ui.FragmentProgram program;
-  final double progress;
-  final ui.Image imageFrom;
-  final ui.Image imageTo;
-
-  _DissolvePainter({
-    required this.program,
-    required this.progress,
-    required this.imageFrom,
-    required this.imageTo,
-  });
-
-  @override
-  void paint(ui.Canvas canvas, ui.Size size) {
-    try {
-      // 如果没有之前的图片（首次显示），从透明开始
-      if (imageFrom == imageTo) {
-        // 首次显示：简单的透明度渐变
-        final paint = ui.Paint()
-          ..color = Colors.white.withOpacity(progress)
-          ..isAntiAlias = true
-          ..filterQuality = FilterQuality.high;
-        
-        canvas.drawImageRect(
-          imageTo,
-          ui.Rect.fromLTWH(0, 0, imageTo.width.toDouble(), imageTo.height.toDouble()),
-          ui.Rect.fromLTWH(0, 0, size.width, size.height),
-          paint,
-        );
-        return;
-      }
-
-      // 差分切换：使用dissolve效果
-      final shader = program.fragmentShader();
-      shader
-        ..setFloat(0, progress)
-        ..setFloat(1, size.width)
-        ..setFloat(2, size.height)
-        ..setFloat(3, imageFrom.width.toDouble())
-        ..setFloat(4, imageFrom.height.toDouble())
-        ..setFloat(5, imageTo.width.toDouble())
-        ..setFloat(6, imageTo.height.toDouble())
-        ..setImageSampler(0, imageFrom)
-        ..setImageSampler(1, imageTo);
-
-      final paint = ui.Paint()
-        ..shader = shader
-        ..isAntiAlias = true
-        ..filterQuality = FilterQuality.high;
-      canvas.drawRect(ui.Rect.fromLTWH(0, 0, size.width, size.height), paint);
-    } catch (e) {
-      print("Error painting dissolve shader: $e");
+    final screenHeight = MediaQuery.of(context).size.height;
+    final targetHeight = screenHeight * widget.heightFactor;
+    if (targetHeight <= 0) {
+      return const SizedBox.shrink();
     }
-  }
+    final aspectRatio = image.width / image.height;
+    final targetWidth = targetHeight * aspectRatio;
 
-  @override
-  bool shouldRepaint(covariant _DissolvePainter oldDelegate) {
-    return progress != oldDelegate.progress ||
-        imageFrom != oldDelegate.imageFrom ||
-        imageTo != oldDelegate.imageTo;
+    //print('[_CompositeCharacterWidget] 渲染角色: ${widget.characterKey}, 尺寸: ${targetWidth}x${targetHeight}');
+    return SizedBox(
+      width: targetWidth,
+      height: targetHeight,
+      child: DirectCgDisplay(
+        key: ValueKey('direct_${widget.characterKey}'),
+        image: image,
+        resourceId: widget.characterKey,
+        isFadingOut: widget.isFadingOut,
+        enableFadeIn: !widget.isFadingOut,
+        skipAnimation: widget.skipAnimation,
+      ),
+    );
   }
 }
 

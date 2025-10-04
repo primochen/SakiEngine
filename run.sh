@@ -158,6 +158,28 @@ echo -e "${GREEN}启动游戏项目: $GAME_NAME${NC}"
 echo -e "${BLUE}游戏路径: $GAME_DIR${NC}"
 echo ""
 
+# 平台选择逻辑
+echo -e "${YELLOW}请选择运行平台:${NC}"
+echo -e "${BLUE}  1. ${PLATFORM_NAME} (当前系统平台)${NC}"
+echo -e "${BLUE}  2. Chrome (Web调试模式)${NC}"
+echo ""
+echo -e -n "${YELLOW}请选择 (1-2, 默认为1): ${NC}"
+read -r platform_choice
+
+case "$platform_choice" in
+    "2")
+        RUN_PLATFORM="web"
+        PLATFORM_DISPLAY="Chrome (Web调试模式)"
+        ;;
+    *)
+        RUN_PLATFORM="$PLATFORM"
+        PLATFORM_DISPLAY="$PLATFORM_NAME"
+        ;;
+esac
+
+echo -e "${GREEN}选择的平台: $PLATFORM_DISPLAY${NC}"
+echo ""
+
 # 读取游戏配置
 echo -e "${YELLOW}正在读取游戏配置...${NC}"
 GAME_CONFIG=$(read_game_config "$GAME_DIR")
@@ -196,7 +218,7 @@ fi
 
 # 启动Flutter项目
 echo ""
-echo -e "${YELLOW}正在启动 SakiEngine (${PLATFORM_NAME})...${NC}"
+echo -e "${YELLOW}正在启动 SakiEngine ($PLATFORM_DISPLAY)...${NC}"
 cd "$ENGINE_DIR" || exit
 
 echo -e "${YELLOW}正在清理 Flutter 缓存...${NC}"
@@ -210,13 +232,13 @@ flutter pub run flutter_launcher_icons:main
 
 echo ""
 
-# 检查是否为web模式
-if [ "$1" = "web" ]; then
-    echo -e "${GREEN}在 Web (Chrome) 上启动项目...${NC}"
+# 根据选择的平台启动
+if [ "$RUN_PLATFORM" = "web" ]; then
+    echo -e "${GREEN}在 Chrome (Web调试模式) 上启动项目...${NC}"
     flutter run -d chrome --dart-define=SAKI_GAME_PATH="$GAME_DIR"
 else
-    # 根据平台启动
-    case "$PLATFORM" in
+    # 根据当前系统平台启动
+    case "$RUN_PLATFORM" in
         "macos")
             echo -e "${GREEN}在 macOS 上启动项目...${NC}"
             echo "Debug: GAME_DIR=$GAME_DIR"
@@ -231,7 +253,7 @@ else
             flutter run -d windows --dart-define=SAKI_GAME_PATH="$GAME_DIR"
             ;;
         *)
-            echo -e "${RED}错误: 不支持的平台 $PLATFORM${NC}"
+            echo -e "${RED}错误: 不支持的平台 $RUN_PLATFORM${NC}"
             exit 1
             ;;
     esac
