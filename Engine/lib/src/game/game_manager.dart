@@ -179,12 +179,12 @@ class GameManager {
         await _flowchartManager.unlockNode(nodeId, autoSaveId: actualAutoSaveId);
 
         if (kDebugMode) {
-          print('[AutoSave] 创建自动存档: $displayName (原因: $reason)');
+          //print('[AutoSave] 创建自动存档: $displayName (原因: $reason)');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[AutoSave] 创建自动存档失败: $e');
+        //print('[AutoSave] 创建自动存档失败: $e');
       }
     }
   }
@@ -232,7 +232,7 @@ class GameManager {
     }
 
     if (kDebugMode) {
-      print('[AutoSave] 检查scene是否为章节末尾: $sceneName (index: $sceneIndex)');
+      //print('[AutoSave] 检查scene是否为章节末尾: $sceneName (index: $sceneIndex)');
     }
 
     // 获取当前所在章节(通过label名称判断,如cp0_xxx)
@@ -247,7 +247,7 @@ class GameManager {
 
     if (currentChapter == null) {
       if (kDebugMode) {
-        print('[AutoSave] ❌ $sceneName 无法确定所在章节');
+        //print('[AutoSave] ❌ $sceneName 无法确定所在章节');
       }
       return;
     }
@@ -260,14 +260,14 @@ class GameManager {
       if (node is ReturnNode) {
         final lastSceneIndex = _findLastSceneWithDialogueBeforeChapterEnd(i);
         if (kDebugMode) {
-          print('[AutoSave] 找到return节点 (index: $i), return前最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
+          //print('[AutoSave] 找到return节点 (index: $i), return前最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
         }
 
         if (lastSceneIndex == sceneIndex) {
           await _createChapterEndAutoSave(sceneIndex, sceneName, i);
         } else {
           if (kDebugMode) {
-            print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是return前最后一个有对话的scene');
+            //print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是return前最后一个有对话的scene');
           }
         }
         return;
@@ -277,14 +277,14 @@ class GameManager {
       if (node is BackgroundNode && _containsChapter(node.background) && i != sceneIndex) {
         final lastSceneIndex = _findLastSceneWithDialogueBeforeChapterEnd(i);
         if (kDebugMode) {
-          print('[AutoSave] 找到下一章节背景 ${node.background} (index: $i), 前面最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
+          //print('[AutoSave] 找到下一章节背景 ${node.background} (index: $i), 前面最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
         }
 
         if (lastSceneIndex == sceneIndex) {
           await _createChapterEndAutoSave(sceneIndex, sceneName, i);
         } else {
           if (kDebugMode) {
-            print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是下一章前最后一个有对话的scene');
+            //print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是下一章前最后一个有对话的scene');
           }
         }
         return;
@@ -303,20 +303,20 @@ class GameManager {
           if (targetChapter != currentChapter) {
             final lastSceneIndex = _findLastSceneWithDialogueBeforeChapterEnd(i);
             if (kDebugMode) {
-              print('[AutoSave] 找到跨章节jump: cp$currentChapter -> cp$targetChapter (index: $i), 前面最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
+              //print('[AutoSave] 找到跨章节jump: cp$currentChapter -> cp$targetChapter (index: $i), 前面最后一个有对话的scene是: $lastSceneIndex, 当前scene: $sceneIndex');
             }
 
             if (lastSceneIndex == sceneIndex) {
               await _createChapterEndAutoSave(sceneIndex, sceneName, i);
             } else {
               if (kDebugMode) {
-                print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是跨章节jump前最后一个有对话的scene');
+                //print('[AutoSave] ❌ $sceneName 不是章节末尾: 不是跨章节jump前最后一个有对话的scene');
               }
             }
             return;
           } else {
             if (kDebugMode) {
-              print('[AutoSave] 跳过同章节jump: $targetLabel (当前章节: cp$currentChapter)');
+              //print('[AutoSave] 跳过同章节jump: $targetLabel (当前章节: cp$currentChapter)');
             }
           }
         }
@@ -324,7 +324,7 @@ class GameManager {
     }
 
     if (kDebugMode) {
-      print('[AutoSave] ❌ $sceneName 不是章节末尾: 未找到章节结束点');
+      //print('[AutoSave] ❌ $sceneName 不是章节末尾: 未找到章节结束点');
     }
   }
 
@@ -349,7 +349,7 @@ class GameManager {
     final displayName = '${chapterDisplayName}末尾';
 
     if (kDebugMode) {
-      print('[AutoSave] ✅ $sceneName 是章节末尾! 创建自动存档: $displayName (节点ID: $nodeId)');
+      //print('[AutoSave] ✅ $sceneName 是章节末尾! 创建自动存档: $displayName (节点ID: $nodeId)');
     }
 
     // 创建自动存档
@@ -369,7 +369,7 @@ class GameManager {
     await _flowchartManager.unlockNode(nodeId, autoSaveId: actualAutoSaveId);
 
     if (kDebugMode) {
-      print('[AutoSave] 章节末尾自动存档创建完成: $displayName (scene: $sceneIndex, end: $endIndex, autoSaveId: $actualAutoSaveId)');
+      //print('[AutoSave] 章节末尾自动存档创建完成: $displayName (scene: $sceneIndex, end: $endIndex, autoSaveId: $actualAutoSaveId)');
     }
   }
 

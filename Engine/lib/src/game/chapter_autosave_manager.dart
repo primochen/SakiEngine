@@ -30,7 +30,7 @@ class ChapterAutoSaveManager {
     _lastSeenLabel = labelName;
 
     if (kDebugMode) {
-      print('[ChapterAutoSave] 📌 经过label: $labelName');
+      //print('[ChapterAutoSave] 📌 经过label: $labelName');
     }
   }
 
@@ -69,7 +69,7 @@ class ChapterAutoSaveManager {
     required StoryFlowchartManager flowchartManager,
   }) async {
     if (kDebugMode) {
-      print('[ChapterAutoSave] 📢 对话显示 - currentLabel=$currentLabel, lastSeenLabel=$_lastSeenLabel');
+      //print('[ChapterAutoSave] 📢 对话显示 - currentLabel=$currentLabel, lastSeenLabel=$_lastSeenLabel');
     }
 
     // 检查刚刚经过的label是否是章节开头
@@ -78,14 +78,14 @@ class ChapterAutoSaveManager {
     }
 
     if (kDebugMode) {
-      print('[ChapterAutoSave] ✅ 检测到章节开头label后的第一句对话: $_lastSeenLabel');
+      //print('[ChapterAutoSave] ✅ 检测到章节开头label后的第一句对话: $_lastSeenLabel');
     }
 
     try {
       final chapterNum = extractChapterNumberFromLabel(_lastSeenLabel);
       if (chapterNum == null) {
         if (kDebugMode) {
-          print('[ChapterAutoSave] ❌ 无法从label提取章节编号: $_lastSeenLabel');
+          //print('[ChapterAutoSave] ❌ 无法从label提取章节编号: $_lastSeenLabel');
         }
         _lastSeenLabel = null;
         return;
@@ -96,7 +96,7 @@ class ChapterAutoSaveManager {
       // 检查是否已经创建过存档
       if (_savedChapters.contains(nodeId)) {
         if (kDebugMode) {
-          print('[ChapterAutoSave] ⏭️ 章节 $chapterNum 已创建过存档，跳过');
+          //print('[ChapterAutoSave] ⏭️ 章节 $chapterNum 已创建过存档，跳过');
         }
         _lastSeenLabel = null;
         return;
@@ -105,17 +105,17 @@ class ChapterAutoSaveManager {
       final displayName = '第${chapterNum}章';
 
       if (kDebugMode) {
-        print('[ChapterAutoSave] 🎯 创建章节存档: $displayName (nodeId: $nodeId, scriptIndex: $scriptIndex)');
-        print('[ChapterAutoSave] 📝 存档时的详细信息: currentScript=$currentScriptFile, lastSeenLabel=$_lastSeenLabel');
+        //print('[ChapterAutoSave] 🎯 创建章节存档: $displayName (nodeId: $nodeId, scriptIndex: $scriptIndex)');
+        //print('[ChapterAutoSave] 📝 存档时的详细信息: currentScript=$currentScriptFile, lastSeenLabel=$_lastSeenLabel');
       }
 
       // 创建自动存档
       final snapshot = saveStateSnapshot();
 
       if (kDebugMode) {
-        print('[ChapterAutoSave] 📊 存档快照信息: scriptIndex=${snapshot.scriptIndex}, nvlDialogues数量=${snapshot.nvlDialogues.length}');
+        //print('[ChapterAutoSave] 📊 存档快照信息: scriptIndex=${snapshot.scriptIndex}, nvlDialogues数量=${snapshot.nvlDialogues.length}');
         if (snapshot.nvlDialogues.isNotEmpty) {
-          print('[ChapterAutoSave] 📊 NVL最后一句: ${snapshot.nvlDialogues.last.dialogue}');
+          //print('[ChapterAutoSave] 📊 NVL最后一句: ${snapshot.nvlDialogues.last.dialogue}');
         }
       }
 
@@ -133,7 +133,7 @@ class ChapterAutoSaveManager {
       );
 
       if (kDebugMode) {
-        print('[ChapterAutoSave] 🔧 修正后的scriptIndex: ${fixedSnapshot.scriptIndex} (原始: ${snapshot.scriptIndex})');
+        //print('[ChapterAutoSave] 🔧 修正后的scriptIndex: ${fixedSnapshot.scriptIndex} (原始: ${snapshot.scriptIndex})');
       }
 
       final saveSlot = SaveSlot(
@@ -155,11 +155,11 @@ class ChapterAutoSaveManager {
       _savedChapters.add(nodeId);
 
       if (kDebugMode) {
-        print('[ChapterAutoSave] ✅ 章节存档创建成功: $displayName (autoSaveId: $actualAutoSaveId)');
+        //print('[ChapterAutoSave] ✅ 章节存档创建成功: $displayName (autoSaveId: $actualAutoSaveId)');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[ChapterAutoSave] ❌ 创建章节存档失败: $e');
+        //print('[ChapterAutoSave] ❌ 创建章节存档失败: $e');
       }
     } finally {
       // 清除标记，避免下一句对话重复创建

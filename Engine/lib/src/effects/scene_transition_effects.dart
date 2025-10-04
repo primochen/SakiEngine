@@ -11,6 +11,7 @@ enum TransitionType {
   diss,  // 直接图片渐变过渡
   wipe,  // 擦除效果 (未来扩展)
   slide, // 滑动效果 (未来扩展)
+  blink, // 睁眼效果 (上下黑屏移开，模拟睁开眼睛)
 }
 
 /// 转场效果管理器
@@ -89,6 +90,18 @@ class SceneTransitionEffectManager {
           onMidTransition: onMidTransition,
           onComplete: () {
             //print('[SceneTransition] wipe转场完成，移除覆盖层');
+            _removeOverlay();
+            _isTransitioning = false;
+            completer.complete();
+          },
+        );
+        break;
+      case TransitionType.blink:
+        transitionWidget = _BlinkTransitionOverlay(
+          duration: duration,
+          onMidTransition: onMidTransition,
+          onComplete: () {
+            //print('[SceneTransition] blink转场完成，移除覆盖层');
             _removeOverlay();
             _isTransitioning = false;
             completer.complete();
@@ -190,7 +203,6 @@ class _FadeTransitionOverlayState extends State<_FadeTransitionOverlay>
     // 在动画中点执行场景切换
     if (!_midTransitionExecuted && _controller.value >= 0.5) {
       _midTransitionExecuted = true;
-      print('[FadeTransition] 到达转场中点，执行回调');
       widget.onMidTransition();
     }
   }
@@ -615,6 +627,151 @@ class _WipeMaskPainter extends CustomPainter {
 }
 
 
+/// 睁眼转场覆盖层（上下黑屏向两边移开，模拟睁开眼睛）
+class _BlinkTransitionOverlay extends StatefulWidget {
+  final Duration duration;
+  final VoidCallback onMidTransition;
+  final VoidCallback onComplete;
+
+  const _BlinkTransitionOverlay({
+    required this.duration,
+    required this.onMidTransition,
+    required this.onComplete,
+  });
+
+  @override
+  State<_BlinkTransitionOverlay> createState() => _BlinkTransitionOverlayState();
+}
+
+class _BlinkTransitionOverlayState extends State<_BlinkTransitionOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _closeAnimation;
+  late Animation<double> _openAnimation;
+  bool _midTransitionExecuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    // 前半段：闭眼（黑屏从上下合拢） (0 -> 1)
+    _closeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+    ));
+
+    // 后半段：睁眼（黑屏向上下移开） (1 -> 0)
+    _openAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
+    ));
+
+    _controller.addListener(_onAnimationUpdate);
+    _controller.addStatusListener(_onAnimationStatus);
+
+    // 开始动画
+    _controller.forward();
+  }
+
+  void _onAnimationUpdate() {
+    // 在动画中点执行场景切换
+    if (!_midTransitionExecuted && _controller.value >= 0.5) {
+      _midTransitionExecuted = true;
+      widget.onMidTransition();
+    }
+  }
+
+  void _onAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      widget.onComplete();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // 计算当前眼睛开合程度
+        double eyeCloseProgress;
+        if (_controller.value <= 0.5) {
+          // 前半段：闭眼
+          eyeCloseProgress = _closeAnimation.value;
+        } else {
+          // 后半段：睁眼
+          eyeCloseProgress = _openAnimation.value;
+        }
+
+        return Material(
+          color: Colors.transparent,
+          child: CustomPaint(
+            painter: _BlinkMaskPainter(
+              closeProgress: eyeCloseProgress,
+            ),
+            size: Size.infinite,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 睁眼遮罩绘制器
+class _BlinkMaskPainter extends CustomPainter {
+  final double closeProgress;
+
+  _BlinkMaskPainter({
+    required this.closeProgress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (closeProgress <= 0) return;
+
+    final maskPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+
+    // 计算上下遮罩的高度（从0逐渐增长到屏幕高度的一半）
+    final maskHeight = (size.height / 2) * closeProgress;
+
+    // 绘制上方黑色遮罩（从顶部向下）
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, maskHeight),
+      maskPaint,
+    );
+
+    // 绘制下方黑色遮罩（从底部向上）
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height - maskHeight, size.width, maskHeight),
+      maskPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BlinkMaskPainter oldDelegate) {
+    return oldDelegate.closeProgress != closeProgress;
+  }
+}
+
+
 /// 转场类型解析工具
 class TransitionTypeParser {
   static TransitionType parseTransitionType(String transitionString) {
@@ -628,6 +785,10 @@ class TransitionTypeParser {
         return TransitionType.wipe;
       case 'slide':
         return TransitionType.slide;
+      case 'blink':
+      case 'eyeopen':
+      case 'eye':
+        return TransitionType.blink;
       default:
         return TransitionType.fade; // 默认使用fade
     }
