@@ -233,12 +233,15 @@ class _FadeTransitionOverlayState extends State<_FadeTransitionOverlay>
           // 后半段：从黑屏淡入
           opacity = _fadeInAnimation.value;
         }
-        
-        return Material(
-          color: Colors.black.withOpacity(opacity),
-          child: const SizedBox(
-            width: double.infinity,
-            height: double.infinity,
+
+        return IgnorePointer(
+          ignoring: true, // 不拦截UI交互
+          child: Material(
+            color: Colors.black.withOpacity(opacity),
+            child: const SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+            ),
           ),
         );
       },
@@ -545,7 +548,7 @@ class _WipeTransitionOverlayState extends State<_WipeTransitionOverlay>
       builder: (context, child) {
         // 计算当前扇形覆盖角度
         double sweepProgress;
-        
+
         if (_controller.value <= 0.35) {
           // 前30%：从0度顺时针旋转到360度
           sweepProgress = _wipeInAnimation.value;
@@ -556,14 +559,17 @@ class _WipeTransitionOverlayState extends State<_WipeTransitionOverlay>
           // 后30%：从360度逆时针旋转回0度
           sweepProgress = _wipeOutAnimation.value;
         }
-        
-        return Material(
-          color: Colors.transparent,
-          child: CustomPaint(
-            painter: _WipeMaskPainter(
-              sweepProgress: sweepProgress,
+
+        return IgnorePointer(
+          ignoring: true, // 不拦截UI交互
+          child: Material(
+            color: Colors.transparent,
+            child: CustomPaint(
+              painter: _WipeMaskPainter(
+                sweepProgress: sweepProgress,
+              ),
+              size: Size.infinite,
             ),
-            size: Size.infinite,
           ),
         );
       },
@@ -627,7 +633,7 @@ class _WipeMaskPainter extends CustomPainter {
 }
 
 
-/// 睁眼转场覆盖层（上下黑屏向两边移开，模拟睁开眼睛）
+/// 睁眼转场覆盖层（淡入黑屏，然后上下睁眼显示新场景）
 class _BlinkTransitionOverlay extends StatefulWidget {
   final Duration duration;
   final VoidCallback onMidTransition;
@@ -646,8 +652,8 @@ class _BlinkTransitionOverlay extends StatefulWidget {
 class _BlinkTransitionOverlayState extends State<_BlinkTransitionOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _closeAnimation;
-  late Animation<double> _openAnimation;
+  late Animation<double> _fadeInAnimation;
+  late Animation<double> _blinkOutAnimation;
   bool _midTransitionExecuted = false;
 
   @override
@@ -659,22 +665,22 @@ class _BlinkTransitionOverlayState extends State<_BlinkTransitionOverlay>
       vsync: this,
     );
 
-    // 前半段：闭眼（黑屏从上下合拢） (0 -> 1)
-    _closeAnimation = Tween<double>(
+    // 前半段：淡入黑屏（像fade一样） (0 -> 1)
+    _fadeInAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
     ));
 
-    // 后半段：睁眼（黑屏向上下移开） (1 -> 0)
-    _openAnimation = Tween<double>(
+    // 后半段：睁眼（上下遮罩移开） (1 -> 0)
+    _blinkOutAnimation = Tween<double>(
       begin: 1.0,
       end: 0.0,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
+      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
     ));
 
     _controller.addListener(_onAnimationUpdate);
@@ -685,7 +691,7 @@ class _BlinkTransitionOverlayState extends State<_BlinkTransitionOverlay>
   }
 
   void _onAnimationUpdate() {
-    // 在动画中点执行场景切换
+    // 在动画中点（淡入黑屏完成时）执行场景切换
     if (!_midTransitionExecuted && _controller.value >= 0.5) {
       _midTransitionExecuted = true;
       widget.onMidTransition();
@@ -709,25 +715,33 @@ class _BlinkTransitionOverlayState extends State<_BlinkTransitionOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // 计算当前眼睛开合程度
-        double eyeCloseProgress;
         if (_controller.value <= 0.5) {
-          // 前半段：闭眼
-          eyeCloseProgress = _closeAnimation.value;
-        } else {
-          // 后半段：睁眼
-          eyeCloseProgress = _openAnimation.value;
-        }
-
-        return Material(
-          color: Colors.transparent,
-          child: CustomPaint(
-            painter: _BlinkMaskPainter(
-              closeProgress: eyeCloseProgress,
+          // 前半段：使用fade的淡入黑屏效果
+          return IgnorePointer(
+            ignoring: true,
+            child: Material(
+              color: Colors.black.withOpacity(_fadeInAnimation.value),
+              child: const SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+              ),
             ),
-            size: Size.infinite,
-          ),
-        );
+          );
+        } else {
+          // 后半段：使用睁眼的上下遮罩移开效果
+          return IgnorePointer(
+            ignoring: true,
+            child: Material(
+              color: Colors.transparent,
+              child: CustomPaint(
+                painter: _BlinkMaskPainter(
+                  closeProgress: _blinkOutAnimation.value,
+                ),
+                size: Size.infinite,
+              ),
+            ),
+          );
+        }
       },
     );
   }
