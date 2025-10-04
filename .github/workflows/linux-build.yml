@@ -82,42 +82,61 @@ jobs:
       
       - name: Build Linux App
         run: |
-          echo "🔨 使用build.sh构建Linux应用"
+          echo "🔨 开始构建Linux应用"
           chmod +x build.sh
-          ./build.sh linux
+
+          # 显示构建前的环境信息
+          echo "Flutter 版本:"
+          flutter --version
+
+          echo ""
+          echo "运行 build.sh..."
+          set -x  # 显示执行的命令
+          ./build.sh linux || {
+            echo "❌ build.sh 执行失败，退出码: $?"
+            echo "尝试直接在 Engine 目录构建..."
+            cd Engine
+            flutter build linux --release -v
+          }
+          set +x
 
       - name: Verify Build Output
         run: |
           echo "🔍 验证构建输出..."
-          echo "📁 Engine/build 目录结构:"
-          ls -laR Engine/build/linux/ || echo "构建目录不存在"
+          echo "📁 完整构建目录树:"
+          find Engine/build -type f -name "*.so" -o -type f -executable -o -type d -name "bundle" | head -50
 
           echo ""
-          echo "📦 检查 bundle 目录:"
-          if [ -d "Engine/build/linux/x64/release/bundle" ]; then
-            echo "✅ bundle 目录存在"
-            ls -lah Engine/build/linux/x64/release/bundle/
+          echo "📦 检查可能的 bundle 位置:"
 
-            echo ""
-            echo "🔍 检查可执行文件:"
-            find Engine/build/linux/x64/release/bundle -type f -executable -ls
+          # 检查多个可能的位置
+          possible_locations=(
+            "Engine/build/linux/x64/release/bundle"
+            "Engine/build/linux/release/bundle"
+            "Engine/build/linux/bundle"
+          )
 
-            echo ""
-            echo "📊 bundle 目录大小:"
-            du -sh Engine/build/linux/x64/release/bundle/
-          else
-            echo "❌ bundle 目录不存在！"
-            echo "尝试查找构建输出..."
-            find Engine/build -type f -name "*.so" -o -type f -executable | head -20
+          bundle_found=false
+          for location in "${possible_locations[@]}"; do
+            if [ -d "$location" ]; then
+              echo "✅ 找到 bundle 在: $location"
+              ls -lah "$location/"
+              bundle_found=true
+              break
+            fi
+          done
+
+          if [ "$bundle_found" = false ]; then
+            echo "❌ 在所有预期位置都未找到 bundle 目录"
+            echo "Engine/build 完整内容:"
+            ls -laR Engine/build/ | head -100
           fi
 
       - name: Package Linux App
         id: build
         run: |
-          cd Engine/build/linux/x64/release
-
-          # 从项目根目录读取游戏名称（修正相对路径为5层）
-          GAME_NAME=$(cat ../../../../../default_game.txt 2>/dev/null | tr -d '\n\r' | xargs)
+          # 从项目根目录读取游戏名称
+          GAME_NAME=$(cat default_game.txt 2>/dev/null | tr -d '\n\r' | xargs)
 
           # 如果读取失败，使用默认名称
           if [ -z "$GAME_NAME" ]; then
@@ -125,8 +144,8 @@ jobs:
             echo "⚠️  无法读取 default_game.txt，使用默认名称: $GAME_NAME"
           fi
 
-          # 从Engine目录读取版本号（修正相对路径为5层）
-          version=$(grep '^version:' ../../../../../Engine/pubspec.yaml 2>/dev/null | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          # 从Engine目录读取版本号
+          version=$(grep '^version:' Engine/pubspec.yaml 2>/dev/null | cut -d ' ' -f 2 | cut -d '+' -f 1)
 
           # 如果读取失败，使用默认版本
           if [ -z "$version" ]; then
@@ -138,45 +157,37 @@ jobs:
           artifact_name="${GAME_NAME}-${version}-Linux-${arch}.zip"
 
           echo "🔍 构建信息:"
-          echo "   当前路径: $(pwd)"
           echo "   游戏名称: $GAME_NAME"
           echo "   版本号: $version"
           echo "   架构: $arch"
           echo "   输出文件: $artifact_name"
 
-          # 显示当前目录结构用于调试
+          # 查找 bundle 目录
           echo ""
-          echo "📁 当前目录内容:"
-          ls -la
+          echo "🔎 搜索 bundle 目录..."
+          bundle_dir=$(find Engine/build/linux -type d -name "bundle" | head -1)
 
-          # Flutter Linux构建输出在bundle目录下
-          if [ ! -d "bundle" ]; then
-            echo ""
+          if [ -z "$bundle_dir" ]; then
             echo "❌ 错误: 未找到 bundle 目录"
-            echo "当前目录内容:"
-            ls -laR
-            echo ""
-            echo "尝试查找可能的输出位置:"
-            find ../.. -type d -name "bundle" 2>/dev/null || true
+            echo "Engine/build/linux 内容:"
+            ls -laR Engine/build/linux/
             exit 1
           fi
 
+          echo "✅ 找到 bundle 目录: $bundle_dir"
           echo ""
-          echo "📦 找到 bundle 目录，显示其内容:"
-          ls -lah bundle/
+          echo "📦 bundle 目录内容:"
+          ls -lah "$bundle_dir/"
 
           # 检查 bundle 目录是否为空
-          if [ ! "$(ls -A bundle/)" ]; then
+          if [ ! "$(ls -A $bundle_dir/)" ]; then
             echo "❌ 错误: bundle 目录是空的！"
             exit 1
           fi
 
           # 检查是否存在可执行文件
-          if [ ! -f "bundle/${GAME_NAME}" ] && [ ! -f "bundle/sakiengine" ]; then
-            echo "⚠️  警告: 未找到预期的可执行文件 bundle/${GAME_NAME}"
-            echo "bundle 目录中的可执行文件:"
-            find bundle/ -type f -executable -ls || echo "未找到可执行文件"
-          fi
+          exe_count=$(find "$bundle_dir" -type f -executable | wc -l)
+          echo "找到 $exe_count 个可执行文件"
 
           # 创建临时目录用于打包
           PACKAGE_DIR="${GAME_NAME}-${version}-Linux-${arch}"
@@ -185,7 +196,7 @@ jobs:
           # 复制bundle目录的所有内容到打包目录
           echo ""
           echo "📋 正在复制文件到打包目录..."
-          cp -r bundle/* "$PACKAGE_DIR/"
+          cp -r "$bundle_dir"/* "$PACKAGE_DIR/"
 
           # 验证复制结果
           echo "打包目录内容:"
@@ -203,7 +214,7 @@ jobs:
           fi
 
           zip_size=$(du -h "$artifact_name" | cut -f1)
-          echo "✅ 使用 bundle 目录创建ZIP: $artifact_name (大小: $zip_size)"
+          echo "✅ ZIP创建成功: $artifact_name (大小: $zip_size)"
 
           # 显示ZIP内容用于验证
           echo ""
@@ -218,5 +229,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-Linux-${{ inputs.architecture }}
-          path: Engine/build/linux/x64/release/*.zip
+          path: ./*.zip
           retention-days: 90
