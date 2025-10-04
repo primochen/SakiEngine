@@ -166,6 +166,7 @@ class _LogoScreenState extends State<_LogoScreen>
   Timer? _timer;
   late final AnimationController _fadeController;
   _LogoPhase _phase = _LogoPhase.display;
+  bool _hasCompleted = false;
 
   @override
   void initState() {
@@ -175,7 +176,8 @@ class _LogoScreenState extends State<_LogoScreen>
       vsync: this,
       duration: widget.fadeOutDuration,
     )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
+        if (status == AnimationStatus.completed && !_hasCompleted) {
+          _hasCompleted = true;
           widget.onComplete();
         }
       });
@@ -198,66 +200,79 @@ class _LogoScreenState extends State<_LogoScreen>
     }
   }
 
+  void _handleDoubleTap() {
+    // 双击跳过：取消定时器，快速完成淡出动画
+    _timer?.cancel();
+    if (!_hasCompleted && mounted) {
+      setState(() => _phase = _LogoPhase.fadeOut);
+      _fadeController.duration = const Duration(milliseconds: 200);
+      _fadeController.forward(from: _fadeController.value);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = SettingsManager().currentDarkMode;
     final baseColor = isDarkMode ? Colors.black : Colors.white;
 
-    return Scaffold(
-      backgroundColor: baseColor,
-      body: AnimatedBuilder(
-        animation: _fadeController,
-        builder: (context, child) {
-          final t = _fadeController.value.clamp(0.0, 1.0);
-          double logoOpacity = 1.0;
-          double backgroundOpacity = 1.0;
+    return GestureDetector(
+      onDoubleTap: _handleDoubleTap,
+      child: Scaffold(
+        backgroundColor: baseColor,
+        body: AnimatedBuilder(
+          animation: _fadeController,
+          builder: (context, child) {
+            final t = _fadeController.value.clamp(0.0, 1.0);
+            double logoOpacity = 1.0;
+            double backgroundOpacity = 1.0;
 
-          if (_phase == _LogoPhase.fadeOut) {
-            if (t < 0.5) {
-              // 先让Logo淡出
-              final progress = t / 0.5;
-              logoOpacity = 1.0 - progress;
-              backgroundOpacity = 1.0;
-            } else {
-              // Logo已消失，背景也开始淡出
-              logoOpacity = 0.0;
-              final progress = (t - 0.5) / 0.5;
-              backgroundOpacity = 1.0 - progress;
+            if (_phase == _LogoPhase.fadeOut) {
+              if (t < 0.5) {
+                // 先让Logo淡出
+                final progress = t / 0.5;
+                logoOpacity = 1.0 - progress;
+                backgroundOpacity = 1.0;
+              } else {
+                // Logo已消失，背景也开始淡出
+                logoOpacity = 0.0;
+                final progress = (t - 0.5) / 0.5;
+                backgroundOpacity = 1.0 - progress;
+              }
             }
-          }
 
-          return ColoredBox(
-            color: baseColor.withOpacity(backgroundOpacity),
-            child: Center(
-              child: logoOpacity > 0
-                  ? Opacity(
-                      opacity: logoOpacity,
-                      child: FractionallySizedBox(
-                        widthFactor: 0.8,
-                        heightFactor: 0.8,
-                        child: isDarkMode
-                            ? SmartAssetImage(
-                                assetName: widget.logoAsset,
-                                fit: BoxFit.contain,
-                              )
-                            : ColorFiltered(
-                                colorFilter: const ColorFilter.matrix(<double>[
-                                  -1, 0, 0, 0, 255,
-                                  0, -1, 0, 0, 255,
-                                  0, 0, -1, 0, 255,
-                                  0, 0, 0, 1, 0,
-                                ]),
-                                child: SmartAssetImage(
+            return ColoredBox(
+              color: baseColor.withOpacity(backgroundOpacity),
+              child: Center(
+                child: logoOpacity > 0
+                    ? Opacity(
+                        opacity: logoOpacity,
+                        child: FractionallySizedBox(
+                          widthFactor: 0.8,
+                          heightFactor: 0.8,
+                          child: isDarkMode
+                              ? SmartAssetImage(
                                   assetName: widget.logoAsset,
                                   fit: BoxFit.contain,
+                                )
+                              : ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix(<double>[
+                                    -1, 0, 0, 0, 255,
+                                    0, -1, 0, 0, 255,
+                                    0, 0, -1, 0, 255,
+                                    0, 0, 0, 1, 0,
+                                  ]),
+                                  child: SmartAssetImage(
+                                    assetName: widget.logoAsset,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
-                              ),
-                      ),
-                    )
-                  : null,
-            ),
-          );
-        },
+                        ),
+                      )
+                    : null,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
