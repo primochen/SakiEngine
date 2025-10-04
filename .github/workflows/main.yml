@@ -17,7 +17,7 @@ jobs:
     name: Build Android
     uses: ./.github/workflows/android-build.yml
     with:
-      flutter_version: '3.29.3'
+      flutter_version: '3.35.1'
       working_directory: 'Engine'
       target_platform: 'android-arm64'
     secrets: inherit
@@ -27,7 +27,7 @@ jobs:
     name: Build iOS
     uses: ./.github/workflows/ios-build.yml
     with:
-      flutter_version: '3.29.3'
+      flutter_version: '3.35.1'
       working_directory: 'Engine'
       enable_codesign: false
     secrets: inherit
@@ -37,7 +37,7 @@ jobs:
     name: Build macOS
     uses: ./.github/workflows/macos-build.yml
     with:
-      flutter_version: '3.29.3'
+      flutter_version: '3.35.1'
       working_directory: 'Engine'
       create_dmg: true
     secrets: inherit
@@ -47,7 +47,7 @@ jobs:
     name: Build Windows
     uses: ./.github/workflows/windows-build.yml
     with:
-      flutter_version: '3.29.3'
+      flutter_version: '3.35.1'
       working_directory: 'Engine'
       architecture: 'x64'
     secrets: inherit
@@ -57,7 +57,7 @@ jobs:
     name: Build Linux
     uses: ./.github/workflows/linux-build.yml
     with:
-      flutter_version: '3.29.3'
+      flutter_version: '3.35.1'
       working_directory: 'Engine'
       architecture: 'amd64'
     secrets: inherit

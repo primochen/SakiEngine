@@ -12,7 +12,8 @@
       "Bash(flutter run:*)",
       "Bash(find:*)",
       "Read(//Library/Afolder/**)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(flutter:*)"
     ],
     "deny": [],
     "ask": []
