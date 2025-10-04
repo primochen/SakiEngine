@@ -4,11 +4,13 @@ import 'package:sakiengine/src/sks_parser/sks_ast.dart';
 import 'package:sakiengine/src/game/story_flowchart_manager.dart';
 import 'package:sakiengine/src/game/script_merger.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 /// 剧情流程图分析器 - 完全重写版本
 class StoryFlowchartAnalyzer {
   final StoryFlowchartManager _manager = StoryFlowchartManager();
   final ScriptMerger _scriptMerger = ScriptMerger();
+  final LocalizationManager _localization = LocalizationManager();
 
   /// 分析整个脚本，构建流程图
   Future<void> analyzeScript() async {
@@ -162,7 +164,7 @@ class StoryFlowchartAnalyzer {
       id: branchId,
       label: label,
       type: StoryNodeType.branch,
-      displayName: '分支选择',
+      displayName: _localization.t('flowchart.nodeType.branch'),
       scriptIndex: index,
       chapterName: currentChapter,
       parentNodeId: parentId,
@@ -263,7 +265,7 @@ class StoryFlowchartAnalyzer {
         id: mergeId,
         label: label,
         type: StoryNodeType.merge,
-        displayName: '汇合点',
+        displayName: _localization.t('flowchart.nodeType.merge'),
         scriptIndex: scriptIndex,
         chapterName: currentChapter,
         parentNodeId: null, // 暂时没有父节点
@@ -284,7 +286,7 @@ class StoryFlowchartAnalyzer {
         id: mergeId,
         label: label,
         type: StoryNodeType.merge,
-        displayName: '汇合点',
+        displayName: _localization.t('flowchart.nodeType.merge'),
         scriptIndex: scriptIndex,
         chapterName: currentChapter,
         parentNodeId: parents.first,
@@ -612,20 +614,22 @@ class StoryFlowchartAnalyzer {
 
     final chapterMatch = RegExp(r'chapter[_\s-]?(\d+)', caseSensitive: false).firstMatch(bgName);
     if (chapterMatch != null) {
-      return '第${chapterMatch.group(1)}章';
+      final chapterNum = chapterMatch.group(1)!;
+      return _localization.t('flowchart.chapter', params: {'num': chapterNum});
     }
 
     final chMatch = RegExp(r'\bch(\d+)\b', caseSensitive: false).firstMatch(bgName);
     if (chMatch != null) {
-      return '第${chMatch.group(1)}章';
+      final chapterNum = chMatch.group(1)!;
+      return _localization.t('flowchart.chapter', params: {'num': chapterNum});
     }
 
     if (bgName.toLowerCase().contains('prologue')) {
-      return '序章';
+      return _localization.t('flowchart.prologue');
     }
 
     if (bgName.toLowerCase().contains('epilogue')) {
-      return '尾声';
+      return _localization.t('flowchart.epilogue');
     }
 
     return bgName;

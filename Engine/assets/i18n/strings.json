@@ -166,7 +166,10 @@
     "flowchart.notification.nodeUnlocked": "该节点尚未解锁",
     "flowchart.notification.saveNotFound": "未找到自动存档",
     "flowchart.notification.loadFailed": "加载失败: {error}",
-    "flowchart.notification.noSaveAssociated": "该节点没有关联的存档"
+    "flowchart.notification.noSaveAssociated": "该节点没有关联的存档",
+    "flowchart.chapter": "第{num}章",
+    "flowchart.prologue": "序章",
+    "flowchart.epilogue": "尾声"
   },
   "zh-Hant": {
     "menu.newGame": "新遊戲",
@@ -335,7 +338,10 @@
     "flowchart.notification.nodeUnlocked": "該節點尚未解鎖",
     "flowchart.notification.saveNotFound": "未找到自動存檔",
     "flowchart.notification.loadFailed": "載入失敗: {error}",
-    "flowchart.notification.noSaveAssociated": "該節點沒有關聯的存檔"
+    "flowchart.notification.noSaveAssociated": "該節點沒有關聯的存檔",
+    "flowchart.chapter": "第{num}章",
+    "flowchart.prologue": "序章",
+    "flowchart.epilogue": "尾聲"
   },
   "en": {
     "menu.newGame": "New Game",
@@ -504,7 +510,10 @@
     "flowchart.notification.nodeUnlocked": "This node is not yet unlocked",
     "flowchart.notification.saveNotFound": "Auto save not found",
     "flowchart.notification.loadFailed": "Load failed: {error}",
-    "flowchart.notification.noSaveAssociated": "No save associated with this node"
+    "flowchart.notification.noSaveAssociated": "No save associated with this node",
+    "flowchart.chapter": "Chapter {num}",
+    "flowchart.prologue": "Prologue",
+    "flowchart.epilogue": "Epilogue"
   },
   "ja": {
     "menu.newGame": "New Game",
@@ -673,6 +682,9 @@
     "flowchart.notification.nodeUnlocked": "このノードはまだ解錠されていません",
     "flowchart.notification.saveNotFound": "オートセーブが見つかりません",
     "flowchart.notification.loadFailed": "ロード失敗: {error}",
-    "flowchart.notification.noSaveAssociated": "このノードに関連付けられたセーブデータがありません"
+    "flowchart.notification.noSaveAssociated": "このノードに関連付けられたセーブデータがありません",
+    "flowchart.chapter": "第{num}章",
+    "flowchart.prologue": "序章",
+    "flowchart.epilogue": "終章"
   }
 }
