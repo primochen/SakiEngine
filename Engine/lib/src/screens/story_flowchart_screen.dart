@@ -13,6 +13,7 @@ import 'package:sakiengine/src/widgets/game_style_dropdown.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/widgets/confirm_dialog.dart';
+import 'package:sakiengine/src/localization/localization_manager.dart';
 
 /// 剧情流程图界面
 class StoryFlowchartScreen extends StatefulWidget {
@@ -35,6 +36,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   final StoryFlowchartManager _flowchartManager = StoryFlowchartManager();
   final TransformationController _transformController = TransformationController();
   final UISoundManager _uiSoundManager = UISoundManager();
+  final LocalizationManager _localization = LocalizationManager();
 
   String? _selectedChapter; // 当前选中的章节
   String? _hoveredNodeId; // 当前悬浮的节点ID
@@ -204,7 +206,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
     final textScale = context.scaleFor(ComponentType.text);
 
     return OverlayScaffold(
-      title: '剧情流程图',
+      title: _localization.t('flowchart.title'),
       onClose: widget.onClose ?? () => Navigator.of(context).pop(),
       content: _buildContent(uiScale, textScale),
     );
@@ -304,7 +306,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           // 章节选择下拉菜单
           if (availableChapters.isNotEmpty) ...[
             Text(
-              '选择章节',
+              _localization.t('flowchart.selectChapter'),
               style: TextStyle(
                 color: config.themeColors.primary,
                 fontSize: 18 * textScale,
@@ -368,7 +370,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                       ),
                       SizedBox(width: 8 * uiScale),
                       Text(
-                        '重置视图',
+                        _localization.t('flowchart.resetView'),
                         style: TextStyle(
                           fontSize: 16 * textScale, // 增大字体
                           color: config.themeColors.primary,
@@ -682,7 +684,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  '未解锁',
+                                  _localization.t('flowchart.unlocked'),
                                   style: TextStyle(
                                     color: config.themeColors.background.withOpacity(0.7),
                                     fontSize: 12 * textScale,
@@ -749,7 +751,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '该节点尚未解锁',
+            _localization.t('flowchart.notification.nodeUnlocked'),
             style: TextStyle(color: SakiEngineConfig().themeColors.primary),
           ),
           backgroundColor: Colors.black.withOpacity(0.8),
@@ -764,10 +766,10 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       barrierDismissible: false,
       builder: (context) {
         return ConfirmDialog(
-          title: '确认加载',
+          title: _localization.t('flowchart.loadConfirm.title'),
           content: widget.isInGame
-              ? '确定要加载到「${node.displayName}」吗？\n当前未保存的进度将丢失。'
-              : '确定要加载到「${node.displayName}」吗？',
+              ? _localization.t('flowchart.loadConfirm.inGame', params: {'name': node.displayName})
+              : _localization.t('flowchart.loadConfirm.normal', params: {'name': node.displayName}),
           confirmResult: true,
           cancelResult: false,
         );
@@ -812,7 +814,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '未找到自动存档',
+                _localization.t('flowchart.notification.saveNotFound'),
                 style: TextStyle(color: SakiEngineConfig().themeColors.primary),
               ),
               backgroundColor: Colors.black.withOpacity(0.8),
@@ -826,7 +828,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '加载失败: $e',
+              _localization.t('flowchart.notification.loadFailed', params: {'error': e.toString()}),
               style: TextStyle(color: SakiEngineConfig().themeColors.primary),
             ),
             backgroundColor: Colors.black.withOpacity(0.8),
@@ -837,7 +839,7 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '该节点没有关联的存档',
+            _localization.t('flowchart.notification.noSaveAssociated'),
             style: TextStyle(color: SakiEngineConfig().themeColors.primary),
           ),
           backgroundColor: Colors.black.withOpacity(0.8),
@@ -868,13 +870,13 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
   String _getNodeTypeText(StoryNodeType type) {
     switch (type) {
       case StoryNodeType.chapter:
-        return '章节';
+        return _localization.t('flowchart.nodeType.chapter');
       case StoryNodeType.branch:
-        return '分支';
+        return _localization.t('flowchart.nodeType.branch');
       case StoryNodeType.merge:
-        return '汇合';
+        return _localization.t('flowchart.nodeType.merge');
       case StoryNodeType.ending:
-        return '结局';
+        return _localization.t('flowchart.nodeType.ending');
     }
   }
 
