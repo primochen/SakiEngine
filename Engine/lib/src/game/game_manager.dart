@@ -1568,9 +1568,14 @@ class GameManager {
           );
         }
 
+        // 先计算目标pose和expression，确保使用默认值
+        final targetPose = node.pose ?? currentCharacterState.pose ?? 'pose1';
+        final targetExpression =
+            node.expression ?? currentCharacterState.expression ?? 'happy';
+
         tempCharacters[finalCharacterKey] = currentCharacterState.copyWith(
-          pose: node.pose,
-          expression: node.expression,
+          pose: targetPose,
+          expression: targetExpression,
           clearAnimationProperties: false,
         );
 
@@ -1579,16 +1584,12 @@ class GameManager {
           await _checkAndAnimateCharacterPositions(tempCharacters);
         }
 
-        final targetPose = node.pose ?? currentCharacterState.pose ?? 'pose1';
-        final targetExpression =
-            node.expression ?? currentCharacterState.expression ?? 'happy';
-
         await CharacterCompositeCache.instance
             .preload(resourceId, targetPose, targetExpression);
 
         newCharacters[finalCharacterKey] = currentCharacterState.copyWith(
-          pose: node.pose,
-          expression: node.expression,
+          pose: targetPose,
+          expression: targetExpression,
           clearAnimationProperties: false,
         );
 

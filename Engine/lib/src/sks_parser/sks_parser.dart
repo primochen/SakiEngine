@@ -354,13 +354,17 @@ class SksParser {
             if (anIndex + 1 < endIndex) {
               animation = parts[anIndex + 1];
             }
-            
+
             if (atIndex >= 0 && atIndex < anIndex) {
               // show character pose1 happy at pose an jump repeat 3
               final attributeParts = parts.sublist(2, atIndex);
               if (attributeParts.isNotEmpty) {
-                pose = attributeParts[0];
-                if (attributeParts.length > 1) {
+                if (attributeParts.length == 1) {
+                  // 只有一个参数时，视为expression，pose使用默认值pose1
+                  expression = attributeParts[0];
+                } else {
+                  // 有两个或更多参数时，第一个是pose，第二个是expression
+                  pose = attributeParts[0];
                   expression = attributeParts[1];
                 }
               }
@@ -378,8 +382,12 @@ class SksParser {
             // 原有at语法，无动画
             final attributeParts = parts.sublist(2, atIndex);
             if (attributeParts.isNotEmpty) {
-              pose = attributeParts[0];
-              if (attributeParts.length > 1) {
+              if (attributeParts.length == 1) {
+                // 只有一个参数时，视为expression，pose使用默认值pose1
+                expression = attributeParts[0];
+              } else {
+                // 有两个或更多参数时，第一个是pose，第二个是expression
+                pose = attributeParts[0];
                 expression = attributeParts[1];
               }
             }
@@ -396,7 +404,7 @@ class SksParser {
               }
             }
           }
-          
+
           nodes.add(ShowNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
           break;
         case 'cg':
@@ -442,13 +450,17 @@ class SksParser {
             if (anIndex + 1 < endIndex) {
               animation = parts[anIndex + 1];
             }
-            
+
             if (atIndex >= 0 && atIndex < anIndex) {
               // cg character pose1 happy at pose an jump repeat 3
               final attributeParts = parts.sublist(2, atIndex);
               if (attributeParts.isNotEmpty) {
-                pose = attributeParts[0];
-                if (attributeParts.length > 1) {
+                if (attributeParts.length == 1) {
+                  // 只有一个参数时，视为expression，pose使用默认值pose1
+                  expression = attributeParts[0];
+                } else {
+                  // 有两个或更多参数时，第一个是pose，第二个是expression
+                  pose = attributeParts[0];
                   expression = attributeParts[1];
                 }
               }
@@ -466,8 +478,12 @@ class SksParser {
             // 原有at语法，无动画
             final attributeParts = parts.sublist(2, atIndex);
             if (attributeParts.isNotEmpty) {
-              pose = attributeParts[0];
-              if (attributeParts.length > 1) {
+              if (attributeParts.length == 1) {
+                // 只有一个参数时，视为expression，pose使用默认值pose1
+                expression = attributeParts[0];
+              } else {
+                // 有两个或更多参数时，第一个是pose，第二个是expression
+                pose = attributeParts[0];
                 expression = attributeParts[1];
               }
             }
@@ -478,7 +494,7 @@ class SksParser {
             // 简单的参数解析（没有特殊关键词）
             // 检查是否有pose:前缀的参数
             final attributeParts = parts.sublist(2, endIndex);
-            
+
             bool hasPosePrefix = false;
             for (int i = 0; i < attributeParts.length; i++) {
               if (attributeParts[i].startsWith('pose:')) {
@@ -488,14 +504,14 @@ class SksParser {
                 expression = attributeParts[i].substring(11);
               }
             }
-            
+
             // 如果没有pose:前缀，所有参数都是expression（差分图）
             if (!hasPosePrefix && attributeParts.isNotEmpty) {
               // 将所有参数作为expression
               expression = attributeParts.join(' ');
             }
           }
-          
+
           //print('[SksParser] CG解析结果: character=$character, pose=$pose, expression=$expression, position=$position, animation=$animation');
           nodes.add(CgNode(character, pose: pose, expression: expression, position: position, animation: animation, repeatCount: repeatCount));
           break;
