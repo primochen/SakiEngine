@@ -48,6 +48,7 @@ import 'package:sakiengine/src/utils/expression_selector_manager.dart';
 import 'package:sakiengine/src/utils/expression_offset_manager.dart';
 import 'package:sakiengine/src/utils/key_sequence_detector.dart';
 import 'package:sakiengine/src/widgets/common/right_click_ui_manager.dart';
+import 'package:sakiengine/src/utils/mouse_wheel_handler.dart';
 import 'package:sakiengine/src/widgets/common/game_ui_layer.dart';
 import 'package:sakiengine/src/utils/fast_forward_manager.dart';
 import 'package:sakiengine/src/utils/auto_play_manager.dart'; // 新增：自动播放管理器
@@ -94,6 +95,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   FastForwardManager? _fastForwardManager; // 快进管理器
   AutoPlayManager? _autoPlayManager; // 新增：自动播放管理器
   ReadTextSkipManager? _readTextSkipManager; // 已读文本快进管理器
+  late MouseWheelHandler _mouseWheelHandler; // 鼠标滚轮处理器
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
@@ -160,6 +162,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     
     // 初始化已读文本跟踪器和已读文本快进管理器
     _setupReadTextTracking();
+
+    // 初始化鼠标滚轮处理器
+    _setupMouseWheelHandler();
 
     if (widget.saveSlotToLoad != null) {
       _currentScript = widget.saveSlotToLoad!.currentScript;
@@ -576,6 +581,38 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     print('已读文本跟踪器已初始化 - 快捷菜单中的快进按钮只会跳过已读文本');
   }
 
+  // 设置鼠标滚轮处理器
+  void _setupMouseWheelHandler() {
+    _mouseWheelHandler = MouseWheelHandler(
+      onScrollForward: () {
+        // 向前滚动: 推进对话
+        _dialogueProgressionManager.progressDialogue();
+        _autoPlayManager?.onManualProgress();
+      },
+      onScrollBackward: () {
+        // 向后滚动: 回退剧情
+        _handlePreviousDialogue();
+      },
+      shouldHandleScroll: () {
+        // 检查是否有弹窗或菜单显示
+        final hasOverlayOpen = _isShowingMenu ||
+            _showSaveOverlay ||
+            _showLoadOverlay ||
+            _showReviewOverlay ||
+            _showSettings ||
+            _showDeveloperPanel ||
+            _showDebugPanel ||
+            _showExpressionSelector;
+
+        // 检查是否正在播放视频
+        final isPlayingMovie = _gameManager.currentState.movieFile != null;
+
+        // 只有在没有弹窗且没有播放视频时才处理滚轮事件
+        return !hasOverlayOpen && !isPlayingMovie;
+      },
+    );
+  }
+
   // 设置自动播放管理器
   void _setupAutoPlayManager() {
     _autoPlayManager = AutoPlayManager(
@@ -685,11 +722,30 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, dynamic result) async {
-        if (!didPop) {
-          final shouldExit = await _onWillPop();
+    return Listener(
+      onPointerSignal: (signal) {
+        // 处理鼠标滚轮事件
+        if (signal is PointerScrollEvent) {
+          // 检查是否可以处理滚轮
+          if (_mouseWheelHandler.shouldHandleScroll != null &&
+              _mouseWheelHandler.shouldHandleScroll!()) {
+            // 向上滚动 (dy < 0): 前进
+            if (signal.scrollDelta.dy < 0) {
+              _dialogueProgressionManager.progressDialogue();
+              _autoPlayManager?.onManualProgress();
+            }
+            // 向下滚动 (dy > 0): 后退
+            else if (signal.scrollDelta.dy > 0) {
+              _handlePreviousDialogue();
+            }
+          }
+        }
+      },
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, dynamic result) async {
+          if (!didPop) {
+            final shouldExit = await _onWillPop();
           if (shouldExit && mounted) {
             Navigator.of(context).pop();
           }
@@ -780,49 +836,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                 });
               }
             });
-            
+
             return RightClickUIManager(
               // 背景层 - 不会被隐藏的内容（场景、角色等）
-              backgroundChild: Listener(
-                onPointerSignal: (pointerSignal) {
-                  // 检查是否有弹窗或菜单显示
-                  final hasOverlayOpen = _isShowingMenu || 
-                      _showSaveOverlay || 
-                      _showLoadOverlay || 
-                      _showReviewOverlay ||
-                      _showSettings ||
-                      _showDeveloperPanel || 
-                      _showDebugPanel || 
-                      _showExpressionSelector;
-                  
-                  // 检查是否正在播放视频
-                  final isPlayingMovie = gameState.movieFile != null;
-                  
-                  // 处理标准的PointerScrollEvent（鼠标滚轮）
-                  if (pointerSignal is PointerScrollEvent) {
-                    // 向上滚动: 前进剧情
-                    if (pointerSignal.scrollDelta.dy < 0) {
-                      if (!hasOverlayOpen && !isPlayingMovie) {
-                        _dialogueProgressionManager.progressDialogue();
-                      }
-                    }
-                    // 向下滚动: 回滚剧情
-                    else if (pointerSignal.scrollDelta.dy > 0) {
-                      if (!hasOverlayOpen && !isPlayingMovie) {
-                        _handlePreviousDialogue();
-                      }
-                    }
-                  }
-                  // 处理macOS触控板事件
-                  else if (pointerSignal.toString().contains('Scroll')) {
-                    // 触控板滚动事件，推进剧情
-                    if (!hasOverlayOpen && !isPlayingMovie) {
-                      _dialogueProgressionManager.progressDialogue();
-                    }
-                  }
-                },
-                child: _buildSceneWithFilter(gameState),
-              ),
+              backgroundChild: _buildSceneWithFilter(gameState),
               // 左键点击回调 - 推进剧情
               onLeftClick: () {
                 // 检查是否有弹窗或菜单显示
@@ -913,6 +930,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           },
         ),
         ),
+      ),
       ),
     );
   }

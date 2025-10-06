@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 
 /// 右键隐藏UI管理器
 /// 视觉小说标配功能，右键可以隐藏/显示所有UI元素，左键推进剧情
 class RightClickUIManager extends StatefulWidget {
   /// 子组件 - 包含所有UI元素
   final Widget child;
-  
+
   /// 背景组件 - 不会被隐藏的背景内容（角色、背景等）
   final Widget backgroundChild;
-  
+
   /// UI隐藏状态改变回调
   final Function(bool isUIHidden)? onUIVisibilityChanged;
-  
+
   /// 左键点击回调（用于推进剧情）
   final VoidCallback? onLeftClick;
 
