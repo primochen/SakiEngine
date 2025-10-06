@@ -693,9 +693,14 @@ class StoryFlowchartAnalyzer {
       final directory = await saveLoadManager.getSavesDirectory();
       final dir = Directory(directory);
 
+      // 打印存档目录路径
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 查找sakisav文件的目录: $directory');
+      }
+
       if (!await dir.exists()) {
         if (kDebugMode) {
-          //print('[FlowchartAnalyzer] 存档目录不存在，跳过恢复解锁状态');
+          print('[FlowchartAnalyzer] 存档目录不存在，跳过恢复解锁状态');
         }
         return;
       }
@@ -707,6 +712,10 @@ class StoryFlowchartAnalyzer {
           final fileName = entity.path.split('/').last.replaceAll('.sakisav', '');
           if (fileName.startsWith(StoryFlowchartManager.autoSavePrefix)) {
             autoSaveFiles.add(fileName);
+            // 打印找到的每个sakisav文件路径
+            if (kDebugMode) {
+              print('[FlowchartAnalyzer] 找到sakisav文件: ${entity.path}');
+            }
           }
         }
       }
