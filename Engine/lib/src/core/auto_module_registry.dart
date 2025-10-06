@@ -100,7 +100,7 @@ class AutoModuleRegistry {
       
       for (final entity in libDir.listSync()) {
         if (entity is Directory) {
-          final dirName = entity.path.split('/').last;
+          final dirName = entity.path.split(Platform.pathSeparator).last;
           
           // 跳过 src 目录和隐藏目录
           if (dirName == 'src' || dirName.startsWith('.')) continue;
