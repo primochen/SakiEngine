@@ -709,17 +709,42 @@ class StoryFlowchartAnalyzer {
 
       // 扫描目录中的所有自动存档文件
       final autoSaveFiles = <String>[];
+      int totalFilesScanned = 0;
+      int sakisavCount = 0;
+
       await for (final entity in dir.list()) {
-        if (entity is File && entity.path.endsWith('.sakisav')) {
-          final fileName = entity.path.split('/').last.replaceAll('.sakisav', '');
-          if (fileName.startsWith(StoryFlowchartManager.autoSavePrefix)) {
-            autoSaveFiles.add(fileName);
-            // 打印找到的每个sakisav文件路径
+        totalFilesScanned++;
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 扫描文件 #$totalFilesScanned: ${entity.path} (类型: ${entity is File ? "File" : "Directory"})');
+        }
+
+        if (entity is File) {
+          final fileName = entity.path.split(Platform.pathSeparator).last;
+          if (kDebugMode) {
+            print('[FlowchartAnalyzer]   文件名: $fileName');
+          }
+
+          if (entity.path.endsWith('.sakisav')) {
+            sakisavCount++;
+            final fileNameWithoutExt = fileName.replaceAll('.sakisav', '');
             if (kDebugMode) {
-              print('[FlowchartAnalyzer] 找到sakisav文件: ${entity.path}');
+              print('[FlowchartAnalyzer]   这是sakisav文件! 文件名(无扩展名): $fileNameWithoutExt');
+              print('[FlowchartAnalyzer]   autoSavePrefix: ${StoryFlowchartManager.autoSavePrefix}');
+              print('[FlowchartAnalyzer]   是否以prefix开头: ${fileNameWithoutExt.startsWith(StoryFlowchartManager.autoSavePrefix)}');
+            }
+
+            if (fileNameWithoutExt.startsWith(StoryFlowchartManager.autoSavePrefix)) {
+              autoSaveFiles.add(fileNameWithoutExt);
+              if (kDebugMode) {
+                print('[FlowchartAnalyzer]   ✓ 添加到autoSaveFiles: $fileNameWithoutExt');
+              }
             }
           }
         }
+      }
+
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 扫描完成: 总共 $totalFilesScanned 个文件/文件夹, 其中 $sakisavCount 个.sakisav文件');
       }
 
       if (kDebugMode) {
