@@ -52,7 +52,7 @@ endnvlm
 //守真的满腔热血的立绘
 hide xiayo1
 hide gonna1
-ls moeru an jump "我不会输的。"
+ls moeru "我不会输的。"
 l "我也不会。"
 nvlm
 "对捉迷藏游戏来说，我觉得当躲的人可比当捉的人有意思多了。"
@@ -251,7 +251,7 @@ jump cp1_002_xy
 label cp1_002_y
 "这次我出了布。"
 "而夏悠出的是——"
-show xiayo1 moeru at xiayo1pose an jump
+show xiayo1 pose1 moeru at xiayo1pose an jump
 play sound haneru
 "剪刀！！"
 x  pose4 dame an shake2 repeat 2 "耶！我赢了！"//夏悠高兴
@@ -355,7 +355,7 @@ play sound chin
 "找到了！"//对话框震动
 xnan "哇唔！！"//对话框震动
 shake
-show xiayo1 dame  at xiayo1pose an topin
+show xiayo1 pose1 dame  at xiayo1pose an topin
 play sound haneru
 "夏悠从树上跳了下来，扑倒在我身上。"
 //搞怪的bgm

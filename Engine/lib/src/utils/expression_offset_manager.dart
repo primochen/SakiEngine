@@ -45,7 +45,7 @@ class ExpressionOffsetManager {
       pose: 'pose6',
       xOffset: 0.0, // 横向偏移（可调整）
       yOffset: 0.028, // 纵向偏移（可调整）
-      alpha: 0.4, // 透明度便于对准
+      alpha: 1.0, // 透明度便于对准
       scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
@@ -64,7 +64,7 @@ class ExpressionOffsetManager {
       pose: 'pose7',
       xOffset: 0.0, // 横向偏移（可调整）
       yOffset: 0.028, // 纵向偏移（可调整）
-      alpha: 0.4, // 透明度便于对准
+      alpha: 1.0, // 透明度便于对准
       scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
@@ -83,7 +83,7 @@ class ExpressionOffsetManager {
       pose: 'pose8',
       xOffset: 0.0, // 横向偏移（可调整）
       yOffset: 0.028, // 纵向偏移（可调整）
-      alpha: 0.4, // 透明度便于对准
+      alpha: 1.0, // 透明度便于对准
       scale: 1.0, // 新增：缩放比例（可调整）
     ));
     
