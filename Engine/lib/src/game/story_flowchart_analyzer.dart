@@ -16,14 +16,14 @@ class StoryFlowchartAnalyzer {
   Future<void> analyzeScript() async {
     try {
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 开始分析脚本...');
+        print('[FlowchartAnalyzer] 开始分析脚本...');
       }
 
       // 清空旧数据
       await _manager.clearAll();
 
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 正在获取合并后的脚本...');
+        print('[FlowchartAnalyzer] 正在获取合并后的脚本...');
       }
 
       // 获取合并后的脚本
@@ -31,7 +31,7 @@ class StoryFlowchartAnalyzer {
       final nodes = script.children;
 
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 获取到 ${nodes.length} 个节点');
+        print('[FlowchartAnalyzer] 获取到 ${nodes.length} 个节点');
       }
 
       // 建立label索引
@@ -43,7 +43,7 @@ class StoryFlowchartAnalyzer {
       }
 
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 建立label索引完成，共 ${labelIndex.length} 个label');
+        print('[FlowchartAnalyzer] 建立label索引完成，共 ${labelIndex.length} 个label');
       }
 
       // 第一步：预先检测汇合点（不创建节点，只返回哪些label是汇合点）
@@ -90,13 +90,15 @@ class StoryFlowchartAnalyzer {
       await _restoreUnlockStatusFromAutoSaves();
 
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 脚本分析完成');
-        //print('[FlowchartAnalyzer] 统计信息: ${_manager.exportData()['stats']}');
+        print('[FlowchartAnalyzer] 脚本分析完成');
+        print('[FlowchartAnalyzer] 统计信息: ${_manager.exportData()['stats']}');
       }
     } catch (e, stack) {
-      //print('[FlowchartAnalyzer] 分析失败: $e');
-      //print('[FlowchartAnalyzer] 堆栈跟踪:');
-      print(stack);
+      if (kDebugMode) {
+        print('[FlowchartAnalyzer] 分析失败: $e');
+        print('[FlowchartAnalyzer] 堆栈跟踪:');
+        print(stack);
+      }
     }
   }
 
@@ -721,7 +723,7 @@ class StoryFlowchartAnalyzer {
       }
 
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 找到 ${autoSaveFiles.length} 个自动存档文件: $autoSaveFiles');
+        print('[FlowchartAnalyzer] 找到 ${autoSaveFiles.length} 个自动存档文件: $autoSaveFiles');
       }
 
       // 根据自动存档文件名，找到对应的节点并标记为已解锁
@@ -730,6 +732,10 @@ class StoryFlowchartAnalyzer {
         // 从文件名提取nodeId (移除前缀 "auto_story_")
         final nodeId = autoSaveId.replaceFirst(StoryFlowchartManager.autoSavePrefix, '');
 
+        if (kDebugMode) {
+          print('[FlowchartAnalyzer] 处理自动存档: $autoSaveId, 提取的nodeId: $nodeId');
+        }
+
         // 查找对应的节点（同时支持两种匹配方式）
         final allNodes = _manager.nodes;
         StoryFlowNode? node;
@@ -737,11 +743,22 @@ class StoryFlowchartAnalyzer {
         // 方式1：直接通过node.id匹配（适用于branch_、chapter_end_等生成的ID）
         node = allNodes[nodeId];
 
+        if (kDebugMode) {
+          if (node != null) {
+            print('[FlowchartAnalyzer] 方式1匹配成功: node.id=${node.id}, displayName=${node.displayName}');
+          } else {
+            print('[FlowchartAnalyzer] 方式1匹配失败，尝试方式2');
+          }
+        }
+
         // 方式2：如果方式1没找到，尝试通过node.label匹配（适用于章节开始等使用label作为nodeId的情况）
         if (node == null) {
           for (final n in allNodes.values) {
             if (n.label == nodeId && !n.isUnlocked) {
               node = n;
+              if (kDebugMode) {
+                print('[FlowchartAnalyzer] 方式2匹配成功: node.label=${n.label}, displayName=${n.displayName}');
+              }
               break;
             }
           }
@@ -753,17 +770,26 @@ class StoryFlowchartAnalyzer {
           unlockedCount++;
 
           if (kDebugMode) {
-            //print('[FlowchartAnalyzer] 根据自动存档 $autoSaveId 解锁节点: ${node.displayName} (${node.id})');
+            print('[FlowchartAnalyzer] ✓ 根据自动存档 $autoSaveId 解锁节点: ${node.displayName} (${node.id})');
+          }
+        } else if (node == null) {
+          if (kDebugMode) {
+            print('[FlowchartAnalyzer] ✗ 未找到匹配的节点: $nodeId');
+          }
+        } else if (node.isUnlocked) {
+          if (kDebugMode) {
+            print('[FlowchartAnalyzer] ⊙ 节点已解锁，跳过: ${node.displayName} (${node.id})');
           }
         }
       }
 
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 共恢复 $unlockedCount 个节点的解锁状态');
+        print('[FlowchartAnalyzer] 共恢复 $unlockedCount 个节点的解锁状态');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (kDebugMode) {
-        //print('[FlowchartAnalyzer] 恢复解锁状态失败: $e');
+        print('[FlowchartAnalyzer] 恢复解锁状态失败: $e');
+        print('[FlowchartAnalyzer] 堆栈信息: $stackTrace');
       }
     }
   }
