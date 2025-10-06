@@ -789,6 +789,11 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
         final directory = await saveLoadManager.getSavesDirectory();
         final file = File('$directory/${node.autoSaveId}.sakisav');
 
+        // 打印sakisav文件路径
+        if (kDebugMode) {
+          print('[StoryFlowchart] 查找sakisav文件路径: ${file.path}');
+        }
+
         if (await file.exists()) {
           final binaryData = await file.readAsBytes();
           final saveSlot = SaveSlot.fromBinary(binaryData);
