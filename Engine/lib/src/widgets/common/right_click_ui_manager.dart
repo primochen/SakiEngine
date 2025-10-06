@@ -65,9 +65,11 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     // 设置初始值
-    _animationController.value = _isUIHidden ? 0.0 : 1.0;
+    // 当UI显示时，controller为0，fade为1.0
+    // 当UI隐藏时，controller为1，fade为0.0
+    _animationController.value = _isUIHidden ? 1.0 : 0.0;
 
     _globalManager.addListener(_handleGlobalVisibilityChange);
   }
@@ -163,7 +165,7 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
             animation: _fadeAnimation,
             builder: (context, child) {
               return Opacity(
-                opacity: _isUIHidden ? _fadeAnimation.value : 1.0,
+                opacity: _fadeAnimation.value,
                 child: IgnorePointer(
                   ignoring: _isUIHidden,
                   child: widget.child,
