@@ -11,8 +11,9 @@ class UnifiedGameDataManager {
   factory UnifiedGameDataManager() => _instance;
   UnifiedGameDataManager._internal();
 
-  static const int _version = 1;
+  static const int _version = 2;
   static const String _fileName = 'game_data.sakidata';
+  static const String _defaultMouseRollbackBehavior = 'rewind';
 
   // 游戏设置
   double _dialogOpacity = 0.9;
@@ -24,6 +25,7 @@ class UnifiedGameDataManager {
   bool _autoHideQuickMenu = false;
   String _menuDisplayMode = 'windowed';
   String _fastForwardMode = 'read_only';
+  String _mouseRollbackBehavior = _defaultMouseRollbackBehavior;
   String _dialogueFontFamily = 'SourceHanSansCN'; // 对话文字字体
 
   // 音频设置
@@ -103,6 +105,7 @@ class UnifiedGameDataManager {
     buffer.add(_writeString(_menuDisplayMode));
     buffer.add(_writeString(_fastForwardMode));
     buffer.add(_writeString(_dialogueFontFamily));
+    buffer.add(_writeString(_mouseRollbackBehavior));
 
     // 写入音频设置
     buffer.add(_writeBool(_isMusicEnabled));
@@ -144,7 +147,7 @@ class UnifiedGameDataManager {
 
     // 读取版本号
     final version = reader.readInt32();
-    if (version != _version) {
+    if (version > _version) {
       if (kDebugMode) {
         print('[UnifiedGameDataManager] 版本不匹配: $version');
       }
@@ -162,6 +165,11 @@ class UnifiedGameDataManager {
     _menuDisplayMode = reader.readString();
     _fastForwardMode = reader.readString();
     _dialogueFontFamily = reader.readString();
+    if (version >= 2) {
+      _mouseRollbackBehavior = reader.readString();
+    } else {
+      _mouseRollbackBehavior = _defaultMouseRollbackBehavior;
+    }
 
     // 读取音频设置
     _isMusicEnabled = reader.readBool();
@@ -256,6 +264,12 @@ class UnifiedGameDataManager {
   String get fastForwardMode => _fastForwardMode;
   Future<void> setFastForwardMode(String value, String projectName) async {
     _fastForwardMode = value;
+    await save(projectName);
+  }
+
+  String get mouseRollbackBehavior => _mouseRollbackBehavior;
+  Future<void> setMouseRollbackBehavior(String value, String projectName) async {
+    _mouseRollbackBehavior = value;
     await save(projectName);
   }
 

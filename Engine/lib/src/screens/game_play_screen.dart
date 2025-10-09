@@ -96,6 +96,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   AutoPlayManager? _autoPlayManager; // 新增：自动播放管理器
   ReadTextSkipManager? _readTextSkipManager; // 已读文本快进管理器
   late MouseWheelHandler _mouseWheelHandler; // 鼠标滚轮处理器
+  final SettingsManager _settingsManager = SettingsManager();
+  String _mouseRollbackBehavior = SettingsManager.defaultMouseRollbackBehavior;
   String? _projectName;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
@@ -117,6 +119,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+
+    _settingsManager.addListener(_handleSettingsChanged);
+    _loadMouseRollbackBehavior();
     
     // 初始化加载淡出动画
     _loadingFadeController = AnimationController(
@@ -186,6 +191,33 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         _gameManager.setContext(context, this as TickerProvider);
       });
     }
+  }
+
+  Future<void> _loadMouseRollbackBehavior() async {
+    try {
+      await _settingsManager.init();
+      final behavior = await _settingsManager.getMouseRollbackBehavior();
+      if (!mounted) {
+        _mouseRollbackBehavior = behavior;
+        return;
+      }
+      setState(() => _mouseRollbackBehavior = behavior);
+    } catch (_) {
+      // 使用默认设置
+      _mouseRollbackBehavior = SettingsManager.defaultMouseRollbackBehavior;
+    }
+  }
+
+  void _handleSettingsChanged() {
+    final behavior = _settingsManager.currentMouseRollbackBehavior;
+    if (_mouseRollbackBehavior == behavior) {
+      return;
+    }
+    if (!mounted) {
+      _mouseRollbackBehavior = behavior;
+      return;
+    }
+    setState(() => _mouseRollbackBehavior = behavior);
   }
 
   Future<void> _loadProjectName() async {
@@ -270,6 +302,17 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     );
   }
 
+  void _handleMouseRollbackAction() {
+    if (_mouseRollbackBehavior == 'history') {
+      if (mounted && !_showReviewOverlay) {
+        setState(() => _showReviewOverlay = true);
+      }
+      return;
+    }
+
+    _handlePreviousDialogue();
+  }
+
   void _handlePreviousDialogue() {
     final history = _gameManager.getDialogueHistory();
     
@@ -289,6 +332,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   @override
   void dispose() {
+    _settingsManager.removeListener(_handleSettingsChanged);
+
     // 取消注册系统热键（只在桌面平台）
     if (_isDesktopPlatform()) {
       if (_reloadHotKey != null) {
@@ -590,8 +635,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         _autoPlayManager?.onManualProgress();
       },
       onScrollBackward: () {
-        // 向后滚动: 回退剧情
-        _handlePreviousDialogue();
+        // 向后滚动: 根据设置执行行为
+        _handleMouseRollbackAction();
       },
       shouldHandleScroll: () {
         // 检查是否有弹窗或菜单显示
@@ -724,22 +769,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   Widget build(BuildContext context) {
     return Listener(
       onPointerSignal: (signal) {
-        // 处理鼠标滚轮事件
-        if (signal is PointerScrollEvent) {
-          // 检查是否可以处理滚轮
-          if (_mouseWheelHandler.shouldHandleScroll != null &&
-              _mouseWheelHandler.shouldHandleScroll!()) {
-            // 向上滚动 (dy < 0): 前进
-            if (signal.scrollDelta.dy < 0) {
-              _dialogueProgressionManager.progressDialogue();
-              _autoPlayManager?.onManualProgress();
-            }
-            // 向下滚动 (dy > 0): 后退
-            else if (signal.scrollDelta.dy > 0) {
-              _handlePreviousDialogue();
-            }
-          }
-        }
+        _mouseWheelHandler.handlePointerSignal(signal);
       },
       child: PopScope(
         canPop: false,

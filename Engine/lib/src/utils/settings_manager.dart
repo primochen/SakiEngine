@@ -22,6 +22,7 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultAutoHideQuickMenu = false;
   static const String defaultMenuDisplayMode = 'windowed'; // 'windowed' or 'fullscreen'
   static const String defaultFastForwardMode = 'read_only'; // 'read_only' or 'force'
+  static const String defaultMouseRollbackBehavior = 'rewind'; // 'rewind' or 'history'
   static const String defaultDialogueFontFamily = 'SourceHanSansCN'; // 对话文字字体
 
   final _dataManager = UnifiedGameDataManager();
@@ -180,6 +181,20 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 鼠标回退行为设置
+  Future<String> getMouseRollbackBehavior() async {
+    await init();
+    return _dataManager.mouseRollbackBehavior;
+  }
+
+  String get currentMouseRollbackBehavior => _dataManager.mouseRollbackBehavior;
+
+  Future<void> setMouseRollbackBehavior(String behavior) async {
+    await init();
+    await _dataManager.setMouseRollbackBehavior(behavior, _projectName!);
+    notifyListeners();
+  }
+
   // 对话文字字体设置
   Future<String> getDialogueFontFamily() async {
     await init();
@@ -213,6 +228,7 @@ class SettingsManager extends ChangeNotifier {
     await _dataManager.setAutoHideQuickMenu(defaultAutoHideQuickMenu, _projectName!);
     await _dataManager.setMenuDisplayMode(projectDefaultMenuDisplayMode, _projectName!);
     await _dataManager.setFastForwardMode(defaultFastForwardMode, _projectName!);
+    await _dataManager.setMouseRollbackBehavior(defaultMouseRollbackBehavior, _projectName!);
     await _dataManager.setDialogueFontFamily(defaultDialogueFontFamily, _projectName!);
 
     // 应用默认全屏设置（非Web平台）

@@ -42,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoHideQuickMenu = SettingsManager.defaultAutoHideQuickMenu;
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
   String _fastForwardMode = SettingsManager.defaultFastForwardMode;
+  String _mouseRollbackBehavior = SettingsManager.defaultMouseRollbackBehavior;
   String _dialogueFontFamily = SettingsManager.defaultDialogueFontFamily;
   
   // 预览文本（在设置界面生命周期内固定）
@@ -100,6 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
       _menuDisplayMode = await SettingsManager().getMenuDisplayMode();
       _fastForwardMode = await SettingsManager().getFastForwardMode();
+      _mouseRollbackBehavior = await SettingsManager().getMouseRollbackBehavior();
       _dialogueFontFamily = await SettingsManager().getDialogueFontFamily();
       
       // 加载音频设置
@@ -169,6 +171,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _updateFastForwardMode(String value) async {
     setState(() => _fastForwardMode = value);
     await _settingsManager.setFastForwardMode(value);
+  }
+
+  Future<void> _updateMouseRollbackBehavior(String value) async {
+    setState(() => _mouseRollbackBehavior = value);
+    await _settingsManager.setMouseRollbackBehavior(value);
   }
 
   Future<void> _updateDialogueFontFamily(String value) async {
@@ -582,6 +589,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildMouseRollbackBehaviorSelector(config, scale),
+            SizedBox(height: 40 * scale),
             _buildFastForwardModeToggle(config, scale),
             SizedBox(height: 40 * scale),
           ],
@@ -1410,6 +1419,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (value) => _updateFastForwardMode(value ? 'force' : 'read_only'),
             scale: scale,
             config: config,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMouseRollbackBehaviorSelector(
+      SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
+
+    final items = [
+      GameStyleDropdownItem<String>(
+        value: 'rewind',
+        label: localization.t('settings.mouseRollback.option.rewind'),
+        icon: Icons.undo,
+      ),
+      GameStyleDropdownItem<String>(
+        value: 'history',
+        label: localization.t('settings.mouseRollback.option.history'),
+        icon: Icons.menu_book,
+      ),
+    ];
+
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _mouseRollbackBehavior == 'history' ? Icons.menu_book : Icons.undo,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localization.t('settings.mouseRollback.title'),
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  localization.t('settings.mouseRollback.description'),
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleDropdown<String>(
+            items: items,
+            value: _mouseRollbackBehavior,
+            onChanged: _updateMouseRollbackBehavior,
+            scale: scale,
+            textScale: textScale,
+            config: config,
+            width: 220 * scale,
           ),
         ],
       ),
