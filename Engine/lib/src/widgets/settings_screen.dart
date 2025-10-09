@@ -8,11 +8,13 @@ import 'package:sakiengine/src/widgets/confirm_dialog.dart';
 import 'package:sakiengine/src/widgets/common/overlay_scaffold.dart';
 import 'package:sakiengine/src/widgets/game_style_switch.dart';
 import 'package:sakiengine/src/widgets/game_style_slider.dart';
-import 'package:sakiengine/src/widgets/game_style_scrollbar.dart';
 import 'package:sakiengine/src/widgets/typewriter_animation_manager.dart';
 import 'package:sakiengine/src/widgets/typewriter_preview.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
 import 'package:sakiengine/src/widgets/game_style_dropdown.dart';
+import 'package:sakiengine/src/widgets/settings/audio_settings_tab.dart';
+import 'package:sakiengine/src/widgets/settings/gameplay_settings_tab.dart';
+import 'package:sakiengine/src/widgets/settings/control_settings_tab.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -305,11 +307,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 0: // 画面设置
         return _buildVideoSettings(config, scale);
       case 1: // 音频设置
-        return _buildAudioSettings(config, scale);
+        return AudioSettingsTab(
+          musicEnabled: _musicEnabled,
+          musicVolume: _musicVolume,
+          soundVolume: _soundVolume,
+          onMusicEnabledChanged: _updateMusicEnabled,
+          onMusicVolumeChanged: _updateMusicVolume,
+          onSoundVolumeChanged: _updateSoundVolume,
+        );
       case 2: // 玩法设置
-        return _buildGameplaySettings(config, scale);
+        return GameplaySettingsTab(
+          mouseRollbackBehavior: _mouseRollbackBehavior,
+          fastForwardMode: _fastForwardMode,
+          onMouseRollbackBehaviorChanged: _updateMouseRollbackBehavior,
+          onFastForwardModeChanged: _updateFastForwardMode,
+        );
       case 3: // 操控设置
-        return _buildControlSettings(config, scale);
+        return const ControlSettingsTab();
       default:
         return _buildVideoSettings(config, scale);
     }
@@ -457,159 +471,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAudioSettings(SakiEngineConfig config, double scale) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWideLayout = constraints.maxWidth > constraints.maxHeight;
-        
-        if (isWideLayout) {
-          return _buildAudioSettingsDualColumn(config, scale, constraints);
-        } else {
-          return _buildAudioSettingsSingleColumn(config, scale);
-        }
-      },
-    );
-  }
-
-  Widget _buildAudioSettingsSingleColumn(SakiEngineConfig config, double scale) {
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(32 * scale),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildMusicEnabledToggle(config, scale),
-            SizedBox(height: 40 * scale),
-            _buildMusicVolumeSlider(config, scale),
-            SizedBox(height: 40 * scale),
-            _buildSoundVolumeSlider(config, scale),
-            SizedBox(height: 40 * scale),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAudioSettingsDualColumn(SakiEngineConfig config, double scale, BoxConstraints constraints) {
-    return Stack(
-      children: [
-        // 主要内容区域
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // 确保顶对齐
-          children: [
-            // 左列 - 音乐设置
-            Expanded(
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: 32 * scale,
-                    top: 32 * scale,
-                    bottom: 32 * scale,
-                    right: 32 * scale,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMusicEnabledToggle(config, scale),
-                      SizedBox(height: 40 * scale),
-                      _buildMusicVolumeSlider(config, scale),
-                      SizedBox(height: 40 * scale), // 底部间距
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            
-            // 右列间距
-            SizedBox(width: 0), // 移除间距，让分割线居中
-            
-            // 右列 - 音效设置
-            Expanded(
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: 32 * scale,
-                    top: 32 * scale,
-                    bottom: 32 * scale,
-                    right: 32 * scale,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSoundVolumeSlider(config, scale),
-                      SizedBox(height: 40 * scale),
-                      // 可以在这里添加更多音效设置项
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        
-        // 固定的中间分割线 - 简化居中定位
-        Positioned.fill(
-          child: Align(
-            alignment: Alignment.center,
-            child: Container(
-              width: 1 * scale,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    config.themeColors.primary.withOpacity(0.3),
-                    config.themeColors.primary.withOpacity(0.6),
-                    config.themeColors.primary.withOpacity(0.3),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGameplaySettings(SakiEngineConfig config, double scale) {
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(32 * scale),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildMouseRollbackBehaviorSelector(config, scale),
-            SizedBox(height: 40 * scale),
-            _buildFastForwardModeDropdown(config, scale),
-            SizedBox(height: 40 * scale),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlSettings(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final localization = LocalizationManager();
-    return Center(
-      child: Text(
-        localization.t('settings.controls.placeholder'),
-        style: config.reviewTitleTextStyle.copyWith(
-          fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.8,
-          color: config.themeColors.primary.withOpacity(0.6),
-        ),
-      ),
     );
   }
 
@@ -1024,210 +885,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildMusicEnabledToggle(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final localization = LocalizationManager();
-    
-    return Container(
-      padding: EdgeInsets.all(16 * scale),
-      decoration: BoxDecoration(
-        color: config.themeColors.surface.withOpacity(0.5),
-        border: Border.all(
-          color: config.themeColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _musicEnabled ? Icons.music_note : Icons.music_off,
-            color: config.themeColors.primary,
-            size: 24 * scale,
-          ),
-          SizedBox(width: 16 * scale),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localization.t('settings.musicEnabled.title'),
-                  style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
-                    color: config.themeColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4 * scale),
-                Text(
-                  localization.t('settings.musicEnabled.description'),
-                  style: config.dialogueTextStyle.copyWith(
-                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-                    color: config.themeColors.primary.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16 * scale),
-          GameStyleSwitch(
-            value: _musicEnabled,
-            onChanged: _updateMusicEnabled,
-            scale: scale,
-            config: config,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMusicVolumeSlider(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final localization = LocalizationManager();
-    
-    return Container(
-      padding: EdgeInsets.all(16 * scale),
-      decoration: BoxDecoration(
-        color: config.themeColors.surface.withOpacity(0.5),
-        border: Border.all(
-          color: config.themeColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.volume_up,
-                color: config.themeColors.primary,
-                size: 24 * scale,
-              ),
-              SizedBox(width: 16 * scale),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      localization.t('settings.musicVolume.title'),
-                      style: config.reviewTitleTextStyle.copyWith(
-                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
-                        color: config.themeColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      localization.t('settings.musicVolume.description'),
-                      style: config.dialogueTextStyle.copyWith(
-                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-                        color: config.themeColors.primary.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16 * scale),
-          GameStyleSlider(
-            value: _musicVolume,
-            min: 0.0,
-            max: 1.0,
-            divisions: 10,
-            scale: scale,
-            config: config,
-            onChanged: _updateMusicVolume,
-            showValue: false,
-          ),
-          SizedBox(height: 8 * scale),
-          Text(
-            localization.t('settings.common.currentVolume', params: {
-              'value': (_musicVolume * 100).round().toString(),
-            }),
-            style: config.dialogueTextStyle.copyWith(
-              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
-              color: config.themeColors.primary.withOpacity(0.8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSoundVolumeSlider(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final localization = LocalizationManager();
-    
-    return Container(
-      padding: EdgeInsets.all(16 * scale),
-      decoration: BoxDecoration(
-        color: config.themeColors.surface.withOpacity(0.5),
-        border: Border.all(
-          color: config.themeColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.volume_down,
-                color: config.themeColors.primary,
-                size: 24 * scale,
-              ),
-              SizedBox(width: 16 * scale),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      localization.t('settings.soundVolume.title'),
-                      style: config.reviewTitleTextStyle.copyWith(
-                        fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
-                        color: config.themeColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      localization.t('settings.soundVolume.description'),
-                      style: config.dialogueTextStyle.copyWith(
-                        fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-                        color: config.themeColors.primary.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16 * scale),
-          GameStyleSlider(
-            value: _soundVolume,
-            min: 0.0,
-            max: 1.0,
-            divisions: 10,
-            scale: scale,
-            config: config,
-            onChanged: _updateSoundVolume,
-            showValue: false,
-          ),
-          SizedBox(height: 8 * scale),
-          Text(
-            localization.t('settings.common.currentVolume', params: {
-              'value': (_soundVolume * 100).round().toString(),
-            }),
-            style: config.dialogueTextStyle.copyWith(
-              fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.5,
-              color: config.themeColors.primary.withOpacity(0.8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLanguageSelector(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
     final localization = LocalizationManager();
@@ -1293,84 +950,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 .toList(),
             value: selectedLanguage,
             onChanged: _updateLanguage,
-            scale: scale,
-            textScale: textScale,
-            config: config,
-            width: 200 * scale,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFastForwardModeDropdown(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final localization = LocalizationManager();
-
-    final items = [
-      GameStyleDropdownItem<String>(
-        value: 'read_only',
-        label: localization.t('settings.fastForward.read'),
-        icon: Icons.skip_next,
-      ),
-      GameStyleDropdownItem<String>(
-        value: 'force',
-        label: localization.t('settings.fastForward.force'),
-        icon: Icons.fast_forward,
-      ),
-    ];
-
-    final descriptionKey =
-        _fastForwardMode == 'force'
-            ? 'settings.fastForward.descriptionForce'
-            : 'settings.fastForward.descriptionRead';
-
-    return Container(
-      padding: EdgeInsets.all(16 * scale),
-      decoration: BoxDecoration(
-        color: config.themeColors.surface.withOpacity(0.5),
-        border: Border.all(
-          color: config.themeColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            _fastForwardMode == 'force' ? Icons.fast_forward : Icons.skip_next,
-            color: config.themeColors.primary,
-            size: 24 * scale,
-          ),
-          SizedBox(width: 16 * scale),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localization.t('settings.fastForward.title'),
-                  style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
-                    color: config.themeColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4 * scale),
-                Text(
-                  localization.t(descriptionKey),
-                  style: config.dialogueTextStyle.copyWith(
-                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-                    color: config.themeColors.primary.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16 * scale),
-          GameStyleDropdown<String>(
-            items: items,
-            value: _fastForwardMode,
-            onChanged: _updateFastForwardMode,
             scale: scale,
             textScale: textScale,
             config: config,
@@ -1453,80 +1032,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             textScale: textScale,
             config: config,
             width: 200 * scale,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMouseRollbackBehaviorSelector(
-      SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final localization = LocalizationManager();
-
-    final items = [
-      GameStyleDropdownItem<String>(
-        value: 'rewind',
-        label: localization.t('settings.mouseRollback.option.rewind'),
-        icon: Icons.undo,
-      ),
-      GameStyleDropdownItem<String>(
-        value: 'history',
-        label: localization.t('settings.mouseRollback.option.history'),
-        icon: Icons.menu_book,
-      ),
-    ];
-
-    return Container(
-      padding: EdgeInsets.all(16 * scale),
-      decoration: BoxDecoration(
-        color: config.themeColors.surface.withOpacity(0.5),
-        border: Border.all(
-          color: config.themeColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            _mouseRollbackBehavior == 'history' ? Icons.menu_book : Icons.undo,
-            color: config.themeColors.primary,
-            size: 24 * scale,
-          ),
-          SizedBox(width: 16 * scale),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localization.t('settings.mouseRollback.title'),
-                  style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
-                    color: config.themeColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4 * scale),
-                Text(
-                  localization.t('settings.mouseRollback.description'),
-                  style: config.dialogueTextStyle.copyWith(
-                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-                    color: config.themeColors.primary.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16 * scale),
-          GameStyleDropdown<String>(
-            items: items,
-            value: _mouseRollbackBehavior,
-            onChanged: _updateMouseRollbackBehavior,
-            scale: scale,
-            textScale: textScale,
-            config: config,
-            width: 220 * scale,
           ),
         ],
       ),
