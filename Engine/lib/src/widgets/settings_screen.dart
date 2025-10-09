@@ -343,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SizedBox(height: 40 * scale),
             _buildOpacitySlider(config, scale),
             SizedBox(height: 40 * scale),
-            _buildMenuDisplayModeToggle(config, scale),
+            _buildMenuDisplayModeDropdown(config, scale),
             SizedBox(height: 40 * scale),
             _buildFullscreenToggle(config, scale),
             SizedBox(height: 40 * scale),
@@ -413,7 +413,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SizedBox(height: 40 * scale),
                       _buildDialogueFontSelector(config, scale),
                       SizedBox(height: 40 * scale),
-                      _buildMenuDisplayModeToggle(config, scale),
+                      _buildMenuDisplayModeDropdown(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildFullscreenToggle(config, scale),
                       SizedBox(height: 40 * scale),
@@ -591,7 +591,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _buildMouseRollbackBehaviorSelector(config, scale),
             SizedBox(height: 40 * scale),
-            _buildFastForwardModeToggle(config, scale),
+            _buildMenuDisplayModeDropdown(config, scale),
+            SizedBox(height: 40 * scale),
+            _buildFastForwardModeDropdown(config, scale),
             SizedBox(height: 40 * scale),
           ],
         ),
@@ -1228,69 +1230,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildMenuDisplayModeToggle(SakiEngineConfig config, double scale) {
-    final textScale = context.scaleFor(ComponentType.text);
-    final isFullscreenMode = _menuDisplayMode == 'fullscreen';
-    final localization = LocalizationManager();
-
-    // 根据当前模式动态生成描述，使用已有的翻译键
-    final currentModeText = isFullscreenMode
-        ? localization.t('settings.menuDisplay.fill')
-        : localization.t('settings.menuDisplay.window');
-    final description = '${localization.t('settings.menuDisplay.description')} (${localization.t('settings.menuDisplay.current')}: $currentModeText)';
-
-    return Container(
-      padding: EdgeInsets.all(16 * scale),
-      decoration: BoxDecoration(
-        color: config.themeColors.surface.withOpacity(0.5),
-        border: Border.all(
-          color: config.themeColors.primary.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isFullscreenMode ? Icons.aspect_ratio : Icons.crop_free,
-            color: config.themeColors.primary,
-            size: 24 * scale,
-          ),
-          SizedBox(width: 16 * scale),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localization.t('settings.menuDisplay.title'),
-                  style: config.reviewTitleTextStyle.copyWith(
-                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
-                    color: config.themeColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4 * scale),
-                Text(
-                  description,
-                  style: config.dialogueTextStyle.copyWith(
-                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
-                    color: config.themeColors.primary.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16 * scale),
-          GameStyleSwitch(
-            value: isFullscreenMode,
-            onChanged: (value) => _updateMenuDisplayMode(value ? 'fullscreen' : 'windowed'),
-            scale: scale,
-            config: config,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLanguageSelector(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
     final localization = LocalizationManager();
@@ -1366,10 +1305,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildFastForwardModeToggle(SakiEngineConfig config, double scale) {
+  Widget _buildFastForwardModeDropdown(SakiEngineConfig config, double scale) {
     final textScale = context.scaleFor(ComponentType.text);
-    final isForceMode = _fastForwardMode == 'force';
     final localization = LocalizationManager();
+
+    final items = [
+      GameStyleDropdownItem<String>(
+        value: 'read_only',
+        label: localization.t('settings.fastForward.read'),
+        icon: Icons.skip_next,
+      ),
+      GameStyleDropdownItem<String>(
+        value: 'force',
+        label: localization.t('settings.fastForward.force'),
+        icon: Icons.fast_forward,
+      ),
+    ];
+
+    final descriptionKey =
+        _fastForwardMode == 'force'
+            ? 'settings.fastForward.descriptionForce'
+            : 'settings.fastForward.descriptionRead';
 
     return Container(
       padding: EdgeInsets.all(16 * scale),
@@ -1381,9 +1337,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isForceMode ? Icons.fast_forward : Icons.skip_next,
+            _fastForwardMode == 'force' ? Icons.fast_forward : Icons.skip_next,
             color: config.themeColors.primary,
             size: 24 * scale,
           ),
@@ -1402,9 +1359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 4 * scale),
                 Text(
-                  isForceMode
-                      ? localization.t('settings.fastForward.descriptionForce')
-                      : localization.t('settings.fastForward.descriptionRead'),
+                  localization.t(descriptionKey),
                   style: config.dialogueTextStyle.copyWith(
                     fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
                     color: config.themeColors.primary.withOpacity(0.6),
@@ -1414,11 +1369,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           SizedBox(width: 16 * scale),
-          GameStyleSwitch(
-            value: isForceMode,
-            onChanged: (value) => _updateFastForwardMode(value ? 'force' : 'read_only'),
+          GameStyleDropdown<String>(
+            items: items,
+            value: _fastForwardMode,
+            onChanged: _updateFastForwardMode,
             scale: scale,
+            textScale: textScale,
             config: config,
+            width: 200 * scale,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuDisplayModeDropdown(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
+
+    final items = [
+      GameStyleDropdownItem<String>(
+        value: 'windowed',
+        label: localization.t('settings.menuDisplay.window'),
+        icon: Icons.crop_free,
+      ),
+      GameStyleDropdownItem<String>(
+        value: 'fullscreen',
+        label: localization.t('settings.menuDisplay.fill'),
+        icon: Icons.aspect_ratio,
+      ),
+    ];
+
+    final currentModeText =
+        _menuDisplayMode == 'fullscreen'
+            ? localization.t('settings.menuDisplay.fill')
+            : localization.t('settings.menuDisplay.window');
+
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _menuDisplayMode == 'fullscreen' ? Icons.aspect_ratio : Icons.crop_free,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localization.t('settings.menuDisplay.title'),
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  '${localization.t('settings.menuDisplay.description')} (${localization.t('settings.menuDisplay.current')}: $currentModeText)',
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleDropdown<String>(
+            items: items,
+            value: _menuDisplayMode,
+            onChanged: _updateMenuDisplayMode,
+            scale: scale,
+            textScale: textScale,
+            config: config,
+            width: 200 * scale,
           ),
         ],
       ),
