@@ -99,6 +99,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   final SettingsManager _settingsManager = SettingsManager();
   String _mouseRollbackBehavior = SettingsManager.defaultMouseRollbackBehavior;
   String? _projectName;
+  DateTime? _reviewReopenSuppressedUntil;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
   // 跟踪上一次的NVL状态，用于检测转场
@@ -305,12 +306,30 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   void _handleMouseRollbackAction() {
     if (_mouseRollbackBehavior == 'history') {
       if (mounted && !_showReviewOverlay) {
+        final now = DateTime.now();
+        if (_reviewReopenSuppressedUntil != null &&
+            now.isBefore(_reviewReopenSuppressedUntil!)) {
+          return;
+        }
         setState(() => _showReviewOverlay = true);
       }
       return;
     }
 
     _handlePreviousDialogue();
+  }
+
+  void _toggleReviewOverlay(bool triggeredByOverscroll) {
+    setState(() {
+      _showReviewOverlay = !_showReviewOverlay;
+    });
+
+    if (triggeredByOverscroll) {
+      _reviewReopenSuppressedUntil =
+          DateTime.now().add(const Duration(milliseconds: 250));
+    } else {
+      _reviewReopenSuppressedUntil = null;
+    }
   }
 
   void _handlePreviousDialogue() {
@@ -903,6 +922,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     currentScript: _currentScript,
                     nvlScreenKey: _nvlScreenKey,
                     showReviewOverlay: _showReviewOverlay,
+                    enableReviewOverscrollClose:
+                        _mouseRollbackBehavior == 'history',
                     showSaveOverlay: _showSaveOverlay,
                     showLoadOverlay: _showLoadOverlay,
                     showSettings: _showSettings,
@@ -911,7 +932,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     showDebugPanel: _showDebugPanel,
                     showExpressionSelector: _showExpressionSelector,
                     isShowingMenu: _isShowingMenu,
-                    onToggleReview: () => setState(() => _showReviewOverlay = !_showReviewOverlay),
+                    onToggleReview: _toggleReviewOverlay,
                     onToggleSave: () => setState(() => _showSaveOverlay = !_showSaveOverlay),
                     onToggleLoad: () => setState(() => _showLoadOverlay = !_showLoadOverlay),
                     onQuickSave: _handleQuickSave, // 新增：快速存档回调
