@@ -591,8 +591,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _buildMouseRollbackBehaviorSelector(config, scale),
             SizedBox(height: 40 * scale),
-            _buildMenuDisplayModeDropdown(config, scale),
-            SizedBox(height: 40 * scale),
             _buildFastForwardModeDropdown(config, scale),
             SizedBox(height: 40 * scale),
           ],
