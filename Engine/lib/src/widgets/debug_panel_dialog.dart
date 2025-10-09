@@ -81,7 +81,7 @@ class _DebugPanelDialogState extends State<DebugPanelDialog>
 
     return OverlayScaffold(
       title: '调试面板',
-      onClose: widget.onClose,
+      onClose: (_) => widget.onClose(),
       content: Column(
         children: [
           // 标签页

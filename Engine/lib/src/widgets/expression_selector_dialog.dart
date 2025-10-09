@@ -196,7 +196,7 @@ class _ExpressionSelectorDialogState extends State<ExpressionSelectorDialog> {
     
     return OverlayScaffold(
       title: '差分选择器 - ${widget.characterName}',
-      onClose: widget.onClose,
+      onClose: (_) => widget.onClose(),
       content: _isLoading 
           ? _buildLoadingContent(config, uiScale, textScale)
           : _buildContent(config, uiScale, textScale),

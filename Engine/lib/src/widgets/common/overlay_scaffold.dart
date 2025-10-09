@@ -13,7 +13,7 @@ class OverlayScaffold extends StatefulWidget {
   final String title;
   final Widget content;
   final Widget? footer;
-  final VoidCallback onClose;
+  final void Function(bool triggeredByOverscroll) onClose;
 
   const OverlayScaffold({
     super.key,
@@ -24,15 +24,16 @@ class OverlayScaffold extends StatefulWidget {
   });
 
   @override
-  State<OverlayScaffold> createState() => _OverlayScaffoldState();
+  OverlayScaffoldState createState() => OverlayScaffoldState();
 }
 
-class _OverlayScaffoldState extends State<OverlayScaffold>
+class OverlayScaffoldState extends State<OverlayScaffold>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _backdropAnimation;
+  bool _isClosing = false;
   
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
   
@@ -61,7 +62,7 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
       scope: HotKeyScope.inapp,
     );
     HotKeyManager.instance.register(_escHotKey, keyDownHandler: (_) {
-      _handleClose();
+      close();
     });
     
     _animationController = AnimationController(
@@ -119,9 +120,19 @@ class _OverlayScaffoldState extends State<OverlayScaffold>
     _loadMenuDisplayMode();
   }
 
-  Future<void> _handleClose() async {
+  Future<void> close({bool triggeredByOverscroll = false}) async {
+    if (_isClosing) {
+      return;
+    }
+    _isClosing = true;
     await _animationController.reverse();
-    widget.onClose();
+    if (mounted) {
+      widget.onClose(triggeredByOverscroll);
+    }
+  }
+
+  void _handleClose({bool triggeredByOverscroll = false}) {
+    close(triggeredByOverscroll: triggeredByOverscroll);
   }
 
   @override

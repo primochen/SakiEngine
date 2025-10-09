@@ -207,7 +207,13 @@ class _StoryFlowchartScreenState extends State<StoryFlowchartScreen> {
 
     return OverlayScaffold(
       title: _localization.t('flowchart.title'),
-      onClose: widget.onClose ?? () => Navigator.of(context).pop(),
+      onClose: (_) {
+        if (widget.onClose != null) {
+          widget.onClose!();
+        } else {
+          Navigator.of(context).pop();
+        }
+      },
       content: _buildContent(uiScale, textScale),
     );
   }

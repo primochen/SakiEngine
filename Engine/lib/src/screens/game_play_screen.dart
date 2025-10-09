@@ -100,6 +100,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   String _mouseRollbackBehavior = SettingsManager.defaultMouseRollbackBehavior;
   String? _projectName;
   DateTime? _reviewReopenSuppressedUntil;
+  bool _reviewOpenedByMouseRollback = false;
   final GlobalKey _nvlScreenKey = GlobalKey();
   
   // 跟踪上一次的NVL状态，用于检测转场
@@ -311,7 +312,10 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             now.isBefore(_reviewReopenSuppressedUntil!)) {
           return;
         }
-        setState(() => _showReviewOverlay = true);
+        setState(() {
+          _reviewOpenedByMouseRollback = true;
+          _showReviewOverlay = true;
+        });
       }
       return;
     }
@@ -321,7 +325,15 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
   void _toggleReviewOverlay(bool triggeredByOverscroll) {
     setState(() {
-      _showReviewOverlay = !_showReviewOverlay;
+      final newValue = !_showReviewOverlay;
+      _showReviewOverlay = newValue;
+      if (newValue) {
+        if (!triggeredByOverscroll) {
+          _reviewOpenedByMouseRollback = false;
+        }
+      } else {
+        _reviewOpenedByMouseRollback = false;
+      }
     });
 
     if (triggeredByOverscroll) {
@@ -923,7 +935,8 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     nvlScreenKey: _nvlScreenKey,
                     showReviewOverlay: _showReviewOverlay,
                     enableReviewOverscrollClose:
-                        _mouseRollbackBehavior == 'history',
+                        _mouseRollbackBehavior == 'history' &&
+                        _reviewOpenedByMouseRollback,
                     showSaveOverlay: _showSaveOverlay,
                     showLoadOverlay: _showLoadOverlay,
                     showSettings: _showSettings,

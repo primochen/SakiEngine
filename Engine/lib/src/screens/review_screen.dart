@@ -28,6 +28,7 @@ class ReviewOverlay extends StatefulWidget {
 }
 
 class _ReviewOverlayState extends State<ReviewOverlay> {
+  final GlobalKey<OverlayScaffoldState> _overlayKey = GlobalKey<OverlayScaffoldState>();
   final ScrollController _scrollController = ScrollController();
   final LocalizationManager _localization = LocalizationManager();
   
@@ -61,8 +62,9 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     final textScale = context.scaleFor(ComponentType.text);
 
     Widget overlay = OverlayScaffold(
+      key: _overlayKey,
       title: _localization.t('review.title'),
-      onClose: () => widget.onClose(false),
+      onClose: widget.onClose,
       content: widget.dialogueHistory.isEmpty
           ? _buildEmptyState(uiScale, textScale, config)
           : _buildDialogueList(uiScale, textScale, config),
@@ -204,19 +206,13 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
 
     if (notification is OverscrollNotification) {
       if (_isScrollDeltaTowardsLatest(notification.overscroll, metrics.axisDirection)) {
-        if (kDebugMode) {
-          debugPrint('[ReviewOverlay] Overscroll close triggered: overscroll=${notification.overscroll}, axis=${metrics.axisDirection}, pixels=${metrics.pixels}, max=${metrics.maxScrollExtent}');
-        }
-        widget.onClose(true);
+        _overlayKey.currentState?.close(triggeredByOverscroll: true);
         return true;
       }
     } else if (notification is ScrollUpdateNotification && metrics.outOfRange) {
       final delta = notification.scrollDelta ?? 0.0;
       if (_isScrollDeltaTowardsLatest(delta, metrics.axisDirection)) {
-        if (kDebugMode) {
-          debugPrint('[ReviewOverlay] ScrollUpdate close triggered: delta=$delta, axis=${metrics.axisDirection}, pixels=${metrics.pixels}, max=${metrics.maxScrollExtent}');
-        }
-        widget.onClose(true);
+        _overlayKey.currentState?.close(triggeredByOverscroll: true);
         return true;
       }
     }
@@ -244,10 +240,7 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     }
 
     if (_isAtLatestEntry()) {
-      if (kDebugMode) {
-        debugPrint('[ReviewOverlay] Pointer close triggered: delta=${scrollEvent.scrollDelta.dy}, pixels=${_scrollController.position.pixels}, max=${_scrollController.position.maxScrollExtent}, axis=${_scrollController.position.axisDirection}');
-      }
-      widget.onClose(true);
+      _overlayKey.currentState?.close(triggeredByOverscroll: true);
     }
   }
 
@@ -268,17 +261,9 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
 
     switch (metrics.axisDirection) {
       case AxisDirection.down:
-        final isLatest = metrics.pixels >= metrics.maxScrollExtent - tolerance;
-        if (kDebugMode && !isLatest) {
-          debugPrint('[ReviewOverlay] Not at latest (down): pixels=${metrics.pixels}, max=${metrics.maxScrollExtent}');
-        }
-        return isLatest;
+        return metrics.pixels >= metrics.maxScrollExtent - tolerance;
       case AxisDirection.up:
-        final isLatest = metrics.pixels <= metrics.minScrollExtent + tolerance;
-        if (kDebugMode && !isLatest) {
-          debugPrint('[ReviewOverlay] Not at latest (up): pixels=${metrics.pixels}, min=${metrics.minScrollExtent}');
-        }
-        return isLatest;
+        return metrics.pixels <= metrics.minScrollExtent + tolerance;
       default:
         if (kDebugMode) {
           debugPrint('[ReviewOverlay] Unexpected axisDirection=${metrics.axisDirection}, treating as latest');

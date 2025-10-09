@@ -245,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: localization.t('settings.title'),
           content: _isLoading ? _buildLoadingContent() : _buildSettingsContent(),
           footer: _isLoading ? null : _buildFooter(),
-          onClose: widget.onClose,
+          onClose: (_) => widget.onClose(),
         );
       },
     );
