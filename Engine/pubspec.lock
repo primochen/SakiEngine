@@ -323,6 +323,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.3"
+  flutter_steamworks:
+    dependency: "direct main"
+    description:
+      name: flutter_steamworks
+      sha256: "3afbc6448a38f4f016df98e90527193696e57c0719cff783ef5a7fa1f08a1288"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   flutter_svg:
     dependency: "direct main"
     description:

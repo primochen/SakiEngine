@@ -15,6 +15,7 @@ import 'package:sakiengine/src/utils/binary_serializer.dart';
 import 'package:sakiengine/src/utils/settings_manager.dart';
 import 'package:sakiengine/src/utils/global_variable_manager.dart';
 import 'package:sakiengine/src/localization/localization_manager.dart';
+import 'package:sakiengine/src/integrations/steam/steamworks_manager.dart';
 import 'package:sakiengine/src/widgets/common/black_screen_transition.dart';
 import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
@@ -164,6 +165,16 @@ void main() async {
   runZoned(() async {
     // 初始化Flutter绑定
     WidgetsFlutterBinding.ensureInitialized();
+
+    final steamworksManager = SteamworksManager.instance;
+    if (steamworksManager.isSupportedPlatform) {
+      const steamOptions = SteamworksInitOptions(appId: 3536120);
+      final steamInitialized = await steamworksManager.initialize(options: steamOptions);
+      debugPrint('Seamworks: 游戏Appid：${steamOptions.appId}');
+      if (!steamInitialized && kDebugMode) {
+        debugPrint('Steamworks 初始化未成功，可能需要用户先启动 Steam 客户端。');
+      }
+    }
 
     // 移动端强制横屏
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {

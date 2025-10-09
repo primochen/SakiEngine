@@ -7,6 +7,7 @@ import Foundation
 
 import audioplayers_darwin
 import flutter_avif_macos
+import flutter_steamworks
 import fvp
 import hotkey_manager_macos
 import path_provider_foundation
@@ -18,6 +19,7 @@ import window_manager
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   AudioplayersDarwinPlugin.register(with: registry.registrar(forPlugin: "AudioplayersDarwinPlugin"))
   FlutterAvifPlugin.register(with: registry.registrar(forPlugin: "FlutterAvifPlugin"))
+  FlutterSteamworksPlugin.register(with: registry.registrar(forPlugin: "FlutterSteamworksPlugin"))
   FvpPlugin.register(with: registry.registrar(forPlugin: "FvpPlugin"))
   HotkeyManagerMacosPlugin.register(with: registry.registrar(forPlugin: "HotkeyManagerMacosPlugin"))
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
