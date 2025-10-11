@@ -59,24 +59,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadSettings({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
 
     try {
-      // 确保SettingsManager已初始化
-      await SettingsManager().init();
+      await _settingsManager.init();
 
-      // 加载玩法设置
-      _fastForwardMode = await SettingsManager().getFastForwardMode();
-      _mouseRollbackBehavior = await SettingsManager().getMouseRollbackBehavior();
+      final fastForwardMode = await _settingsManager.getFastForwardMode();
+      final mouseRollbackBehavior = await _settingsManager.getMouseRollbackBehavior();
 
-      // 加载音频设置
-      _musicEnabled = _musicManager.isMusicEnabled;
-      _musicVolume = _musicManager.musicVolume;
-      _soundVolume = _musicManager.soundVolume;
+      final musicEnabled = _musicManager.isMusicEnabled;
+      final musicVolume = _musicManager.musicVolume;
+      final soundVolume = _musicManager.soundVolume;
 
-      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      setState(() {
+        _fastForwardMode = fastForwardMode;
+        _mouseRollbackBehavior = mouseRollbackBehavior;
+        _musicEnabled = musicEnabled;
+        _musicVolume = musicVolume;
+        _soundVolume = soundVolume;
+        _isLoading = false;
+      });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -122,6 +131,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (shouldReset == true) {
       await _settingsManager.resetToDefault();
+      await _musicManager.setMusicEnabled(SettingsManager.defaultMusicEnabled);
+      await _musicManager.setSoundEnabled(SettingsManager.defaultSoundEnabled);
+      await _musicManager.setMusicVolume(SettingsManager.defaultMusicVolume);
+      await _musicManager.setSoundVolume(SettingsManager.defaultSoundVolume);
       await _loadSettings();
     }
   }

@@ -46,43 +46,67 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
     _previewText = TypewriterPreview.getRandomPreviewText();
     _selectedLanguage = LocalizationManager().currentLanguage;
     _combinedListenable = Listenable.merge([
-      SettingsManager(),
+      _settingsManager,
       LocalizationManager(),
     ]);
+    _settingsManager.addListener(_handleSettingsManagerChanged);
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      // 使用新的getter方法获取当前值
-      _dialogOpacity = SettingsManager().currentDialogOpacity;
-      _isFullscreen = SettingsManager().currentIsFullscreen;
-      _darkMode = SettingsManager().currentDarkMode;
-      
-      // 确保SettingsManager已初始化
-      await SettingsManager().init();
-      
-      // 再次获取以确保是最新值
-      _dialogOpacity = await SettingsManager().getDialogOpacity();
-      _isFullscreen = await SettingsManager().getIsFullscreen();
-      _darkMode = await SettingsManager().getDarkMode();
-      
-      // 加载打字机设置
-      _typewriterCharsPerSecond = await SettingsManager().getTypewriterCharsPerSecond();
-      _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
-      _speakerAnimation = await SettingsManager().getSpeakerAnimation();
-      _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
-      _mouseParallaxEnabled = await SettingsManager().getMouseParallaxEnabled();
-      _menuDisplayMode = await SettingsManager().getMenuDisplayMode();
-      _dialogueFontFamily = await SettingsManager().getDialogueFontFamily();
+  @override
+  void dispose() {
+    _settingsManager.removeListener(_handleSettingsManagerChanged);
+    super.dispose();
+  }
 
-      _selectedLanguage = LocalizationManager().currentLanguage;
-      _previewText = TypewriterPreview.getRandomPreviewText();
-      
-      setState(() => _isLoading = false);
+  void _handleSettingsManagerChanged() {
+    if (!mounted) return;
+    _loadSettings(showLoading: false);
+  }
+
+  Future<void> _loadSettings({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
+
+    try {
+      await _settingsManager.init();
+
+      final dialogOpacity = await _settingsManager.getDialogOpacity();
+      final isFullscreen = await _settingsManager.getIsFullscreen();
+      final darkMode = await _settingsManager.getDarkMode();
+      final typewriterSpeed = await _settingsManager.getTypewriterCharsPerSecond();
+      final skipPunctuation = await _settingsManager.getSkipPunctuationDelay();
+      final speakerAnimation = await _settingsManager.getSpeakerAnimation();
+      final autoHideQuickMenu = await _settingsManager.getAutoHideQuickMenu();
+      final mouseParallax = await _settingsManager.getMouseParallaxEnabled();
+      final menuDisplayMode = await _settingsManager.getMenuDisplayMode();
+      final dialogueFont = await _settingsManager.getDialogueFontFamily();
+
+      final selectedLanguage = LocalizationManager().currentLanguage;
+      final previewText = showLoading
+          ? TypewriterPreview.getRandomPreviewText()
+          : _previewText;
+
+      if (!mounted) return;
+
+      setState(() {
+        _dialogOpacity = dialogOpacity;
+        _isFullscreen = isFullscreen;
+        _darkMode = darkMode;
+        _typewriterCharsPerSecond = typewriterSpeed;
+        _skipPunctuationDelay = skipPunctuation;
+        _speakerAnimation = speakerAnimation;
+        _autoHideQuickMenu = autoHideQuickMenu;
+        _mouseParallaxEnabled = mouseParallax;
+        _menuDisplayMode = menuDisplayMode;
+        _dialogueFontFamily = dialogueFont;
+        _selectedLanguage = selectedLanguage;
+        _previewText = previewText;
+        _isLoading = false;
+      });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

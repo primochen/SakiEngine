@@ -15,6 +15,10 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultIsFullscreen = false;
   static const bool defaultDarkMode = false;
   static const bool defaultMouseParallaxEnabled = true;
+  static const bool defaultMusicEnabled = true;
+  static const bool defaultSoundEnabled = true;
+  static const double defaultMusicVolume = 0.8;
+  static const double defaultSoundVolume = 0.8;
 
   // 打字机默认值 - 每秒显示字数
   static const double defaultTypewriterCharsPerSecond = 50.0;
@@ -240,10 +244,15 @@ class SettingsManager extends ChangeNotifier {
     await _dataManager.setSkipPunctuationDelay(defaultSkipPunctuationDelay, _projectName!);
     await _dataManager.setSpeakerAnimation(defaultSpeakerAnimation, _projectName!);
     await _dataManager.setAutoHideQuickMenu(defaultAutoHideQuickMenu, _projectName!);
+    await _dataManager.setMouseParallaxEnabled(defaultMouseParallaxEnabled, _projectName!);
     await _dataManager.setMenuDisplayMode(projectDefaultMenuDisplayMode, _projectName!);
     await _dataManager.setFastForwardMode(defaultFastForwardMode, _projectName!);
     await _dataManager.setMouseRollbackBehavior(defaultMouseRollbackBehavior, _projectName!);
     await _dataManager.setDialogueFontFamily(defaultDialogueFontFamily, _projectName!);
+    await _dataManager.setMusicEnabled(defaultMusicEnabled, _projectName!);
+    await _dataManager.setSoundEnabled(defaultSoundEnabled, _projectName!);
+    await _dataManager.setMusicVolume(defaultMusicVolume, _projectName!);
+    await _dataManager.setSoundVolume(defaultSoundVolume, _projectName!);
 
     // 应用默认全屏设置（非Web平台）
     if (!kIsWeb) {
