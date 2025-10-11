@@ -11,9 +11,10 @@ class UnifiedGameDataManager {
   factory UnifiedGameDataManager() => _instance;
   UnifiedGameDataManager._internal();
 
-  static const int _version = 2;
+  static const int _version = 3;
   static const String _fileName = 'game_data.sakidata';
   static const String _defaultMouseRollbackBehavior = 'rewind';
+  static const bool _defaultMouseParallaxEnabled = true;
 
   // 游戏设置
   double _dialogOpacity = 0.9;
@@ -23,6 +24,7 @@ class UnifiedGameDataManager {
   bool _skipPunctuationDelay = false;
   bool _speakerAnimation = true;
   bool _autoHideQuickMenu = false;
+  bool _mouseParallaxEnabled = _defaultMouseParallaxEnabled;
   String _menuDisplayMode = 'windowed';
   String _fastForwardMode = 'read_only';
   String _mouseRollbackBehavior = _defaultMouseRollbackBehavior;
@@ -102,6 +104,7 @@ class UnifiedGameDataManager {
     buffer.add(_writeBool(_skipPunctuationDelay));
     buffer.add(_writeBool(_speakerAnimation));
     buffer.add(_writeBool(_autoHideQuickMenu));
+    buffer.add(_writeBool(_mouseParallaxEnabled));
     buffer.add(_writeString(_menuDisplayMode));
     buffer.add(_writeString(_fastForwardMode));
     buffer.add(_writeString(_dialogueFontFamily));
@@ -162,6 +165,11 @@ class UnifiedGameDataManager {
     _skipPunctuationDelay = reader.readBool();
     _speakerAnimation = reader.readBool();
     _autoHideQuickMenu = reader.readBool();
+    if (version >= 3) {
+      _mouseParallaxEnabled = reader.readBool();
+    } else {
+      _mouseParallaxEnabled = _defaultMouseParallaxEnabled;
+    }
     _menuDisplayMode = reader.readString();
     _fastForwardMode = reader.readString();
     _dialogueFontFamily = reader.readString();
@@ -252,6 +260,12 @@ class UnifiedGameDataManager {
   bool get autoHideQuickMenu => _autoHideQuickMenu;
   Future<void> setAutoHideQuickMenu(bool value, String projectName) async {
     _autoHideQuickMenu = value;
+    await save(projectName);
+  }
+
+  bool get mouseParallaxEnabled => _mouseParallaxEnabled;
+  Future<void> setMouseParallaxEnabled(bool value, String projectName) async {
+    _mouseParallaxEnabled = value;
     await save(projectName);
   }
 

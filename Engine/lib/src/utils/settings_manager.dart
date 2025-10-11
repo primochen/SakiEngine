@@ -14,6 +14,7 @@ class SettingsManager extends ChangeNotifier {
   static const double defaultDialogOpacity = 0.9;
   static const bool defaultIsFullscreen = false;
   static const bool defaultDarkMode = false;
+  static const bool defaultMouseParallaxEnabled = true;
 
   // 打字机默认值 - 每秒显示字数
   static const double defaultTypewriterCharsPerSecond = 50.0;
@@ -150,6 +151,19 @@ class SettingsManager extends ChangeNotifier {
   Future<void> setAutoHideQuickMenu(bool enabled) async {
     await init();
     await _dataManager.setAutoHideQuickMenu(enabled, _projectName!);
+    notifyListeners();
+  }
+
+  Future<bool> getMouseParallaxEnabled() async {
+    await init();
+    return _dataManager.mouseParallaxEnabled;
+  }
+
+  bool get currentMouseParallaxEnabled => _dataManager.mouseParallaxEnabled;
+
+  Future<void> setMouseParallaxEnabled(bool enabled) async {
+    await init();
+    await _dataManager.setMouseParallaxEnabled(enabled, _projectName!);
     notifyListeners();
   }
 

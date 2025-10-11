@@ -29,6 +29,7 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
   bool _skipPunctuationDelay = SettingsManager.defaultSkipPunctuationDelay;
   bool _speakerAnimation = SettingsManager.defaultSpeakerAnimation;
   bool _autoHideQuickMenu = SettingsManager.defaultAutoHideQuickMenu;
+  bool _mouseParallaxEnabled = SettingsManager.defaultMouseParallaxEnabled;
   String _menuDisplayMode = SettingsManager.defaultMenuDisplayMode;
   String _dialogueFontFamily = SettingsManager.defaultDialogueFontFamily;
 
@@ -73,6 +74,7 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
       _skipPunctuationDelay = await SettingsManager().getSkipPunctuationDelay();
       _speakerAnimation = await SettingsManager().getSpeakerAnimation();
       _autoHideQuickMenu = await SettingsManager().getAutoHideQuickMenu();
+      _mouseParallaxEnabled = await SettingsManager().getMouseParallaxEnabled();
       _menuDisplayMode = await SettingsManager().getMenuDisplayMode();
       _dialogueFontFamily = await SettingsManager().getDialogueFontFamily();
 
@@ -128,6 +130,11 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
   Future<void> _updateAutoHideQuickMenu(bool value) async {
     setState(() => _autoHideQuickMenu = value);
     await _settingsManager.setAutoHideQuickMenu(value);
+  }
+
+  Future<void> _updateMouseParallax(bool value) async {
+    setState(() => _mouseParallaxEnabled = value);
+    await _settingsManager.setMouseParallaxEnabled(value);
   }
 
   Future<void> _updateMenuDisplayMode(String value) async {
@@ -214,6 +221,8 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
             SizedBox(height: 40 * scale),
             _buildAutoHideQuickMenuSetting(config, scale),
             SizedBox(height: 40 * scale),
+            _buildMouseParallaxToggle(config, scale),
+            SizedBox(height: 40 * scale),
             _buildTypewriterSpeedSlider(config, scale),
             SizedBox(height: 40 * scale), // 底部间距
           ],
@@ -283,6 +292,8 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
                       _buildSpeakerAnimationToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       _buildAutoHideQuickMenuSetting(config, scale),
+                      SizedBox(height: 40 * scale),
+                      _buildMouseParallaxToggle(config, scale),
                       SizedBox(height: 40 * scale),
                       // 可以在这里添加更多右列设置项
                     ],
@@ -611,6 +622,62 @@ class _VideoSettingsTabState extends State<VideoSettingsTab> {
           GameStyleSwitch(
             value: _autoHideQuickMenu,
             onChanged: _updateAutoHideQuickMenu,
+            scale: scale,
+            config: config,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMouseParallaxToggle(SakiEngineConfig config, double scale) {
+    final textScale = context.scaleFor(ComponentType.text);
+    final localization = LocalizationManager();
+
+    return Container(
+      padding: EdgeInsets.all(16 * scale),
+      decoration: BoxDecoration(
+        color: config.themeColors.surface.withOpacity(0.5),
+        border: Border.all(
+          color: config.themeColors.primary.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _mouseParallaxEnabled ? Icons.layers : Icons.layers_clear,
+            color: config.themeColors.primary,
+            size: 24 * scale,
+          ),
+          SizedBox(width: 16 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localization.t('settings.mouseParallax.title'),
+                  style: config.reviewTitleTextStyle.copyWith(
+                    fontSize: config.reviewTitleTextStyle.fontSize! * textScale * 0.7,
+                    color: config.themeColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  localization.t('settings.mouseParallax.description'),
+                  style: config.dialogueTextStyle.copyWith(
+                    fontSize: config.dialogueTextStyle.fontSize! * textScale * 0.6,
+                    color: config.themeColors.primary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16 * scale),
+          GameStyleSwitch(
+            value: _mouseParallaxEnabled,
+            onChanged: _updateMouseParallax,
             scale: scale,
             config: config,
           ),

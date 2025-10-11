@@ -103,6 +103,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   DateTime? _reviewReopenSuppressedUntil;
   bool _reviewOpenedByMouseRollback = false;
   final GlobalKey _nvlScreenKey = GlobalKey();
+  bool _isParallaxEnabled = SettingsManager.defaultMouseParallaxEnabled;
   
   // 跟踪上一次的NVL状态，用于检测转场
   bool _previousIsNvlMode = false;
@@ -200,27 +201,38 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     try {
       await _settingsManager.init();
       final behavior = await _settingsManager.getMouseRollbackBehavior();
+      final parallaxEnabled = await _settingsManager.getMouseParallaxEnabled();
       if (!mounted) {
         _mouseRollbackBehavior = behavior;
+        _isParallaxEnabled = parallaxEnabled;
         return;
       }
-      setState(() => _mouseRollbackBehavior = behavior);
+      setState(() {
+        _mouseRollbackBehavior = behavior;
+        _isParallaxEnabled = parallaxEnabled;
+      });
     } catch (_) {
       // 使用默认设置
       _mouseRollbackBehavior = SettingsManager.defaultMouseRollbackBehavior;
+      _isParallaxEnabled = SettingsManager.defaultMouseParallaxEnabled;
     }
   }
 
   void _handleSettingsChanged() {
     final behavior = _settingsManager.currentMouseRollbackBehavior;
-    if (_mouseRollbackBehavior == behavior) {
+    final parallaxEnabled = _settingsManager.currentMouseParallaxEnabled;
+    if (_mouseRollbackBehavior == behavior && _isParallaxEnabled == parallaxEnabled) {
       return;
     }
     if (!mounted) {
       _mouseRollbackBehavior = behavior;
+      _isParallaxEnabled = parallaxEnabled;
       return;
     }
-    setState(() => _mouseRollbackBehavior = behavior);
+    setState(() {
+      _mouseRollbackBehavior = behavior;
+      _isParallaxEnabled = parallaxEnabled;
+    });
   }
 
   Future<void> _loadProjectName() async {
@@ -901,6 +913,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
             return MouseParallax(
               maxOffset: const Offset(26, 16),
+              enabled: _isParallaxEnabled,
               child: RightClickUIManager(
                 // 背景层 - 不会被隐藏的内容（场景、角色等）
                 backgroundChild: _buildSceneWithFilter(gameState),
