@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sakiengine/src/utils/smart_asset_image.dart';
+import 'package:sakiengine/src/effects/mouse_parallax.dart';
 
 class SceneLayer {
   final String assetName;
@@ -32,6 +33,7 @@ class LayerPosition {
   final double? width;
   final double? height;
   final double zoom; // 缩放参数，默认1.0
+  final double? parallax; // 视差深度（可选）
   
   LayerPosition({
     this.left,
@@ -41,11 +43,13 @@ class LayerPosition {
     this.width,
     this.height,
     this.zoom = 1.0, // 默认不缩放
+    this.parallax,
   });
   
   static LayerPosition? fromString(String positionString) {
     double? left, right, top, bottom, width, height;
     double zoom = 1.0; // 默认缩放
+    double? parallax;
     
     final params = positionString.split(' ');
     for (final param in params) {
@@ -63,6 +67,8 @@ class LayerPosition {
         height = double.tryParse(param.substring(7));
       } else if (param.startsWith('zoom=')) {
         zoom = double.tryParse(param.substring(5)) ?? 1.0;
+      } else if (param.startsWith('parallax=')) {
+        parallax = double.tryParse(param.substring(9));
       }
     }
     
@@ -74,6 +80,7 @@ class LayerPosition {
       width: width,
       height: height,
       zoom: zoom,
+      parallax: parallax,
     );
   }
 }
@@ -84,11 +91,19 @@ class MultiLayerRenderer {
     required Size screenSize,
   }) {
     return Stack(
-      children: layers.map((layer) => _buildLayer(layer, screenSize)).toList(),
+      children: [
+        for (var i = 0; i < layers.length; i++)
+          _buildLayer(layers[i], screenSize, i, layers.length),
+      ],
     );
   }
 
-  static Widget _buildLayer(SceneLayer layer, Size screenSize) {
+  static Widget _buildLayer(
+    SceneLayer layer,
+    Size screenSize,
+    int index,
+    int totalLayers,
+  ) {
     // The base widget is the Image, configured to fill its parent container.
     Widget imageContent = SmartAssetImage(
       assetName: 'backgrounds/${layer.assetName.replaceAll(' ', '-')}',
@@ -108,6 +123,7 @@ class MultiLayerRenderer {
     );
 
     final pos = layer.position;
+    final parallaxDepth = pos?.parallax ?? _resolveDepth(index, totalLayers);
 
     // Apply the zoom transformation directly to the image content.
     if (pos != null && pos.zoom != 1.0) {
@@ -120,7 +136,12 @@ class MultiLayerRenderer {
 
     // For a layer with no position info, fill the screen.
     if (pos == null) {
-      return Positioned.fill(child: imageContent);
+      return Positioned.fill(
+        child: ParallaxAware(
+          depth: parallaxDepth,
+          child: imageContent,
+        ),
+      );
     }
 
     Widget finalChild = imageContent;
@@ -145,7 +166,10 @@ class MultiLayerRenderer {
       bottom: pos.bottom != null ? screenSize.height * pos.bottom! : null,
       width: pos.width != null ? screenSize.width * pos.width! : null,
       height: pos.height != null ? screenSize.height * pos.height! : null,
-      child: finalChild,
+      child: ParallaxAware(
+        depth: parallaxDepth,
+        child: finalChild,
+      ),
     );
   }
 
@@ -154,7 +178,15 @@ class MultiLayerRenderer {
     
     final double y = (pos.top != null) ? -1.0 : (pos.bottom != null) ? 1.0 : 0.0;
     final double x = (pos.left != null) ? -1.0 : (pos.right != null) ? 1.0 : 0.0;
-    
+
     return Alignment(x, y);
+  }
+
+  static double _resolveDepth(int index, int totalLayers) {
+    if (totalLayers <= 1) {
+      return 0.2;
+    }
+    final t = index / (totalLayers - 1);
+    return 0.15 + t * 0.18;
   }
 }
