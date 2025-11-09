@@ -8,6 +8,7 @@
 
 #include <audioplayers_windows/audioplayers_windows_plugin.h>
 #include <flutter_avif_windows/flutter_avif_windows_plugin.h>
+#include <flutter_steamworks/flutter_steamworks_plugin_c_api.h>
 #include <fvp/fvp_plugin_c_api.h>
 #include <hotkey_manager_windows/hotkey_manager_windows_plugin_c_api.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
@@ -18,6 +19,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("AudioplayersWindowsPlugin"));
   FlutterAvifWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterAvifWindowsPlugin"));
+  FlutterSteamworksPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterSteamworksPluginCApi"));
   FvpPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FvpPluginCApi"));
   HotkeyManagerWindowsPluginCApiRegisterWithRegistrar(

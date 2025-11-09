@@ -51,6 +51,7 @@ dependencies:
   audioplayers: ^6.1.0
   video_player: ^2.9.1
   fvp: ^0.34.0
+  flutter_steamworks: ^0.0.1
 
 dev_dependencies:
   flutter_test:

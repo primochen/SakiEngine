@@ -94,8 +94,10 @@ class StoryFlowchartAnalyzer {
         //print('[FlowchartAnalyzer] 统计信息: ${_manager.exportData()['stats']}');
       }
     } catch (e, stack) {
-      //print('[FlowchartAnalyzer] 分析失败: $e');
-      //print('[FlowchartAnalyzer] 堆栈跟踪:');
+      if (kDebugMode) {
+        //print('[FlowchartAnalyzer] 分析失败: $e');
+        //print('[FlowchartAnalyzer] 堆栈跟踪:');
+      }
       print(stack);
     }
   }
@@ -704,7 +706,7 @@ class StoryFlowchartAnalyzer {
       final autoSaveFiles = <String>[];
       await for (final entity in dir.list()) {
         if (entity is File && entity.path.endsWith('.sakisav')) {
-          final fileName = entity.path.split('/').last.replaceAll('.sakisav', '');
+          final fileName = entity.path.split(Platform.pathSeparator).last.replaceAll('.sakisav', '');
           if (fileName.startsWith(StoryFlowchartManager.autoSavePrefix)) {
             autoSaveFiles.add(fileName);
           }

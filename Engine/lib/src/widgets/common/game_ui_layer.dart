@@ -37,6 +37,7 @@ class GameUILayer extends StatefulWidget {
 
   // 状态管理
   final bool showReviewOverlay;
+  final bool enableReviewOverscrollClose;
   final bool showSaveOverlay;
   final bool showLoadOverlay;
   final bool showSettings;
@@ -47,7 +48,7 @@ class GameUILayer extends StatefulWidget {
   final bool isShowingMenu;
 
   // 回调函数
-  final VoidCallback onToggleReview;
+  final void Function(bool triggeredByOverscroll) onToggleReview;
   final VoidCallback onToggleSave;
   final VoidCallback onToggleLoad;
   final VoidCallback? onQuickSave; // 新增：快速存档回调
@@ -85,6 +86,7 @@ class GameUILayer extends StatefulWidget {
     required this.currentScript,
     required this.nvlScreenKey,
     required this.showReviewOverlay,
+    this.enableReviewOverscrollClose = false,
     required this.showSaveOverlay,
     required this.showLoadOverlay,
     required this.showSettings,
@@ -241,7 +243,7 @@ class GameUILayerState extends State<GameUILayer> {
                       onSave: widget.onToggleSave,
                       onLoad: widget.onToggleLoad,
                       onQuickSave: widget.onQuickSave, // 新增：传递快速存档回调
-                      onReview: widget.onToggleReview,
+                      onReview: () => widget.onToggleReview(false),
                       onSettings: widget.onToggleSettings,
                       onBack: widget.onHandleQuickMenuBack,
                       onPreviousDialogue: widget.onHandlePreviousDialogue,
@@ -258,7 +260,7 @@ class GameUILayerState extends State<GameUILayer> {
                     onSave: widget.onToggleSave,
                     onLoad: widget.onToggleLoad,
                     onQuickSave: widget.onQuickSave, // 新增：传递快速存档回调
-                    onReview: widget.onToggleReview,
+                    onReview: () => widget.onToggleReview(false),
                     onSettings: widget.onToggleSettings,
                     onBack: widget.onHandleQuickMenuBack,
                     onPreviousDialogue: widget.onHandlePreviousDialogue,
@@ -304,8 +306,10 @@ class GameUILayerState extends State<GameUILayer> {
           HideableUI(
             child: ReviewOverlay(
               dialogueHistory: widget.gameManager.getDialogueHistory(),
-              onClose: widget.onToggleReview,
+              onClose: (triggeredByOverscroll) =>
+                  widget.onToggleReview(triggeredByOverscroll),
               onJumpToEntry: widget.onJumpToHistoryEntry,
+              enableBottomScrollClose: widget.enableReviewOverscrollClose,
             ),
           ),
 

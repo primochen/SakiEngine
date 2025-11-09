@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sakiengine/src/game/game_manager.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
 import 'package:sakiengine/src/utils/scaling_manager.dart';
@@ -10,14 +11,16 @@ import 'package:sakiengine/src/localization/localization_manager.dart';
 
 class ReviewOverlay extends StatefulWidget {
   final List<DialogueHistoryEntry> dialogueHistory;
-  final VoidCallback onClose;
+  final void Function(bool triggeredByOverscroll) onClose;
   final Function(DialogueHistoryEntry)? onJumpToEntry;
+  final bool enableBottomScrollClose;
 
   const ReviewOverlay({
     super.key,
     required this.dialogueHistory,
     required this.onClose,
     this.onJumpToEntry,
+    this.enableBottomScrollClose = false,
   });
 
   @override
@@ -25,6 +28,7 @@ class ReviewOverlay extends StatefulWidget {
 }
 
 class _ReviewOverlayState extends State<ReviewOverlay> {
+  final GlobalKey<OverlayScaffoldState> _overlayKey = GlobalKey<OverlayScaffoldState>();
   final ScrollController _scrollController = ScrollController();
   final LocalizationManager _localization = LocalizationManager();
   
@@ -57,7 +61,8 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
     final uiScale = context.scaleFor(ComponentType.ui);
     final textScale = context.scaleFor(ComponentType.text);
 
-    return OverlayScaffold(
+    Widget overlay = OverlayScaffold(
+      key: _overlayKey,
       title: _localization.t('review.title'),
       onClose: widget.onClose,
       content: widget.dialogueHistory.isEmpty
@@ -86,6 +91,19 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
             ),
           ),
         ),
+      ),
+    );
+
+    if (!widget.enableBottomScrollClose) {
+      return overlay;
+    }
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: Listener(
+        onPointerSignal: _handlePointerSignal,
+        behavior: HitTestBehavior.translucent,
+        child: overlay,
       ),
     );
   }
@@ -170,6 +188,106 @@ class _ReviewOverlayState extends State<ReviewOverlay> {
         );
       },
     );
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (!widget.enableBottomScrollClose) {
+      return false;
+    }
+
+    final metrics = notification.metrics;
+    if (metrics.axis != Axis.vertical) {
+      return false;
+    }
+
+    if (!_isAtLatestEntryWithMetrics(metrics)) {
+      return false;
+    }
+
+    if (notification is OverscrollNotification) {
+      if (_isScrollDeltaTowardsLatest(notification.overscroll, metrics.axisDirection)) {
+        _overlayKey.currentState?.close(triggeredByOverscroll: true);
+        return true;
+      }
+    } else if (notification is ScrollUpdateNotification && metrics.outOfRange) {
+      final delta = notification.scrollDelta ?? 0.0;
+      if (_isScrollDeltaTowardsLatest(delta, metrics.axisDirection)) {
+        _overlayKey.currentState?.close(triggeredByOverscroll: true);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (!widget.enableBottomScrollClose) {
+      return;
+    }
+
+    if (event is! PointerScrollEvent) {
+      return;
+    }
+
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    final scrollEvent = event as PointerScrollEvent;
+
+    if (scrollEvent.scrollDelta.dy <= 0) {
+      return;
+    }
+
+    if (_isAtLatestEntry()) {
+      _overlayKey.currentState?.close(triggeredByOverscroll: true);
+    }
+  }
+
+  bool _isAtLatestEntry() {
+    if (!_scrollController.hasClients) {
+      return true;
+    }
+
+    return _isAtLatestEntryWithMetrics(_scrollController.position);
+  }
+
+  bool _isAtLatestEntryWithMetrics(ScrollMetrics metrics) {
+    const tolerance = 6.0;
+
+    if (metrics.maxScrollExtent <= metrics.minScrollExtent) {
+      return true;
+    }
+
+    switch (metrics.axisDirection) {
+      case AxisDirection.down:
+        return metrics.pixels >= metrics.maxScrollExtent - tolerance;
+      case AxisDirection.up:
+        return metrics.pixels <= metrics.minScrollExtent + tolerance;
+      default:
+        if (kDebugMode) {
+          debugPrint('[ReviewOverlay] Unexpected axisDirection=${metrics.axisDirection}, treating as latest');
+        }
+        return true;
+    }
+  }
+
+  bool _isScrollDeltaTowardsLatest(double delta, AxisDirection axisDirection) {
+    if (delta == 0) {
+      return false;
+    }
+
+    switch (axisDirection) {
+      case AxisDirection.down:
+        return delta > 0;
+      case AxisDirection.up:
+        return delta < 0;
+      default:
+        if (kDebugMode) {
+          debugPrint('[ReviewOverlay] Unexpected axisDirection=$axisDirection in delta check');
+        }
+        return delta > 0;
+    }
   }
 
   Widget _buildDialogueEntry(

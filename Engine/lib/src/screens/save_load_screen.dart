@@ -456,7 +456,7 @@ class _SaveLoadScreenState extends State<SaveLoadScreen> {
       children: [
         OverlayScaffold(
           title: _getTitleText(),
-          onClose: widget.onClose,
+          onClose: (_) => widget.onClose(),
           content: _buildGridContent(uiScale, textScale, config),
           footer: _buildFooter(uiScale, textScale, config),
         ),

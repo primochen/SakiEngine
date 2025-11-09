@@ -14,6 +14,11 @@ class SettingsManager extends ChangeNotifier {
   static const double defaultDialogOpacity = 0.9;
   static const bool defaultIsFullscreen = false;
   static const bool defaultDarkMode = false;
+  static const bool defaultMouseParallaxEnabled = true;
+  static const bool defaultMusicEnabled = true;
+  static const bool defaultSoundEnabled = true;
+  static const double defaultMusicVolume = 0.8;
+  static const double defaultSoundVolume = 0.8;
 
   // 打字机默认值 - 每秒显示字数
   static const double defaultTypewriterCharsPerSecond = 50.0;
@@ -22,6 +27,7 @@ class SettingsManager extends ChangeNotifier {
   static const bool defaultAutoHideQuickMenu = false;
   static const String defaultMenuDisplayMode = 'windowed'; // 'windowed' or 'fullscreen'
   static const String defaultFastForwardMode = 'read_only'; // 'read_only' or 'force'
+  static const String defaultMouseRollbackBehavior = 'rewind'; // 'rewind' or 'history'
   static const String defaultDialogueFontFamily = 'SourceHanSansCN'; // 对话文字字体
 
   final _dataManager = UnifiedGameDataManager();
@@ -152,6 +158,19 @@ class SettingsManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> getMouseParallaxEnabled() async {
+    await init();
+    return _dataManager.mouseParallaxEnabled;
+  }
+
+  bool get currentMouseParallaxEnabled => _dataManager.mouseParallaxEnabled;
+
+  Future<void> setMouseParallaxEnabled(bool enabled) async {
+    await init();
+    await _dataManager.setMouseParallaxEnabled(enabled, _projectName!);
+    notifyListeners();
+  }
+
   // 菜单页面显示模式设置
   Future<String> getMenuDisplayMode() async {
     await init();
@@ -177,6 +196,20 @@ class SettingsManager extends ChangeNotifier {
   Future<void> setFastForwardMode(String mode) async {
     await init();
     await _dataManager.setFastForwardMode(mode, _projectName!);
+    notifyListeners();
+  }
+
+  // 鼠标回退行为设置
+  Future<String> getMouseRollbackBehavior() async {
+    await init();
+    return _dataManager.mouseRollbackBehavior;
+  }
+
+  String get currentMouseRollbackBehavior => _dataManager.mouseRollbackBehavior;
+
+  Future<void> setMouseRollbackBehavior(String behavior) async {
+    await init();
+    await _dataManager.setMouseRollbackBehavior(behavior, _projectName!);
     notifyListeners();
   }
 
@@ -211,9 +244,15 @@ class SettingsManager extends ChangeNotifier {
     await _dataManager.setSkipPunctuationDelay(defaultSkipPunctuationDelay, _projectName!);
     await _dataManager.setSpeakerAnimation(defaultSpeakerAnimation, _projectName!);
     await _dataManager.setAutoHideQuickMenu(defaultAutoHideQuickMenu, _projectName!);
+    await _dataManager.setMouseParallaxEnabled(defaultMouseParallaxEnabled, _projectName!);
     await _dataManager.setMenuDisplayMode(projectDefaultMenuDisplayMode, _projectName!);
     await _dataManager.setFastForwardMode(defaultFastForwardMode, _projectName!);
+    await _dataManager.setMouseRollbackBehavior(defaultMouseRollbackBehavior, _projectName!);
     await _dataManager.setDialogueFontFamily(defaultDialogueFontFamily, _projectName!);
+    await _dataManager.setMusicEnabled(defaultMusicEnabled, _projectName!);
+    await _dataManager.setSoundEnabled(defaultSoundEnabled, _projectName!);
+    await _dataManager.setMusicVolume(defaultMusicVolume, _projectName!);
+    await _dataManager.setSoundVolume(defaultSoundVolume, _projectName!);
 
     // 应用默认全屏设置（非Web平台）
     if (!kIsWeb) {

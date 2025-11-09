@@ -247,17 +247,17 @@ nvlm
 "这是我下午被上课铃吵醒后的想法。"
 endnvlm
 ////黑场到教室 nvl模式
+nvlm
 scene classroom
 stop music
-nvlm
 "......"
 "窗外突然走过一个熟悉的身影。"
 "？？"
 "！！"
 endnvlm
-play music dream  
 ////音乐播放 dream
 nvlm
+play music dream  
 "是我的母亲。"
 "老师见门口有人，走过去聊了几句。"
 "我这里听不到聊天内容。"
@@ -339,16 +339,16 @@ lm "看来确实好了。"
 lm "那你在家里自己看看书吧，我还得继续去做农活呢。"
 l "好的妈。"
 endnvlm
-scene sky
 nvlm
+scene sky
 ////背景切到家的拐角
 "我拿出课本开始阅读。"
 "等母亲一离开。"
 "我马上把课本放下，飞速跑到电视机前面。"
 endnvlm
+nvlm
 play sound tv
 stop music
-nvlm
 "按下了开机键。"
 "就是这样的生活。"
 "如果察觉到母亲快回来了，我会在听到动静后马上关掉电视，然后拿起书阅读。"

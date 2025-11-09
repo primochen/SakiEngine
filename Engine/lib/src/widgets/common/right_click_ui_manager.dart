@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 
 /// 右键隐藏UI管理器
 /// 视觉小说标配功能，右键可以隐藏/显示所有UI元素，左键推进剧情
 class RightClickUIManager extends StatefulWidget {
   /// 子组件 - 包含所有UI元素
   final Widget child;
-  
+
   /// 背景组件 - 不会被隐藏的背景内容（角色、背景等）
   final Widget backgroundChild;
-  
+
   /// UI隐藏状态改变回调
   final Function(bool isUIHidden)? onUIVisibilityChanged;
-  
+
   /// 左键点击回调（用于推进剧情）
   final VoidCallback? onLeftClick;
 
@@ -64,9 +65,11 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     // 设置初始值
-    _animationController.value = _isUIHidden ? 0.0 : 1.0;
+    // 当UI显示时，controller为0，fade为1.0
+    // 当UI隐藏时，controller为1，fade为0.0
+    _animationController.value = _isUIHidden ? 1.0 : 0.0;
 
     _globalManager.addListener(_handleGlobalVisibilityChange);
   }
@@ -162,7 +165,7 @@ class _RightClickUIManagerState extends State<RightClickUIManager>
             animation: _fadeAnimation,
             builder: (context, child) {
               return Opacity(
-                opacity: _isUIHidden ? _fadeAnimation.value : 1.0,
+                opacity: _fadeAnimation.value,
                 child: IgnorePointer(
                   ignoring: _isUIHidden,
                   child: widget.child,

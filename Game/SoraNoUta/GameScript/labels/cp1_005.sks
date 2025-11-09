@@ -773,15 +773,15 @@ nvlm
 "刘守真在痛苦的呻吟着。"
 "不好，我得去看看。"
 endnvlm
+nvlm
 scene grass
 ////背景切到草地 音乐think
 play sound kusahasiru loop
-nvlm
 "我连忙走出树林，缓缓下到草地上。"
 "夏悠和李宫娜似乎也发现了什么不对劲。"
 endnvlm
-play sound kusahasiru
 nvlm
+play sound kusahasiru
 "也各自从躲藏的地点往刘守真所在的地方赶去。"
 endnvlm
 cg cg_cp1_ls 1
