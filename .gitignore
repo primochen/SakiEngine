@@ -61,3 +61,5 @@ Engine/*.keystore
 Engine/.flutter-plugins-dependencies
 */完整剧本.txt
 /Game/SoraNoUta/.cg_cache
+/Engine/lib/TheFirstLoveLetter_code
+/Game/TheFirstLoveLetter_source
