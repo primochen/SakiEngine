@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sakiengine/src/game/unified_game_data_manager.dart';
 import 'package:sakiengine/src/config/project_info_manager.dart';
@@ -55,7 +55,7 @@ class UISoundManager {
     // 创建音效播放器池（支持最多3个UI音效同时播放）
     for (int i = 0; i < 3; i++) {
       final player = AudioPlayer();
-      await player.setReleaseMode(ReleaseMode.release);
+      await player.setLoopMode(LoopMode.off);
       _players.add(player);
     }
 
@@ -115,7 +115,10 @@ class UISoundManager {
 
     // 构建完整路径并播放音效
     final assetPath = _buildSoundPath(soundName);
-    await player.play(AssetSource(assetPath));
+    await player.stop();
+    await player.setLoopMode(LoopMode.off);
+    await _setPlayerSource(player, assetPath);
+    await player.play();
   }
 
   /// 停止所有UI音效
@@ -131,5 +134,12 @@ class UISoundManager {
       player.dispose();
     }
     _players.clear();
+  }
+
+  Future<void> _setPlayerSource(AudioPlayer player, String assetPath) async {
+    final trimmed = assetPath.trim();
+    final resolved =
+        trimmed.startsWith('assets/') ? trimmed : 'assets/$trimmed';
+    await player.setAsset(resolved);
   }
 }

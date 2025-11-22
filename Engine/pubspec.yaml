@@ -48,9 +48,15 @@ dependencies:
   hotkey_manager: ^0.2.3
   flutter_avif: ^3.0.0
   flutter_svg: ^2.0.10
-  audioplayers: ^6.1.0
-  video_player: ^2.9.1
-  fvp: ^0.34.0
+  media_kit: ^1.1.10
+  media_kit_video: ^1.1.10
+  media_kit_libs_android_video: ^1.3.7
+  media_kit_libs_ios_video: ^1.1.4
+  media_kit_libs_macos_video: ^1.1.4
+  media_kit_libs_windows_video: ^1.0.10
+  media_kit_libs_linux: ^1.1.4
+  just_audio: ^0.9.46
+  just_audio_media_kit: ^2.1.0
   flutter_steamworks: ^0.0.1
 
 dev_dependencies:

@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
-import 'package:fvp/fvp.dart' as fvp;
+import 'package:media_kit/media_kit.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:sakiengine/src/config/saki_engine_config.dart';
-import 'package:sakiengine/src/config/config_models.dart';
 import 'package:sakiengine/src/core/module_registry.dart';
 import 'package:sakiengine/src/core/project_module_loader.dart';
 import 'package:sakiengine/src/utils/debug_logger.dart';
@@ -21,7 +21,8 @@ import 'package:sakiengine/src/widgets/common/exit_confirmation_dialog.dart';
 import 'package:sakiengine/src/utils/transition_prewarming.dart';
 import 'package:sakiengine/src/game/save_load_manager.dart'; // 新增：导入SaveLoadManager
 import 'package:sakiengine/src/utils/ui_sound_manager.dart'; // 新增：导入UISoundManager
-import 'src/utils/platform_window_manager_io.dart' if (dart.library.html) 'src/utils/platform_window_manager_web.dart';
+import 'src/utils/platform_window_manager_io.dart'
+    if (dart.library.html) 'src/utils/platform_window_manager_web.dart';
 
 enum AppState { mainMenu, inGame }
 
@@ -169,7 +170,8 @@ void main() async {
     final steamworksManager = SteamworksManager.instance;
     if (steamworksManager.isSupportedPlatform) {
       const steamOptions = SteamworksInitOptions(appId: 3536120);
-      final steamInitialized = await steamworksManager.initialize(options: steamOptions);
+      final steamInitialized =
+          await steamworksManager.initialize(options: steamOptions);
       debugPrint('Seamworks: 游戏Appid：${steamOptions.appId}');
       if (!steamInitialized && kDebugMode) {
         debugPrint('Steamworks 初始化未成功，可能需要用户先启动 Steam 客户端。');
@@ -184,12 +186,15 @@ void main() async {
       ]);
     }
 
-    // 注册fvp以支持所有平台的视频播放，特别是Windows
-    fvp.registerWith(options: {
-      'global': {
-        'log': 'debug', // off, error, warning, info, debug, all(default)
-      }
-    });
+    // 初始化 media_kit 以支持跨平台音视频播放
+    MediaKit.ensureInitialized();
+    JustAudioMediaKit.ensureInitialized(
+      android: true,
+      iOS: true,
+      macOS: true,
+      windows: true,
+      linux: true,
+    );
 
     // 初始化窗口管理器（非Web平台）
     if (!kIsWeb) {
@@ -202,7 +207,8 @@ void main() async {
 
     // 初始化系统热键，清理之前的注册（用于热重载）
     // hotkey_manager 只在桌面平台可用
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       await hotKeyManager.unregisterAll();
     }
 
@@ -268,7 +274,7 @@ class _SakiEngineAppState extends State<SakiEngineApp> {
       LocalizationManager(),
     ]);
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final localization = LocalizationManager();
