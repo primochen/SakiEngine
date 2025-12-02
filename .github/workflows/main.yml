@@ -4,16 +4,38 @@ on:
   push:
     branches:
       - 'main'
-  release:
-    types: [published]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
+  check-trigger:
+    name: Check Push Message
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.evaluate.outputs.should_run }}
+    steps:
+      - name: Validate commit message
+        id: evaluate
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          echo "📩 最新提交信息:"
+          echo "$COMMIT_MESSAGE"
+          pattern='[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}'
+          if [[ -n "$COMMIT_MESSAGE" && "$COMMIT_MESSAGE" =~ $pattern ]]; then
+            echo "✅ 检测到日期格式，允许构建"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ 推送信息未包含形如YYYY.MM.DD的文本，跳过构建"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Android构建
   build-android:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
     name: Build Android
     uses: ./.github/workflows/android-build.yml
     with:
@@ -24,6 +46,8 @@ jobs:
 
   # iOS构建
   build-ios:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
     name: Build iOS
     uses: ./.github/workflows/ios-build.yml
     with:
@@ -34,6 +58,8 @@ jobs:
 
   # macOS构建
   build-macos:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
     name: Build macOS
     uses: ./.github/workflows/macos-build.yml
     with:
@@ -44,6 +70,8 @@ jobs:
 
   # Windows构建
   build-windows:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
     name: Build Windows
     uses: ./.github/workflows/windows-build.yml
     with:
@@ -54,6 +82,8 @@ jobs:
 
   # Linux构建
   build-linux:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
     name: Build Linux
     uses: ./.github/workflows/linux-build.yml
     with:
@@ -65,7 +95,8 @@ jobs:
   # 发布
   publish:
     name: Publish Release
-    needs: [build-android, build-ios, build-macos, build-windows, build-linux]
+    needs: [check-trigger, build-android, build-ios, build-macos, build-windows, build-linux]
+    if: needs.check-trigger.outputs.should_run == 'true'
     uses: ./.github/workflows/publish.yml
     with:
       version: ${{ needs.build-android.outputs.version }}
@@ -75,8 +106,8 @@ jobs:
   # 版本更新
   update-version:
     name: Update Version
-    needs: [build-android, build-ios, build-macos, build-windows, build-linux, publish]
-    if: github.ref == 'refs/heads/main' && success()
+    needs: [check-trigger, build-android, build-ios, build-macos, build-windows, build-linux, publish]
+    if: needs.check-trigger.outputs.should_run == 'true' && github.ref == 'refs/heads/main' && success()
     uses: ./.github/workflows/version-update.yml
     with:
       working_directory: 'Engine'
