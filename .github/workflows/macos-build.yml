@@ -119,6 +119,10 @@ jobs:
             mkdir -p dmg-contents
             cp -R "$APP_NAME" dmg-contents/
             artifact_name="${GAME_NAME}-${version}-macOS-arm64.dmg"
+            if [ -f "$artifact_name" ]; then
+              echo "⚠️ 检测到已存在的DMG，删除以避免Resource busy: $artifact_name"
+              rm -f "$artifact_name"
+            fi
             hdiutil create -srcfolder dmg-contents -volname "$GAME_NAME" -format UDZO "$artifact_name"
             echo "✅ 创建DMG: $artifact_name"
           else
